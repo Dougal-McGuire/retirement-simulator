@@ -89,7 +89,7 @@ export default function Home() {
                   <li>• Asset accumulation phase</li>
                   <li>• Retirement distribution phase</li>
                   <li>• Pension income integration</li>
-                  <li>• Tax considerations</li>
+                  <li>• Capital gains tax modeling</li>
                 </ul>
               </CardContent>
             </Card>

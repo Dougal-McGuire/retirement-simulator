@@ -87,6 +87,10 @@ function runSingleSimulation(params: SimulationParams): {
     if (age < params.retirementAge) {
       // Accumulation phase (working years)
       const roi = boxMullerTransform(params.averageROI, params.roiVolatility)
+      const grossGains = currentAssets * roi
+      
+      // During accumulation, we assume tax-deferred growth (like 401k/IRA)
+      // or reinvestment that doesn't trigger immediate capital gains
       currentAssets = currentAssets * (1 + roi) + params.annualSavings
       spendingHistory.push(0) // No spending during accumulation for visualization
     } else {
@@ -99,8 +103,33 @@ function runSingleSimulation(params: SimulationParams): {
         annualIncome = params.monthlyPension * 12
       }
       
-      // Apply expenses and income
-      currentAssets = currentAssets + annualIncome - totalAnnualExpenseThisYear
+      // Calculate how much we need to withdraw from investments
+      const netNeeded = totalAnnualExpenseThisYear - annualIncome
+      
+      if (netNeeded > 0) {
+        // We need to sell investments to cover expenses
+        // When selling, we pay capital gains tax on the gains portion
+        const roi = boxMullerTransform(params.averageROI, params.roiVolatility)
+        const grossGains = currentAssets * roi
+        
+        // Apply investment growth first
+        currentAssets = currentAssets * (1 + roi)
+        
+        // Calculate withdrawal with tax consideration
+        // Assume a portion of withdrawal is gains subject to capital gains tax
+        const gainsRatio = Math.max(0, Math.min(0.7, grossGains / currentAssets)) // Estimate gains portion
+        const taxableGains = netNeeded * gainsRatio
+        const capitalGainsTax = taxableGains * (params.capitalGainsTax / 100)
+        
+        // Total withdrawal needed including tax
+        const totalWithdrawal = netNeeded + capitalGainsTax
+        
+        currentAssets = currentAssets - totalWithdrawal
+      } else {
+        // No withdrawal needed, just apply investment growth
+        const roi = boxMullerTransform(params.averageROI, params.roiVolatility)
+        currentAssets = currentAssets * (1 + roi)
+      }
       
       // Apply inflation to expenses for next year
       const inflation = boxMullerTransform(params.averageInflation, params.inflationVolatility)

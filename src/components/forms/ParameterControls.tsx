@@ -135,6 +135,9 @@ export function ParameterControls() {
               <p className="text-xs text-blue-800">
                 <strong>Volatility:</strong> Higher volatility = more uncertainty in returns/inflation year-to-year. 
                 Conservative: ROI 5-10%, Inflation 0.5-1%. Aggressive: ROI 15-20%, Inflation 1-2%.
+                <br />
+                <strong>Capital Gains Tax:</strong> Applied when selling investments to cover retirement expenses. 
+                Higher tax rates reduce net withdrawal amounts.
               </p>
             </div>
             <div className="space-y-3">
