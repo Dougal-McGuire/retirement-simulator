@@ -106,11 +106,9 @@ export const useSimulationResults = () => useSimulationStore((state) => state.re
 export const useSimulationLoading = () => useSimulationStore((state) => state.isLoading)
 export const useSimulationError = () => useSimulationStore((state) => state.error)
 
-// Helper hook for actions
-export const useSimulationActions = () => useSimulationStore((state) => ({
-  updateParams: state.updateParams,
-  runSimulation: state.runSimulation,
-  saveToStorage: state.saveToStorage,
-  loadFromStorage: state.loadFromStorage,
-  clearResults: state.clearResults,
-}))
+// Helper hooks for individual actions
+export const useUpdateParams = () => useSimulationStore((state) => state.updateParams)
+export const useRunSimulation = () => useSimulationStore((state) => state.runSimulation)
+export const useSaveToStorage = () => useSimulationStore((state) => state.saveToStorage)
+export const useLoadFromStorage = () => useSimulationStore((state) => state.loadFromStorage)
+export const useClearResults = () => useSimulationStore((state) => state.clearResults)

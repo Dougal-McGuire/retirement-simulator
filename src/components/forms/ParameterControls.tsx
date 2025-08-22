@@ -8,16 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Save, Upload, RotateCcw } from 'lucide-react'
-import { useSimulationStore, useSimulationParams } from '@/lib/stores/simulationStore'
+import { useSimulationParams, useUpdateParams, useSaveToStorage, useLoadFromStorage } from '@/lib/stores/simulationStore'
 import { DEFAULT_PARAMS, SimulationParams } from '@/types'
 
 export function ParameterControls() {
   const params = useSimulationParams()
-  const { updateParams, saveToStorage, loadFromStorage } = useSimulationStore((state) => ({
-    updateParams: state.updateParams,
-    saveToStorage: state.saveToStorage,
-    loadFromStorage: state.loadFromStorage,
-  }))
+  const updateParams = useUpdateParams()
+  const saveToStorage = useSaveToStorage()
+  const loadFromStorage = useLoadFromStorage()
 
   const [importJson, setImportJson] = useState('')
 
@@ -269,7 +267,7 @@ export function ParameterControls() {
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>100</span>
-                <span className="font-semibold">{params.simulationRuns.toLocaleString()}</span>
+                <span className="font-semibold">{params.simulationRuns}</span>
                 <span>10K</span>
               </div>
             </div>
