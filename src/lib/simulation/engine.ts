@@ -107,7 +107,9 @@ function runSingleSimulation(params: SimulationParams): {
       currentMonthlyExpense *= (1 + inflation)
       currentAnnualExpense *= (1 + inflation)
       
-      spendingHistory.push(currentMonthlyExpense)
+      // Store total monthly-equivalent spending (includes annualized annual expenses)
+      const monthlyEquivalentSpending = currentMonthlyExpense + (currentAnnualExpense / 12)
+      spendingHistory.push(monthlyEquivalentSpending)
       
       // Check for failure (running out of money)
       if (currentAssets < 0) {
