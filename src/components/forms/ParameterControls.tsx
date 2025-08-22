@@ -131,6 +131,12 @@ export function ParameterControls() {
           </TabsContent>
 
           <TabsContent value="financial" className="space-y-4">
+            <div className="bg-blue-50 p-3 rounded-lg mb-4">
+              <p className="text-xs text-blue-800">
+                <strong>Volatility:</strong> Higher volatility = more uncertainty in returns/inflation year-to-year. 
+                Conservative: ROI 5-10%, Inflation 0.5-1%. Aggressive: ROI 15-20%, Inflation 1-2%.
+              </p>
+            </div>
             <div className="space-y-3">
               <div>
                 <Label className="text-xs font-semibold">Current Assets (€)</Label>
@@ -182,6 +188,25 @@ export function ParameterControls() {
               </div>
 
               <div>
+                <Label className="text-xs font-semibold">ROI Volatility</Label>
+                <div className="px-2 py-1">
+                  <Slider
+                    value={[params.roiVolatility * 100]}
+                    onValueChange={([value]) => handleInputChange('roiVolatility', value / 100)}
+                    min={2}
+                    max={25}
+                    step={0.5}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>2%</span>
+                    <span className="font-semibold">{(params.roiVolatility * 100).toFixed(1)}%</span>
+                    <span>25%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
                 <Label className="text-xs font-semibold">Average Inflation</Label>
                 <div className="px-2 py-1">
                   <Slider
@@ -196,6 +221,44 @@ export function ParameterControls() {
                     <span>1%</span>
                     <span className="font-semibold">{(params.averageInflation * 100).toFixed(1)}%</span>
                     <span>6%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Inflation Volatility</Label>
+                <div className="px-2 py-1">
+                  <Slider
+                    value={[params.inflationVolatility * 100]}
+                    onValueChange={([value]) => handleInputChange('inflationVolatility', value / 100)}
+                    min={0.1}
+                    max={3}
+                    step={0.1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0.1%</span>
+                    <span className="font-semibold">{(params.inflationVolatility * 100).toFixed(1)}%</span>
+                    <span>3%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Capital Gains Tax</Label>
+                <div className="px-2 py-1">
+                  <Slider
+                    value={[params.capitalGainsTax]}
+                    onValueChange={([value]) => handleInputChange('capitalGainsTax', value)}
+                    min={0}
+                    max={50}
+                    step={0.25}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0%</span>
+                    <span className="font-semibold">{params.capitalGainsTax.toFixed(2)}%</span>
+                    <span>50%</span>
                   </div>
                 </div>
               </div>

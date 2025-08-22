@@ -126,9 +126,9 @@ export const DEFAULT_PARAMS: SimulationParams = {
   annualSavings: 18000,
   monthlyPension: 5000,
   averageROI: 0.07,
-  roiVolatility: 0.02,
+  roiVolatility: 0.15,
   averageInflation: 0.03,
-  inflationVolatility: 0.005,
+  inflationVolatility: 0.01,
   capitalGainsTax: 26.25,
   monthlyExpenses: {
     health: 300,
