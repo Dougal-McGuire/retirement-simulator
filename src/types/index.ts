@@ -90,18 +90,31 @@ export interface MarketAssumptionsStep {
   simulationRuns: number
 }
 
+// Saved setup interface
+export interface SavedSetup {
+  id: string
+  name: string
+  timestamp: number
+  params: SimulationParams
+}
+
 // State management interfaces
 export interface SimulationStore {
   params: SimulationParams
   results: SimulationResults | null
   isLoading: boolean
   error: string | null
+  savedSetups: SavedSetup[]
   
   // Actions
   updateParams: (partial: Partial<SimulationParams>) => void
   runSimulation: () => Promise<void>
   saveToStorage: () => void
   loadFromStorage: () => void
+  saveSetup: (name: string) => void
+  loadSetup: (id: string) => void
+  deleteSetup: (id: string) => void
+  getSavedSetups: () => SavedSetup[]
   clearResults: () => void
 }
 

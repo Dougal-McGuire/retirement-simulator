@@ -60,7 +60,8 @@ export default function SimulationPage() {
             {/* Success Rate Card */}
             <SuccessRateCard 
               successRate={results?.successRate || 0} 
-              isLoading={isLoading} 
+              isLoading={isLoading}
+              simulationRuns={params.simulationRuns}
             />
 
             {/* Simulation Chart */}
@@ -101,10 +102,10 @@ export default function SimulationPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">
-                    €{Object.values(params.monthlyExpenses).reduce((sum, expense) => sum + expense, 0).toLocaleString()}
+                    €{Object.values(params.monthlyExpenses).reduce((sum, expense) => sum + expense, 0)}
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
-                    Annual: €{(Object.values(params.monthlyExpenses).reduce((sum, expense) => sum + expense, 0) * 12).toLocaleString()}
+                    Annual: €{(Object.values(params.monthlyExpenses).reduce((sum, expense) => sum + expense, 0) * 12)}
                   </p>
                 </CardContent>
               </Card>
@@ -115,7 +116,7 @@ export default function SimulationPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-purple-600">
-                    {params.simulationRuns.toLocaleString()}
+                    {params.simulationRuns}
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
                     Monte Carlo iterations

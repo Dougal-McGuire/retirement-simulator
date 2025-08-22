@@ -6,9 +6,10 @@ import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
 interface SuccessRateCardProps {
   successRate: number
   isLoading: boolean
+  simulationRuns?: number
 }
 
-export function SuccessRateCard({ successRate, isLoading }: SuccessRateCardProps) {
+export function SuccessRateCard({ successRate, isLoading, simulationRuns = 1000 }: SuccessRateCardProps) {
   if (isLoading) {
     return (
       <Card className="bg-gray-50">
@@ -101,7 +102,7 @@ export function SuccessRateCard({ successRate, isLoading }: SuccessRateCardProps
         <div className="mt-4 p-3 bg-white rounded-lg">
           <h4 className="text-sm font-semibold mb-2">What this means:</h4>
           <p className="text-xs text-gray-600">
-            In {successRate.toFixed(1)}% of the {Math.floor(Math.random() * 1000) + 1000} simulated scenarios, 
+            In {successRate.toFixed(1)}% of the {simulationRuns} simulated scenarios, 
             you don't run out of money before age 90. This accounts for market volatility, 
             inflation variability, and your specified spending patterns.
           </p>
