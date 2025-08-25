@@ -90,18 +90,31 @@ export interface MarketAssumptionsStep {
   simulationRuns: number
 }
 
+// Saved setup interface
+export interface SavedSetup {
+  id: string
+  name: string
+  timestamp: number
+  params: SimulationParams
+}
+
 // State management interfaces
 export interface SimulationStore {
   params: SimulationParams
   results: SimulationResults | null
   isLoading: boolean
   error: string | null
+  savedSetups: SavedSetup[]
   
   // Actions
   updateParams: (partial: Partial<SimulationParams>) => void
   runSimulation: () => Promise<void>
   saveToStorage: () => void
   loadFromStorage: () => void
+  saveSetup: (name: string) => void
+  loadSetup: (id: string) => void
+  deleteSetup: (id: string) => void
+  getSavedSetups: () => SavedSetup[]
   clearResults: () => void
 }
 
@@ -126,9 +139,9 @@ export const DEFAULT_PARAMS: SimulationParams = {
   annualSavings: 18000,
   monthlyPension: 5000,
   averageROI: 0.07,
-  roiVolatility: 0.02,
+  roiVolatility: 0.15,
   averageInflation: 0.03,
-  inflationVolatility: 0.005,
+  inflationVolatility: 0.01,
   capitalGainsTax: 26.25,
   monthlyExpenses: {
     health: 300,

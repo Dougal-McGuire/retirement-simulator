@@ -158,7 +158,7 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
 
       {/* Monthly Spending Chart */}
       <div>
-        <h4 className="text-lg font-semibold mb-4 text-gray-900">Monthly Spending During Retirement</h4>
+        <h4 className="text-lg font-semibold mb-4 text-gray-900">Total Monthly Spending During Retirement</h4>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart 
@@ -174,7 +174,7 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
               <YAxis 
                 tick={{ fontSize: 12 }}
                 tickFormatter={formatCurrencyShort}
-                label={{ value: 'Monthly Spending (€)', angle: -90, position: 'insideLeft' }}
+                label={{ value: 'Total Monthly Spending (€)', angle: -90, position: 'insideLeft' }}
               />
               <Tooltip 
                 formatter={(value: number) => [formatCurrency(value), '']}
@@ -206,6 +206,9 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
             <span>90th Percentile</span>
           </div>
         </div>
+        <p className="text-xs text-gray-500 text-center mt-2">
+          Includes monthly expenses plus annualized annual expenses (vacations, repairs, etc.)
+        </p>
       </div>
     </div>
   )
