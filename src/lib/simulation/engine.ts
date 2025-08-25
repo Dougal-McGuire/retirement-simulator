@@ -247,3 +247,24 @@ export function formatPercentage(value: number): string {
     maximumFractionDigits: 1,
   }).format(value)
 }
+
+/**
+ * Calculate combined monthly and annual expense totals
+ * @param monthlyExpenses - Object containing monthly expense categories
+ * @param annualExpenses - Object containing annual expense categories
+ * @returns Object with combined totals
+ */
+export function calculateCombinedExpenses(
+  monthlyExpenses: Record<string, number>,
+  annualExpenses: Record<string, number>
+) {
+  const totalMonthly = Object.values(monthlyExpenses).reduce((sum, expense) => sum + expense, 0)
+  const totalAnnual = Object.values(annualExpenses).reduce((sum, expense) => sum + expense, 0)
+  
+  return {
+    totalMonthly,
+    totalAnnual,
+    combinedMonthly: totalMonthly + (totalAnnual / 12),
+    combinedAnnual: (totalMonthly * 12) + totalAnnual
+  }
+}

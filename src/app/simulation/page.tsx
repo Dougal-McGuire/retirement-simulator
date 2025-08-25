@@ -6,9 +6,11 @@ import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useSimulationStore, useSimulationParams, useSimulationResults, useSimulationLoading } from '@/lib/stores/simulationStore'
+import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { SimulationChart } from '@/components/charts/SimulationChart'
 import { SuccessRateCard } from '@/components/charts/SuccessRateCard'
 import { ParameterControls } from '@/components/forms/ParameterControls'
+import { GenerateReportButton } from '@/components/pdf/GenerateReportButton'
 
 export default function SimulationPage() {
   const params = useSimulationParams()
@@ -39,9 +41,15 @@ export default function SimulationPage() {
               <div className="h-6 w-px bg-gray-300" />
               <h1 className="text-2xl font-bold text-gray-900">Monte Carlo Simulation</h1>
             </div>
-            <Button asChild>
-              <Link href="/setup">Setup Wizard</Link>
-            </Button>
+            <div className="flex items-center space-x-3">
+              <GenerateReportButton 
+                results={results}
+                disabled={isLoading}
+              />
+              <Button asChild>
+                <Link href="/setup">Setup Wizard</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -102,10 +110,13 @@ export default function SimulationPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">
-                    €{Object.values(params.monthlyExpenses).reduce((sum, expense) => sum + expense, 0)}
+                    €{calculateCombinedExpenses(params.monthlyExpenses, params.annualExpenses).combinedMonthly.toFixed(0)}
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
-                    Annual: €{(Object.values(params.monthlyExpenses).reduce((sum, expense) => sum + expense, 0) * 12)}
+                    Annual: €{calculateCombinedExpenses(params.monthlyExpenses, params.annualExpenses).combinedAnnual.toFixed(0)}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Includes monthly + annual/12
                   </p>
                 </CardContent>
               </Card>

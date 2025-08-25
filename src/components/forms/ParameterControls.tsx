@@ -12,6 +12,7 @@ import { RotateCcw, HelpCircle, Trash2, Plus } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useSimulationParams, useUpdateParams, useSaveSetup, useLoadSetup, useDeleteSetup, useSavedSetups } from '@/lib/stores/simulationStore'
+import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { DEFAULT_PARAMS, SimulationParams } from '@/types'
 
 // Helper component for parameters with tooltips
@@ -254,10 +255,26 @@ export function ParameterControls() {
                     />
                   </div>
                 ))}
-                <div className="pt-2 border-t">
+                <div className="pt-2 border-t space-y-1">
                   <div className="flex justify-between text-sm font-semibold">
-                    <span>Total Monthly:</span>
+                    <span>Monthly Only:</span>
                     <span>€{Object.values(params.monthlyExpenses).reduce((sum, expense) => sum + expense, 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-semibold text-blue-600">
+                    <div className="flex items-center gap-1">
+                      <span>Total Monthly:</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle className="h-3 w-3 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs bg-gray-900 text-white border border-gray-700">
+                            <p className="text-xs">Includes monthly expenses + 1/12th of annual expenses</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <span>€{calculateCombinedExpenses(params.monthlyExpenses, params.annualExpenses).combinedMonthly.toFixed(0)}</span>
                   </div>
                 </div>
               </div>
@@ -278,10 +295,26 @@ export function ParameterControls() {
                     />
                   </div>
                 ))}
-                <div className="pt-2 border-t">
+                <div className="pt-2 border-t space-y-1">
                   <div className="flex justify-between text-sm font-semibold">
-                    <span>Total Annual:</span>
+                    <span>Annual Only:</span>
                     <span>€{Object.values(params.annualExpenses).reduce((sum, expense) => sum + expense, 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-semibold text-blue-600">
+                    <div className="flex items-center gap-1">
+                      <span>Total Annual:</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle className="h-3 w-3 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs bg-gray-900 text-white border border-gray-700">
+                            <p className="text-xs">Includes (monthly expenses × 12) + annual expenses</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <span>€{calculateCombinedExpenses(params.monthlyExpenses, params.annualExpenses).combinedAnnual.toFixed(0)}</span>
                   </div>
                 </div>
               </div>
@@ -405,7 +438,7 @@ export function ParameterControls() {
             {/* Named Setups */}
             <div className="space-y-2">
               <h4 className="text-sm font-semibold">Saved Setups</h4>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline" className="flex-1">
@@ -447,7 +480,7 @@ export function ParameterControls() {
                 </Dialog>
 
                 <Select value={selectedSetupId} onValueChange={handleLoadSetup}>
-                  <SelectTrigger className="flex-1">
+                  <SelectTrigger className="flex-1 h-9">
                     <SelectValue placeholder="Load setup..." />
                   </SelectTrigger>
                   <SelectContent>
