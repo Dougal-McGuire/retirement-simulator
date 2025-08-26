@@ -39,7 +39,8 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
 
     if (!response.ok) {
       const errorData = await response.json()
-      throw new Error(errorData.error || `PDF generation failed: ${response.statusText}`)
+      console.error('PDF generation error response:', errorData)
+      throw new Error(errorData.details || errorData.error || `PDF generation failed: ${response.statusText}`)
     }
 
     const blob = await response.blob()

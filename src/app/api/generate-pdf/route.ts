@@ -120,6 +120,13 @@ export async function POST(req: NextRequest) {
   let browser = null
   
   try {
+    console.log('PDF generation started')
+    console.log('Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      hasChromium: !!chromium,
+    })
+    
     // Parse request body
     const { params, results } = await req.json()
     
@@ -193,16 +200,27 @@ export async function POST(req: NextRequest) {
       // Production on Vercel: Use serverless chromium
       console.log('Using serverless chromium for PDF generation on Vercel')
       
-      browser = await puppeteer.launch({
-        args: [
-          ...chromium.args,
-          '--hide-scrollbars',
-          '--disable-web-security',
-        ],
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath,
-        headless: chromium.headless,
-      })
+      try {
+        const execPath = await chromium.executablePath
+        console.log('Chromium executable path:', execPath)
+        console.log('Chromium args:', chromium.args)
+        
+        browser = await puppeteer.launch({
+          args: [
+            ...chromium.args,
+            '--hide-scrollbars',
+            '--disable-web-security',
+          ],
+          defaultViewport: chromium.defaultViewport,
+          executablePath: execPath,
+          headless: chromium.headless,
+        })
+        
+        console.log('Browser launched successfully')
+      } catch (launchError) {
+        console.error('Failed to launch browser:', launchError)
+        throw new Error(`Browser launch failed: ${launchError instanceof Error ? launchError.message : 'Unknown error'}`)
+      }
     } else {
       // Development: Use local chromium
       console.log('Using local chromium for PDF generation')
@@ -261,16 +279,28 @@ export async function POST(req: NextRequest) {
     
   } catch (error) {
     console.error('PDF generation error:', error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    
+    // Return more detailed error for debugging
     return NextResponse.json(
       { 
         error: 'Failed to generate PDF',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
+        environment: {
+          NODE_ENV: process.env.NODE_ENV,
+          VERCEL: process.env.VERCEL,
+          hasChromium: !!chromium,
+        }
       },
       { status: 500 }
     )
   } finally {
     if (browser) {
-      await browser.close()
+      try {
+        await browser.close()
+      } catch (closeError) {
+        console.error('Error closing browser:', closeError)
+      }
     }
   }
 }
