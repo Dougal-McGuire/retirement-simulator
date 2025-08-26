@@ -1,0 +1,72 @@
+{
+  "timestamp": "2025-08-26T07:22:24.806Z",
+  "pages": [
+    {
+      "url": "/",
+      "title": "Retirement Simulator",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "elements": {
+        "navigation": 1,
+        "mainContent": 0,
+        "buttons": 1,
+        "links": 6,
+        "hasHeader": true,
+        "hasFooter": true
+      },
+      "accessibility": {},
+      "performance": {}
+    },
+    {
+      "url": "/setup",
+      "title": "Retirement Simulator",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "forms": {
+        "forms": 0,
+        "inputs": 0,
+        "selects": 0,
+        "hasProgressIndicator": false
+      },
+      "navigation": {}
+    },
+    {
+      "url": "/simulation",
+      "title": "Retirement Simulator",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "charts": {
+        "canvasElements": 0,
+        "chartElements": 475,
+        "hasCharts": true
+      },
+      "controls": {
+        "controlPanels": 0,
+        "sliders": 1,
+        "hasControls": true
+      }
+    }
+  ],
+  "improvements": [
+    {
+      "type": "UX",
+      "priority": "medium",
+      "page": "Setup Wizard",
+      "issue": "Missing progress indicator",
+      "suggestion": "Add progress bar or step indicator to show wizard progress"
+    },
+    {
+      "type": "Accessibility",
+      "priority": "medium",
+      "page": "General",
+      "issue": "No skip navigation links found",
+      "suggestion": "Add skip links for keyboard navigation users"
+    }
+  ]
+}

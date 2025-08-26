@@ -10,7 +10,7 @@ import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { SimulationChart } from '@/components/charts/SimulationChart'
 import { SuccessRateCard } from '@/components/charts/SuccessRateCard'
 import { ParameterControls } from '@/components/forms/ParameterControls'
-import { GenerateReportButton } from '@/components/pdf/GenerateReportButton'
+import { GenerateReportButton } from '@/components/GenerateReportButton'
 
 export default function SimulationPage() {
   const params = useSimulationParams()
@@ -44,6 +44,7 @@ export default function SimulationPage() {
             <div className="flex items-center space-x-3">
               <GenerateReportButton 
                 results={results}
+                params={params}
                 disabled={isLoading}
               />
               <Button asChild>

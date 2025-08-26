@@ -66,3 +66,126 @@
     color: hsl(var(--foreground));
   }
 }
+
+/* Print Styles for PDF Generation */
+@page {
+  size: A4;
+  margin: 12mm 12mm 16mm;
+}
+
+@media print {
+  /* Hide interactive elements and navigation */
+  header, nav, footer, .no-print, .print-hidden {
+    display: none !important;
+  }
+  
+  /* Show print-only elements */
+  .print-only {
+    display: block !important;
+  }
+  
+  /* Page break control */
+  h1, h2, h3, h4 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  
+  .report-section, .card, .chart-container {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  
+  .page-break-before {
+    break-before: page;
+    page-break-before: always;
+  }
+  
+  .page-break-after {
+    break-after: page;
+    page-break-after: always;
+  }
+  
+  /* Ensure colors and backgrounds print correctly */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Optimize tables for print */
+  table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  
+  /* Ensure proper spacing */
+  .report-page {
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+  
+  /* Typography adjustments for print - increased by 30% */
+  body {
+    font-size: 16px;
+    line-height: 1.5;
+    color: #000;
+    background: white;
+  }
+  
+  /* Adjust heading sizes proportionally for better readability */
+  h1 {
+    font-size: 2.2rem;
+  }
+  
+  h2 {
+    font-size: 1.6rem;
+  }
+  
+  h3 {
+    font-size: 1.3rem;
+  }
+  
+  h4 {
+    font-size: 1.1rem;
+  }
+  
+  /* Chart containers and content scaling for print */
+  .chart-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    box-sizing: border-box;
+  }
+  
+  /* Ensure charts don't get truncated */
+  .chart-container canvas {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+  
+  /* Adjust chart heights for print */
+  .chart-container > div {
+    height: 400px !important;
+  }
+  
+  /* Prevent text cutoff in charts */
+  .chart-container * {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  
+  /* Additional spacing for better layout */
+  .report-section {
+    margin-bottom: 2mm;
+  }
+  
+  /* Ensure proper page margins */
+  .print-only {
+    margin-bottom: 8px;
+  }
+}
