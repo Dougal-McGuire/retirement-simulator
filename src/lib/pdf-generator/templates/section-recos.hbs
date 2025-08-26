@@ -1,0 +1,71 @@
+<div id="recommendations" class="page-break">
+  <h1>Recommendations</h1>
+  
+  <div class="content">
+    <p>Based on the comprehensive analysis of your financial situation, the following strategic recommendations are provided to optimize your retirement outcomes.</p>
+    
+    {{#each recommendations}}
+    <div class="recommendation-card avoid-break">
+      <h2 class="no-number">{{this.title}}</h2>
+      
+      <div style="display: flex; gap: var(--s-3); margin-bottom: var(--s-2);">
+        <span style="background: var(--line); padding: 2pt 8pt; border-radius: 3pt; font-size: var(--small); font-weight: 600;">
+          {{this.category}}
+        </span>
+        <span class="kpi-badge badge-{{#if (eq this.impact 'High')}}danger{{else if (eq this.impact 'Medium')}}warning{{else}}good{{/if}}">
+          {{this.impact}} Impact
+        </span>
+      </div>
+      
+      <p>{{this.body}}</p>
+    </div>
+    {{/each}}
+    
+    <h2>Implementation Priority Matrix</h2>
+    
+    <table class="avoid-break">
+      <thead>
+        <tr>
+          <th>Priority</th>
+          <th>Recommendation</th>
+          <th>Timeline</th>
+          <th>Expected Benefit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each recommendations}}
+        <tr>
+          <td>{{#if (eq this.impact 'High')}}1{{else if (eq this.impact 'Medium')}}2{{else}}3{{/if}}</td>
+          <td>{{this.title}}</td>
+          <td>{{#if (eq this.impact 'High')}}Immediate{{else if (eq this.impact 'Medium')}}3-6 months{{else}}12 months{{/if}}</td>
+          <td>{{#if (eq this.impact 'High')}}Significant improvement{{else if (eq this.impact 'Medium')}}Moderate enhancement{{else}}Incremental benefit{{/if}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+    
+    <h2>Next Steps</h2>
+    
+    <div class="callout callout-info">
+      <div class="callout-title">Action Plan</div>
+      <ol>
+        <li><strong>Review and Validate:</strong> Confirm all assumptions and input data reflect your current situation</li>
+        <li><strong>Prioritize Actions:</strong> Focus on high-impact recommendations first</li>
+        <li><strong>Consult Professionals:</strong> Engage qualified financial and tax advisors for implementation</li>
+        <li><strong>Monitor Progress:</strong> Schedule quarterly reviews of your portfolio and assumptions</li>
+        <li><strong>Adjust as Needed:</strong> Update the plan based on life changes and market conditions</li>
+      </ol>
+    </div>
+    
+    <h2>Professional Services</h2>
+    
+    <p>Consider engaging the following professionals to implement these recommendations:</p>
+    
+    <ul>
+      <li><strong>Financial Planner:</strong> Comprehensive retirement strategy and portfolio management</li>
+      <li><strong>Tax Advisor:</strong> Optimize tax-deferred contributions and withdrawal strategies</li>
+      <li><strong>Estate Attorney:</strong> Ensure proper wealth transfer and legacy planning</li>
+      <li><strong>Insurance Specialist:</strong> Review coverage gaps and protection needs</li>
+    </ul>
+  </div>
+</div>

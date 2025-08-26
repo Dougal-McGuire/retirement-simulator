@@ -1,0 +1,99 @@
+<div id="executive-summary" class="page-break">
+  <h1>Executive Summary</h1>
+  
+  <div class="content">
+    <p>This comprehensive retirement planning analysis evaluates your financial trajectory through {{projections.milestones.length}} years of projections, 
+    utilizing Monte Carlo simulation with {{formatNumber assumptions.mcRuns}} iterations to account for market volatility and economic uncertainty.</p>
+    
+    <div class="kpi-grid">
+      {{> kpi-tile 
+        value=(formatPercent projections.successRatePct)
+        label="Retirement Success Probability"
+        badge=(getSuccessBadge projections.successRatePct)
+        badgeColor=(getSuccessBadgeColor projections.successRatePct)
+        note=(concat "Based on " (formatNumber assumptions.mcRuns) " Monte Carlo simulations")
+      }}
+      
+      {{> kpi-tile 
+        value=(formatEUR finances.currentAssetsEUR)
+        label="Current Assets"
+        note="Starting portfolio value"
+      }}
+      
+      {{> kpi-tile 
+        value=(formatEUR finances.annualSavingsEUR)
+        label="Annual Savings"
+        note="Pre-retirement contribution"
+      }}
+      
+      {{> kpi-tile 
+        value=(formatEUR finances.expectedMonthlyPensionEUR)
+        label="Expected Monthly Pension"
+        note=(concat "Starting at age " person.pensionAge)
+      }}
+    </div>
+    
+    <h2 class="no-number">Monthly Spending Requirements</h2>
+    
+    <div class="spending-breakdown avoid-break">
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Monthly Amount</th>
+            <th>Annual Total</th>
+            <th>% of Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Healthcare</td>
+            <td>{{formatEUR spending.monthly.health}}</td>
+            <td>{{formatEUR (multiply spending.monthly.health 12)}}</td>
+            <td>{{formatPercent (getSpendingPercent spending.monthly.health spending)}}</td>
+          </tr>
+          <tr>
+            <td>Food & Groceries</td>
+            <td>{{formatEUR spending.monthly.food}}</td>
+            <td>{{formatEUR (multiply spending.monthly.food 12)}}</td>
+            <td>{{formatPercent (getSpendingPercent spending.monthly.food spending)}}</td>
+          </tr>
+          <tr>
+            <td>Entertainment</td>
+            <td>{{formatEUR spending.monthly.entertainment}}</td>
+            <td>{{formatEUR (multiply spending.monthly.entertainment 12)}}</td>
+            <td>{{formatPercent (getSpendingPercent spending.monthly.entertainment spending)}}</td>
+          </tr>
+          <tr>
+            <td>Shopping</td>
+            <td>{{formatEUR spending.monthly.shopping}}</td>
+            <td>{{formatEUR (multiply spending.monthly.shopping 12)}}</td>
+            <td>{{formatPercent (getSpendingPercent spending.monthly.shopping spending)}}</td>
+          </tr>
+          <tr>
+            <td>Utilities</td>
+            <td>{{formatEUR spending.monthly.utilities}}</td>
+            <td>{{formatEUR (multiply spending.monthly.utilities 12)}}</td>
+            <td>{{formatPercent (getSpendingPercent spending.monthly.utilities spending)}}</td>
+          </tr>
+          <tr style="font-weight: 600; border-top: 2pt solid var(--line);">
+            <td>Total Monthly</td>
+            <td>{{formatEUR (getTotalMonthlySpending spending)}}</td>
+            <td>{{formatEUR (getTotalAnnualSpending spending)}}</td>
+            <td>100%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="callout callout-info">
+      <div class="callout-title">Key Findings</div>
+      <ul>
+        <li>Your portfolio has a {{formatPercent projections.successRatePct}} probability of sustaining your retirement through age {{person.horizonAge}}</li>
+        <li>Median portfolio value at retirement (age {{person.retireAge}}): {{formatEUR (getRetirementMedian projections person)}}</li>
+        <li>Total annual spending requirement: {{formatEUR (getTotalAnnualSpending spending)}}</li>
+        <li>Years until retirement: {{subtract person.retireAge person.currentAge}}</li>
+      </ul>
+    </div>
+  </div>
+</div>

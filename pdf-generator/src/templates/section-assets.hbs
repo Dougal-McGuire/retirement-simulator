@@ -1,0 +1,107 @@
+<div id="assets" class="page-break">
+  <h1>Asset Projections</h1>
+  
+  <div class="content">
+    <p>The following projections show the evolution of your portfolio value across different probability scenarios. 
+    The P10, P50, and P90 percentiles represent pessimistic, median, and optimistic outcomes respectively.</p>
+    
+    <h2>Portfolio Value Over Time</h2>
+    
+    <figure class="avoid-break" data-fig="assets-projection">
+      {{{assetsChart}}}
+      <figcaption>Figure {{figureNumber 1}}. Asset projections by percentile (P10/P50/P90)</figcaption>
+    </figure>
+    
+    <h2>Key Milestone Values</h2>
+    
+    <table class="avoid-break">
+      <thead>
+        <tr>
+          <th>Age</th>
+          <th>P10 (Pessimistic)</th>
+          <th>P50 (Median)</th>
+          <th>P90 (Optimistic)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each projections.milestones}}
+        <tr{{#if (isRetirementAge this.age ../person.retireAge)}} style="background: var(--line); font-weight: 600;"{{/if}}>
+          <td>{{this.age}}{{#if (isRetirementAge this.age ../person.retireAge)}} (Retirement){{/if}}</td>
+          <td>{{formatEUR this.p10}}</td>
+          <td>{{formatEUR this.p50}}</td>
+          <td>{{formatEUR this.p90}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+    
+    <h2>Success Probability Analysis</h2>
+    
+    <div class="kpi-grid">
+      {{> kpi-tile 
+        value=(formatPercent projections.successRatePct)
+        label="Overall Success Rate"
+        badge=(getSuccessBadge projections.successRatePct)
+        badgeColor=(getSuccessBadgeColor projections.successRatePct)
+        note="Probability of maintaining positive assets through planning horizon"
+      }}
+      
+      {{> kpi-tile 
+        value=(formatNumber (getFailureCount assumptions.mcRuns projections.successRatePct))
+        label="Failed Scenarios"
+        note=(concat "Out of " (formatNumber assumptions.mcRuns) " simulations")
+      }}
+    </div>
+    
+    <h2>Portfolio Phases</h2>
+    
+    <div class="callout callout-info">
+      <div class="callout-title">Accumulation Phase (Ages {{person.currentAge}}–{{subtract person.retireAge 1}})</div>
+      <ul>
+        <li>Duration: {{subtract person.retireAge person.currentAge}} years</li>
+        <li>Annual contribution: {{formatEUR finances.annualSavingsEUR}}</li>
+        <li>Total contributions: {{formatEUR (multiply finances.annualSavingsEUR (subtract person.retireAge person.currentAge))}}</li>
+        <li>Investment returns compound during this period</li>
+      </ul>
+    </div>
+    
+    <div class="callout callout-warning">
+      <div class="callout-title">Distribution Phase (Ages {{person.retireAge}}–{{person.horizonAge}})</div>
+      <ul>
+        <li>Duration: {{subtract person.horizonAge person.retireAge}} years</li>
+        <li>Annual spending: {{formatEUR (getTotalAnnualSpending spending)}} (inflation-adjusted)</li>
+        <li>Pension income from age {{person.pensionAge}}: {{formatEUR (multiply finances.expectedMonthlyPensionEUR 12)}} annually</li>
+        <li>Gap years ({{person.retireAge}}–{{subtract person.pensionAge 1}}): No pension support</li>
+      </ul>
+    </div>
+    
+    <h2>Statistical Summary</h2>
+    
+    <table class="avoid-break">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>At Retirement (Age {{person.retireAge}})</th>
+          <th>At Age {{person.horizonAge}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Median Portfolio Value</td>
+          <td>{{formatEUR (getRetirementMedian projections person)}}</td>
+          <td>{{formatEUR (getFinalMedian projections)}}</td>
+        </tr>
+        <tr>
+          <td>90th Percentile Value</td>
+          <td>{{formatEUR (getRetirement90th projections person)}}</td>
+          <td>{{formatEUR (getFinal90th projections)}}</td>
+        </tr>
+        <tr>
+          <td>10th Percentile Value</td>
+          <td>{{formatEUR (getRetirement10th projections person)}}</td>
+          <td>{{formatEUR (getFinal10th projections)}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

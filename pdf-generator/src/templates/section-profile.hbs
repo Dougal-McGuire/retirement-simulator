@@ -1,0 +1,143 @@
+<div id="profile" class="page-break">
+  <h1>Personal Profile & Assumptions</h1>
+  
+  <div class="content">
+    <h2>Demographic Information</h2>
+    
+    <table class="avoid-break">
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Value</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Current Age</td>
+          <td>{{person.currentAge}} years</td>
+          <td>Analysis baseline</td>
+        </tr>
+        <tr>
+          <td>Retirement Age</td>
+          <td>{{person.retireAge}} years</td>
+          <td>{{subtract person.retireAge person.currentAge}} years from now</td>
+        </tr>
+        <tr>
+          <td>Pension Start Age</td>
+          <td>{{person.pensionAge}} years</td>
+          <td>State pension eligibility</td>
+        </tr>
+        <tr>
+          <td>Planning Horizon</td>
+          <td>{{person.horizonAge}} years</td>
+          <td>Life expectancy assumption</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <h2>Financial Starting Position</h2>
+    
+    <table class="avoid-break">
+      <thead>
+        <tr>
+          <th>Asset/Income Category</th>
+          <th>Amount</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Current Portfolio Value</td>
+          <td>{{formatEUR finances.currentAssetsEUR}}</td>
+          <td>Invested assets today</td>
+        </tr>
+        <tr>
+          <td>Annual Savings Rate</td>
+          <td>{{formatEUR finances.annualSavingsEUR}}</td>
+          <td>Pre-retirement contributions</td>
+        </tr>
+        <tr>
+          <td>Expected Monthly Pension</td>
+          <td>{{formatEUR finances.expectedMonthlyPensionEUR}}</td>
+          <td>From age {{person.pensionAge}}</td>
+        </tr>
+        <tr>
+          <td>Annual Pension Income</td>
+          <td>{{formatEUR (multiply finances.expectedMonthlyPensionEUR 12)}}</td>
+          <td>Total yearly benefit</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <h2>Market Assumptions</h2>
+    
+    <table class="avoid-break">
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Mean</th>
+          <th>Standard Deviation</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Return on Investment</td>
+          <td>{{formatPercent assumptions.roiMean 1}}</td>
+          <td>{{formatPercent assumptions.roiStdev 1}}</td>
+          <td>Expected portfolio returns</td>
+        </tr>
+        <tr>
+          <td>Inflation Rate</td>
+          <td>{{formatPercent assumptions.inflationMean 1}}</td>
+          <td>{{formatPercent assumptions.inflationStdev 1}}</td>
+          <td>Cost of living adjustment</td>
+        </tr>
+        <tr>
+          <td>Real Return</td>
+          <td>{{formatPercent (subtract assumptions.roiMean assumptions.inflationMean) 1}}</td>
+          <td>—</td>
+          <td>Inflation-adjusted return</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <h3>Tax Assumptions</h3>
+    
+    <table class="avoid-break">
+      <thead>
+        <tr>
+          <th>Tax Type</th>
+          <th>Rate</th>
+          <th>Application</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Capital Gains Tax{{#if taxRateAdjusted}}*{{/if}}</td>
+          <td>{{formatPercent assumptions.capGainsTaxRatePct 2}}</td>
+          <td>Applied to investment gains</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    {{#if taxRateAdjusted}}
+    <p class="text-muted" style="font-size: var(--small); margin-top: var(--s-2);">
+      * Tax rate was adjusted from an invalid input value. Original value appeared to be a data entry error.
+    </p>
+    {{/if}}
+    
+    <h3>Simulation Parameters</h3>
+    
+    <div class="callout callout-info">
+      <div class="callout-title">Monte Carlo Configuration</div>
+      <ul>
+        <li>Number of simulations: {{formatNumber assumptions.mcRuns}}</li>
+        <li>Random distribution: Normal (Box-Muller transform)</li>
+        <li>Time steps: Annual projections</li>
+        <li>Success criteria: Portfolio remains positive through age {{person.horizonAge}}</li>
+      </ul>
+    </div>
+  </div>
+</div>

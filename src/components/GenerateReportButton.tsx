@@ -25,20 +25,25 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
 
   const canGenerate = results && !disabled
 
-  const generatePDFUrl = async (reportId: string, simulationData: string) => {
-    const response = await fetch(`/api/report/${reportId}/pdf?data=${simulationData}`, {
-      method: 'GET',
+  const generatePDF = async () => {
+    const response = await fetch('/api/generate-pdf', {
+      method: 'POST',
       headers: {
-        'Content-Type': 'application/pdf',
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        params: params || results?.params,
+        results,
+      }),
     })
 
     if (!response.ok) {
-      throw new Error(`PDF generation failed: ${response.statusText}`)
+      const errorData = await response.json()
+      throw new Error(errorData.error || `PDF generation failed: ${response.statusText}`)
     }
 
     const blob = await response.blob()
-    const filename = `retirement-analysis-${new Date().toISOString().split('T')[0]}.pdf`
+    const filename = `retirement-report-${new Date().toISOString().split('T')[0]}.pdf`
     
     // Create download link
     const url = window.URL.createObjectURL(blob)
@@ -58,16 +63,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
     setError(null)
 
     try {
-      // Generate a unique report ID for this session
-      const reportId = Date.now().toString()
-      
-      // Encode simulation data as base64 for URL parameter
-      const simulationData = btoa(JSON.stringify({
-        results,
-        params: params || results.params
-      }))
-      
-      await generatePDFUrl(reportId, simulationData)
+      await generatePDF()
     } catch (error) {
       console.error('PDF generation failed:', error)
       setError(error instanceof Error ? error.message : 'Failed to generate PDF')
