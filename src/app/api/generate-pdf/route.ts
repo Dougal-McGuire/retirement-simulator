@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import puppeteer from 'puppeteer-core'
+import chromium from '@sparticuz/chromium'
 import Handlebars from 'handlebars'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
@@ -180,19 +181,21 @@ export async function POST(req: NextRequest) {
       reportDate: new Date().toLocaleDateString('de-DE'),
     })
     
-    // Launch Puppeteer
+    // Launch Puppeteer with serverless chromium for Vercel
+    const isProduction = process.env.NODE_ENV === 'production'
+    
     browser = await puppeteer.launch({
-      headless: true,
-      executablePath: process.env.CHROME_PATH || '/usr/bin/chromium-browser',
-      args: [
+      args: isProduction ? chromium.args : [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
       ],
+      defaultViewport: null,
+      executablePath: isProduction 
+        ? await chromium.executablePath()
+        : (process.env.CHROME_PATH || '/usr/bin/chromium-browser'),
+      headless: true,
     })
     
     const page = await browser.newPage()
