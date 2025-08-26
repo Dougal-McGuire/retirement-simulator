@@ -223,8 +223,11 @@ export async function POST(req: NextRequest) {
       },
     })
     
+    // Convert to Buffer if needed
+    const pdfBuffer = Buffer.from(pdf)
+    
     // Return PDF
-    return new NextResponse(pdf, {
+    return new NextResponse(pdfBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="retirement-report-${Date.now()}.pdf"`,
