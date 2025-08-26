@@ -23027,3 +23027,10 @@ https://nextjs.org/docs/messages/module-not-found
  ✓ Compiled in 217ms
  ✓ Compiled in 208ms
  ✓ Compiled in 163ms
+ ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+   ▲ Next.js 15.5.0 (Turbopack)
+   - Local:        http://localhost:3001
+   - Network:      http://10.255.255.254:3001
+
+ ✓ Starting...
+ ✓ Ready in 998ms

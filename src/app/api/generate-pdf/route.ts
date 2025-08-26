@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import puppeteer from 'puppeteer-core'
-import chromium from '@sparticuz/chromium'
 import Handlebars from 'handlebars'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
@@ -9,9 +8,15 @@ import { ReportDataSchema } from '@/lib/pdf-generator/schema/reportData'
 import { renderLineChart, renderBarChart, type ChartSeries } from '@/lib/pdf-generator/charts/vega'
 import * as formatters from '@/lib/pdf-generator/utils/formatters'
 
+// Dynamic import for chromium to avoid issues in dev
+let chromium: any = null
+if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+  chromium = require('@sparticuz/chromium-min')
+}
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 30 // Allow up to 30 seconds for PDF generation
+export const maxDuration = 60 // Increase timeout for PDF generation
 
 // Register Handlebars helpers
 Object.entries(formatters).forEach(([name, fn]) => {
@@ -181,22 +186,38 @@ export async function POST(req: NextRequest) {
       reportDate: new Date().toLocaleDateString('de-DE'),
     })
     
-    // Launch Puppeteer with serverless chromium for Vercel
-    const isProduction = process.env.NODE_ENV === 'production'
+    // Launch Puppeteer with different settings for production/dev
+    const isVercel = process.env.VERCEL === '1'
     
-    browser = await puppeteer.launch({
-      args: isProduction ? chromium.args : [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-      ],
-      defaultViewport: null,
-      executablePath: isProduction 
-        ? await chromium.executablePath()
-        : (process.env.CHROME_PATH || '/usr/bin/chromium-browser'),
-      headless: true,
-    })
+    if (isVercel && chromium) {
+      // Production on Vercel: Use serverless chromium
+      console.log('Using serverless chromium for PDF generation on Vercel')
+      
+      browser = await puppeteer.launch({
+        args: [
+          ...chromium.args,
+          '--hide-scrollbars',
+          '--disable-web-security',
+        ],
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath,
+        headless: chromium.headless,
+      })
+    } else {
+      // Development: Use local chromium
+      console.log('Using local chromium for PDF generation')
+      
+      browser = await puppeteer.launch({
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+        ],
+        executablePath: process.env.CHROME_PATH || '/usr/bin/chromium-browser',
+        headless: true,
+      })
+    }
     
     const page = await browser.newPage()
     
