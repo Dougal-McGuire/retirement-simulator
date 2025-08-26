@@ -8,12 +8,58 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { RotateCcw, HelpCircle, Trash2, Plus } from 'lucide-react'
+import { RotateCcw, HelpCircle, Trash2, Plus, ChevronDown, ChevronRight, Zap, Shield, TrendingUp } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Badge } from '@/components/ui/badge'
 import { useSimulationParams, useUpdateParams, useSaveSetup, useLoadSetup, useDeleteSetup, useSavedSetups } from '@/lib/stores/simulationStore'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { DEFAULT_PARAMS, SimulationParams } from '@/types'
+import { formatNumber } from '@/lib/utils'
+
+// Preset configurations
+const PRESET_CONFIGS = {
+  conservative: {
+    name: "Conservative",
+    description: "Lower risk, stable returns",
+    icon: Shield,
+    color: "bg-green-100 text-green-800 border-green-200",
+    params: {
+      averageROI: 0.05,
+      roiVolatility: 0.08,
+      averageInflation: 0.025,
+      inflationVolatility: 0.008,
+      simulationRuns: 5000
+    }
+  },
+  balanced: {
+    name: "Balanced",
+    description: "Moderate risk, steady growth",
+    icon: TrendingUp,
+    color: "bg-blue-100 text-blue-800 border-blue-200",
+    params: {
+      averageROI: 0.07,
+      roiVolatility: 0.15,
+      averageInflation: 0.03,
+      inflationVolatility: 0.01,
+      simulationRuns: 5000
+    }
+  },
+  aggressive: {
+    name: "Aggressive",
+    description: "High risk, max growth",
+    icon: Zap,
+    color: "bg-orange-100 text-orange-800 border-orange-200",
+    params: {
+      averageROI: 0.09,
+      roiVolatility: 0.20,
+      averageInflation: 0.035,
+      inflationVolatility: 0.012,
+      simulationRuns: 7500
+    }
+  }
+}
 
 // Helper component for parameters with tooltips
 interface ParameterFieldProps {
@@ -40,6 +86,42 @@ function ParameterField({ label, tooltip, children }: ParameterFieldProps) {
       </div>
       {children}
     </div>
+  )
+}
+
+// Collapsible section component
+interface CollapsibleSectionProps {
+  title: string
+  description?: string
+  defaultOpen?: boolean
+  children: React.ReactNode
+}
+
+function CollapsibleSection({ title, description, defaultOpen = true, children }: CollapsibleSectionProps) {
+  const [isOpen, setIsOpen] = React.useState(defaultOpen)
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger asChild>
+        <Button 
+          variant="ghost" 
+          className="w-full justify-between p-0 h-auto font-medium text-sm hover:bg-transparent"
+        >
+          <div className="flex flex-col items-start">
+            <span className="text-gray-900">{title}</span>
+            {description && (
+              <span className="text-xs text-gray-500 font-normal">{description}</span>
+            )}
+          </div>
+          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-3">
+        <div className="space-y-3 border-l-2 border-gray-100 pl-4 ml-2">
+          {children}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
@@ -81,6 +163,11 @@ export function ParameterControls() {
     updateParams(DEFAULT_PARAMS)
   }
 
+  const handlePresetLoad = (presetKey: keyof typeof PRESET_CONFIGS) => {
+    const preset = PRESET_CONFIGS[presetKey]
+    updateParams(preset.params)
+  }
+
   const handleSaveSetup = () => {
     if (setupName.trim()) {
       saveSetup(setupName.trim())
@@ -110,6 +197,37 @@ export function ParameterControls() {
         <CardTitle className="text-lg">Simulation Parameters</CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Quick Presets */}
+        <div className="mb-6">
+          <h4 className="text-sm font-semibold mb-3">Quick Presets</h4>
+          <div className="grid grid-cols-1 gap-2">
+            {Object.entries(PRESET_CONFIGS).map(([key, preset]) => {
+              const IconComponent = preset.icon
+              return (
+                <Button
+                  key={key}
+                  variant="outline"
+                  onClick={() => handlePresetLoad(key as keyof typeof PRESET_CONFIGS)}
+                  className="h-auto p-2 justify-start hover:bg-gray-50"
+                >
+                  <div className="flex items-center space-x-2 w-full min-w-0">
+                    <div className={`p-1.5 rounded-full shrink-0 ${preset.color}`}>
+                      <IconComponent className="h-3 w-3" />
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{preset.name}</div>
+                      <div className="text-xs text-gray-500 truncate">{preset.description}</div>
+                    </div>
+                    <Badge variant="secondary" className="text-xs shrink-0 whitespace-nowrap">
+                      {(preset.params.averageROI * 100).toFixed(1)}%
+                    </Badge>
+                  </div>
+                </Button>
+              )
+            })}
+          </div>
+        </div>
+
         <Tabs defaultValue="personal" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="personal" className="text-xs">Personal</TabsTrigger>
@@ -119,22 +237,28 @@ export function ParameterControls() {
 
           {/* Personal Information Tab */}
           <TabsContent value="personal" className="space-y-4">
-            <div className="space-y-3">
+            <CollapsibleSection 
+              title="Age & Timeline" 
+              description="Set age and retirement timeline"
+              defaultOpen={true}
+            >
               <ParameterField 
                 label="Current Age" 
-                tooltip="Your current age for planning purposes"
+                tooltip="Your current age for planning purposes. This determines how many working years remain until retirement."
               >
                 <Input
                   type="number"
                   value={params.currentAge}
                   onChange={(e) => handleInputChange('currentAge', parseInt(e.target.value))}
                   className="h-8 text-sm"
+                  min={18}
+                  max={80}
                 />
               </ParameterField>
 
               <ParameterField 
                 label="Desired Retirement Age" 
-                tooltip="When you want to stop working and live off investments"
+                tooltip="When you want to stop working and live off investments. Earlier retirement requires more aggressive savings."
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -147,80 +271,100 @@ export function ParameterControls() {
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>55</span>
-                    <span className="font-semibold">{params.retirementAge}</span>
+                    <span className="font-semibold text-blue-600">{params.retirementAge} years</span>
                     <span>70</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1 text-center">
+                    {params.retirementAge - params.currentAge} working years remaining
                   </div>
                 </div>
               </ParameterField>
 
               <ParameterField 
                 label="Legal Retirement Age" 
-                tooltip="Official retirement age when pension benefits begin (e.g., 67 in Germany)"
+                tooltip="Official retirement age when pension benefits begin. In Germany this is typically 67 years old."
               >
                 <Input
                   type="number"
                   value={params.legalRetirementAge}
                   onChange={(e) => handleInputChange('legalRetirementAge', parseInt(e.target.value))}
                   className="h-8 text-sm"
+                  min={60}
+                  max={70}
                 />
               </ParameterField>
 
               <ParameterField 
                 label="Planning Until Age" 
-                tooltip="Age until which to run the simulation (life expectancy + buffer)"
+                tooltip="Age until which to run the simulation. Typically life expectancy (85) plus buffer. Longer planning periods require more conservative withdrawals."
               >
                 <Input
                   type="number"
                   value={params.endAge}
                   onChange={(e) => handleInputChange('endAge', parseInt(e.target.value))}
                   className="h-8 text-sm"
+                  min={70}
+                  max={100}
                 />
               </ParameterField>
-            </div>
+            </CollapsibleSection>
           </TabsContent>
 
           {/* Financial Parameters Tab */}
           <TabsContent value="financial" className="space-y-4">
-            <div className="space-y-3">
+            <CollapsibleSection 
+              title="Assets & Savings" 
+              description="Current wealth and future savings capacity"
+              defaultOpen={true}
+            >
               <ParameterField 
                 label="Current Assets (€)" 
-                tooltip="Total value of your current investments and savings"
+                tooltip="Total value of your current investments, savings, and retirement accounts. This is your starting point for wealth accumulation."
               >
                 <Input
                   type="number"
                   value={params.currentAssets}
                   onChange={(e) => handleInputChange('currentAssets', parseInt(e.target.value))}
                   className="h-8 text-sm"
+                  min={0}
                 />
               </ParameterField>
 
               <ParameterField 
                 label="Annual Savings (€)" 
-                tooltip="How much you save/invest per year until retirement"
+                tooltip="How much you can save and invest each year until retirement. Higher savings rates lead to earlier retirement possibilities."
               >
                 <Input
                   type="number"
                   value={params.annualSavings}
                   onChange={(e) => handleInputChange('annualSavings', parseInt(e.target.value))}
                   className="h-8 text-sm"
+                  min={0}
                 />
               </ParameterField>
+            </CollapsibleSection>
 
+            <CollapsibleSection 
+              title="Pension & Taxes" 
+              description="Government pension and tax considerations"
+              defaultOpen={true}
+            >
               <ParameterField 
                 label="Monthly Pension (€)" 
-                tooltip="Expected monthly pension from legal retirement age onwards"
+                tooltip="Expected monthly pension from the government system, starting at legal retirement age. This reduces your required private savings."
               >
                 <Input
                   type="number"
                   value={params.monthlyPension}
                   onChange={(e) => handleInputChange('monthlyPension', parseInt(e.target.value))}
                   className="h-8 text-sm"
+                  min={0}
                 />
               </ParameterField>
 
               <ParameterField 
                 label="Capital Gains Tax" 
-                tooltip="Tax rate on investment gains when selling to cover expenses (26.25% = German rate)"
+                tooltip="Tax rate on investment gains when selling to cover expenses. German rate: 26.375%. This affects your net withdrawal rates."
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -233,16 +377,18 @@ export function ParameterControls() {
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>0%</span>
-                    <span className="font-semibold">{params.capitalGainsTax.toFixed(2)}%</span>
+                    <span className="font-semibold text-blue-600">{params.capitalGainsTax.toFixed(2)}%</span>
                     <span>50%</span>
                   </div>
                 </div>
               </ParameterField>
-            </div>
+            </CollapsibleSection>
 
-            {/* Monthly Expenses */}
-            <div className="mt-6">
-              <h4 className="text-sm font-semibold mb-3">Monthly Expenses (€)</h4>
+            <CollapsibleSection 
+              title="Monthly Expenses" 
+              description={`€${Object.values(params.monthlyExpenses).reduce((sum, expense) => sum + expense, 0)} total monthly`}
+              defaultOpen={false}
+            >
               <div className="space-y-2">
                 {Object.entries(params.monthlyExpenses).map(([key, value]) => (
                   <div key={key} className="flex items-center justify-between">
@@ -252,17 +398,14 @@ export function ParameterControls() {
                       value={value}
                       onChange={(e) => handleExpenseChange(key as keyof typeof params.monthlyExpenses, parseInt(e.target.value))}
                       className="h-7 w-20 text-xs"
+                      min={0}
                     />
                   </div>
                 ))}
                 <div className="pt-2 border-t space-y-1">
-                  <div className="flex justify-between text-sm font-semibold">
-                    <span>Monthly Only:</span>
-                    <span>€{Object.values(params.monthlyExpenses).reduce((sum, expense) => sum + expense, 0)}</span>
-                  </div>
                   <div className="flex justify-between text-sm font-semibold text-blue-600">
                     <div className="flex items-center gap-1">
-                      <span>Total Monthly:</span>
+                      <span>Combined Monthly:</span>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -278,11 +421,13 @@ export function ParameterControls() {
                   </div>
                 </div>
               </div>
-            </div>
+            </CollapsibleSection>
 
-            {/* Annual Expenses */}
-            <div className="mt-6">
-              <h4 className="text-sm font-semibold mb-3">Annual Expenses (€)</h4>
+            <CollapsibleSection 
+              title="Annual Expenses" 
+              description={`€${Object.values(params.annualExpenses).reduce((sum, expense) => sum + expense, 0)} total annual`}
+              defaultOpen={false}
+            >
               <div className="space-y-2">
                 {Object.entries(params.annualExpenses).map(([key, value]) => (
                   <div key={key} className="flex items-center justify-between">
@@ -292,17 +437,14 @@ export function ParameterControls() {
                       value={value}
                       onChange={(e) => handleAnnualExpenseChange(key as keyof typeof params.annualExpenses, parseInt(e.target.value))}
                       className="h-7 w-20 text-xs"
+                      min={0}
                     />
                   </div>
                 ))}
                 <div className="pt-2 border-t space-y-1">
-                  <div className="flex justify-between text-sm font-semibold">
-                    <span>Annual Only:</span>
-                    <span>€{Object.values(params.annualExpenses).reduce((sum, expense) => sum + expense, 0)}</span>
-                  </div>
                   <div className="flex justify-between text-sm font-semibold text-blue-600">
                     <div className="flex items-center gap-1">
-                      <span>Total Annual:</span>
+                      <span>Combined Annual:</span>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -318,15 +460,19 @@ export function ParameterControls() {
                   </div>
                 </div>
               </div>
-            </div>
+            </CollapsibleSection>
           </TabsContent>
 
           {/* Simulation Parameters Tab */}
           <TabsContent value="simulation" className="space-y-4">
-            <div className="space-y-3">
+            <CollapsibleSection 
+              title="Market Returns" 
+              description="Investment performance assumptions"
+              defaultOpen={true}
+            >
               <ParameterField 
                 label="Average ROI" 
-                tooltip="Expected annual return on investments (7% = diversified stock portfolio)"
+                tooltip="Expected annual return on investments. Historical stock market: ~7-10%. Bond portfolio: ~3-5%. Diversified portfolio: ~6-8%."
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -339,7 +485,7 @@ export function ParameterControls() {
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>3%</span>
-                    <span className="font-semibold">{(params.averageROI * 100).toFixed(1)}%</span>
+                    <span className="font-semibold text-blue-600">{(params.averageROI * 100).toFixed(1)}%</span>
                     <span>12%</span>
                   </div>
                 </div>
@@ -347,7 +493,7 @@ export function ParameterControls() {
 
               <ParameterField 
                 label="ROI Volatility" 
-                tooltip="Absolute standard deviation of returns (percentage points). 15% volatility with 7% average ROI means 68% of returns fall between -8% to +22%. Conservative: 5-10%, Aggressive: 15-20%"
+                tooltip="Standard deviation of returns. Higher volatility = more uncertainty. Conservative: 5-10%, Moderate: 10-15%, Aggressive: 15-25%."
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -360,15 +506,24 @@ export function ParameterControls() {
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>2%</span>
-                    <span className="font-semibold">{(params.roiVolatility * 100).toFixed(1)}%</span>
+                    <span className="font-semibold text-blue-600">{(params.roiVolatility * 100).toFixed(1)}%</span>
                     <span>25%</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1 text-center">
+                    68% of returns: {((params.averageROI - params.roiVolatility) * 100).toFixed(1)}% to {((params.averageROI + params.roiVolatility) * 100).toFixed(1)}%
                   </div>
                 </div>
               </ParameterField>
+            </CollapsibleSection>
 
+            <CollapsibleSection 
+              title="Inflation Assumptions" 
+              description="How costs increase over time"
+              defaultOpen={true}
+            >
               <ParameterField 
                 label="Average Inflation" 
-                tooltip="Expected annual inflation rate (affects expense growth over time)"
+                tooltip="Expected annual inflation rate. ECB target: 2%. Historical average in developed countries: 2-3%."
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -381,7 +536,7 @@ export function ParameterControls() {
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>1%</span>
-                    <span className="font-semibold">{(params.averageInflation * 100).toFixed(1)}%</span>
+                    <span className="font-semibold text-blue-600">{(params.averageInflation * 100).toFixed(1)}%</span>
                     <span>6%</span>
                   </div>
                 </div>
@@ -389,7 +544,7 @@ export function ParameterControls() {
 
               <ParameterField 
                 label="Inflation Volatility" 
-                tooltip="Absolute standard deviation of inflation (percentage points). 1% volatility with 3% average inflation means 68% of inflation rates fall between 2% to 4%. Historical average: ~1%"
+                tooltip="How much inflation varies year-to-year. Historical range: 0.5-1.5%. Higher volatility creates more uncertainty in retirement costs."
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -402,15 +557,21 @@ export function ParameterControls() {
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>0.1%</span>
-                    <span className="font-semibold">{(params.inflationVolatility * 100).toFixed(1)}%</span>
+                    <span className="font-semibold text-blue-600">{(params.inflationVolatility * 100).toFixed(1)}%</span>
                     <span>3%</span>
                   </div>
                 </div>
               </ParameterField>
+            </CollapsibleSection>
 
+            <CollapsibleSection 
+              title="Simulation Quality" 
+              description="Accuracy vs performance trade-off"
+              defaultOpen={false}
+            >
               <ParameterField 
                 label="Number of Runs" 
-                tooltip="How many simulation scenarios to run. More runs = more accurate but slower"
+                tooltip="Monte Carlo simulations to run. More runs = higher accuracy but slower computation. 1000+ recommended for reliable results."
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -423,12 +584,17 @@ export function ParameterControls() {
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>100</span>
-                    <span className="font-semibold">{params.simulationRuns}</span>
+                    <span className="font-semibold text-blue-600">{formatNumber(params.simulationRuns)}</span>
                     <span>10K</span>
+                  </div>
+                  <div className="text-xs text-center mt-1">
+                    <span className={params.simulationRuns >= 1000 ? 'text-green-600' : params.simulationRuns >= 500 ? 'text-yellow-600' : 'text-red-600'}>
+                      {params.simulationRuns >= 1000 ? 'High accuracy' : params.simulationRuns >= 500 ? 'Medium accuracy' : 'Low accuracy'}
+                    </span>
                   </div>
                 </div>
               </ParameterField>
-            </div>
+            </CollapsibleSection>
           </TabsContent>
         </Tabs>
 

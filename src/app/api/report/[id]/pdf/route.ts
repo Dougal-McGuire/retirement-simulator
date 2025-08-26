@@ -21,9 +21,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     browser = await puppeteer.launch({
       executablePath,
-      args: chromium.args,
+      args: [...chromium.args, '--font-render-hinting=none'],
       headless: true,
-      defaultViewport: { width: 1280, height: 800, deviceScaleFactor: 2 },
+      defaultViewport: { width: 1200, height: 1600, deviceScaleFactor: 1 },
     })
 
     console.log('Navigating to report URL:', reportUrl)
@@ -42,16 +42,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
-      preferCSSPageSize: true,          // let @page size/margins win
-      margin: { top: '12mm', right: '12mm', bottom: '20mm', left: '12mm' },
+      preferCSSPageSize: false,
+      margin: { 
+        top: '15mm', 
+        right: '15mm', 
+        bottom: '25mm', 
+        left: '15mm' 
+      },
       displayHeaderFooter: true,
       footerTemplate: `
-        <div style="width: 100%; font-size: 10px; color: #666; text-align: center; margin: 0 12mm;">
-          <span>Retirement Planning Analysis Report</span>
-          <span style="float: right;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+        <div style="width: 100%; font-size: 9px; color: #666; padding: 0 15mm; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-style: italic;">Retirement Planning Analysis Report</span>
+          <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
         </div>
       `,
-      headerTemplate: '<div></div>', // Empty header
+      headerTemplate: '<div style="font-size: 1px;">&nbsp;</div>',
     })
 
     console.log('PDF generated successfully')
