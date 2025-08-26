@@ -11,7 +11,11 @@ import * as formatters from '@/lib/pdf-generator/utils/formatters'
 // Dynamic import for chromium to avoid issues in dev
 let chromium: any = null
 if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
-  chromium = require('@sparticuz/chromium-min')
+  chromium = require('@sparticuz/chromium')
+  // Set the headless mode for chromium
+  chromium.setHeadlessMode = true
+  // Set graphics mode to false for serverless
+  chromium.setGraphicsMode = false
 }
 
 export const runtime = 'nodejs'
@@ -201,16 +205,13 @@ export async function POST(req: NextRequest) {
       console.log('Using serverless chromium for PDF generation on Vercel')
       
       try {
-        const execPath = await chromium.executablePath
+        // Get the executable path - note the function call with parentheses
+        const execPath = await chromium.executablePath()
         console.log('Chromium executable path:', execPath)
         console.log('Chromium args:', chromium.args)
         
         browser = await puppeteer.launch({
-          args: [
-            ...chromium.args,
-            '--hide-scrollbars',
-            '--disable-web-security',
-          ],
+          args: chromium.args,
           defaultViewport: chromium.defaultViewport,
           executablePath: execPath,
           headless: chromium.headless,
