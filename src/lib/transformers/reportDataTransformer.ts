@@ -169,14 +169,25 @@ export function transformToReportData(
         endAge: bridgeEnd,
         cashNeedEUR: Math.round(bridgeCashNeedEUR),
         cashBucketYears: defaultPdfConfig.bridge_cash_bucket_years,
-        cashBucketSharePct: yearsInBridge > 0 ? Math.round(
-          (Array.from({ length: Math.min(defaultPdfConfig.bridge_cash_bucket_years, yearsInBridge) })
-             .reduce((sum, _, i) => sum + totalYearlyExpenses * Math.pow(1 + inf, i), 0) / bridgeCashNeedEUR) * 100
-        ) : 0,
-        portfolioSharePct: yearsInBridge > 0 ? Math.max(0, 100 - Math.round(
-          (Array.from({ length: Math.min(defaultPdfConfig.bridge_cash_bucket_years, yearsInBridge) })
-             .reduce((sum, _, i) => sum + totalYearlyExpenses * Math.pow(1 + inf, i), 0) / bridgeCashNeedEUR) * 100
-        )) : 0,
+        cashBucketSharePct: (() => {
+          if (yearsInBridge <= 0 || bridgeCashNeedEUR <= 0) return 0
+          const years = Math.min(defaultPdfConfig.bridge_cash_bucket_years as number, yearsInBridge)
+          let sum = 0
+          for (let i = 0; i < years; i++) {
+            sum += totalYearlyExpenses * Math.pow(1 + inf, i)
+          }
+          return Math.round((sum / bridgeCashNeedEUR) * 100)
+        })(),
+        portfolioSharePct: (() => {
+          if (yearsInBridge <= 0 || bridgeCashNeedEUR <= 0) return 0
+          const years = Math.min(defaultPdfConfig.bridge_cash_bucket_years as number, yearsInBridge)
+          let sum = 0
+          for (let i = 0; i < years; i++) {
+            sum += totalYearlyExpenses * Math.pow(1 + inf, i)
+          }
+          const pct = Math.round((sum / bridgeCashNeedEUR) * 100)
+          return Math.max(0, 100 - pct)
+        })(),
       },
       topActions,
       topActionsDetailed: uplifts,
