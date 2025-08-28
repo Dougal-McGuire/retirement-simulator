@@ -1,5 +1,5 @@
 <div id="executive-summary" class="page-break">
-  <h1>Executive Summary</h1>
+  <h1>Plan Health Snapshot</h1>
   
   <div class="content">
     <p>This comprehensive retirement planning analysis evaluates your financial trajectory through {{projections.milestones.length}} years of projections, 
@@ -7,11 +7,16 @@
     
     <div class="kpi-grid">
       {{> kpi-tile 
+        value=(concat summary.planHealthScore "/100")
+        label=(concat "Plan health — " summary.planHealthLabel)
+        note=(concat (capitalize summary.planHealthWhy))
+      }}
+      {{> kpi-tile 
         value=(formatPercent projections.successRatePct)
-        label="Retirement Success Probability"
+        label="Success probability"
         badge=(getSuccessBadge projections.successRatePct)
         badgeColor=(getSuccessBadgeColor projections.successRatePct)
-        note=(concat "Based on " (formatNumber assumptions.mcRuns) " Monte Carlo simulations")
+        note=(concat "In " (formatPercent projections.successRatePct) " of " (formatNumber assumptions.mcRuns) " paths assets last to age " person.horizonAge)
       }}
       
       {{> kpi-tile 
@@ -31,69 +36,42 @@
         label="Expected Monthly Pension"
         note=(concat "Starting at age " person.pensionAge)
       }}
-    </div>
-    
-    <h2 class="no-number">Monthly Spending Requirements</h2>
-    
-    <div class="spending-breakdown avoid-break">
-      <table>
-        <thead>
-          <tr>
-            <th>Category</th>
-            <th>Monthly Amount</th>
-            <th>Annual Total</th>
-            <th>% of Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Healthcare</td>
-            <td>{{formatEUR spending.monthly.health}}</td>
-            <td>{{formatEUR (multiply spending.monthly.health 12)}}</td>
-            <td>{{formatPercent (getSpendingPercent spending.monthly.health spending)}}</td>
-          </tr>
-          <tr>
-            <td>Food & Groceries</td>
-            <td>{{formatEUR spending.monthly.food}}</td>
-            <td>{{formatEUR (multiply spending.monthly.food 12)}}</td>
-            <td>{{formatPercent (getSpendingPercent spending.monthly.food spending)}}</td>
-          </tr>
-          <tr>
-            <td>Entertainment</td>
-            <td>{{formatEUR spending.monthly.entertainment}}</td>
-            <td>{{formatEUR (multiply spending.monthly.entertainment 12)}}</td>
-            <td>{{formatPercent (getSpendingPercent spending.monthly.entertainment spending)}}</td>
-          </tr>
-          <tr>
-            <td>Shopping</td>
-            <td>{{formatEUR spending.monthly.shopping}}</td>
-            <td>{{formatEUR (multiply spending.monthly.shopping 12)}}</td>
-            <td>{{formatPercent (getSpendingPercent spending.monthly.shopping spending)}}</td>
-          </tr>
-          <tr>
-            <td>Utilities</td>
-            <td>{{formatEUR spending.monthly.utilities}}</td>
-            <td>{{formatEUR (multiply spending.monthly.utilities 12)}}</td>
-            <td>{{formatPercent (getSpendingPercent spending.monthly.utilities spending)}}</td>
-          </tr>
-          <tr style="font-weight: 600; border-top: 2pt solid var(--line);">
-            <td>Total Monthly</td>
-            <td>{{formatEUR (getTotalMonthlySpending spending)}}</td>
-            <td>{{formatEUR (getTotalAnnualSpending spending)}}</td>
-            <td>100%</td>
-          </tr>
-        </tbody>
-      </table>
+
+      {{> kpi-tile 
+        value=(formatEUR (getTotalAnnualSpending spending))
+        label="Total Annual Spending"
+        note="Includes monthly and annual expenses"
+      }}
+      {{#if summary.bridge}}
+      {{> kpi-tile 
+        value=(formatEUR summary.bridge.cashNeedEUR)
+        label=(concat "Bridge years (" summary.bridge.startAge "–" summary.bridge.endAge ")")
+        note=(concat "Funded " summary.bridge.portfolioSharePct "% portfolio / " summary.bridge.cashBucketYears " years cash")
+      }}
+      {{/if}}
     </div>
     
     <div class="callout callout-info">
       <div class="callout-title">Key Findings</div>
       <ul>
-        <li>Your portfolio has a {{formatPercent projections.successRatePct}} probability of sustaining your retirement through age {{person.horizonAge}}</li>
-        <li>Median portfolio value at retirement (age {{person.retireAge}}): {{formatEUR (getRetirementMedian projections person)}}</li>
-        <li>Total annual spending requirement: {{formatEUR (getTotalAnnualSpending spending)}}</li>
+        <li>Plan health: <strong>{{summary.planHealthScore}}/100 ({{summary.planHealthLabel}})</strong> — {{summary.planHealthWhy}}</li>
+        <li>Success probability: <strong>{{formatPercent projections.successRatePct}}</strong> — In {{formatPercent projections.successRatePct}} of {{formatNumber assumptions.mcRuns}} paths assets last to age {{person.horizonAge}}</li>
+        {{#if summary.bridge}}
+        <li>Bridge years {{summary.bridge.startAge}}–{{summary.bridge.endAge}} need: <strong>{{formatEUR summary.bridge.cashNeedEUR}}</strong> — funded {{summary.bridge.portfolioSharePct}}% portfolio / {{summary.bridge.cashBucketYears}} years cash</li>
+        {{/if}}
         <li>Years until retirement: {{subtract person.retireAge person.currentAge}}</li>
       </ul>
     </div>
+
+    {{#if summary.topActionsDetailed}}
+    <div class="callout callout-warning">
+      <div class="callout-title">Do next (expected uplift)</div>
+      <ul>
+        {{#each summary.topActionsDetailed}}
+          <li>{{this.title}} → <strong>+{{this.upliftMin}}–{{this.upliftMax}}</strong> points</li>
+        {{/each}}
+      </ul>
+    </div>
+    {{/if}}
   </div>
 </div>

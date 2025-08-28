@@ -38,11 +38,11 @@ export function formatPercent(value: number, decimals: number = 1): string {
 
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
-  return new Intl.DateTimeFormat('de-DE', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(date);
+  // DD.MM.YYYY as requested for DACH conventions
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = String(date.getFullYear());
+  return `${d}.${m}.${y}`;
 }
 
 // Helper functions for Handlebars templates
@@ -149,4 +149,9 @@ export function concat(...args: any[]): string {
 
 export function figureNumber(num: number): string {
   return `${num}`;
+}
+
+export function capitalize(str?: string): string {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }

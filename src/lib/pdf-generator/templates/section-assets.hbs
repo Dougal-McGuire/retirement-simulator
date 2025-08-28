@@ -5,16 +5,16 @@
     <p>The following projections show the evolution of your portfolio value across different probability scenarios. 
     The P10, P50, and P90 percentiles represent pessimistic, median, and optimistic outcomes respectively.</p>
     
-    <h2>Portfolio Value Over Time</h2>
+    <h2 id="assets-over-time">Portfolio Value Over Time</h2>
     
-    <figure class="avoid-break" data-fig="assets-projection">
+    <figure class="avoid-break" data-fig="assets-projection" aria-label="Portfolio value projections by percentile">
       {{{assetsChart}}}
-      <figcaption>Figure {{figureNumber 1}}. Asset projections by percentile (P10/P50/P90)</figcaption>
+      <figcaption>Figure {{figureNumber 1}}. Median (P50) path bold; shaded band (P10–P90) conveys uncertainty.</figcaption>
     </figure>
     
-    <h2>Key Milestone Values</h2>
+    <h2 id="assets-milestones">Key Milestone Values</h2>
     
-    <table class="avoid-break">
+    <table class="avoid-break" aria-label="Key milestone portfolio values by percentile">
       <thead>
         <tr>
           <th>Age</th>
@@ -35,7 +35,7 @@
       </tbody>
     </table>
     
-    <h2>Success Probability Analysis</h2>
+    <h2 id="assets-success">Success Probability Analysis</h2>
     
     <div class="kpi-grid">
       {{> kpi-tile 
@@ -53,7 +53,7 @@
       }}
     </div>
     
-    <h2>Portfolio Phases</h2>
+    <h2 id="assets-phases">Portfolio Phases</h2>
     
     <div class="callout callout-info">
       <div class="callout-title">Accumulation Phase (Ages {{person.currentAge}}–{{subtract person.retireAge 1}})</div>
@@ -75,9 +75,9 @@
       </ul>
     </div>
     
-    <h2>Statistical Summary</h2>
+    <h2 id="assets-stats">Statistical Summary</h2>
     
-    <table class="avoid-break">
+    <table class="avoid-break" aria-label="Statistical summary at retirement and at plan end">
       <thead>
         <tr>
           <th>Metric</th>

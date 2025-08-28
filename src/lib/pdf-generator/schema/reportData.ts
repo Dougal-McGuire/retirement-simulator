@@ -70,12 +70,34 @@ export const RecommendationSchema = z.object({
   impact: z.enum(['High', 'Medium', 'Low']),
 });
 
+export const SummarySchema = z.object({
+  planHealthScore: z.number().min(0).max(100),
+  planHealthLabel: z.enum(['Strong', 'Moderate', 'Needs Attention']),
+  planHealthWhy: z.string().optional(),
+  successProbabilityPct: z.number().min(0).max(100),
+  bridge: z.object({
+    startAge: z.number(),
+    endAge: z.number(),
+    cashNeedEUR: z.number(),
+    cashBucketYears: z.number().optional(),
+    cashBucketSharePct: z.number().optional(),
+    portfolioSharePct: z.number().optional(),
+  }),
+  topActions: z.array(z.string()).default([]),
+  topActionsDetailed: z.array(z.object({
+    title: z.string(),
+    upliftMin: z.number(),
+    upliftMax: z.number(),
+  })).default([]),
+}).optional()
+
 export const ReportDataSchema = z.object({
   person: PersonSchema,
   finances: FinancesSchema,
   spending: SpendingSchema,
   assumptions: AssumptionsSchema,
   projections: ProjectionsSchema,
+  summary: SummarySchema,
   recommendations: z.array(RecommendationSchema),
   metadata: z.object({
     reportId: z.string().default(() => `RPT-${Date.now()}`),
@@ -92,3 +114,4 @@ export type Milestone = z.infer<typeof MilestoneSchema>;
 export type Projections = z.infer<typeof ProjectionsSchema>;
 export type Recommendation = z.infer<typeof RecommendationSchema>;
 export type ReportData = z.infer<typeof ReportDataSchema>;
+export type Summary = z.infer<typeof SummarySchema>;

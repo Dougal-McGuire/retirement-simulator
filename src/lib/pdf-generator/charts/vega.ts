@@ -65,7 +65,7 @@ export async function renderLineChart(
     data: { values: data },
     mark: {
       type: 'line',
-      strokeWidth: 2,
+      strokeWidth: 1.5,
       clip: true,
     },
     encoding: {
@@ -105,6 +105,12 @@ export async function renderLineChart(
           labelFontSize: 10,
         },
       },
+      strokeWidth: {
+        condition: [
+          { test: "datum.series === 'P50 (Median)'", value: 3 }
+        ],
+        value: 1.5
+      }
     },
     config: {
       font: 'Inter, system-ui, sans-serif',

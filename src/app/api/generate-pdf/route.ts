@@ -177,11 +177,11 @@ export async function POST(req: NextRequest) {
     
     const combinedCSS = tokensCSS + '\n' + updatedPrintCSS
     
-    // Render sections
+    // Render sections in client-friendly order
     const sections = [
       templates.cover(validatedData),
-      templates.toc(validatedData),
       templates.exec(validatedData),
+      templates.toc(validatedData),
       templates.profile({ ...validatedData, taxRateAdjusted }),
       templates.assets({ ...validatedData, ...charts }),
       templates.spending({ ...validatedData, ...charts }),
@@ -191,10 +191,12 @@ export async function POST(req: NextRequest) {
     ].join('\n')
     
     // Render full HTML
+    const now = new Date()
+    const reportDate = `${String(now.getDate()).padStart(2,'0')}.${String(now.getMonth()+1).padStart(2,'0')}.${now.getFullYear()}`
     const html = templates.base({
       css: combinedCSS,
       content: sections,
-      reportDate: new Date().toLocaleDateString('de-DE'),
+      reportDate,
     })
     
     // Launch Puppeteer with different settings for production/dev
@@ -252,17 +254,34 @@ export async function POST(req: NextRequest) {
     // Wait a bit for any async rendering
     await new Promise(resolve => setTimeout(resolve, 1000))
     
-    // Generate PDF
+    // Generate PDF with header/footer (page numbers, title, date)
+    const headerTemplate = `
+      <div style="font-size:8px; width:100%; padding:0 16px; color:#6b7280;">
+        <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+          <span>Retirement Plan</span>
+          <span>${reportDate}</span>
+        </div>
+      </div>`
+
+    const footerTemplate = `
+      <div style="font-size:8px; width:100%; padding:0 16px; color:#9ca3af;">
+        <div style="display:flex; justify-content:center; width:100%;">
+          <span>Retirement Plan — ${reportDate} — Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+        </div>
+      </div>`
+
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
       preferCSSPageSize: true,
-      displayHeaderFooter: false,
+      displayHeaderFooter: true,
+      headerTemplate,
+      footerTemplate,
       margin: {
-        top: '0',
-        right: '0',
-        bottom: '0',
-        left: '0',
+        top: '16mm',
+        right: '12mm',
+        bottom: '16mm',
+        left: '12mm',
       },
     })
     

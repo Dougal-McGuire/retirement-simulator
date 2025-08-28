@@ -14,8 +14,31 @@
   </div>
   
   <script>
-    // Set report date for page footers
-    document.documentElement.style.setProperty('--report-date', '{{reportDate}}');
+    // Enhance TOC by injecting page numbers when possible (fallback if CSS target-counter unsupported)
+    (function() {
+      try {
+        const MM_TO_PX = 3.7795275591; // 96dpi
+        const pageHeight = 1123; // px at 96dpi for A4 height
+        const topMargin = 16 * MM_TO_PX;
+        const bottomMargin = 16 * MM_TO_PX;
+        const contentHeight = pageHeight - topMargin - bottomMargin;
+        document.querySelectorAll('.toc-page').forEach(function(link){
+          const sel = link.getAttribute('href');
+          if (!sel) return;
+          const target = document.querySelector(sel);
+          if (!target) return;
+          const rect = target.getBoundingClientRect();
+          const docTop = window.scrollY + rect.top;
+          const pageNo = Math.max(1, Math.floor((docTop + topMargin) / contentHeight) + 1);
+          // Only set textContent if not already provided by CSS target-counter
+          if (!link.textContent || /^\s*$/.test(link.textContent)) {
+            link.textContent = String(pageNo);
+          }
+        });
+      } catch (e) {
+        // Ignore TOC enhancement errors
+      }
+    })();
   </script>
 </body>
 </html>
