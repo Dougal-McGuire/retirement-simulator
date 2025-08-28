@@ -1,0 +1,77 @@
+<div id="executive-summary" class="page-break">
+  <h1>Plan Health Snapshot</h1>
+  
+  <div class="content">
+    <p>This comprehensive retirement planning analysis evaluates your financial trajectory through {{projections.milestones.length}} years of projections, 
+    utilizing Monte Carlo simulation with {{formatNumber assumptions.mcRuns}} iterations to account for market volatility and economic uncertainty.</p>
+    
+    <div class="kpi-grid">
+      {{> kpi-tile 
+        value=(concat summary.planHealthScore "/100")
+        label=(concat "Plan health — " summary.planHealthLabel)
+        note=(concat (capitalize summary.planHealthWhy))
+      }}
+      {{> kpi-tile 
+        value=(formatPercent projections.successRatePct)
+        label="Success probability"
+        badge=(getSuccessBadge projections.successRatePct)
+        badgeColor=(getSuccessBadgeColor projections.successRatePct)
+        note=(concat "In " (formatPercent projections.successRatePct) " of " (formatNumber assumptions.mcRuns) " paths assets last to age " person.horizonAge)
+      }}
+      
+      {{> kpi-tile 
+        value=(formatEUR finances.currentAssetsEUR)
+        label="Current Assets"
+        note="Starting portfolio value"
+      }}
+      
+      {{> kpi-tile 
+        value=(formatEUR finances.annualSavingsEUR)
+        label="Annual Savings"
+        note="Pre-retirement contribution"
+      }}
+      
+      {{> kpi-tile 
+        value=(formatEUR finances.expectedMonthlyPensionEUR)
+        label="Expected Monthly Pension"
+        note=(concat "Starting at age " person.pensionAge)
+      }}
+
+      {{> kpi-tile 
+        value=(formatEUR (getTotalAnnualSpending spending))
+        label="Total Annual Spending"
+        note="Includes monthly and annual expenses"
+      }}
+      {{#if summary.bridge}}
+      {{> kpi-tile 
+        value=(formatEUR summary.bridge.cashNeedEUR)
+        label=(concat "Bridge years (" summary.bridge.startAge "–" summary.bridge.endAge ")")
+        note=(concat "Funded " summary.bridge.portfolioSharePct "% portfolio / " summary.bridge.cashBucketYears " years cash")
+      }}
+      {{/if}}
+    </div>
+    
+    <div class="callout callout-info">
+      <div class="callout-title">Key Findings</div>
+      <ul>
+        <li>Plan health: <strong>{{summary.planHealthScore}}/100 ({{summary.planHealthLabel}})</strong> — {{summary.planHealthWhy}}</li>
+        <li>Success probability: <strong>{{formatPercent projections.successRatePct}}</strong> — In {{formatPercent projections.successRatePct}} of {{formatNumber assumptions.mcRuns}} paths assets last to age {{person.horizonAge}}</li>
+        {{#if summary.bridge}}
+        <li>Bridge years {{summary.bridge.startAge}}–{{summary.bridge.endAge}} need: <strong>{{formatEUR summary.bridge.cashNeedEUR}}</strong> — funded {{summary.bridge.portfolioSharePct}}% portfolio / {{summary.bridge.cashBucketYears}} years cash</li>
+        {{/if}}
+        <li>Years until retirement: {{subtract person.retireAge person.currentAge}}</li>
+      </ul>
+    </div>
+
+    {{#if summary.topActionsDetailed}}
+    <div class="callout callout-warning">
+      <div class="callout-title">Do next (expected uplift)</div>
+      <ul>
+        {{#each summary.topActionsDetailed}}
+          <li>{{this.title}} → <strong>+{{this.upliftMin}}–{{this.upliftMax}}</strong> points</li>
+        {{/each}}
+      </ul>
+    </div>
+    {{/if}}
+  </div>
+</div>

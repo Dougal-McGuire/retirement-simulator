@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
@@ -50,6 +50,31 @@ export default function SetupPage() {
     } as MarketAssumptionsStep,
   })
 
+  // Auto-save to localStorage when form data changes
+  useEffect(() => {
+    localStorage.setItem('retirement-setup-progress', JSON.stringify({
+      currentStep,
+      formData,
+      timestamp: Date.now()
+    }))
+  }, [currentStep, formData])
+
+  // Load saved progress on mount
+  useEffect(() => {
+    const savedProgress = localStorage.getItem('retirement-setup-progress')
+    if (savedProgress) {
+      try {
+        const { currentStep: savedStep, formData: savedFormData } = JSON.parse(savedProgress)
+        if (savedStep && savedFormData) {
+          setCurrentStep(savedStep)
+          setFormData(savedFormData)
+        }
+      } catch (e) {
+        // Ignore invalid saved data
+      }
+    }
+  }, [])
+
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1)
@@ -62,7 +87,16 @@ export default function SetupPage() {
         annualExpenses: formData.annual,
         ...formData.market,
       })
+      // Clear saved progress
+      localStorage.removeItem('retirement-setup-progress')
       router.push('/simulation')
+    }
+  }
+
+  const handleStepClick = (stepIndex: number) => {
+    // Only allow clicking on completed or current step
+    if (stepIndex <= currentStep) {
+      setCurrentStep(stepIndex)
     }
   }
 
@@ -319,18 +353,9 @@ export default function SetupPage() {
       <header className="bg-white border-b">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" asChild>
-                <Link href="/" className="flex items-center space-x-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  <span>Back to Home</span>
-                </Link>
-              </Button>
-              <div className="h-6 w-px bg-gray-300" />
-              <h1 className="text-2xl font-bold text-gray-900">Retirement Planning Setup</h1>
-            </div>
-            <Button variant="outline" asChild>
-              <Link href="/simulation">Skip to Simulation</Link>
+            <h1 className="text-2xl font-bold text-gray-900">Setup</h1>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/simulation">Go to Simulation</Link>
             </Button>
           </div>
         </div>
@@ -360,24 +385,36 @@ export default function SetupPage() {
           <div className="flex items-center justify-between">
             {STEPS.map((step, index) => (
               <div key={step.id} className="flex items-center">
-                <div 
-                  className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                    index < currentStep 
-                      ? 'bg-blue-600 border-blue-600 text-white' 
-                      : index === currentStep
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-gray-300 text-gray-300'
-                  }`}
-                >
-                  {index < currentStep ? (
-                    <Check className="h-5 w-5" />
-                  ) : (
-                    <span>{index + 1}</span>
-                  )}
+                <div className="flex flex-col items-center">
+                  <button
+                    onClick={() => handleStepClick(index)}
+                    disabled={index > currentStep}
+                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
+                      index < currentStep 
+                        ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 cursor-pointer' 
+                        : index === currentStep
+                        ? 'border-blue-600 text-blue-600 bg-blue-50'
+                        : 'border-gray-300 text-gray-300 cursor-not-allowed'
+                    } ${index <= currentStep ? 'hover:scale-105' : ''}`}
+                  >
+                    {index < currentStep ? (
+                      <Check className="h-5 w-5" />
+                    ) : (
+                      <span>{index + 1}</span>
+                    )}
+                  </button>
+                  <div className="mt-2 text-center">
+                    <div className={`text-xs font-medium ${
+                      index <= currentStep ? 'text-gray-900' : 'text-gray-400'
+                    }`}>
+                      {step.title.split(' ')[0]}
+                    </div>
+                    
+                  </div>
                 </div>
                 {index < STEPS.length - 1 && (
                   <div 
-                    className={`w-16 h-0.5 ml-2 ${
+                    className={`w-16 h-0.5 ml-2 transition-colors duration-300 ${
                       index < currentStep ? 'bg-blue-600' : 'bg-gray-300'
                     }`}
                   />

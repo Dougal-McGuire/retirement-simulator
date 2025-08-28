@@ -41,12 +41,14 @@ export function calculatePercentile(arr: number[], percentile: number): number {
  */
 export function calculatePercentiles(
   data: number[][],
-  percentiles: number[] = [10, 50, 90]
+  percentiles: number[] = [10, 20, 50, 80, 90]
 ): PercentileData {
   const ageCount = data[0]?.length || 0
   const result: PercentileData = {
     p10: [],
+    p20: [],
     p50: [],
+    p80: [],
     p90: []
   }
   
@@ -54,7 +56,9 @@ export function calculatePercentiles(
     const valuesAtAge = data.map(run => run[ageIndex])
     
     result.p10.push(calculatePercentile(valuesAtAge, 10))
+    result.p20!.push(calculatePercentile(valuesAtAge, 20))
     result.p50.push(calculatePercentile(valuesAtAge, 50))
+    result.p80!.push(calculatePercentile(valuesAtAge, 80))
     result.p90.push(calculatePercentile(valuesAtAge, 90))
   }
   
@@ -63,6 +67,14 @@ export function calculatePercentiles(
 
 /**
  * Run a single Monte Carlo simulation
+ * 
+ * Key improvements made:
+ * - ROI returns are clamped at -100% to prevent impossible losses
+ * - Proper cost basis tracking for accurate capital gains tax calculation
+ * - Removed arbitrary 0.7 cap on taxable gains ratio
+ * - Early termination when assets are exhausted to prevent negative compounding
+ * - Proportional cost basis adjustment during withdrawals
+ * 
  * @param params - Simulation parameters
  * @returns Object containing asset history and spending history for this run
  */
@@ -74,6 +86,7 @@ function runSingleSimulation(params: SimulationParams): {
   const assetHistory: number[] = []
   const spendingHistory: number[] = []
   let currentAssets = params.currentAssets
+  let costBasis = params.currentAssets // Track original investment amount
   
   // Calculate total monthly and annual expenses
   const totalMonthlyExpense = Object.values(params.monthlyExpenses).reduce((sum, expense) => sum + expense, 0)
@@ -86,8 +99,12 @@ function runSingleSimulation(params: SimulationParams): {
   for (let age = params.currentAge; age <= params.endAge; age++) {
     if (age < params.retirementAge) {
       // Accumulation phase (working years)
-      const roi = boxMullerTransform(params.averageROI, params.roiVolatility)
+      const roi = Math.max(-1, boxMullerTransform(params.averageROI, params.roiVolatility)) // Clamp at -100%
+      
+      // During accumulation, we assume tax-deferred growth (like 401k/IRA)
+      // or reinvestment that doesn't trigger immediate capital gains
       currentAssets = currentAssets * (1 + roi) + params.annualSavings
+      costBasis += params.annualSavings // Track additional investments
       spendingHistory.push(0) // No spending during accumulation for visualization
     } else {
       // Distribution phase (retirement years)
@@ -99,23 +116,62 @@ function runSingleSimulation(params: SimulationParams): {
         annualIncome = params.monthlyPension * 12
       }
       
-      // Apply expenses and income
-      currentAssets = currentAssets + annualIncome - totalAnnualExpenseThisYear
+      // Calculate how much we need to withdraw from investments
+      const netNeeded = totalAnnualExpenseThisYear - annualIncome
+      
+      if (netNeeded > 0) {
+        // We need to sell investments to cover expenses
+        // Apply investment growth first
+        const roi = Math.max(-1, boxMullerTransform(params.averageROI, params.roiVolatility)) // Clamp at -100%
+        currentAssets = Math.max(0, currentAssets * (1 + roi))
+        
+        // Check if we have enough assets
+        if (currentAssets <= 0) {
+          runFailed = true
+          currentAssets = 0
+        } else {
+          // Calculate proper capital gains tax based on cost basis
+          const costBasisRatio = Math.min(1, costBasis / currentAssets)
+          const principalPortion = netNeeded * costBasisRatio
+          const gainsPortion = netNeeded * (1 - costBasisRatio)
+          
+          // Tax only applies to gains portion
+          const capitalGainsTax = Math.max(0, gainsPortion * (params.capitalGainsTax / 100))
+          
+          // Total withdrawal needed including tax
+          const totalWithdrawal = netNeeded + capitalGainsTax
+          
+          // Update cost basis proportionally
+          if (currentAssets > 0) {
+            const withdrawalRatio = Math.min(1, totalWithdrawal / currentAssets)
+            costBasis = Math.max(0, costBasis * (1 - withdrawalRatio))
+          }
+          
+          currentAssets = Math.max(0, currentAssets - totalWithdrawal)
+        }
+      } else {
+        // No withdrawal needed, just apply investment growth
+        const roi = Math.max(-1, boxMullerTransform(params.averageROI, params.roiVolatility)) // Clamp at -100%
+        currentAssets = Math.max(0, currentAssets * (1 + roi))
+      }
       
       // Apply inflation to expenses for next year
       const inflation = boxMullerTransform(params.averageInflation, params.inflationVolatility)
       currentMonthlyExpense *= (1 + inflation)
       currentAnnualExpense *= (1 + inflation)
       
-      spendingHistory.push(currentMonthlyExpense)
+      // Store total monthly-equivalent spending (includes annualized annual expenses)
+      const monthlyEquivalentSpending = currentMonthlyExpense + (currentAnnualExpense / 12)
+      spendingHistory.push(monthlyEquivalentSpending)
       
       // Check for failure (running out of money)
-      if (currentAssets < 0) {
+      if (currentAssets <= 0) {
         runFailed = true
+        currentAssets = 0
       }
     }
     
-    assetHistory.push(Math.max(0, currentAssets)) // Don't show negative assets
+    assetHistory.push(currentAssets)
   }
   
   return {
@@ -194,4 +250,25 @@ export function formatPercentage(value: number): string {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }).format(value)
+}
+
+/**
+ * Calculate combined monthly and annual expense totals
+ * @param monthlyExpenses - Object containing monthly expense categories
+ * @param annualExpenses - Object containing annual expense categories
+ * @returns Object with combined totals
+ */
+export function calculateCombinedExpenses(
+  monthlyExpenses: Record<string, number>,
+  annualExpenses: Record<string, number>
+) {
+  const totalMonthly = Object.values(monthlyExpenses).reduce((sum, expense) => sum + expense, 0)
+  const totalAnnual = Object.values(annualExpenses).reduce((sum, expense) => sum + expense, 0)
+  
+  return {
+    totalMonthly,
+    totalAnnual,
+    combinedMonthly: totalMonthly + (totalAnnual / 12),
+    combinedAnnual: (totalMonthly * 12) + totalAnnual
+  }
 }

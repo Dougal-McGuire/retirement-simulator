@@ -41,7 +41,9 @@ export interface SimulationParams {
 // Results interfaces
 export interface PercentileData {
   p10: number[]
+  p20?: number[]
   p50: number[]
+  p80?: number[]
   p90: number[]
 }
 
@@ -90,18 +92,34 @@ export interface MarketAssumptionsStep {
   simulationRuns: number
 }
 
+// Saved setup interface
+export interface SavedSetup {
+  id: string
+  name: string
+  timestamp: number
+  params: SimulationParams
+}
+
 // State management interfaces
 export interface SimulationStore {
   params: SimulationParams
   results: SimulationResults | null
   isLoading: boolean
   error: string | null
+  savedSetups: SavedSetup[]
+  autoRunSuspended?: boolean
+  pendingRun?: boolean
   
   // Actions
   updateParams: (partial: Partial<SimulationParams>) => void
   runSimulation: () => Promise<void>
+  setAutoRunSuspended?: (suspended: boolean) => void
   saveToStorage: () => void
   loadFromStorage: () => void
+  saveSetup: (name: string) => void
+  loadSetup: (id: string) => void
+  deleteSetup: (id: string) => void
+  getSavedSetups: () => SavedSetup[]
   clearResults: () => void
 }
 
@@ -109,38 +127,42 @@ export interface SimulationStore {
 export interface ChartDataPoint {
   age: number
   assets_p10: number
+  assets_p20?: number
   assets_p50: number
+  assets_p80?: number
   assets_p90: number
   spending_p10: number
+  spending_p20?: number
   spending_p50: number
+  spending_p80?: number
   spending_p90: number
 }
 
 // Default values
 export const DEFAULT_PARAMS: SimulationParams = {
-  currentAge: 54,
+  currentAge: 55,
   retirementAge: 60,
   legalRetirementAge: 67,
   endAge: 90,
-  currentAssets: 600000,
-  annualSavings: 18000,
+  currentAssets: 630000,
+  annualSavings: 48000,
   monthlyPension: 5000,
   averageROI: 0.07,
-  roiVolatility: 0.02,
-  averageInflation: 0.03,
-  inflationVolatility: 0.005,
+  roiVolatility: 0.15,
+  averageInflation: 0.025,
+  inflationVolatility: 0.01,
   capitalGainsTax: 26.25,
   monthlyExpenses: {
-    health: 300,
-    food: 500,
-    entertainment: 200,
-    shopping: 100,
-    utilities: 200,
+    health: 1300,
+    food: 1200,
+    entertainment: 300,
+    shopping: 500,
+    utilities: 400,
   },
   annualExpenses: {
-    vacations: 3000,
-    repairs: 2000,
+    vacations: 12000,
+    repairs: 5000,
     carMaintenance: 1500,
   },
-  simulationRuns: 1000,
+  simulationRuns: 500,
 };
