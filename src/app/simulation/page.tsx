@@ -1,18 +1,15 @@
 'use client'
 
 import { useEffect } from 'react'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+// streamlined header: no back link
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useSimulationStore, useSimulationParams, useSimulationResults, useSimulationLoading } from '@/lib/stores/simulationStore'
-import { calculateCombinedExpenses } from '@/lib/simulation/engine'
-import { formatNumber } from '@/lib/utils'
 import { SimulationChart } from '@/components/charts/SimulationChart'
 import { SuccessRateCard } from '@/components/charts/SuccessRateCard'
 import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
-import { ChartSkeleton, SuccessRateCardSkeleton, StatCardSkeleton } from '@/components/ui/skeleton'
+import { ChartSkeleton, SuccessRateCardSkeleton } from '@/components/ui/skeleton'
 
 export default function SimulationPage() {
   const params = useSimulationParams()
@@ -33,20 +30,7 @@ export default function SimulationPage() {
       <header id="navigation" className="bg-white border-b border-retirement-200 shadow-soft">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/" className="flex items-center space-x-1 sm:space-x-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  <span className="hidden sm:inline">Back to Home</span>
-                  <span className="sm:hidden">Back</span>
-                </Link>
-              </Button>
-              <div className="hidden sm:block h-6 w-px bg-gray-300" />
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">
-                <span className="hidden sm:inline">Monte Carlo Simulation</span>
-                <span className="sm:hidden">Simulation</span>
-              </h1>
-            </div>
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Retirement Simulation</h1>
             <div className="flex items-center space-x-2 sm:space-x-3">
               <div className="hidden sm:block">
                 <GenerateReportButton 
@@ -56,10 +40,10 @@ export default function SimulationPage() {
                 />
               </div>
               <Button size="sm" asChild>
-                <Link href="/setup">
-                  <span className="hidden sm:inline">Setup Wizard</span>
+                <a href="/setup">
+                  <span className="hidden sm:inline">Setup</span>
                   <span className="sm:hidden">Setup</span>
-                </Link>
+                </a>
               </Button>
             </div>
           </div>
@@ -87,7 +71,7 @@ export default function SimulationPage() {
             )}
 
             {/* Simulation Chart */}
-            <Card className="bg-white border-retirement-200 shadow-soft hover:shadow-medium transition-all duration-300 animate-slide-up">
+            <Card className="bg-white border-retirement-200 shadow-soft">
               <CardHeader>
                 <CardTitle className="text-retirement-800">Asset Projections & Spending Analysis</CardTitle>
                 <CardDescription className="text-retirement-600">
@@ -106,7 +90,7 @@ export default function SimulationPage() {
               </CardContent>
             </Card>
 
-            {/* Statistics Cards */}
+            {/* Statistics Cards (removed)
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {isLoading ? (
                 <>
@@ -210,8 +194,9 @@ export default function SimulationPage() {
                 </>
               )}
             </div>
+            */}
 
-            {/* Information Card */}
+            {/* Information Card (removed)
             <Card className="group bg-gradient-to-br from-retirement-50 via-retirement-100 to-info-50 border-retirement-200 shadow-medium hover:shadow-strong transition-all duration-500 overflow-hidden relative animate-fade-in">
               <div className="absolute inset-0 bg-gradient-to-br from-retirement-100/30 to-info-100/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <CardHeader className="relative">
@@ -300,6 +285,7 @@ export default function SimulationPage() {
                 </div>
               </CardContent>
             </Card>
+            */}
           </div>
         </div>
       </main>

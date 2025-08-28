@@ -13,11 +13,11 @@ import { useSimulationStore } from '@/lib/stores/simulationStore'
 import { PersonalInfoStep, AssetsIncomeStep, MonthlyExpensesStep, AnnualExpensesStep, MarketAssumptionsStep } from '@/types'
 
 const STEPS = [
-  { id: 'personal', title: 'Personal Information', description: 'Your age and retirement timeline', estimatedTime: '2 minutes' },
-  { id: 'assets', title: 'Assets & Income', description: 'Current assets and savings plan', estimatedTime: '2 minutes' },
-  { id: 'monthly', title: 'Monthly Expenses', description: 'Regular monthly costs', estimatedTime: '3 minutes' },
-  { id: 'annual', title: 'Annual Expenses', description: 'Yearly expenses like vacations', estimatedTime: '2 minutes' },
-  { id: 'market', title: 'Market Assumptions', description: 'Investment returns and inflation', estimatedTime: '3 minutes' },
+  { id: 'personal', title: 'Personal Information', description: 'Your age and retirement timeline' },
+  { id: 'assets', title: 'Assets & Income', description: 'Current assets and savings plan' },
+  { id: 'monthly', title: 'Monthly Expenses', description: 'Regular monthly costs' },
+  { id: 'annual', title: 'Annual Expenses', description: 'Yearly expenses like vacations' },
+  { id: 'market', title: 'Market Assumptions', description: 'Investment returns and inflation' },
 ]
 
 export default function SetupPage() {
@@ -353,18 +353,9 @@ export default function SetupPage() {
       <header className="bg-white border-b">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" asChild>
-                <Link href="/" className="flex items-center space-x-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  <span>Back to Home</span>
-                </Link>
-              </Button>
-              <div className="h-6 w-px bg-gray-300" />
-              <h1 className="text-2xl font-bold text-gray-900">Retirement Planning Setup</h1>
-            </div>
-            <Button variant="outline" asChild>
-              <Link href="/simulation">Skip to Simulation</Link>
+            <h1 className="text-2xl font-bold text-gray-900">Setup</h1>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/simulation">Go to Simulation</Link>
             </Button>
           </div>
         </div>
@@ -374,16 +365,9 @@ export default function SetupPage() {
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-gray-500">
-                Step {currentStep + 1} of {STEPS.length}
-              </span>
-              <span className="text-xs text-gray-400">
-                Estimated time remaining: {STEPS.slice(currentStep).reduce((acc, step) => {
-                  return acc + parseInt(step.estimatedTime);
-                }, 0)} minutes
-              </span>
-            </div>
+            <span className="text-sm font-medium text-gray-500">
+              Step {currentStep + 1} of {STEPS.length}
+            </span>
             <span className="text-sm text-gray-500">
               {Math.round(((currentStep + 1) / STEPS.length) * 100)}% Complete
             </span>
@@ -425,9 +409,7 @@ export default function SetupPage() {
                     }`}>
                       {step.title.split(' ')[0]}
                     </div>
-                    <div className="text-xs text-gray-400">
-                      {step.estimatedTime}
-                    </div>
+                    
                   </div>
                 </div>
                 {index < STEPS.length - 1 && (
