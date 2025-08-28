@@ -14,6 +14,9 @@ export const useSimulationStore = create<SimulationStore>()(
       isLoading: false,
       error: null,
       savedSetups: [],
+      // Auto-run control
+      autoRunSuspended: false,
+      pendingRun: false,
 
       updateParams: (partial: Partial<SimulationParams>) => {
         const currentParams = get().params
@@ -24,11 +27,16 @@ export const useSimulationStore = create<SimulationStore>()(
           error: null
         })
         
-        // Auto-run simulation after parameter update
-        // Small delay to debounce rapid updates
-        setTimeout(() => {
-          get().runSimulation()
-        }, 100)
+        // Auto-run simulation after parameter update unless suspended
+        if (!get().autoRunSuspended) {
+          // Small delay to debounce rapid updates
+          setTimeout(() => {
+            get().runSimulation()
+          }, 100)
+        } else {
+          // Mark that a run is pending for when autoRun resumes
+          set({ pendingRun: true })
+        }
       },
 
       runSimulation: async () => {
@@ -55,6 +63,19 @@ export const useSimulationStore = create<SimulationStore>()(
             isLoading: false,
             error: error instanceof Error ? error.message : 'Simulation failed'
           })
+        }
+      },
+
+      // Control auto-run suspension during interactions (e.g., chart brushing)
+      setAutoRunSuspended: (suspended: boolean) => {
+        const { pendingRun } = get()
+        set({ autoRunSuspended: suspended })
+        if (!suspended && pendingRun) {
+          // Trigger a single run to catch up
+          set({ pendingRun: false })
+          setTimeout(() => {
+            get().runSimulation()
+          }, 100)
         }
       },
 
@@ -185,3 +206,4 @@ export const useLoadSetup = () => useSimulationStore((state) => state.loadSetup)
 export const useDeleteSetup = () => useSimulationStore((state) => state.deleteSetup)
 export const useSavedSetups = () => useSimulationStore((state) => state.savedSetups)
 export const useClearResults = () => useSimulationStore((state) => state.clearResults)
+export const useSetAutoRunSuspended = () => useSimulationStore((state: any) => state.setAutoRunSuspended)

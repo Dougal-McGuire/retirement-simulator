@@ -54,7 +54,9 @@ export const AssumptionsSchema = z.object({
 export const MilestoneSchema = z.object({
   age: z.number(),
   p10: z.number(),
+  p20: z.number().optional(),
   p50: z.number(),
+  p80: z.number().optional(),
   p90: z.number(),
 });
 

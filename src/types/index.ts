@@ -41,7 +41,9 @@ export interface SimulationParams {
 // Results interfaces
 export interface PercentileData {
   p10: number[]
+  p20?: number[]
   p50: number[]
+  p80?: number[]
   p90: number[]
 }
 
@@ -105,10 +107,13 @@ export interface SimulationStore {
   isLoading: boolean
   error: string | null
   savedSetups: SavedSetup[]
+  autoRunSuspended?: boolean
+  pendingRun?: boolean
   
   // Actions
   updateParams: (partial: Partial<SimulationParams>) => void
   runSimulation: () => Promise<void>
+  setAutoRunSuspended?: (suspended: boolean) => void
   saveToStorage: () => void
   loadFromStorage: () => void
   saveSetup: (name: string) => void
@@ -122,10 +127,14 @@ export interface SimulationStore {
 export interface ChartDataPoint {
   age: number
   assets_p10: number
+  assets_p20?: number
   assets_p50: number
+  assets_p80?: number
   assets_p90: number
   spending_p10: number
+  spending_p20?: number
   spending_p50: number
+  spending_p80?: number
   spending_p90: number
 }
 

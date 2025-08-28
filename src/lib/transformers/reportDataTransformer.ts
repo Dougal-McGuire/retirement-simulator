@@ -11,7 +11,9 @@ export function transformToReportData(
   const milestones = results.ages.map((age, index) => ({
     age,
     p10: results.assetPercentiles.p10[index] || 0,
+    p20: results.assetPercentiles.p20?.[index] || 0,
     p50: results.assetPercentiles.p50[index] || 0,
+    p80: results.assetPercentiles.p80?.[index] || 0,
     p90: results.assetPercentiles.p90[index] || 0,
   }))
 

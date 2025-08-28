@@ -71,8 +71,18 @@ async function generateCharts(data: any) {
       values: data.projections.milestones.map((m: any) => ({ x: m.age, y: m.p10 })),
     },
     {
+      name: 'P20',
+      values: data.projections.milestones.map((m: any) => ({ x: m.age, y: m.p20 ?? 0 })),
+      color: '#f59e0b',
+    },
+    {
       name: 'P50 (Median)',
       values: data.projections.milestones.map((m: any) => ({ x: m.age, y: m.p50 })),
+    },
+    {
+      name: 'P80',
+      values: data.projections.milestones.map((m: any) => ({ x: m.age, y: m.p80 ?? 0 })),
+      color: '#34d399',
     },
     {
       name: 'P90 (Optimistic)',
@@ -85,6 +95,11 @@ async function generateCharts(data: any) {
     height: 320,
     xTitle: 'Age (Years)',
     yTitle: 'Portfolio Value (€)',
+    band: {
+      values: data.projections.milestones.map((m: any) => ({ x: m.age, yTop: m.p80 ?? m.p50, yBottom: m.p20 ?? m.p50 })),
+      color: '#60a5fa',
+      opacity: 0.18,
+    }
   })
 
   // Spending breakdown chart

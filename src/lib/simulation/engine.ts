@@ -41,12 +41,14 @@ export function calculatePercentile(arr: number[], percentile: number): number {
  */
 export function calculatePercentiles(
   data: number[][],
-  percentiles: number[] = [10, 50, 90]
+  percentiles: number[] = [10, 20, 50, 80, 90]
 ): PercentileData {
   const ageCount = data[0]?.length || 0
   const result: PercentileData = {
     p10: [],
+    p20: [],
     p50: [],
+    p80: [],
     p90: []
   }
   
@@ -54,7 +56,9 @@ export function calculatePercentiles(
     const valuesAtAge = data.map(run => run[ageIndex])
     
     result.p10.push(calculatePercentile(valuesAtAge, 10))
+    result.p20!.push(calculatePercentile(valuesAtAge, 20))
     result.p50.push(calculatePercentile(valuesAtAge, 50))
+    result.p80!.push(calculatePercentile(valuesAtAge, 80))
     result.p90.push(calculatePercentile(valuesAtAge, 90))
   }
   

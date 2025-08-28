@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Badge } from '@/components/ui/badge'
-import { useSimulationParams, useUpdateParams, useSaveSetup, useLoadSetup, useDeleteSetup, useSavedSetups } from '@/lib/stores/simulationStore'
+import { useSimulationParams, useUpdateParams, useSaveSetup, useLoadSetup, useDeleteSetup, useSavedSetups, useSetAutoRunSuspended } from '@/lib/stores/simulationStore'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { DEFAULT_PARAMS, SimulationParams } from '@/types'
 import { formatNumber } from '@/lib/utils'
@@ -132,16 +132,30 @@ export function ParameterControls() {
   
   const params = useSimulationParams()
   const updateParams = useUpdateParams()
+  const setAutoRunSuspended = useSetAutoRunSuspended()
+  const resumeRef = React.useRef<any>(null)
+
+  const suspendAndDebounceResume = React.useCallback(() => {
+    if (setAutoRunSuspended) {
+      setAutoRunSuspended(true)
+      if (resumeRef.current) clearTimeout(resumeRef.current)
+      resumeRef.current = setTimeout(() => {
+        setAutoRunSuspended(false)
+      }, 500)
+    }
+  }, [setAutoRunSuspended])
   const saveSetup = useSaveSetup()
   const loadSetup = useLoadSetup()
   const deleteSetup = useDeleteSetup()
   const savedSetups = useSavedSetups()
 
   const handleInputChange = (field: keyof SimulationParams, value: number) => {
+    suspendAndDebounceResume()
     updateParams({ [field]: value })
   }
 
   const handleExpenseChange = (category: keyof SimulationParams['monthlyExpenses'], value: number) => {
+    suspendAndDebounceResume()
     updateParams({
       monthlyExpenses: {
         ...params.monthlyExpenses,
@@ -151,6 +165,7 @@ export function ParameterControls() {
   }
 
   const handleAnnualExpenseChange = (category: keyof SimulationParams['annualExpenses'], value: number) => {
+    suspendAndDebounceResume()
     updateParams({
       annualExpenses: {
         ...params.annualExpenses,

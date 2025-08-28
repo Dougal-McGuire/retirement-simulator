@@ -14,6 +14,11 @@ export interface ChartOptions {
   xTitle?: string;
   yTitle?: string;
   title?: string;
+  band?: {
+    values: Array<{ x: number; yTop: number; yBottom: number }>;
+    color?: string;
+    opacity?: number;
+  };
 }
 
 const DEFAULT_COLORS = {
@@ -33,6 +38,7 @@ export async function renderLineChart(
     xTitle = 'X Axis',
     yTitle = 'Y Axis',
     title = '',
+    band,
   } = options;
 
   // Transform series data for Vega-Lite
@@ -57,73 +63,68 @@ export async function renderLineChart(
     return DEFAULT_COLORS.default;
   });
 
-  const spec: TopLevelSpec = {
-    $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
-    width,
-    height,
-    title: title ? { text: title, anchor: 'start', fontSize: 14 } : undefined,
+  const lineLayer = {
     data: { values: data },
-    mark: {
-      type: 'line',
-      strokeWidth: 1.5,
-      clip: true,
-    },
+    mark: { type: 'line', strokeWidth: 1.5, clip: true },
     encoding: {
       x: {
-        field: 'x',
-        type: 'quantitative',
-        title: xTitle,
-        axis: {
-          labelFontSize: 10,
-          titleFontSize: 11,
-          grid: true,
-          gridColor: '#e5e7eb',
-        },
+        field: 'x', type: 'quantitative', title: xTitle,
+        axis: { labelFontSize: 10, titleFontSize: 11, grid: true, gridColor: '#e5e7eb' },
       },
       y: {
-        field: 'y',
-        type: 'quantitative',
-        title: yTitle,
-        axis: {
-          labelFontSize: 10,
-          titleFontSize: 11,
-          grid: true,
-          gridColor: '#e5e7eb',
-          format: ',.0f',
-        },
+        field: 'y', type: 'quantitative', title: yTitle,
+        axis: { labelFontSize: 10, titleFontSize: 11, grid: true, gridColor: '#e5e7eb', format: ',.0f' },
       },
       color: {
-        field: 'series',
-        type: 'nominal',
-        scale: {
-          domain: series.map((s) => s.name),
-          range: colorScale,
+        field: 'series', type: 'nominal',
+        scale: { domain: series.map((s) => s.name), range: colorScale },
+        legend: { title: null, orient: 'bottom', labelFontSize: 10 },
+      },
+      strokeWidth: { condition: [{ test: "datum.series === 'P50 (Median)'", value: 3 }], value: 1.5 }
+    }
+  } as TopLevelSpec;
+
+  let spec: TopLevelSpec
+  if (band && band.values && band.values.length) {
+    spec = {
+      $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+      width,
+      height,
+      title: title ? { text: title, anchor: 'start', fontSize: 14 } : undefined,
+      layer: [
+        {
+          data: { values: band.values },
+          mark: { type: 'area', opacity: band.opacity ?? 0.18, color: band.color ?? '#60a5fa' },
+          encoding: {
+            x: { field: 'x', type: 'quantitative', title: xTitle, axis: { labelFontSize: 10, titleFontSize: 11, grid: true, gridColor: '#e5e7eb' } },
+            y: { field: 'yTop', type: 'quantitative', title: yTitle, axis: { labelFontSize: 10, titleFontSize: 11, grid: true, gridColor: '#e5e7eb', format: ',.0f' } },
+            y2: { field: 'yBottom' },
+          },
         },
-        legend: {
-          title: null,
-          orient: 'bottom',
-          labelFontSize: 10,
-        },
+        lineLayer as any
+      ],
+      config: {
+        font: 'Inter, system-ui, sans-serif',
+        axis: { domainColor: '#6b7280', tickColor: '#9ca3af' },
+        view: { stroke: null },
+        background: 'transparent',
       },
-      strokeWidth: {
-        condition: [
-          { test: "datum.series === 'P50 (Median)'", value: 3 }
-        ],
-        value: 1.5
-      }
-    },
-    config: {
-      font: 'Inter, system-ui, sans-serif',
-      axis: {
-        domainColor: '#6b7280',
-        tickColor: '#9ca3af',
+    };
+  } else {
+    spec = {
+      $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+      width,
+      height,
+      title: title ? { text: title, anchor: 'start', fontSize: 14 } : undefined,
+      ...(lineLayer as any),
+      config: {
+        font: 'Inter, system-ui, sans-serif',
+        axis: { domainColor: '#6b7280', tickColor: '#9ca3af' },
+        view: { stroke: null },
+        background: 'transparent',
       },
-      view: {
-        stroke: null,
-      },
-      background: 'transparent',
-    },
-  };
+    };
+  }
 
   // Compile to Vega and render as SVG
   const vegaSpec = vl.compile(spec).spec;
