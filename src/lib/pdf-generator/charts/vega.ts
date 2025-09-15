@@ -64,7 +64,7 @@ export async function renderLineChart(
     return DEFAULT_COLORS.default
   })
 
-  const lineLayer = {
+  const lineLayer: any = {
     data: { values: data },
     mark: { type: 'line', strokeWidth: 1.5, clip: true },
     encoding: {
@@ -97,7 +97,7 @@ export async function renderLineChart(
         value: 1.5,
       },
     },
-  } as TopLevelSpec
+  }
 
   let spec: TopLevelSpec
   if (band && band.values && band.values.length) {
@@ -132,7 +132,7 @@ export async function renderLineChart(
             y2: { field: 'yBottom' },
           },
         },
-        lineLayer as unknown as TopLevelSpec,
+        lineLayer,
       ],
       config: {
         font: 'Inter, system-ui, sans-serif',
@@ -147,7 +147,7 @@ export async function renderLineChart(
       width,
       height,
       title: title ? { text: title, anchor: 'start', fontSize: 14 } : undefined,
-      ...(lineLayer as unknown as TopLevelSpec),
+      ...lineLayer,
       config: {
         font: 'Inter, system-ui, sans-serif',
         axis: { domainColor: '#6b7280', tickColor: '#9ca3af' },
