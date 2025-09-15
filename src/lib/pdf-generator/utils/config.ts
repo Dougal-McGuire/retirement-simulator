@@ -5,14 +5,13 @@ export const defaultPdfConfig = {
   label_bands: { needs_attention: [0, 59], moderate: [60, 79], strong: [80, 100] },
   // Map categories to Needs/Wants/Luxuries (future use)
   category_bucket_map: {
-    'Healthcare': 'Needs',
+    Healthcare: 'Needs',
     'Food & Groceries': 'Needs',
-    'Utilities': 'Needs',
+    Utilities: 'Needs',
     'Home Repairs': 'Needs',
-    'Vacations': 'Wants',
-    'Entertainment': 'Wants',
-    'Car': 'Wants',
-    'Shopping': 'Luxuries'
+    Vacations: 'Wants',
+    Entertainment: 'Wants',
+    Car: 'Wants',
+    Shopping: 'Luxuries',
   },
-};
-
+}

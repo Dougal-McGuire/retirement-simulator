@@ -1,14 +1,15 @@
-<div id="appendix" class="page-break">
+<div id='appendix' class='page-break'>
   <h1>Appendix: Methodology</h1>
-  
-  <div class="content">
-    <h2 id="appendix-monte-carlo">Monte Carlo Simulation</h2>
-    
-    <p>This report employs Monte Carlo simulation, a computational technique that uses repeated random sampling to model the probability of different outcomes in retirement planning.</p>
-    
-    <h3 id="appendix-technical">Technical Implementation</h3>
-    
-    <table class="avoid-break">
+
+  <div class='content'>
+    <h2 id='appendix-monte-carlo'>Monte Carlo Simulation</h2>
+
+    <p>This report employs Monte Carlo simulation, a computational technique that uses repeated
+      random sampling to model the probability of different outcomes in retirement planning.</p>
+
+    <h3 id='appendix-technical'>Technical Implementation</h3>
+
+    <table class='avoid-break'>
       <thead>
         <tr>
           <th>Component</th>
@@ -30,16 +31,18 @@
         </tr>
         <tr>
           <td>Distribution Parameters</td>
-          <td>μ = {{formatPercent assumptions.roiMean 2}}, σ = {{formatPercent assumptions.roiStdev 2}}</td>
+          <td>μ =
+            {{formatPercent assumptions.roiMean 2}}, σ =
+            {{formatPercent assumptions.roiStdev 2}}</td>
         </tr>
       </tbody>
     </table>
-    
-    <h3 id="appendix-calculation">Calculation Methodology</h3>
-    
-    <div class="callout callout-info">
-      <div class="callout-title">Portfolio Evolution Formula</div>
-      <p style="font-family: monospace; margin: var(--s-2) 0;">
+
+    <h3 id='appendix-calculation'>Calculation Methodology</h3>
+
+    <div class='callout callout-info'>
+      <div class='callout-title'>Portfolio Evolution Formula</div>
+      <p style='font-family: monospace; margin: var(--s-2) 0;'>
         V(t+1) = V(t) × (1 + r(t)) + C(t) - W(t) × (1 + i(t))
       </p>
       <p>Where:</p>
@@ -51,29 +54,36 @@
         <li>i(t) = Inflation rate (stochastic)</li>
       </ul>
     </div>
-    
-    <h2 id="appendix-statistics">Statistical Measures</h2>
-    
-    <h3 id="appendix-percentiles">Percentile Calculations</h3>
-    
+
+    <h2 id='appendix-statistics'>Statistical Measures</h2>
+
+    <h3 id='appendix-percentiles'>Percentile Calculations</h3>
+
     <p>The report presents three key percentiles from the simulation results:</p>
-    
+
     <ul>
-      <li><strong>P10 (10th Percentile):</strong> Pessimistic scenario - 90% of outcomes exceed this value</li>
-      <li><strong>P50 (50th Percentile/Median):</strong> Central tendency - half of outcomes above, half below</li>
-      <li><strong>P90 (90th Percentile):</strong> Optimistic scenario - only 10% of outcomes exceed this value</li>
+      <li><strong>P10 (10th Percentile):</strong>
+        Pessimistic scenario - 90% of outcomes exceed this value</li>
+      <li><strong>P50 (50th Percentile/Median):</strong>
+        Central tendency - half of outcomes above, half below</li>
+      <li><strong>P90 (90th Percentile):</strong>
+        Optimistic scenario - only 10% of outcomes exceed this value</li>
     </ul>
-    
-    <h3 id="appendix-success">Success Rate Definition</h3>
-    
-    <p>A simulation run is considered successful if the portfolio maintains a positive balance through the entire planning horizon (age {{person.horizonAge}}). The success rate represents the percentage of all simulation runs that meet this criterion.</p>
-    
-    <h2 id="appendix-limitations">Assumptions and Limitations</h2>
-    
-    <div class="callout callout-warning">
-      <div class="callout-title">Important Considerations</div>
+
+    <h3 id='appendix-success'>Success Rate Definition</h3>
+
+    <p>A simulation run is considered successful if the portfolio maintains a positive balance
+      through the entire planning horizon (age
+      {{person.horizonAge}}). The success rate represents the percentage of all simulation runs that
+      meet this criterion.</p>
+
+    <h2 id='appendix-limitations'>Assumptions and Limitations</h2>
+
+    <div class='callout callout-warning'>
+      <div class='callout-title'>Important Considerations</div>
       <ul>
-        <li>Returns are assumed to follow a normal distribution, which may not capture extreme market events</li>
+        <li>Returns are assumed to follow a normal distribution, which may not capture extreme
+          market events</li>
         <li>Inflation is modeled as constant in real terms across all expense categories</li>
         <li>Tax rates and regulations are assumed to remain constant</li>
         <li>No consideration for unexpected one-time expenses or windfalls</li>
@@ -81,10 +91,10 @@
         <li>Pension benefits assumed to be inflation-adjusted and guaranteed</li>
       </ul>
     </div>
-    
-    <h2 id="appendix-glossary">Glossary of Terms</h2>
-    
-    <table class="avoid-break">
+
+    <h2 id='appendix-glossary'>Glossary of Terms</h2>
+
+    <table class='avoid-break'>
       <thead>
         <tr>
           <th>Term</th>

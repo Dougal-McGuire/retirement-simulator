@@ -13,14 +13,14 @@ interface AnimatedCounterProps {
   delay?: number
 }
 
-export function AnimatedCounter({ 
-  end, 
-  duration = 2, 
-  decimals = 0, 
-  prefix = "", 
-  suffix = "", 
-  className = "",
-  delay = 0
+export function AnimatedCounter({
+  end,
+  duration = 2,
+  decimals = 0,
+  prefix = '',
+  suffix = '',
+  className = '',
+  delay = 0,
 }: AnimatedCounterProps) {
   const [isVisible, setIsVisible] = useState(false)
   const counterRef = useRef<HTMLDivElement>(null)
@@ -37,7 +37,7 @@ export function AnimatedCounter({
       },
       {
         threshold: 0.3,
-        rootMargin: '0px 0px -100px 0px'
+        rootMargin: '0px 0px -100px 0px',
       }
     )
 
@@ -60,7 +60,9 @@ export function AnimatedCounter({
           preserveValue
         />
       ) : (
-        <span>{prefix}0{suffix}</span>
+        <span>
+          {prefix}0{suffix}
+        </span>
       )}
     </div>
   )

@@ -15,7 +15,7 @@ Before the deployment workflow can run, you need to add the following secrets to
    - Copy the token value
    - Add it as a GitHub secret
 
-2. **VERCEL_ORG_ID** 
+2. **VERCEL_ORG_ID**
    - Value: `team_kWDvUbbwNQFjpb0q6yh6SIlO`
    - This is your Vercel team/organization ID
 
@@ -47,6 +47,7 @@ To complete the setup, you need to:
 ## Monitoring Deployments
 
 You can monitor deployments via:
+
 - GitHub Actions tab in the repository
 - Vercel dashboard
 - MCP commands for programmatic access
@@ -66,5 +67,6 @@ You can monitor deployments via:
 - Check `vercel.json` configuration for any issues
 
 ## Test Status
+
 - ✅ GitHub secrets configured
 - 🧪 Testing deployment workflow...

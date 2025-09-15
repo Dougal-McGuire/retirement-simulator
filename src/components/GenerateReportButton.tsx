@@ -40,12 +40,14 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
     if (!response.ok) {
       const errorData = await response.json()
       console.error('PDF generation error response:', errorData)
-      throw new Error(errorData.details || errorData.error || `PDF generation failed: ${response.statusText}`)
+      throw new Error(
+        errorData.details || errorData.error || `PDF generation failed: ${response.statusText}`
+      )
     }
 
     const blob = await response.blob()
     const filename = `retirement-report-${new Date().toISOString().split('T')[0]}.pdf`
-    
+
     // Create download link
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -84,12 +86,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <Button
-        variant={variant}
-        size={size}
-        onClick={handleGenerate}
-        disabled={isGenerating}
-      >
+      <Button variant={variant} size={size} onClick={handleGenerate} disabled={isGenerating}>
         {isGenerating ? (
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
         ) : (
@@ -98,11 +95,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
         {isGenerating ? 'Generating...' : 'Generate Report'}
       </Button>
 
-      {error && (
-        <div className="text-sm text-red-600 max-w-xs text-center">
-          {error}
-        </div>
-      )}
+      {error && <div className="text-sm text-red-600 max-w-xs text-center">{error}</div>}
     </div>
   )
 }

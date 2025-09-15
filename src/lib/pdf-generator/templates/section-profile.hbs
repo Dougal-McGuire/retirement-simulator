@@ -1,10 +1,10 @@
-<div id="profile" class="page-break">
+<div id='profile' class='page-break'>
   <h1>Personal Profile & Assumptions</h1>
-  
-  <div class="content">
-    <h2 id="profile-demographics">Demographic Information</h2>
-    
-    <table class="avoid-break" aria-label="Demographic parameters and planning horizon">
+
+  <div class='content'>
+    <h2 id='profile-demographics'>Demographic Information</h2>
+
+    <table class='avoid-break' aria-label='Demographic parameters and planning horizon'>
       <thead>
         <tr>
           <th>Parameter</th>
@@ -35,10 +35,10 @@
         </tr>
       </tbody>
     </table>
-    
-    <h2 id="profile-finances">Financial Starting Position</h2>
-    
-    <table class="avoid-break" aria-label="Financial starting position">
+
+    <h2 id='profile-finances'>Financial Starting Position</h2>
+
+    <table class='avoid-break' aria-label='Financial starting position'>
       <thead>
         <tr>
           <th>Asset/Income Category</th>
@@ -69,10 +69,10 @@
         </tr>
       </tbody>
     </table>
-    
-    <h2 id="profile-market">Market Assumptions</h2>
-    
-    <table class="avoid-break" aria-label="Market and inflation assumptions">
+
+    <h2 id='profile-market'>Market Assumptions</h2>
+
+    <table class='avoid-break' aria-label='Market and inflation assumptions'>
       <thead>
         <tr>
           <th>Parameter</th>
@@ -102,10 +102,10 @@
         </tr>
       </tbody>
     </table>
-    
-    <h3 id="profile-tax">Tax Assumptions</h3>
-    
-    <table class="avoid-break" aria-label="Tax assumptions">
+
+    <h3 id='profile-tax'>Tax Assumptions</h3>
+
+    <table class='avoid-break' aria-label='Tax assumptions'>
       <thead>
         <tr>
           <th>Tax Type</th>
@@ -121,17 +121,18 @@
         </tr>
       </tbody>
     </table>
-    
+
     {{#if taxRateAdjusted}}
-    <p class="text-muted" style="font-size: var(--small); margin-top: var(--s-2);">
-      * Tax rate was adjusted from an invalid input value. Original value appeared to be a data entry error.
-    </p>
+      <p class='text-muted' style='font-size: var(--small); margin-top: var(--s-2);'>
+        * Tax rate was adjusted from an invalid input value. Original value appeared to be a data
+        entry error.
+      </p>
     {{/if}}
-    
-    <h3 id="profile-sim">Simulation Parameters</h3>
-    
-    <div class="callout callout-info">
-      <div class="callout-title">Monte Carlo Configuration</div>
+
+    <h3 id='profile-sim'>Simulation Parameters</h3>
+
+    <div class='callout callout-info'>
+      <div class='callout-title'>Monte Carlo Configuration</div>
       <ul>
         <li>Number of simulations: {{formatNumber assumptions.mcRuns}}</li>
         <li>Random distribution: Normal (Box-Muller transform)</li>

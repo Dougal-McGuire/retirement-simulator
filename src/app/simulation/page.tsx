@@ -4,7 +4,12 @@ import { useEffect } from 'react'
 // streamlined header: no back link
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useSimulationStore, useSimulationParams, useSimulationResults, useSimulationLoading } from '@/lib/stores/simulationStore'
+import {
+  useSimulationStore,
+  useSimulationParams,
+  useSimulationResults,
+  useSimulationLoading,
+} from '@/lib/stores/simulationStore'
 import { SimulationChart } from '@/components/charts/SimulationChart'
 import { SuccessRateCard } from '@/components/charts/SuccessRateCard'
 import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
@@ -33,11 +38,7 @@ export default function SimulationPage() {
             <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Retirement Simulation</h1>
             <div className="flex items-center space-x-2 sm:space-x-3">
               <div className="hidden sm:block">
-                <GenerateReportButton 
-                  results={results}
-                  params={params}
-                  disabled={isLoading}
-                />
+                <GenerateReportButton results={results} params={params} disabled={isLoading} />
               </div>
               <Button size="sm" asChild>
                 <a href="/setup">
@@ -63,8 +64,8 @@ export default function SimulationPage() {
                 <SuccessRateCardSkeleton />
               </Card>
             ) : (
-              <SuccessRateCard 
-                successRate={results?.successRate || 0} 
+              <SuccessRateCard
+                successRate={results?.successRate || 0}
                 isLoading={isLoading}
                 simulationRuns={params.simulationRuns}
               />
@@ -73,19 +74,19 @@ export default function SimulationPage() {
             {/* Simulation Chart */}
             <Card className="bg-white border-retirement-200 shadow-soft">
               <CardHeader>
-                <CardTitle className="text-retirement-800">Asset Projections & Spending Analysis</CardTitle>
+                <CardTitle className="text-retirement-800">
+                  Asset Projections & Spending Analysis
+                </CardTitle>
                 <CardDescription className="text-retirement-600">
-                  Monte Carlo simulation showing asset levels and spending over time with 10th, 50th, and 90th percentiles
+                  Monte Carlo simulation showing asset levels and spending over time with 10th,
+                  50th, and 90th percentiles
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
                   <ChartSkeleton />
                 ) : (
-                  <SimulationChart 
-                    results={results} 
-                    isLoading={isLoading} 
-                  />
+                  <SimulationChart results={results} isLoading={isLoading} />
                 )}
               </CardContent>
             </Card>

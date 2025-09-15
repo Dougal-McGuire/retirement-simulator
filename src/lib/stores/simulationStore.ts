@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { SimulationParams, SimulationResults, SimulationStore, SavedSetup, DEFAULT_PARAMS } from '@/types'
+import {
+  SimulationParams,
+  SimulationResults,
+  SimulationStore,
+  SavedSetup,
+  DEFAULT_PARAMS,
+} from '@/types'
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 
 const STORAGE_KEY = 'retirement-simulator-params'
@@ -21,12 +27,12 @@ export const useSimulationStore = create<SimulationStore>()(
       updateParams: (partial: Partial<SimulationParams>) => {
         const currentParams = get().params
         const newParams = { ...currentParams, ...partial }
-        
-        set({ 
+
+        set({
           params: newParams,
-          error: null
+          error: null,
         })
-        
+
         // Auto-run simulation after parameter update unless suspended
         if (!get().autoRunSuspended) {
           // Small delay to debounce rapid updates
@@ -41,9 +47,9 @@ export const useSimulationStore = create<SimulationStore>()(
 
       runSimulation: async () => {
         const { params } = get()
-        
+
         set({ isLoading: true, error: null })
-        
+
         try {
           // Run simulation in a setTimeout to allow UI to update
           const results = await new Promise<SimulationResults>((resolve) => {
@@ -51,17 +57,17 @@ export const useSimulationStore = create<SimulationStore>()(
               resolve(runMonteCarloSimulation(params))
             }, 0)
           })
-          
-          set({ 
+
+          set({
             results,
             isLoading: false,
-            error: null
+            error: null,
           })
         } catch (error) {
           console.error('Simulation error:', error)
-          set({ 
+          set({
             isLoading: false,
-            error: error instanceof Error ? error.message : 'Simulation failed'
+            error: error instanceof Error ? error.message : 'Simulation failed',
           })
         }
       },
@@ -94,9 +100,9 @@ export const useSimulationStore = create<SimulationStore>()(
           const stored = localStorage.getItem(STORAGE_KEY)
           if (stored) {
             const params = JSON.parse(stored) as SimulationParams
-            set({ 
+            set({
               params,
-              error: null
+              error: null,
             })
             // Run simulation with loaded parameters
             get().runSimulation()
@@ -114,11 +120,11 @@ export const useSimulationStore = create<SimulationStore>()(
             id: Date.now().toString(),
             name,
             timestamp: Date.now(),
-            params: { ...params }
+            params: { ...params },
           }
-          
+
           const updatedSetups = [newSetup, ...savedSetups].slice(0, 10) // Keep only last 10
-          
+
           set({ savedSetups: updatedSetups })
           localStorage.setItem(SAVED_SETUPS_KEY, JSON.stringify(updatedSetups))
         } catch (error) {
@@ -129,11 +135,11 @@ export const useSimulationStore = create<SimulationStore>()(
 
       loadSetup: (id: string) => {
         const { savedSetups } = get()
-        const setup = savedSetups.find(s => s.id === id)
+        const setup = savedSetups.find((s) => s.id === id)
         if (setup) {
-          set({ 
+          set({
             params: { ...setup.params },
-            error: null
+            error: null,
           })
           // Run simulation with loaded parameters
           get().runSimulation()
@@ -143,7 +149,7 @@ export const useSimulationStore = create<SimulationStore>()(
       deleteSetup: (id: string) => {
         const { savedSetups } = get()
         try {
-          const updatedSetups = savedSetups.filter(s => s.id !== id)
+          const updatedSetups = savedSetups.filter((s) => s.id !== id)
           set({ savedSetups: updatedSetups })
           localStorage.setItem(SAVED_SETUPS_KEY, JSON.stringify(updatedSetups))
         } catch (error) {
@@ -158,17 +164,17 @@ export const useSimulationStore = create<SimulationStore>()(
       },
 
       clearResults: () => {
-        set({ 
+        set({
           results: null,
-          error: null
+          error: null,
         })
       },
     }),
     {
       name: 'retirement-simulator-store',
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         params: state.params,
-        savedSetups: state.savedSetups
+        savedSetups: state.savedSetups,
       }),
       onRehydrateStorage: () => {
         return (state) => {
@@ -185,7 +191,7 @@ export const useSimulationStore = create<SimulationStore>()(
             }
           }
         }
-      }
+      },
     }
   )
 )
@@ -206,4 +212,4 @@ export const useLoadSetup = () => useSimulationStore((state) => state.loadSetup)
 export const useDeleteSetup = () => useSimulationStore((state) => state.deleteSetup)
 export const useSavedSetups = () => useSimulationStore((state) => state.savedSetups)
 export const useClearResults = () => useSimulationStore((state) => state.clearResults)
-export const useSetAutoRunSuspended = () => useSimulationStore((state: any) => state.setAutoRunSuspended)
+export const useSetAutoRunSuspended = () => useSimulationStore((state) => state.setAutoRunSuspended)

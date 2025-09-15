@@ -3,14 +3,21 @@
 import { useState } from 'react'
 import { Settings, X, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { ParameterControls } from '@/components/forms/ParameterControls'
 
 interface ParameterSidebarProps {
   className?: string
 }
 
-export function ParameterSidebar({ className = "" }: ParameterSidebarProps) {
+export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -26,9 +33,9 @@ export function ParameterSidebar({ className = "" }: ParameterSidebarProps) {
       <div className="lg:hidden">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="fixed bottom-4 left-4 z-40 shadow-lg bg-white hover:bg-gray-50 border-2 border-gray-200"
             >
               <Settings className="h-4 w-4 mr-2" />

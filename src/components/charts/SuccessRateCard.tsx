@@ -10,7 +10,11 @@ interface SuccessRateCardProps {
   simulationRuns?: number
 }
 
-export function SuccessRateCard({ successRate, isLoading, simulationRuns = 1000 }: SuccessRateCardProps) {
+export function SuccessRateCard({
+  successRate,
+  isLoading,
+  simulationRuns = 1000,
+}: SuccessRateCardProps) {
   if (isLoading) {
     return (
       <Card className="border shadow-soft">
@@ -56,12 +60,12 @@ export function SuccessRateCard({ successRate, isLoading, simulationRuns = 1000 
   }
 
   const getSuccessRateMessage = (rate: number) => {
-    if (rate >= 95) return "Excellent! Very high probability of success"
-    if (rate >= 90) return "Very good probability of reaching your goals"
-    if (rate >= 80) return "Good probability, but consider optimizing"
-    if (rate >= 70) return "Moderate success rate, review your plan"
-    if (rate >= 50) return "Low success rate, significant adjustments needed"
-    return "Very low success rate, major plan revision required"
+    if (rate >= 95) return 'Excellent! Very high probability of success'
+    if (rate >= 90) return 'Very good probability of reaching your goals'
+    if (rate >= 80) return 'Good probability, but consider optimizing'
+    if (rate >= 70) return 'Moderate success rate, review your plan'
+    if (rate >= 50) return 'Low success rate, significant adjustments needed'
+    return 'Very low success rate, major plan revision required'
   }
 
   const getBorderClasses = (rate: number) => {
@@ -85,7 +89,7 @@ export function SuccessRateCard({ successRate, isLoading, simulationRuns = 1000 
             {getSuccessRateIcon(successRate)}
           </CardTitle>
         </CardHeader>
-        
+
         <CardContent>
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -98,20 +102,25 @@ export function SuccessRateCard({ successRate, isLoading, simulationRuns = 1000 
                   className={`text-4xl font-bold ${getSuccessRateColor(successRate)}`}
                 />
               </div>
-              <p className={`text-sm font-medium transition-colors duration-300 ${
-                successRate >= 90 ? 'text-emerald-700' : 
-                successRate >= 75 ? 'text-amber-700' : 'text-red-700'
-              }`}>
+              <p
+                className={`text-sm font-medium transition-colors duration-300 ${
+                  successRate >= 90
+                    ? 'text-emerald-700'
+                    : successRate >= 75
+                      ? 'text-amber-700'
+                      : 'text-red-700'
+                }`}
+              >
                 {getSuccessRateMessage(successRate)}
               </p>
             </div>
-            
+
             <div className="text-right text-sm text-gray-600 ml-4">
               <p className="font-medium">Based on</p>
               <p>{simulationRuns.toLocaleString()} runs</p>
             </div>
           </div>
-          
+
           {/* Progress bar */}
           <div className="mt-6">
             <div className="flex justify-between text-xs font-medium text-gray-500 mb-1">
@@ -121,17 +130,18 @@ export function SuccessRateCard({ successRate, isLoading, simulationRuns = 1000 
             </div>
             <div className="relative">
               <div className="w-full bg-gray-200 rounded h-2">
-                <div 
+                <div
                   className={`h-2 rounded ${getProgressColor(successRate)}`}
-                  style={{ 
-                    width: `${Math.max(3, Math.min(100, successRate))}%`
+                  style={{
+                    width: `${Math.max(3, Math.min(100, successRate))}%`,
                   }}
                 ></div>
               </div>
             </div>
           </div>
           <p className="mt-4 text-xs text-gray-600">
-            {successRate.toFixed(1)}% of {simulationRuns.toLocaleString()} runs do not run out of assets before end age.
+            {successRate.toFixed(1)}% of {simulationRuns.toLocaleString()} runs do not run out of
+            assets before end age.
           </p>
         </CardContent>
       </div>

@@ -8,12 +8,23 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
 import { Slider } from '@/components/ui/slider'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
-import { PersonalInfoStep, AssetsIncomeStep, MonthlyExpensesStep, AnnualExpensesStep, MarketAssumptionsStep } from '@/types'
+import {
+  PersonalInfoStep,
+  AssetsIncomeStep,
+  MonthlyExpensesStep,
+  AnnualExpensesStep,
+  MarketAssumptionsStep,
+} from '@/types'
 
 const STEPS = [
-  { id: 'personal', title: 'Personal Information', description: 'Your age and retirement timeline' },
+  {
+    id: 'personal',
+    title: 'Personal Information',
+    description: 'Your age and retirement timeline',
+  },
   { id: 'assets', title: 'Assets & Income', description: 'Current assets and savings plan' },
   { id: 'monthly', title: 'Monthly Expenses', description: 'Regular monthly costs' },
   { id: 'annual', title: 'Annual Expenses', description: 'Yearly expenses like vacations' },
@@ -24,7 +35,7 @@ export default function SetupPage() {
   const router = useRouter()
   const params = useSimulationStore((state) => state.params)
   const updateParams = useSimulationStore((state) => state.updateParams)
-  
+
   const [currentStep, setCurrentStep] = useState(0)
   const [formData, setFormData] = useState({
     personal: {
@@ -52,11 +63,14 @@ export default function SetupPage() {
 
   // Auto-save to localStorage when form data changes
   useEffect(() => {
-    localStorage.setItem('retirement-setup-progress', JSON.stringify({
-      currentStep,
-      formData,
-      timestamp: Date.now()
-    }))
+    localStorage.setItem(
+      'retirement-setup-progress',
+      JSON.stringify({
+        currentStep,
+        formData,
+        timestamp: Date.now(),
+      })
+    )
   }, [currentStep, formData])
 
   // Load saved progress on mount
@@ -106,13 +120,13 @@ export default function SetupPage() {
     }
   }
 
-  const updateFormData = (step: string, field: string, value: any) => {
-    setFormData(prev => ({
+  const updateFormData = (step: string, field: string, value: number) => {
+    setFormData((prev) => ({
       ...prev,
       [step]: {
         ...prev[step as keyof typeof prev],
         [field]: value,
-      }
+      },
     }))
   }
 
@@ -121,18 +135,14 @@ export default function SetupPage() {
       case 0: // Personal Information
         return (
           <div className="space-y-6">
-            <div>
-              <Label htmlFor="currentAge">Current Age</Label>
-              <Input
-                id="currentAge"
-                type="number"
-                value={formData.personal.currentAge}
-                onChange={(e) => updateFormData('personal', 'currentAge', parseInt(e.target.value))}
-                className="mt-2"
-              />
-              <p className="text-sm text-gray-500 mt-1">How old are you now?</p>
-            </div>
-            
+            <LabeledNumberInput
+              id="currentAge"
+              label="Current Age"
+              value={formData.personal.currentAge}
+              onChange={(v) => updateFormData('personal', 'currentAge', v)}
+              helpText="How old are you now?"
+            />
+
             <div>
               <Label htmlFor="retirementAge">Intended Retirement Age</Label>
               <div className="mt-2 px-2">
@@ -146,77 +156,59 @@ export default function SetupPage() {
                 />
                 <div className="flex justify-between text-sm text-gray-500 mt-2">
                   <span>50</span>
-                  <span className="font-semibold text-blue-600">{formData.personal.retirementAge}</span>
+                  <span className="font-semibold text-blue-600">
+                    {formData.personal.retirementAge}
+                  </span>
                   <span>70</span>
                 </div>
               </div>
               <p className="text-sm text-gray-500 mt-1">When do you want to stop working?</p>
             </div>
 
-            <div>
-              <Label htmlFor="legalRetirementAge">Legal Retirement Age</Label>
-              <Input
-                id="legalRetirementAge"
-                type="number"
-                value={formData.personal.legalRetirementAge}
-                onChange={(e) => updateFormData('personal', 'legalRetirementAge', parseInt(e.target.value))}
-                className="mt-2"
-              />
-              <p className="text-sm text-gray-500 mt-1">When can you start receiving your pension?</p>
-            </div>
+            <LabeledNumberInput
+              id="legalRetirementAge"
+              label="Legal Retirement Age"
+              value={formData.personal.legalRetirementAge}
+              onChange={(v) => updateFormData('personal', 'legalRetirementAge', v)}
+              helpText="When can you start receiving your pension?"
+            />
 
-            <div>
-              <Label htmlFor="endAge">Planning Horizon (End Age)</Label>
-              <Input
-                id="endAge"
-                type="number"
-                value={formData.personal.endAge}
-                onChange={(e) => updateFormData('personal', 'endAge', parseInt(e.target.value))}
-                className="mt-2"
-              />
-              <p className="text-sm text-gray-500 mt-1">Plan until what age? (typically 85-95)</p>
-            </div>
+            <LabeledNumberInput
+              id="endAge"
+              label="Planning Horizon (End Age)"
+              value={formData.personal.endAge}
+              onChange={(v) => updateFormData('personal', 'endAge', v)}
+              helpText="Plan until what age? (typically 85-95)"
+            />
           </div>
         )
 
       case 1: // Assets & Income
         return (
           <div className="space-y-6">
-            <div>
-              <Label htmlFor="currentAssets">Current Assets (€)</Label>
-              <Input
-                id="currentAssets"
-                type="number"
-                value={formData.assets.currentAssets}
-                onChange={(e) => updateFormData('assets', 'currentAssets', parseInt(e.target.value))}
-                className="mt-2"
-              />
-              <p className="text-sm text-gray-500 mt-1">Total value of your current investments and savings</p>
-            </div>
+            <LabeledNumberInput
+              id="currentAssets"
+              label="Current Assets (€)"
+              value={formData.assets.currentAssets}
+              onChange={(v) => updateFormData('assets', 'currentAssets', v)}
+              helpText="Total value of your current investments and savings"
+            />
 
-            <div>
-              <Label htmlFor="annualSavings">Annual Savings (€)</Label>
-              <Input
-                id="annualSavings"
-                type="number"
-                value={formData.assets.annualSavings}
-                onChange={(e) => updateFormData('assets', 'annualSavings', parseInt(e.target.value))}
-                className="mt-2"
-              />
-              <p className="text-sm text-gray-500 mt-1">How much do you save per year until retirement?</p>
-            </div>
+            <LabeledNumberInput
+              id="annualSavings"
+              label="Annual Savings (€)"
+              value={formData.assets.annualSavings}
+              onChange={(v) => updateFormData('assets', 'annualSavings', v)}
+              helpText="How much do you save per year until retirement?"
+            />
 
-            <div>
-              <Label htmlFor="monthlyPension">Monthly Pension (€)</Label>
-              <Input
-                id="monthlyPension"
-                type="number"
-                value={formData.assets.monthlyPension}
-                onChange={(e) => updateFormData('assets', 'monthlyPension', parseInt(e.target.value))}
-                className="mt-2"
-              />
-              <p className="text-sm text-gray-500 mt-1">Expected monthly pension from legal retirement age</p>
-            </div>
+            <LabeledNumberInput
+              id="monthlyPension"
+              label="Monthly Pension (€)"
+              value={formData.assets.monthlyPension}
+              onChange={(v) => updateFormData('assets', 'monthlyPension', v)}
+              helpText="Expected monthly pension from legal retirement age"
+            />
           </div>
         )
 
@@ -225,26 +217,29 @@ export default function SetupPage() {
           <div className="space-y-4">
             <p className="text-gray-600">Enter your expected monthly expenses during retirement:</p>
             {Object.entries(formData.monthly).map(([key, value]) => (
-              <div key={key}>
-                <Label htmlFor={key} className="capitalize">{key}</Label>
-                <Input
-                  id={key}
-                  type="number"
-                  value={value}
-                  onChange={(e) => updateFormData('monthly', key, parseInt(e.target.value))}
-                  className="mt-2"
-                />
-              </div>
+              <LabeledNumberInput
+                key={key}
+                id={key}
+                label={key.charAt(0).toUpperCase() + key.slice(1)}
+                value={value}
+                onChange={(v) => updateFormData('monthly', key, v)}
+              />
             ))}
             <div className="pt-4 border-t">
               <div className="flex justify-between text-lg font-semibold">
                 <span>Total Monthly:</span>
                 <span className="text-blue-600">
-                  €{Object.values(formData.monthly).reduce((sum, expense) => sum + expense, 0).toLocaleString()}
+                  €
+                  {Object.values(formData.monthly)
+                    .reduce((sum, expense) => sum + expense, 0)
+                    .toLocaleString()}
                 </span>
               </div>
               <div className="text-sm text-gray-500 mt-1">
-                Annual: €{(Object.values(formData.monthly).reduce((sum, expense) => sum + expense, 0) * 12).toLocaleString()}
+                Annual: €
+                {(
+                  Object.values(formData.monthly).reduce((sum, expense) => sum + expense, 0) * 12
+                ).toLocaleString()}
               </div>
             </div>
           </div>
@@ -255,22 +250,22 @@ export default function SetupPage() {
           <div className="space-y-4">
             <p className="text-gray-600">Enter your expected annual expenses during retirement:</p>
             {Object.entries(formData.annual).map(([key, value]) => (
-              <div key={key}>
-                <Label htmlFor={key} className="capitalize">{key.replace('Maintenance', 'Maintenance')}</Label>
-                <Input
-                  id={key}
-                  type="number"
-                  value={value}
-                  onChange={(e) => updateFormData('annual', key, parseInt(e.target.value))}
-                  className="mt-2"
-                />
-              </div>
+              <LabeledNumberInput
+                key={key}
+                id={key}
+                label={key.replace('Maintenance', 'Maintenance')}
+                value={value}
+                onChange={(v) => updateFormData('annual', key, v)}
+              />
             ))}
             <div className="pt-4 border-t">
               <div className="flex justify-between text-lg font-semibold">
                 <span>Total Annual:</span>
                 <span className="text-blue-600">
-                  €{Object.values(formData.annual).reduce((sum, expense) => sum + expense, 0).toLocaleString()}
+                  €
+                  {Object.values(formData.annual)
+                    .reduce((sum, expense) => sum + expense, 0)
+                    .toLocaleString()}
                 </span>
               </div>
             </div>
@@ -293,11 +288,15 @@ export default function SetupPage() {
                 />
                 <div className="flex justify-between text-sm text-gray-500 mt-2">
                   <span>3%</span>
-                  <span className="font-semibold text-blue-600">{(formData.market.averageROI * 100).toFixed(1)}%</span>
+                  <span className="font-semibold text-blue-600">
+                    {(formData.market.averageROI * 100).toFixed(1)}%
+                  </span>
                   <span>12%</span>
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-1">Expected average annual return on your investments</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Expected average annual return on your investments
+              </p>
             </div>
 
             <div>
@@ -305,7 +304,9 @@ export default function SetupPage() {
               <div className="mt-2 px-2">
                 <Slider
                   value={[formData.market.averageInflation * 100]}
-                  onValueChange={([value]) => updateFormData('market', 'averageInflation', value / 100)}
+                  onValueChange={([value]) =>
+                    updateFormData('market', 'averageInflation', value / 100)
+                  }
                   min={1}
                   max={6}
                   step={0.1}
@@ -313,7 +314,9 @@ export default function SetupPage() {
                 />
                 <div className="flex justify-between text-sm text-gray-500 mt-2">
                   <span>1%</span>
-                  <span className="font-semibold text-blue-600">{(formData.market.averageInflation * 100).toFixed(1)}%</span>
+                  <span className="font-semibold text-blue-600">
+                    {(formData.market.averageInflation * 100).toFixed(1)}%
+                  </span>
                   <span>6%</span>
                 </div>
               </div>
@@ -333,11 +336,15 @@ export default function SetupPage() {
                 />
                 <div className="flex justify-between text-sm text-gray-500 mt-2">
                   <span>100</span>
-                  <span className="font-semibold text-blue-600">{formData.market.simulationRuns.toLocaleString()}</span>
+                  <span className="font-semibold text-blue-600">
+                    {formData.market.simulationRuns.toLocaleString()}
+                  </span>
                   <span>5,000</span>
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-1">More runs = more accurate results but slower computation</p>
+              <p className="text-sm text-gray-500 mt-1">
+                More runs = more accurate results but slower computation
+              </p>
             </div>
           </div>
         )
@@ -373,7 +380,7 @@ export default function SetupPage() {
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
+            <div
               className="bg-blue-600 h-2 rounded-full transition-all duration-300"
               style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
             ></div>
@@ -390,30 +397,27 @@ export default function SetupPage() {
                     onClick={() => handleStepClick(index)}
                     disabled={index > currentStep}
                     className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
-                      index < currentStep 
-                        ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 cursor-pointer' 
+                      index < currentStep
+                        ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 cursor-pointer'
                         : index === currentStep
-                        ? 'border-blue-600 text-blue-600 bg-blue-50'
-                        : 'border-gray-300 text-gray-300 cursor-not-allowed'
+                          ? 'border-blue-600 text-blue-600 bg-blue-50'
+                          : 'border-gray-300 text-gray-300 cursor-not-allowed'
                     } ${index <= currentStep ? 'hover:scale-105' : ''}`}
                   >
-                    {index < currentStep ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <span>{index + 1}</span>
-                    )}
+                    {index < currentStep ? <Check className="h-5 w-5" /> : <span>{index + 1}</span>}
                   </button>
                   <div className="mt-2 text-center">
-                    <div className={`text-xs font-medium ${
-                      index <= currentStep ? 'text-gray-900' : 'text-gray-400'
-                    }`}>
+                    <div
+                      className={`text-xs font-medium ${
+                        index <= currentStep ? 'text-gray-900' : 'text-gray-400'
+                      }`}
+                    >
                       {step.title.split(' ')[0]}
                     </div>
-                    
                   </div>
                 </div>
                 {index < STEPS.length - 1 && (
-                  <div 
+                  <div
                     className={`w-16 h-0.5 ml-2 transition-colors duration-300 ${
                       index < currentStep ? 'bg-blue-600' : 'bg-gray-300'
                     }`}
@@ -430,9 +434,7 @@ export default function SetupPage() {
             <CardTitle>{STEPS[currentStep].title}</CardTitle>
             <CardDescription>{STEPS[currentStep].description}</CardDescription>
           </CardHeader>
-          <CardContent>
-            {renderStepContent()}
-          </CardContent>
+          <CardContent>{renderStepContent()}</CardContent>
         </Card>
 
         {/* Navigation Buttons */}
@@ -447,10 +449,7 @@ export default function SetupPage() {
             <span>Back</span>
           </Button>
 
-          <Button
-            onClick={handleNext}
-            className="flex items-center space-x-2"
-          >
+          <Button onClick={handleNext} className="flex items-center space-x-2">
             <span>{currentStep === STEPS.length - 1 ? 'Complete Setup' : 'Next'}</span>
             {currentStep === STEPS.length - 1 ? (
               <Check className="h-4 w-4" />

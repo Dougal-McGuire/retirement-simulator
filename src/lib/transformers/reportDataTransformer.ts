@@ -11,9 +11,9 @@ export function transformToReportData(
   const milestones = results.ages.map((age, index) => ({
     age,
     p10: results.assetPercentiles.p10[index] || 0,
-    p20: results.assetPercentiles.p20?.[index] || 0,
+    p20: results.assetPercentiles.p20[index] || 0,
     p50: results.assetPercentiles.p50[index] || 0,
-    p80: results.assetPercentiles.p80?.[index] || 0,
+    p80: results.assetPercentiles.p80[index] || 0,
     p90: results.assetPercentiles.p90[index] || 0,
   }))
 
@@ -41,31 +41,36 @@ export function transformToReportData(
   // Plan Health Score (v1.1): weighted by config
   const weights = defaultPdfConfig.score_weights
   const netAnnualSpendIfRetiredNow = Math.max(0, totalYearlyExpenses - params.monthlyPension * 12)
-  const withdrawalRateNow = params.currentAssets > 0 ? netAnnualSpendIfRetiredNow / params.currentAssets : 1
+  const withdrawalRateNow =
+    params.currentAssets > 0 ? netAnnualSpendIfRetiredNow / params.currentAssets : 1
   const spendPenaltyPerPoint = 2500 // -25 points per +1pp above 4%
-  const spendingScore = Math.max(0, Math.min(100, 100 - Math.max(0, (withdrawalRateNow - 0.04)) * spendPenaltyPerPoint))
+  const spendingScore = Math.max(
+    0,
+    Math.min(100, 100 - Math.max(0, withdrawalRateNow - 0.04) * spendPenaltyPerPoint)
+  )
   const liquidityScore = 100 // placeholder until explicit liquidity coverage metric is added
-  const planHealthScoreRaw = (
+  const planHealthScoreRaw =
     weights.success_pct * results.successRate +
     weights.spend_rate * spendingScore +
     weights.liquidity * liquidityScore
-  )
   const planHealthScore = Math.round(planHealthScoreRaw)
-  const planHealthLabel = planHealthScore >= defaultPdfConfig.label_bands.strong[0]
-    ? 'Strong'
-    : planHealthScore >= defaultPdfConfig.label_bands.moderate[0]
-    ? 'Moderate'
-    : 'Needs Attention'
+  const planHealthLabel =
+    planHealthScore >= defaultPdfConfig.label_bands.strong[0]
+      ? 'Strong'
+      : planHealthScore >= defaultPdfConfig.label_bands.moderate[0]
+        ? 'Moderate'
+        : 'Needs Attention'
 
   // Why clause for plan health
   const whyBits: string[] = []
   if (spendingScore >= 85) whyBits.push('solid savings rate')
-  if (yearsInBridge <= 6 && bridgeCashNeedEUR <= params.currentAssets * 0.3) whyBits.push('moderate bridge drawdown')
+  if (yearsInBridge <= 6 && bridgeCashNeedEUR <= params.currentAssets * 0.3)
+    whyBits.push('moderate bridge drawdown')
   if (results.successRate >= 80) whyBits.push('high success probability')
   const planHealthWhy = whyBits.length ? whyBits.join(' + ') : 'balanced assumptions'
 
   const topRecs = generateRecommendations(params, results)
-  const topActions = topRecs.slice(0, 2).map(r => r.title)
+  const topActions = topRecs.slice(0, 2).map((r) => r.title)
 
   // Sensitivity-based uplift estimates (lightweight)
   function withModifiedParams(mod: Partial<SimulationParams>): SimulationResults {
@@ -81,10 +86,9 @@ export function transformToReportData(
     const baseSpendingScore = spendingScore
     // Spending score might change for savings tweaks at retirement; we keep it constant for simplicity
     const altSpendingScore = baseSpendingScore
-    const delta = (
+    const delta =
       weights.success_pct * (altSuccess - baseSuccess) +
       weights.spend_rate * (altSpendingScore - baseSpendingScore)
-    )
     return Math.round(delta)
   }
 
@@ -102,8 +106,14 @@ export function transformToReportData(
         upliftMax: deltaScoreFrom(baseResults, altHigh),
       })
     } else if (/Optimize Investment Mix|Asset Allocation|Investment/i.test(rec.title)) {
-      const altLow = withModifiedParams({ averageROI: params.averageROI + 0.0075, roiVolatility: params.roiVolatility + 0.01 })
-      const altHigh = withModifiedParams({ averageROI: params.averageROI + 0.0125, roiVolatility: params.roiVolatility + 0.02 })
+      const altLow = withModifiedParams({
+        averageROI: params.averageROI + 0.0075,
+        roiVolatility: params.roiVolatility + 0.01,
+      })
+      const altHigh = withModifiedParams({
+        averageROI: params.averageROI + 0.0125,
+        roiVolatility: params.roiVolatility + 0.02,
+      })
       uplifts.push({
         title: rec.title,
         upliftMin: deltaScoreFrom(baseResults, altLow),
@@ -206,7 +216,7 @@ function generateRecommendations(
   results: SimulationResults
 ): Recommendation[] {
   const recommendations: Recommendation[] = []
-  
+
   // Success rate-based recommendations
   if (results.successRate < 70) {
     recommendations.push({
@@ -215,7 +225,7 @@ function generateRecommendations(
       body: 'Your current success rate indicates potential challenges. Consider increasing your annual savings by 10-20% to improve retirement security.',
       impact: 'High',
     })
-    
+
     recommendations.push({
       title: 'Delay Retirement',
       category: 'Timing',
@@ -223,7 +233,7 @@ function generateRecommendations(
       impact: 'High',
     })
   }
-  
+
   if (results.successRate >= 70 && results.successRate < 85) {
     recommendations.push({
       title: 'Optimize Investment Mix',
@@ -232,12 +242,12 @@ function generateRecommendations(
       impact: 'Medium',
     })
   }
-  
+
   // Expense-based recommendations
   const totalMonthlyExpenses = Object.values(params.monthlyExpenses).reduce((a, b) => a + b, 0)
   const totalAnnualExpenses = Object.values(params.annualExpenses).reduce((a, b) => a + b, 0)
   const totalYearlyExpenses = totalMonthlyExpenses * 12 + totalAnnualExpenses
-  
+
   if (totalYearlyExpenses > params.annualSavings * 3) {
     recommendations.push({
       title: 'Review Spending Plan',
@@ -246,7 +256,7 @@ function generateRecommendations(
       impact: 'Medium',
     })
   }
-  
+
   // Tax optimization (always relevant)
   recommendations.push({
     title: 'Maximize Tax-Deferred Contributions',
@@ -254,7 +264,7 @@ function generateRecommendations(
     body: 'Ensure you are taking full advantage of tax-advantaged retirement accounts to reduce current tax liability and enhance long-term growth.',
     impact: params.capitalGainsTax > 25 ? 'High' : 'Medium',
   })
-  
+
   // Risk management
   if (params.roiVolatility > 0.18) {
     recommendations.push({
@@ -264,7 +274,7 @@ function generateRecommendations(
       impact: 'Medium',
     })
   }
-  
+
   // Insurance recommendation
   recommendations.push({
     title: 'Review Insurance Coverage',
@@ -272,7 +282,7 @@ function generateRecommendations(
     body: 'Evaluate current insurance policies including health, long-term care, and life insurance to ensure adequate protection.',
     impact: 'Low',
   })
-  
+
   // Limit to 6 most relevant recommendations
   return recommendations.slice(0, 6)
 }

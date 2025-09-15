@@ -1,21 +1,27 @@
-<div id="spending" class="page-break">
+<div id='spending' class='page-break'>
   <h1>Spending Analysis</h1>
-  
-  <div class="content">
-    <p>Your spending requirements form the foundation of retirement planning. The following analysis breaks down your expected expenses and projects their evolution over time.</p>
-    
-    <h2 id="spending-breakdown">Annual Spending Breakdown</h2>
-    
-    <figure class="avoid-break" data-fig="spending-breakdown" aria-label="Annual spending by category">
+
+  <div class='content'>
+    <p>Your spending requirements form the foundation of retirement planning. The following analysis
+      breaks down your expected expenses and projects their evolution over time.</p>
+
+    <h2 id='spending-breakdown'>Annual Spending Breakdown</h2>
+
+    <figure
+      class='avoid-break'
+      data-fig='spending-breakdown'
+      aria-label='Annual spending by category'
+    >
       {{{spendingChart}}}
-      <figcaption>Figure {{figureNumber 2}}. Spending mix highlights where adjustments have most impact.</figcaption>
+      <figcaption>Figure
+        {{figureNumber 2}}. Spending mix highlights where adjustments have most impact.</figcaption>
     </figure>
-    
-    <h2 id="spending-details">Detailed Expense Categories</h2>
-    
-    <h3 id="spending-monthly">Monthly Recurring Expenses</h3>
-    
-    <table class="avoid-break">
+
+    <h2 id='spending-details'>Detailed Expense Categories</h2>
+
+    <h3 id='spending-monthly'>Monthly Recurring Expenses</h3>
+
+    <table class='avoid-break'>
       <thead>
         <tr>
           <th>Category</th>
@@ -57,10 +63,10 @@
         </tr>
       </tbody>
     </table>
-    
-    <h3 id="spending-annual">Annual Expenses</h3>
-    
-    <table class="avoid-break">
+
+    <h3 id='spending-annual'>Annual Expenses</h3>
+
+    <table class='avoid-break'>
       <thead>
         <tr>
           <th>Category</th>
@@ -86,26 +92,31 @@
         </tr>
       </tbody>
     </table>
-    
-    <h2 id="spending-inflation">Inflation Impact</h2>
-    
-    <div class="callout callout-warning">
-      <div class="callout-title">Cost of Living Adjustments</div>
+
+    <h2 id='spending-inflation'>Inflation Impact</h2>
+
+    <div class='callout callout-warning'>
+      <div class='callout-title'>Cost of Living Adjustments</div>
       <ul>
         <li>Expected inflation rate: {{formatPercent assumptions.inflationMean 1}} annually</li>
         <li>Today's annual spending: {{formatEUR (getTotalAnnualSpending spending)}}</li>
-        <li>Projected spending in 10 years: {{formatEUR (multiply (getTotalAnnualSpending spending) 1.28)}}</li>
-        <li>Projected spending in 20 years: {{formatEUR (multiply (getTotalAnnualSpending spending) 1.64)}}</li>
+        <li>Projected spending in 10 years:
+          {{formatEUR (multiply (getTotalAnnualSpending spending) 1.28)}}</li>
+        <li>Projected spending in 20 years:
+          {{formatEUR (multiply (getTotalAnnualSpending spending) 1.64)}}</li>
       </ul>
     </div>
-    
-    <h2 id="spending-sustainability">Spending Sustainability</h2>
-    
+
+    <h2 id='spending-sustainability'>Spending Sustainability</h2>
+
     <p>Your portfolio must generate sufficient returns and withdrawals to cover:</p>
-    
+
     <ul>
-      <li><strong>Pre-pension period (Ages {{person.retireAge}}–{{subtract person.pensionAge 1}}):</strong> Full spending from portfolio</li>
-      <li><strong>Pension period (Ages {{person.pensionAge}}–{{person.horizonAge}}):</strong> Spending minus pension income</li>
+      <li><strong>Pre-pension period (Ages
+          {{person.retireAge}}–{{subtract person.pensionAge 1}}):</strong>
+        Full spending from portfolio</li>
+      <li><strong>Pension period (Ages {{person.pensionAge}}–{{person.horizonAge}}):</strong>
+        Spending minus pension income</li>
     </ul>
   </div>
 </div>
