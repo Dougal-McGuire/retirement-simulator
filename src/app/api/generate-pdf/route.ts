@@ -9,9 +9,9 @@ import { renderLineChart, renderBarChart, type ChartSeries } from '@/lib/pdf-gen
 import * as formatters from '@/lib/pdf-generator/utils/formatters'
 
 // Dynamic import for chromium to avoid issues in dev
-let chromium: typeof import('@sparticuz/chromium') | null = null
+let chromium: any = null
 if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
-  const ch = require('@sparticuz/chromium') as typeof import('@sparticuz/chromium')
+  const ch = require('@sparticuz/chromium') as any
   // Set the headless mode for chromium
   ch.setHeadlessMode = true
   // Set graphics mode to false for serverless
