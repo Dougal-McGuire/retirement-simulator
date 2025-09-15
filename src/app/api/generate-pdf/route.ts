@@ -11,11 +11,12 @@ import * as formatters from '@/lib/pdf-generator/utils/formatters'
 // Dynamic import for chromium to avoid issues in dev
 let chromium: typeof import('@sparticuz/chromium') | null = null
 if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
-  chromium = require('@sparticuz/chromium')
+  const ch = require('@sparticuz/chromium') as typeof import('@sparticuz/chromium')
   // Set the headless mode for chromium
-  chromium.setHeadlessMode = true
+  ch.setHeadlessMode = true
   // Set graphics mode to false for serverless
-  chromium.setGraphicsMode = false
+  ch.setGraphicsMode = false
+  chromium = ch
 }
 
 export const runtime = 'nodejs'
