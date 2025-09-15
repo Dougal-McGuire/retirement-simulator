@@ -73,7 +73,7 @@ async function generateCharts(data: ReportData) {
     },
     {
       name: 'P20',
-      values: data.projections.milestones.map((m) => ({ x: m.age, y: m.p20 })),
+      values: data.projections.milestones.map((m) => ({ x: m.age, y: m.p20 ?? m.p50 })),
       color: '#f59e0b',
     },
     {
@@ -82,7 +82,7 @@ async function generateCharts(data: ReportData) {
     },
     {
       name: 'P80',
-      values: data.projections.milestones.map((m) => ({ x: m.age, y: m.p80 })),
+      values: data.projections.milestones.map((m) => ({ x: m.age, y: m.p80 ?? m.p50 })),
       color: '#34d399',
     },
     {
@@ -97,7 +97,7 @@ async function generateCharts(data: ReportData) {
     xTitle: 'Age (Years)',
     yTitle: 'Portfolio Value (€)',
     band: {
-      values: data.projections.milestones.map((m) => ({ x: m.age, yTop: m.p80, yBottom: m.p20 })),
+      values: data.projections.milestones.map((m) => ({ x: m.age, yTop: m.p80 ?? m.p50, yBottom: m.p20 ?? m.p50 })),
       color: '#60a5fa',
       opacity: 0.18,
     },
