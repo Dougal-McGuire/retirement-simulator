@@ -2,6 +2,10 @@
   "name": "retirement-simulator",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:clean": "lsof -ti:3000 | xargs kill -9 2>/dev/null || true && next dev --turbopack",
@@ -62,5 +66,6 @@
     "tailwindcss": "^4",
     "ts-jest": "^29.4.1",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "pnpm@10.15.0+sha512.486ebc259d3e999a4e8691ce03b5cac4a71cbeca39372a9b762cb500cfdf0873e2cb16abe3d951b1ee2cf012503f027b98b6584e4df22524e0c7450d9ec7aa7b"
 }
