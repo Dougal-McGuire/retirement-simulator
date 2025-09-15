@@ -16,6 +16,41 @@ export function boxMullerTransform(mean: number, stdDev: number): number {
 }
 
 /**
+ * Sample a standard normal random variate using Box-Muller.
+ */
+export function sampleStandardNormal(): number {
+  let u = 0,
+    v = 0
+  while (u === 0) u = Math.random()
+  while (v === 0) v = Math.random()
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
+}
+
+/**
+ * Compute (mu, sigma) of a lognormal factor X = 1 + r given arithmetic mean m = E[r] and stdev s = SD[r].
+ * For lognormal Y ~ logN(mu, sigma^2): E[Y] = exp(mu + sigma^2/2), Var[Y] = (exp(sigma^2)-1)exp(2mu+sigma^2).
+ * Here Y = 1 + r with E[Y] = 1 + m and SD[Y] = s.
+ */
+export function lognormalParamsFromArithmetic(mean: number, stdev: number): { mu: number; sigma: number } {
+  const A = 1 + mean
+  const variance = stdev * stdev
+  const sigma2 = Math.log(1 + (variance / (A * A)))
+  const sigma = Math.sqrt(Math.max(0, sigma2))
+  const mu = Math.log(A) - 0.5 * sigma2
+  return { mu, sigma }
+}
+
+/**
+ * Sample a multiplicative lognormal factor given arithmetic mean and stdev of r where X = 1 + r.
+ * Returns X such that r = X - 1.
+ */
+export function sampleLognormalFactorFromArithmetic(mean: number, stdev: number): number {
+  const { mu, sigma } = lognormalParamsFromArithmetic(mean, stdev)
+  const z = sampleStandardNormal()
+  return Math.exp(mu + sigma * z)
+}
+
+/**
  * Calculate percentiles from a sorted array
  * @param arr - Array of numbers
  * @param percentile - Percentile to calculate (0-100)
@@ -103,11 +138,13 @@ function runSingleSimulation(params: SimulationParams): {
   for (let age = params.currentAge; age <= params.endAge; age++) {
     if (age < params.retirementAge) {
       // Accumulation phase (working years)
-      const roi = Math.max(-1, boxMullerTransform(params.averageROI, params.roiVolatility)) // Clamp at -100%
+      const roiFactor = sampleLognormalFactorFromArithmetic(
+        params.averageROI,
+        params.roiVolatility
+      )
 
-      // During accumulation, we assume tax-deferred growth (like 401k/IRA)
-      // or reinvestment that doesn't trigger immediate capital gains
-      currentAssets = currentAssets * (1 + roi) + params.annualSavings
+      // During accumulation, assume reinvestment without realizing gains
+      currentAssets = currentAssets * roiFactor + params.annualSavings
       costBasis += params.annualSavings // Track additional investments
       spendingHistory.push(0) // No spending during accumulation for visualization
     } else {
@@ -123,46 +160,44 @@ function runSingleSimulation(params: SimulationParams): {
       // Calculate how much we need to withdraw from investments
       const netNeeded = totalAnnualExpenseThisYear - annualIncome
 
-      if (netNeeded > 0) {
-        // We need to sell investments to cover expenses
-        // Apply investment growth first
-        const roi = Math.max(-1, boxMullerTransform(params.averageROI, params.roiVolatility)) // Clamp at -100%
-        currentAssets = Math.max(0, currentAssets * (1 + roi))
+      // Apply investment growth first
+      const roiFactor = sampleLognormalFactorFromArithmetic(
+        params.averageROI,
+        params.roiVolatility
+      )
+      currentAssets = Math.max(0, currentAssets * roiFactor)
 
-        // Check if we have enough assets
+      if (netNeeded > 0) {
+        // We need to sell investments to cover expenses, with tax gross-up on gains portion
         if (currentAssets <= 0) {
           runFailed = true
           currentAssets = 0
         } else {
-          // Calculate proper capital gains tax based on cost basis
-          const costBasisRatio = Math.min(1, costBasis / currentAssets)
-          const principalPortion = netNeeded * costBasisRatio
-          const gainsPortion = netNeeded * (1 - costBasisRatio)
-
-          // Tax only applies to gains portion
-          const capitalGainsTax = Math.max(0, gainsPortion * (params.capitalGainsTax / 100))
-
-          // Total withdrawal needed including tax
-          const totalWithdrawal = netNeeded + capitalGainsTax
-
-          // Update cost basis proportionally
-          if (currentAssets > 0) {
-            const withdrawalRatio = Math.min(1, totalWithdrawal / currentAssets)
-            costBasis = Math.max(0, costBasis * (1 - withdrawalRatio))
+          const t = Math.max(0, params.capitalGainsTax / 100)
+          const totalWithdrawal = computeGrossWithdrawal(currentAssets, costBasis, netNeeded, t)
+          const withdrawal = Math.min(totalWithdrawal, currentAssets)
+          const withdrawalRatio = withdrawal > 0 && currentAssets > 0 ? withdrawal / currentAssets : 0
+          costBasis = Math.max(0, costBasis * (1 - withdrawalRatio))
+          currentAssets = Math.max(0, currentAssets - withdrawal)
+          if (currentAssets <= 0) {
+            runFailed = true
+            currentAssets = 0
           }
-
-          currentAssets = Math.max(0, currentAssets - totalWithdrawal)
         }
       } else {
-        // No withdrawal needed, just apply investment growth
-        const roi = Math.max(-1, boxMullerTransform(params.averageROI, params.roiVolatility)) // Clamp at -100%
-        currentAssets = Math.max(0, currentAssets * (1 + roi))
+        // Surplus income: reinvest surplus and increase cost basis accordingly
+        const surplus = -netNeeded
+        currentAssets = currentAssets + surplus
+        costBasis += surplus
       }
 
       // Apply inflation to expenses for next year
-      const inflation = boxMullerTransform(params.averageInflation, params.inflationVolatility)
-      currentMonthlyExpense *= 1 + inflation
-      currentAnnualExpense *= 1 + inflation
+      const inflationFactor = sampleLognormalFactorFromArithmetic(
+        params.averageInflation,
+        params.inflationVolatility
+      )
+      currentMonthlyExpense *= inflationFactor
+      currentAnnualExpense *= inflationFactor
 
       // Store total monthly-equivalent spending (includes annualized annual expenses)
       const monthlyEquivalentSpending = currentMonthlyExpense + currentAnnualExpense / 12
@@ -227,6 +262,30 @@ export function runMonteCarloSimulation(params: SimulationParams): SimulationRes
     successRate,
     params,
   }
+}
+
+/**
+ * Compute the gross withdrawal needed to cover a net cash need when capital gains are taxed.
+ * - currentAssets: portfolio value after growth
+ * - costBasis: remaining cost basis before withdrawal
+ * - netNeeded: net cash requirement (expenses - income), non-negative
+ * - taxRate: capital gains tax rate in decimal, e.g., 0.25
+ *
+ * Returns the gross amount to withdraw so that after tax on the gains portion,
+ * the net equals netNeeded. Caps at Infinity if denom <= 0; caller should min with currentAssets.
+ */
+export function computeGrossWithdrawal(
+  currentAssets: number,
+  costBasis: number,
+  netNeeded: number,
+  taxRate: number
+): number {
+  if (netNeeded <= 0 || currentAssets <= 0) return 0
+  const basisRatio = Math.min(1, Math.max(0, costBasis / currentAssets))
+  const gainsRatio = 1 - basisRatio
+  const denom = 1 - taxRate * gainsRatio
+  if (denom <= 0) return Number.POSITIVE_INFINITY
+  return netNeeded / denom
 }
 
 /**
