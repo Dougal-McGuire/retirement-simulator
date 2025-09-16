@@ -18,6 +18,11 @@ export const metadata: Metadata = {
   title: 'Retirement Simulator',
   description:
     'Monte Carlo retirement planning simulator with comprehensive financial analysis and professional PDF reports',
+  icons: {
+    icon: '/piggy.svg',
+    shortcut: '/piggy.svg',
+    apple: '/piggy.svg',
+  },
 }
 
 export default function RootLayout({

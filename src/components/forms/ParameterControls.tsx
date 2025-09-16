@@ -18,6 +18,9 @@ import {
   Zap,
   Shield,
   TrendingUp,
+  Activity,
+  ThermometerSun,
+  Wind,
 } from 'lucide-react'
 import {
   Dialog,
@@ -51,47 +54,80 @@ import { DEFAULT_PARAMS, SimulationParams } from '@/types'
 import { formatNumber } from '@/lib/utils'
 
 // Preset configurations
-const PRESET_CONFIGS = {
-  conservative: {
-    name: 'Conservative',
-    description: 'Lower risk, stable returns',
+const INVESTMENT_PRESETS = [
+  {
+    key: 'defensive',
+    name: 'Defensive 60/40',
+    description: 'Global 60/40 portfolio, 1994-2024 avg ~5.5% nominal',
     icon: Shield,
-    color: 'bg-green-100 text-green-800 border-green-200',
-    params: {
-      averageROI: 0.05,
-      roiVolatility: 0.08,
-      averageInflation: 0.025,
-      inflationVolatility: 0.008,
+    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    values: {
+      averageROI: 0.055,
+      roiVolatility: 0.1,
       simulationRuns: 5000,
     },
   },
-  balanced: {
-    name: 'Balanced',
-    description: 'Moderate risk, steady growth',
+  {
+    key: 'historical',
+    name: 'Historical Average',
+    description: 'MSCI World rolling 30-year average ~7.5%',
     icon: TrendingUp,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
-    params: {
-      averageROI: 0.07,
+    values: {
+      averageROI: 0.075,
       roiVolatility: 0.15,
-      averageInflation: 0.03,
-      inflationVolatility: 0.01,
-      simulationRuns: 5000,
+      simulationRuns: 6000,
     },
   },
-  aggressive: {
-    name: 'Aggressive',
-    description: 'High risk, max growth',
+  {
+    key: 'growth',
+    name: 'High Growth',
+    description: 'US equities bull phase average ~9.5%',
     icon: Zap,
     color: 'bg-orange-100 text-orange-800 border-orange-200',
-    params: {
-      averageROI: 0.09,
+    values: {
+      averageROI: 0.095,
       roiVolatility: 0.2,
-      averageInflation: 0.035,
-      inflationVolatility: 0.012,
       simulationRuns: 7500,
     },
   },
-}
+] as const
+
+const INFLATION_PRESETS = [
+  {
+    key: 'low',
+    name: 'Low Inflation',
+    description: 'Developed markets 1990s avg ~1.8%',
+    icon: ThermometerSun,
+    color: 'bg-sky-100 text-sky-800 border-sky-200',
+    values: {
+      averageInflation: 0.018,
+      inflationVolatility: 0.005,
+    },
+  },
+  {
+    key: 'target',
+    name: 'Central Bank Target',
+    description: '2-3% target range with mild swings',
+    icon: Activity,
+    color: 'bg-amber-100 text-amber-800 border-amber-200',
+    values: {
+      averageInflation: 0.025,
+      inflationVolatility: 0.008,
+    },
+  },
+  {
+    key: 'elevated',
+    name: 'Elevated Prices',
+    description: 'Post-2020 spikes ~3.5% average',
+    icon: Wind,
+    color: 'bg-rose-100 text-rose-800 border-rose-200',
+    values: {
+      averageInflation: 0.035,
+      inflationVolatility: 0.012,
+    },
+  },
+] as const
 
 const sanitizeNumberInput = (rawValue: string, fallback: number): number => {
   if (rawValue === '') return fallback
@@ -172,8 +208,7 @@ function CollapsibleSection({
 export function ParameterControls() {
   const [saveDialogOpen, setSaveDialogOpen] = React.useState(false)
   const [setupName, setSetupName] = React.useState('')
-  const [selectedSetupId, setSelectedSetupId] = React.useState<string>('')
-
+  const [selectedSetupId, setSelectedSetupId] = React.useState('')
   const params = useSimulationParams()
   const updateParams = useUpdateParams()
   const setAutoRunSuspended = useSetAutoRunSuspended()
@@ -226,9 +261,25 @@ export function ParameterControls() {
     updateParams(DEFAULT_PARAMS)
   }
 
-  const handlePresetLoad = (presetKey: keyof typeof PRESET_CONFIGS) => {
-    const preset = PRESET_CONFIGS[presetKey]
-    updateParams(preset.params)
+  const applyInvestmentPreset = (presetKey: (typeof INVESTMENT_PRESETS)[number]['key']) => {
+    const preset = INVESTMENT_PRESETS.find((item) => item.key === presetKey)
+    if (!preset) return
+    suspendAndDebounceResume()
+    updateParams({
+      averageROI: preset.values.averageROI,
+      roiVolatility: preset.values.roiVolatility,
+      simulationRuns: preset.values.simulationRuns ?? params.simulationRuns,
+    })
+  }
+
+  const applyInflationPreset = (presetKey: (typeof INFLATION_PRESETS)[number]['key']) => {
+    const preset = INFLATION_PRESETS.find((item) => item.key === presetKey)
+    if (!preset) return
+    suspendAndDebounceResume()
+    updateParams({
+      averageInflation: preset.values.averageInflation,
+      inflationVolatility: preset.values.inflationVolatility,
+    })
   }
 
   const handleSaveSetup = () => {
@@ -246,8 +297,7 @@ export function ParameterControls() {
     }
   }
 
-  const handleDeleteSetup = (setupId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleDeleteSetup = (setupId: string) => {
     deleteSetup(setupId)
     if (selectedSetupId === setupId) {
       setSelectedSetupId('')
@@ -260,34 +310,74 @@ export function ParameterControls() {
         <CardTitle className="text-lg">Simulation Parameters</CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Quick Presets */}
-        <div className="mb-6">
-          <h4 className="text-sm font-semibold mb-3">Quick Presets</h4>
-          <div className="grid grid-cols-1 gap-2">
-            {Object.entries(PRESET_CONFIGS).map(([key, preset]) => {
-              const IconComponent = preset.icon
-              return (
-                <Button
-                  key={key}
-                  variant="outline"
-                  onClick={() => handlePresetLoad(key as keyof typeof PRESET_CONFIGS)}
-                  className="h-auto p-2 justify-start hover:bg-gray-50"
-                >
-                  <div className="flex items-center space-x-2 w-full min-w-0">
-                    <div className={`p-1.5 rounded-full shrink-0 ${preset.color}`}>
-                      <IconComponent className="h-3 w-3" />
+        {/* Scenario Presets */}
+        <div className="mb-6 space-y-5">
+          <div>
+            <h4 className="text-sm font-semibold mb-1">Investment Performance</h4>
+            <p className="text-xs text-gray-500 mb-3">Based on rolling 30-year averages for diversified developed-market portfolios.</p>
+            <div className="grid grid-cols-1 gap-2">
+              {INVESTMENT_PRESETS.map((preset) => {
+                const IconComponent = preset.icon
+                return (
+                  <Button
+                    key={preset.key}
+                    variant="outline"
+                    onClick={() => applyInvestmentPreset(preset.key)}
+                    className="h-auto p-2 justify-start hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-2 w-full min-w-0">
+                      <div className={`p-1.5 rounded-full shrink-0 ${preset.color}`}>
+                        <IconComponent className="h-3 w-3" />
+                      </div>
+                      <div className="text-left flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{preset.name}</div>
+                        <div className="text-xs text-gray-500 truncate">{preset.description}</div>
+                      </div>
+                      <div className="flex flex-col items-end shrink-0 text-xs text-gray-600">
+                        <span className="font-semibold text-gray-800">
+                          {(preset.values.averageROI * 100).toFixed(1)}%
+                        </span>
+                        <span>σ {(preset.values.roiVolatility * 100).toFixed(1)}%</span>
+                      </div>
                     </div>
-                    <div className="text-left flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{preset.name}</div>
-                      <div className="text-xs text-gray-500 truncate">{preset.description}</div>
+                  </Button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold mb-1">Inflation Expectations</h4>
+            <p className="text-xs text-gray-500 mb-3">Anchored to recent developed-market CPI trends.</p>
+            <div className="grid grid-cols-1 gap-2">
+              {INFLATION_PRESETS.map((preset) => {
+                const IconComponent = preset.icon
+                return (
+                  <Button
+                    key={preset.key}
+                    variant="outline"
+                    onClick={() => applyInflationPreset(preset.key)}
+                    className="h-auto p-2 justify-start hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-2 w-full min-w-0">
+                      <div className={`p-1.5 rounded-full shrink-0 ${preset.color}`}>
+                        <IconComponent className="h-3 w-3" />
+                      </div>
+                      <div className="text-left flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{preset.name}</div>
+                        <div className="text-xs text-gray-500 truncate">{preset.description}</div>
+                      </div>
+                      <div className="flex flex-col items-end shrink-0 text-xs text-gray-600">
+                        <span className="font-semibold text-gray-800">
+                          {(preset.values.averageInflation * 100).toFixed(1)}%
+                        </span>
+                        <span>σ {(preset.values.inflationVolatility * 100).toFixed(1)}%</span>
+                      </div>
                     </div>
-                    <Badge variant="secondary" className="text-xs shrink-0 whitespace-nowrap">
-                      {(preset.params.averageROI * 100).toFixed(1)}%
-                    </Badge>
-                  </div>
-                </Button>
-              )
-            })}
+                  </Button>
+                )
+              })}
+            </div>
           </div>
         </div>
 
@@ -775,7 +865,7 @@ export function ParameterControls() {
               <div className="flex gap-2 items-center">
                 <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button size="sm" variant="outline">
                       <Plus className="h-4 w-4 mr-2" />
                       Save As...
                     </Button>
@@ -812,33 +902,46 @@ export function ParameterControls() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-
-                <Select value={selectedSetupId} onValueChange={handleLoadSetup}>
+                <Select
+                  value={selectedSetupId}
+                  onValueChange={(value) => {
+                    if (value === '__placeholder') return
+                    setSelectedSetupId(value)
+                    handleLoadSetup(value)
+                  }}
+                >
                   <SelectTrigger className="flex-1 h-9">
-                    <SelectValue placeholder="Load setup..." />
+                    <SelectValue placeholder={savedSetups.length === 0 ? 'No saved setups' : 'Load setup...'} />
                   </SelectTrigger>
                   <SelectContent>
                     {savedSetups.length === 0 ? (
-                      <SelectItem value="none" disabled>
-                        No saved setups
+                      <SelectItem value="__placeholder" disabled>
+                        No saved setups yet
                       </SelectItem>
                     ) : (
                       savedSetups.map((setup) => (
                         <SelectItem key={setup.id} value={setup.id}>
-                          <div className="flex items-center justify-between w-full">
-                            <div className="flex flex-col">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex flex-col text-left">
                               <span className="font-medium">{setup.name}</span>
                               <span className="text-xs text-gray-500">
                                 {new Date(setup.timestamp).toLocaleDateString()}
                               </span>
                             </div>
                             <Button
-                              size="sm"
+                              type="button"
+                              size="icon"
                               variant="ghost"
-                              className="h-6 w-6 p-0 ml-2 hover:bg-red-50 hover:text-red-600"
-                              onClick={(e) => handleDeleteSetup(setup.id, e)}
+                              className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                handleDeleteSetup(setup.id)
+                              }}
+                              aria-label={`Delete ${setup.name}`}
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </SelectItem>

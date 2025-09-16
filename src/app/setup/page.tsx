@@ -408,11 +408,11 @@ export default function SetupPage() {
                   </button>
                   <div className="mt-2 text-center">
                     <div
-                      className={`text-xs font-medium ${
+                      className={`text-xs font-medium leading-tight ${
                         index <= currentStep ? 'text-gray-900' : 'text-gray-400'
-                      }`}
+                      } max-w-[96px] mx-auto`}
                     >
-                      {step.title.split(' ')[0]}
+                      {step.title}
                     </div>
                   </div>
                 </div>

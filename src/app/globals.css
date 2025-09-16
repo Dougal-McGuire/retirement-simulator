@@ -375,3 +375,11 @@
     margin-bottom: 8pt !important;
   }
 }
+
+.scrollbar-invisible {
+  scrollbar-width: none;
+}
+
+.scrollbar-invisible::-webkit-scrollbar {
+  display: none;
+}

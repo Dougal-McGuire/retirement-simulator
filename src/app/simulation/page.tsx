@@ -34,22 +34,38 @@ export default function SimulationPage() {
       {/* Header */}
       <header id="navigation" className="bg-white border-b border-retirement-200 shadow-soft">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
-            <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Retirement Simulation</h1>
-            <div className="flex items-center space-x-2 sm:space-x-3">
-              <div className="hidden sm:block">
-                <GenerateReportButton results={results} params={params} disabled={isLoading} />
-              </div>
+          <div className="py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center justify-between sm:justify-start">
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Retirement Simulation</h1>
+              <Button size="sm" asChild className="sm:hidden">
+                <a href="/setup">Setup</a>
+              </Button>
+            </div>
+            <div className="hidden sm:flex sm:items-center sm:justify-end sm:gap-3">
+              <GenerateReportButton
+                results={results}
+                params={params}
+                disabled={isLoading}
+                size="sm"
+              />
               <Button size="sm" asChild>
-                <a href="/setup">
-                  <span className="hidden sm:inline">Setup</span>
-                  <span className="sm:hidden">Setup</span>
-                </a>
+                <a href="/setup">Setup</a>
               </Button>
             </div>
           </div>
         </div>
       </header>
+
+      <div className="sm:hidden bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
+          <GenerateReportButton
+            results={results}
+            params={params}
+            disabled={isLoading}
+            size="sm"
+          />
+        </div>
+      </div>
 
       <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

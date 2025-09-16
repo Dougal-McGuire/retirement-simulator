@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings, X, ChevronRight } from 'lucide-react'
+import { Settings, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -23,9 +23,11 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className="hidden lg:block lg:col-span-1">
-        <div className="sticky top-8">
-          <ParameterControls />
+      <div className={`hidden lg:block lg:col-span-1 ${className}`}>
+        <div className="sticky top-6">
+          <div className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-invisible">
+            <ParameterControls />
+          </div>
         </div>
       </div>
 

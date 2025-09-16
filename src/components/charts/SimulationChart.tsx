@@ -64,6 +64,17 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
     [chartData]
   )
 
+  const milestoneRows = useMemo(
+    () =>
+      chartData.map((d) => ({
+        age: d.age,
+        p10: d.assets_p10,
+        p50: d.assets_p50,
+        p90: d.assets_p90,
+      })),
+    [chartData]
+  )
+
   // Shared horizontal zoom range
   const [ageRange, setAgeRange] = useState<{ startAge?: number; endAge?: number }>({})
 
@@ -185,6 +196,46 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
         onResetZoom={resetZoom}
         formatCurrency={formatCurrency}
       />
+
+      <details className="mt-4">
+        <summary className="text-sm text-blue-600 cursor-pointer hover:text-blue-800">
+          View asset milestone table
+        </summary>
+        <div className="mt-2 overflow-x-auto">
+          <table className="min-w-full text-xs border border-gray-300">
+            <caption className="sr-only">Portfolio value milestones by age and percentile</caption>
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="border px-2 py-1 text-left">Age</th>
+                <th className="border px-2 py-1 text-right">P10</th>
+                <th className="border px-2 py-1 text-right">P50</th>
+                <th className="border px-2 py-1 text-right">P90</th>
+              </tr>
+            </thead>
+            <tbody>
+              {milestoneRows.map((row) => {
+                const isRetirementAge = row.age === results.params.retirementAge
+                return (
+                  <tr
+                    key={row.age}
+                    className={`border ${
+                      isRetirementAge ? 'bg-blue-50 font-semibold' : 'bg-white'
+                    }`}
+                  >
+                    <td className="border px-2 py-1">
+                      {row.age}{' '}
+                      {isRetirementAge && <span className="text-[10px] text-blue-600">(Retirement)</span>}
+                    </td>
+                    <td className="border px-2 py-1 text-right">{formatCurrency(row.p10)}</td>
+                    <td className="border px-2 py-1 text-right">{formatCurrency(row.p50)}</td>
+                    <td className="border px-2 py-1 text-right">{formatCurrency(row.p90)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </details>
 
       <SpendingChart
         data={spendingData}
