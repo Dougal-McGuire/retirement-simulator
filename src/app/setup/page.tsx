@@ -79,7 +79,7 @@ export default function SetupPage() {
     if (savedProgress) {
       try {
         const { currentStep: savedStep, formData: savedFormData } = JSON.parse(savedProgress)
-        if (savedStep && savedFormData) {
+        if (typeof savedStep === 'number' && savedFormData) {
           setCurrentStep(savedStep)
           setFormData(savedFormData)
         }

@@ -93,6 +93,12 @@ const PRESET_CONFIGS = {
   },
 }
 
+const sanitizeNumberInput = (rawValue: string, fallback: number): number => {
+  if (rawValue === '') return fallback
+  const next = Number(rawValue)
+  return Number.isFinite(next) ? next : fallback
+}
+
 // Helper component for parameters with tooltips
 interface ParameterFieldProps {
   label: string
@@ -312,7 +318,12 @@ export function ParameterControls() {
                 <Input
                   type="number"
                   value={params.currentAge}
-                  onChange={(e) => handleInputChange('currentAge', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleInputChange(
+                      'currentAge',
+                      sanitizeNumberInput(e.target.value, params.currentAge)
+                    )
+                  }
                   className="h-8 text-sm"
                   min={18}
                   max={80}
@@ -353,7 +364,10 @@ export function ParameterControls() {
                   type="number"
                   value={params.legalRetirementAge}
                   onChange={(e) =>
-                    handleInputChange('legalRetirementAge', parseInt(e.target.value))
+                    handleInputChange(
+                      'legalRetirementAge',
+                      sanitizeNumberInput(e.target.value, params.legalRetirementAge)
+                    )
                   }
                   className="h-8 text-sm"
                   min={60}
@@ -368,7 +382,12 @@ export function ParameterControls() {
                 <Input
                   type="number"
                   value={params.endAge}
-                  onChange={(e) => handleInputChange('endAge', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleInputChange(
+                      'endAge',
+                      sanitizeNumberInput(e.target.value, params.endAge)
+                    )
+                  }
                   className="h-8 text-sm"
                   min={70}
                   max={100}
@@ -391,7 +410,12 @@ export function ParameterControls() {
                 <Input
                   type="number"
                   value={params.currentAssets}
-                  onChange={(e) => handleInputChange('currentAssets', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleInputChange(
+                      'currentAssets',
+                      sanitizeNumberInput(e.target.value, params.currentAssets)
+                    )
+                  }
                   className="h-8 text-sm"
                   min={0}
                 />
@@ -404,7 +428,12 @@ export function ParameterControls() {
                 <Input
                   type="number"
                   value={params.annualSavings}
-                  onChange={(e) => handleInputChange('annualSavings', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleInputChange(
+                      'annualSavings',
+                      sanitizeNumberInput(e.target.value, params.annualSavings)
+                    )
+                  }
                   className="h-8 text-sm"
                   min={0}
                 />
@@ -423,7 +452,12 @@ export function ParameterControls() {
                 <Input
                   type="number"
                   value={params.monthlyPension}
-                  onChange={(e) => handleInputChange('monthlyPension', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleInputChange(
+                      'monthlyPension',
+                      sanitizeNumberInput(e.target.value, params.monthlyPension)
+                    )
+                  }
                   className="h-8 text-sm"
                   min={0}
                 />
@@ -468,7 +502,10 @@ export function ParameterControls() {
                       onChange={(e) =>
                         handleExpenseChange(
                           key as keyof typeof params.monthlyExpenses,
-                          parseInt(e.target.value)
+                          sanitizeNumberInput(
+                            e.target.value,
+                            params.monthlyExpenses[key as keyof typeof params.monthlyExpenses]
+                          )
                         )
                       }
                       className="h-7 w-20 text-xs"
@@ -525,7 +562,10 @@ export function ParameterControls() {
                       onChange={(e) =>
                         handleAnnualExpenseChange(
                           key as keyof typeof params.annualExpenses,
-                          parseInt(e.target.value)
+                          sanitizeNumberInput(
+                            e.target.value,
+                            params.annualExpenses[key as keyof typeof params.annualExpenses]
+                          )
                         )
                       }
                       className="h-7 w-20 text-xs"

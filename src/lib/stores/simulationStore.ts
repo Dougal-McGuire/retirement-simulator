@@ -52,9 +52,13 @@ export const useSimulationStore = create<SimulationStore>()(
 
         try {
           // Run simulation in a setTimeout to allow UI to update
-          const results = await new Promise<SimulationResults>((resolve) => {
+          const results = await new Promise<SimulationResults>((resolve, reject) => {
             setTimeout(() => {
-              resolve(runMonteCarloSimulation(params))
+              try {
+                resolve(runMonteCarloSimulation(params))
+              } catch (err) {
+                reject(err)
+              }
             }, 0)
           })
 

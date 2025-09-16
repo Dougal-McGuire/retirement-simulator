@@ -31,7 +31,12 @@ export function LabeledNumberInput({
         id={id}
         type="number"
         value={value}
-        onChange={(e) => onChange(parseInt(e.target.value))}
+        onChange={(e) => {
+          const raw = e.target.value
+          const nextValue = raw === '' ? 0 : Number(raw)
+          if (!Number.isFinite(nextValue)) return
+          onChange(nextValue)
+        }}
         min={min}
         max={max}
         className={className}
