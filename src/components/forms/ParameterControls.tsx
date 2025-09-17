@@ -240,6 +240,20 @@ export function ParameterControls() {
     [params.annualExpenses, params.monthlyExpenses]
   )
 
+  React.useEffect(() => {
+    if (params.retirementAge < params.currentAge) {
+      suspendAndDebounceResume()
+      updateParams({ retirementAge: params.currentAge })
+    }
+  }, [params.currentAge, params.retirementAge, suspendAndDebounceResume, updateParams])
+
+  const retirementSliderMin = params.currentAge
+  const retirementSliderMax = Math.max(retirementSliderMin, params.legalRetirementAge, 70)
+  const retirementSliderValue = Math.min(
+    Math.max(params.retirementAge, retirementSliderMin),
+    retirementSliderMax
+  )
+
   const baseCurrencyFormat = React.useMemo<NumberFormatOptions>(
     () => ({
       style: 'currency',
@@ -493,21 +507,21 @@ export function ParameterControls() {
               >
                 <div className="px-2 py-1">
                   <Slider
-                    value={[params.retirementAge]}
+                    value={[retirementSliderValue]}
                     onValueChange={([value]) => handleInputChange('retirementAge', value)}
-                    min={55}
-                    max={70}
+                    min={retirementSliderMin}
+                    max={retirementSliderMax}
                     step={1}
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>{formatNumber(55)}</span>
+                    <span>{formatNumber(retirementSliderMin)}</span>
                     <span className="font-semibold text-blue-600">
                       {t('fields.retirementAge.valueLabel', {
-                        value: formatNumber(params.retirementAge),
+                        value: formatNumber(retirementSliderValue),
                       })}
                     </span>
-                    <span>{formatNumber(70)}</span>
+                    <span>{formatNumber(retirementSliderMax)}</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1 text-center">
                     {t('fields.retirementAge.remaining', { count: remainingWorkingYears })}

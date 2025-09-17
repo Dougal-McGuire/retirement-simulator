@@ -135,8 +135,10 @@ function runSingleSimulation(params: SimulationParams): {
   let currentAnnualExpense = totalAnnualExpense
   let runFailed = false
 
+  const effectiveRetirementAge = Math.max(params.retirementAge, params.currentAge)
+
   for (let age = params.currentAge; age <= params.endAge; age++) {
-    if (age < params.retirementAge) {
+    if (age < effectiveRetirementAge) {
       // Accumulation phase (working years)
       const roiFactor = sampleLognormalFactorFromArithmetic(
         params.averageROI,
@@ -147,6 +149,14 @@ function runSingleSimulation(params: SimulationParams): {
       currentAssets = currentAssets * roiFactor + params.annualSavings
       costBasis += params.annualSavings // Track additional investments
       spendingHistory.push(0) // No spending during accumulation for visualization
+
+      // Inflate expenses so that retirement starts with age-adjusted spending
+      const inflationFactor = sampleLognormalFactorFromArithmetic(
+        params.averageInflation,
+        params.inflationVolatility
+      )
+      currentMonthlyExpense *= inflationFactor
+      currentAnnualExpense *= inflationFactor
     } else {
       // Distribution phase (retirement years)
       const totalAnnualExpenseThisYear = currentMonthlyExpense * 12 + currentAnnualExpense
@@ -191,6 +201,10 @@ function runSingleSimulation(params: SimulationParams): {
         costBasis += surplus
       }
 
+      // Store total monthly-equivalent spending (includes annualized annual expenses)
+      const monthlyEquivalentSpending = currentMonthlyExpense + currentAnnualExpense / 12
+      spendingHistory.push(monthlyEquivalentSpending)
+
       // Apply inflation to expenses for next year
       const inflationFactor = sampleLognormalFactorFromArithmetic(
         params.averageInflation,
@@ -198,10 +212,6 @@ function runSingleSimulation(params: SimulationParams): {
       )
       currentMonthlyExpense *= inflationFactor
       currentAnnualExpense *= inflationFactor
-
-      // Store total monthly-equivalent spending (includes annualized annual expenses)
-      const monthlyEquivalentSpending = currentMonthlyExpense + currentAnnualExpense / 12
-      spendingHistory.push(monthlyEquivalentSpending)
 
       // Check for failure (running out of money)
       if (currentAssets <= 0) {

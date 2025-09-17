@@ -116,5 +116,53 @@ describe('Engine math correctness', () => {
     const expectedAssetsEnd = 1100 - expectedWithdrawal
     expect(results.assetPercentiles.p50[0]).toBeCloseTo(expectedAssetsEnd, 4)
   })
-})
 
+  it('inflates expenses through the accumulation years before retirement', () => {
+    const baseMonthlyExpense = 1000
+    const inflationMean = 0.03
+    const currentAge = 40
+    const retirementAge = 45
+    const params = {
+      ...DEFAULT_PARAMS,
+      currentAge,
+      retirementAge,
+      legalRetirementAge: 65,
+      endAge: retirementAge,
+      currentAssets: 0,
+      annualSavings: 0,
+      monthlyPension: 0,
+      averageROI: 0,
+      roiVolatility: 0,
+      averageInflation: inflationMean,
+      inflationVolatility: 0,
+      capitalGainsTax: 0,
+      monthlyExpenses: {
+        health: baseMonthlyExpense,
+        food: 0,
+        entertainment: 0,
+        shopping: 0,
+        utilities: 0,
+      },
+      annualExpenses: {
+        vacations: 0,
+        repairs: 0,
+        carMaintenance: 0,
+      },
+      simulationRuns: 1,
+    }
+
+    const results = runMonteCarloSimulation(params)
+    const retirementIndex = results.ages.indexOf(retirementAge)
+    expect(retirementIndex).toBeGreaterThan(-1)
+
+    const expectedMonthlyExpenseAtRetirement =
+      baseMonthlyExpense * Math.pow(1 + inflationMean, retirementAge - currentAge)
+
+    expect(results.spendingPercentiles.p50[retirementIndex]).toBeCloseTo(
+      expectedMonthlyExpenseAtRetirement,
+      6
+    )
+    const currentAgeIndex = results.ages.indexOf(currentAge)
+    expect(results.spendingPercentiles.p50[currentAgeIndex]).toBeCloseTo(0, 6)
+  })
+})
