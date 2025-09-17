@@ -12,6 +12,7 @@ import {
   ReferenceLine,
   Brush,
 } from 'recharts'
+import { useTranslations } from 'next-intl'
 import type { ChartDataPoint } from '@/types'
 
 export type BandPoint = ChartDataPoint & {
@@ -27,6 +28,7 @@ interface AssetsChartProps {
   onBrushChange: (range: { startIndex?: number; endIndex?: number }) => void
   onResetZoom: () => void
   formatCurrency: (value: number) => string
+  formatCurrencyShort: (value: number) => string
 }
 
 export function AssetsChart({
@@ -37,30 +39,31 @@ export function AssetsChart({
   onBrushChange,
   onResetZoom,
   formatCurrency,
+  formatCurrencyShort,
 }: AssetsChartProps) {
+  const t = useTranslations('assetsChart')
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200/50 p-6 transition-all duration-300 hover:shadow-md">
       <div className="flex items-center justify-between mb-4">
         <h4 id="asset-chart-title" className="text-lg font-semibold text-gray-900">
-          Asset Projections Over Time
+          {t('title')}
         </h4>
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-          <span className="text-xs text-gray-500">Live Data</span>
+          <span className="text-xs text-gray-500">{t('liveData')}</span>
           <button
             type="button"
             onClick={onResetZoom}
             className="ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 shadow-sm"
-            aria-label="Reset zoom"
+            aria-label={t('reset')}
           >
-            Reset Zoom
+            {t('reset')}
           </button>
         </div>
       </div>
       <p className="text-sm text-gray-600 mb-6">
-        This chart shows projected asset values over time using Monte Carlo simulation. The three
-        lines represent optimistic (90th percentile), median (50th percentile), and pessimistic
-        (10th percentile) scenarios.
+        {t('description')}
       </p>
       <div
         className="h-80 group"
@@ -92,7 +95,7 @@ export function AssetsChart({
               tickLine={{ stroke: '#d1d5db' }}
               axisLine={{ stroke: '#d1d5db' }}
               label={{
-                value: 'Age',
+                value: t('axis.age'),
                 position: 'insideBottom',
                 offset: -10,
                 style: { textAnchor: 'middle', fontSize: '12px', fill: '#6b7280' },
@@ -102,13 +105,9 @@ export function AssetsChart({
               tick={{ fontSize: 11, fill: '#6b7280' }}
               tickLine={{ stroke: '#d1d5db' }}
               axisLine={{ stroke: '#d1d5db' }}
-              tickFormatter={(v) => {
-                if (v >= 1_000_000) return `€${(v / 1_000_000).toFixed(1)}M`
-                if (v >= 1_000) return `€${(v / 1_000).toFixed(0)}K`
-                return `€${v.toFixed(0)}`
-              }}
+              tickFormatter={formatCurrencyShort}
               label={{
-                value: 'Assets (€)',
+                value: t('axis.assets'),
                 angle: -90,
                 position: 'insideLeft',
                 style: { textAnchor: 'middle', fontSize: '12px', fill: '#6b7280' },
@@ -130,12 +129,12 @@ export function AssetsChart({
               stroke="none"
               fill="#60a5fa"
               fillOpacity={0.18}
-              name="P20–P80 Band"
+              name={t('legend.band')}
               isAnimationActive={false}
             />
             <Tooltip
               formatter={(value: number, name: string) => [formatCurrency(value), name]}
-              labelFormatter={(age) => `Age: ${age}`}
+              labelFormatter={(age) => t('tooltip.label', { age })}
               contentStyle={{
                 backgroundColor: 'rgba(255, 255, 255, 0.98)',
                 border: '1px solid #e5e7eb',
@@ -154,7 +153,7 @@ export function AssetsChart({
               strokeDasharray="5 5"
               strokeWidth={2}
               label={{
-                value: 'Retirement',
+                value: t('markers.retirement'),
                 position: 'top',
                 style: { fill: '#dc2626', fontSize: '11px', fontWeight: 'semibold' },
               }}
@@ -166,7 +165,7 @@ export function AssetsChart({
               strokeDasharray="5 5"
               strokeWidth={2}
               label={{
-                value: 'Pension Starts',
+                value: t('markers.pension'),
                 position: 'top',
                 style: { fill: '#059669', fontSize: '11px', fontWeight: 'semibold' },
               }}
@@ -178,7 +177,7 @@ export function AssetsChart({
               stroke="#ef4444"
               strokeWidth={2.5}
               dot={false}
-              name="10th Percentile (Pessimistic)"
+              name={t('legend.p10')}
               className="transition-all duration-1000 ease-out"
               strokeDasharray="0"
               animationBegin={0}
@@ -190,7 +189,7 @@ export function AssetsChart({
               stroke="#f59e0b"
               strokeWidth={2}
               dot={false}
-              name="20th Percentile"
+              name={t('legend.p20')}
               className="transition-all duration-1000 ease-out"
               strokeDasharray="4 4"
               animationBegin={100}
@@ -202,7 +201,7 @@ export function AssetsChart({
               stroke="#3b82f6"
               strokeWidth={3.5}
               dot={false}
-              name="50th Percentile (Median)"
+              name={t('legend.p50')}
               className="transition-all duration-1000 ease-out"
               strokeDasharray="0"
               animationBegin={200}
@@ -214,7 +213,7 @@ export function AssetsChart({
               stroke="#34d399"
               strokeWidth={2}
               dot={false}
-              name="80th Percentile"
+              name={t('legend.p80')}
               className="transition-all duration-1000 ease-out"
               strokeDasharray="4 4"
               animationBegin={300}
@@ -226,7 +225,7 @@ export function AssetsChart({
               stroke="#10b981"
               strokeWidth={2.5}
               dot={false}
-              name="90th Percentile (Optimistic)"
+              name={t('legend.p90')}
               className="transition-all duration-1000 ease-out"
               strokeDasharray="0"
               animationBegin={400}
@@ -246,13 +245,12 @@ export function AssetsChart({
         </ResponsiveContainer>
       </div>
       <div id="asset-chart-description" className="sr-only">
-        Asset projection chart showing three scenarios: worst case (10th percentile) in red, median
-        (50th percentile) in blue, and best case (90th percentile) in green.
+        {t('aria.description')}
       </div>
       <div
         className="flex flex-wrap justify-center gap-6 mt-6 p-4 bg-gray-50/50 rounded-lg border border-gray-200/50"
         role="list"
-        aria-label="Chart legend"
+        aria-label={t('legend.title')}
       >
         <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
           <div
@@ -260,7 +258,7 @@ export function AssetsChart({
             aria-hidden="true"
           ></div>
           <span className="text-sm font-medium text-gray-700 group-hover:text-red-600 transition-colors">
-            10th Percentile (Pessimistic)
+            {t('legend.p10')}
           </span>
         </div>
         <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
@@ -269,7 +267,7 @@ export function AssetsChart({
             aria-hidden="true"
           ></div>
           <span className="text-sm font-medium text-gray-700 group-hover:text-amber-600 transition-colors">
-            20th Percentile
+            {t('legend.p20')}
           </span>
         </div>
         <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
@@ -278,7 +276,7 @@ export function AssetsChart({
             aria-hidden="true"
           ></div>
           <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
-            50th Percentile (Median)
+            {t('legend.p50')}
           </span>
         </div>
         <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
@@ -287,7 +285,7 @@ export function AssetsChart({
             aria-hidden="true"
           ></div>
           <span className="text-sm font-medium text-gray-700 group-hover:text-emerald-600 transition-colors">
-            80th Percentile
+            {t('legend.p80')}
           </span>
         </div>
         <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
@@ -296,7 +294,7 @@ export function AssetsChart({
             aria-hidden="true"
           ></div>
           <span className="text-sm font-medium text-gray-700 group-hover:text-teal-600 transition-colors">
-            90th Percentile (Optimistic)
+            {t('legend.p90')}
           </span>
         </div>
       </div>

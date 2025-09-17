@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { FileText, Download, Loader2 } from 'lucide-react'
 import { SimulationResults, SimulationParams } from '@/types'
@@ -20,6 +21,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
   variant = 'default',
   size = 'default',
 }) => {
+  const t = useTranslations('report')
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,7 +43,8 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
       const errorData = await response.json()
       console.error('PDF generation error response:', errorData)
       throw new Error(
-        errorData.details || errorData.error || `PDF generation failed: ${response.statusText}`
+        errorData.details || errorData.error ||
+          t('errors.requestFailed', { status: response.statusText })
       )
     }
 
@@ -69,7 +72,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
       await generatePDF()
     } catch (error) {
       console.error('PDF generation failed:', error)
-      setError(error instanceof Error ? error.message : 'Failed to generate PDF')
+      setError(error instanceof Error ? error.message : t('errors.generic'))
     } finally {
       setIsGenerating(false)
     }
@@ -79,7 +82,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
     return (
       <Button variant={variant} size={size} disabled>
         <FileText className="w-4 h-4 mr-2" />
-        {!results ? 'No Data' : 'Run Simulation First'}
+        {!results ? t('disabled.noData') : t('disabled.runSimulation')}
       </Button>
     )
   }
@@ -92,7 +95,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
         ) : (
           <Download className="w-4 h-4 mr-2" />
         )}
-        {isGenerating ? 'Generating...' : 'Generate Report'}
+        {isGenerating ? t('actions.generating') : t('actions.generate')}
       </Button>
 
       {error && <div className="text-sm text-red-600 max-w-xs text-center">{error}</div>}

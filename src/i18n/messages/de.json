@@ -1,0 +1,449 @@
+{
+  "layout": {
+    "skipLinks": {
+      "main": "Zum Hauptinhalt springen",
+      "navigation": "Zur Navigation springen"
+    }
+  },
+  "localeSwitcher": {
+    "label": "Sprache",
+    "options": {
+      "en": "Englisch",
+      "de": "Deutsch"
+    }
+  },
+  "setup": {
+    "header": {
+      "title": "Setup",
+      "simulationLink": "Zur Simulation"
+    },
+    "progress": {
+      "step": "Schritt {current} von {total}",
+      "percentComplete": "{percent}% abgeschlossen"
+    },
+    "buttons": {
+      "back": "Zurück",
+      "next": "Weiter",
+      "complete": "Setup abschließen"
+    },
+    "steps": {
+      "personal": {
+        "title": "Persönliche Angaben",
+        "description": "Ihr Alter und der geplante Ruhestandszeitraum"
+      },
+      "assets": {
+        "title": "Vermögen & Einkommen",
+        "description": "Aktuelle Anlagen und Sparplan"
+      },
+      "monthly": {
+        "title": "Monatliche Ausgaben",
+        "description": "Regelmäßige laufende Kosten"
+      },
+      "annual": {
+        "title": "Jährliche Ausgaben",
+        "description": "Einmalige oder saisonale Ausgaben"
+      },
+      "market": {
+        "title": "Marktannahmen",
+        "description": "Renditen und Inflation"
+      }
+    },
+    "personal": {
+      "fields": {
+        "currentAge": {
+          "label": "Aktuelles Alter",
+          "help": "Wie alt sind Sie aktuell?"
+        },
+        "retirementAge": {
+          "label": "Geplantes Renteneintrittsalter",
+          "tooltip": "Wann möchten Sie aufhören zu arbeiten und von Ihrem Vermögen leben? Ein früherer Ruhestand erfordert höhere Ersparnisse.",
+          "help": "Geplanter Zeitpunkt für den Ruhestand. Bestimmt, wie viele Arbeitsjahre bis dahin verbleiben.",
+          "valueLabel": "Alter {value}",
+          "remaining": "Noch {count, plural, one {# Arbeitsjahr} other {# Arbeitsjahre}}"
+        },
+        "legalRetirementAge": {
+          "label": "Gesetzliches Rentenalter",
+          "tooltip": "Gesetzliches Renteneintrittsalter, ab dem Rentenleistungen beginnen. In Deutschland typischerweise 67 Jahre.",
+          "help": "Legt fest, wann die gesetzliche Rente in der Planung beginnt."
+        },
+        "endAge": {
+          "label": "Planungshorizont (Endalter)",
+          "tooltip": "Bis zu welchem Alter soll geplant werden? (meist 85–95)",
+          "help": "Zeitraum, den der Plan abdecken soll. Wählen Sie Lebenserwartung plus Sicherheitsreserve."
+        }
+      }
+    },
+    "assets": {
+      "fields": {
+        "currentAssets": {
+          "label": "Aktuelles Vermögen (€)",
+          "help": "Gesamter Wert Ihrer derzeitigen Anlagen und Ersparnisse"
+        },
+        "annualSavings": {
+          "label": "Jährliche Sparrate (€)",
+          "help": "Wie viel können Sie bis zum Ruhestand pro Jahr zurücklegen?"
+        },
+        "monthlyPension": {
+          "label": "Monatliche Rente (€)",
+          "help": "Erwartete gesetzliche Rente ab dem gesetzlichen Rentenalter"
+        }
+      }
+    },
+    "monthly": {
+      "intro": "Geben Sie Ihre erwarteten monatlichen Ausgaben im Ruhestand an:",
+      "total": "Monatlich gesamt:",
+      "annualEquivalent": "Jährlich: {value}",
+      "labels": {
+        "health": "Gesundheit & Versicherungen",
+        "food": "Lebensmittel & Gastronomie",
+        "entertainment": "Freizeit & Unterhaltung",
+        "shopping": "Einkäufe & Sonstiges",
+        "utilities": "Nebenkosten & Wohnen"
+      }
+    },
+    "annual": {
+      "intro": "Geben Sie Ihre erwarteten jährlichen Ausgaben im Ruhestand an:",
+      "total": "Jährlich gesamt:",
+      "labels": {
+        "vacations": "Urlaub & Reisen",
+        "repairs": "Hausreparaturen",
+        "carMaintenance": "Fahrzeugunterhalt"
+      }
+    },
+    "market": {
+      "averageROI": {
+        "label": "Durchschnittliche Rendite",
+        "help": "Erwartete durchschnittliche jährliche Rendite Ihrer Anlagen"
+      },
+      "averageInflation": {
+        "label": "Durchschnittliche Inflation",
+        "help": "Erwartete durchschnittliche jährliche Inflationsrate"
+      },
+      "simulationRuns": {
+        "label": "Simulationsläufe",
+        "help": "Mehr Läufe erzeugen genauere Ergebnisse, benötigen aber mehr Zeit"
+      }
+    }
+  },
+  "simulation": {
+    "header": {
+      "title": "Ruhestandssimulation",
+      "setupLink": "Setup"
+    },
+    "charts": {
+      "asset": {
+        "title": "Vermögens- und Ausgabenprojektion",
+        "description": "Monte-Carlo-Simulation mit Vermögens- und Ausgabeverlauf inklusive 10., 50. und 90. Perzentil"
+      }
+    }
+  },
+  "parameterSidebar": {
+    "trigger": "Parameter",
+    "title": "Simulationsparameter",
+    "description": "Passen Sie Ihre Ruhestandsparameter an und sehen Sie die Ergebnisse in Echtzeit."
+  },
+  "parameterControls": {
+    "title": "Simulationsparameter",
+    "presets": {
+      "investment": {
+        "title": "Anlageperformance",
+        "description": "Basierend auf rollierenden 30-Jahres-Durchschnitten diversifizierter Industrieländer-Portfolios.",
+        "items": {
+          "defensive": {
+            "name": "Defensiv 60/40",
+            "description": "Globales 60/40-Portfolio, 1994–2024 Ø ~5,5% nominal"
+          },
+          "historical": {
+            "name": "Historischer Durchschnitt",
+            "description": "MSCI World rollierender 30-Jahres-Durchschnitt ~7,5%"
+          },
+          "growth": {
+            "name": "Hohes Wachstum",
+            "description": "US-Bullenmarkt-Phase Ø ~9,5%"
+          }
+        }
+      },
+      "inflation": {
+        "title": "Inflationserwartungen",
+        "description": "An aktuelle Verbraucherpreis-Trends in Industrieländern angelehnt.",
+        "items": {
+          "low": {
+            "name": "Niedrige Inflation",
+            "description": "Industrieländer 1990er Ø ~1,8%"
+          },
+          "target": {
+            "name": "Notenbankziel",
+            "description": "Zielkorridor 2–3% mit moderaten Schwankungen"
+          },
+          "elevated": {
+            "name": "Erhöhtes Preisniveau",
+            "description": "Nach-2020-Spitzen Ø ~3,5%"
+          }
+        }
+      }
+    },
+    "tabs": {
+      "personal": "Persönlich",
+      "financial": "Finanzen",
+      "simulation": "Simulation"
+    },
+    "sections": {
+      "personal": {
+        "timeline": {
+          "title": "Alter & Zeitplan",
+          "description": "Alter und Ruhestandszeitraum festlegen"
+        }
+      },
+      "financial": {
+        "assets": {
+          "title": "Vermögen & Sparen",
+          "description": "Aktuelles Vermögen und zukünftige Sparleistung"
+        },
+        "pension": {
+          "title": "Rente & Steuern",
+          "description": "Gesetzliche Rente und steuerliche Aspekte"
+        },
+        "monthly": {
+          "title": "Monatliche Ausgaben",
+          "description": "Monatliche Ausgaben gesamt: {value}",
+          "combined": "Monatlich kombiniert",
+          "tooltip": "Beinhaltet monatliche Ausgaben plus ein Zwölftel der jährlichen Ausgaben."
+        },
+        "annual": {
+          "title": "Jährliche Ausgaben",
+          "description": "Jährliche Ausgaben gesamt: {value}",
+          "combined": "Jährlich kombiniert",
+          "tooltip": "Beinhaltet monatliche Ausgaben × 12 plus jährliche Ausgaben."
+        }
+      },
+      "simulation": {
+        "market": {
+          "title": "Marktrenditen",
+          "description": "Annahmen zur Wertentwicklung"
+        },
+        "inflation": {
+          "title": "Inflationsannahmen",
+          "description": "Wie sich Kosten im Zeitverlauf verändern"
+        },
+        "quality": {
+          "title": "Simulationsqualität",
+          "description": "Abwägung zwischen Genauigkeit und Laufzeit",
+          "level": {
+            "high": "Hohe Genauigkeit",
+            "medium": "Mittlere Genauigkeit",
+            "low": "Geringe Genauigkeit"
+          }
+        }
+      }
+    },
+    "fields": {
+      "currentAge": {
+        "label": "Aktuelles Alter",
+        "tooltip": "Ihr aktuelles Alter für die Planung. Bestimmt die verbleibenden Arbeitsjahre bis zum Ruhestand."
+      },
+      "retirementAge": {
+        "label": "Gewünschtes Rentenalter",
+        "tooltip": "Zeitpunkt, zu dem Sie nicht mehr arbeiten möchten. Ein früherer Ruhestand verlangt höhere Ersparnisse.",
+        "valueLabel": "Alter {value}",
+        "remaining": "Noch {count, plural, one {# Arbeitsjahr} other {# Arbeitsjahre}}"
+      },
+      "legalRetirementAge": {
+        "label": "Gesetzliches Rentenalter",
+        "tooltip": "Offizielles Rentenalter, ab dem Rentenleistungen beginnen."
+      },
+      "endAge": {
+        "label": "Planungsende",
+        "tooltip": "Alter, bis zu dem die Simulation läuft. Üblicherweise Lebenserwartung plus Sicherheitspuffer."
+      },
+      "currentAssets": {
+        "label": "Aktuelles Vermögen (€)",
+        "tooltip": "Gesamtwert Ihrer derzeitigen Anlagen, Ersparnisse und Ruhestandskonten."
+      },
+      "annualSavings": {
+        "label": "Jährliche Sparrate (€)",
+        "tooltip": "Betrag, den Sie bis zum Ruhestand jährlich sparen und investieren können."
+      },
+      "monthlyPension": {
+        "label": "Monatliche Rente (€)",
+        "tooltip": "Erwartete gesetzliche Rente ab dem gesetzlichen Rentenalter – reduziert den privaten Bedarf."
+      },
+      "capitalGainsTax": {
+        "label": "Kapitalertragsteuer",
+        "tooltip": "Steuersatz auf Veräußerungsgewinne beim Verkauf von Anlagen. In Deutschland ca. 26,375%."
+      },
+      "averageROI": {
+        "label": "Durchschnittliche Rendite",
+        "tooltip": "Erwartete jährliche Rendite. Aktienmarkt ~7–10 %, Anleihen ~3–5 %, Mischportfolio ~6–8 %."
+      },
+      "roiVolatility": {
+        "label": "Rendite-Volatilität",
+        "tooltip": "Standardabweichung der Renditen. Höhere Volatilität bedeutet mehr Unsicherheit.",
+        "range": "{range} der Renditen liegen zwischen {lower} und {upper}"
+      },
+      "averageInflation": {
+        "label": "Durchschnittliche Inflation",
+        "tooltip": "Erwartete jährliche Inflationsrate. EZB-Ziel 2 %, historisch 2–3 %."
+      },
+      "inflationVolatility": {
+        "label": "Inflationsvolatilität",
+        "tooltip": "Jährliche Schwankung der Inflation. Historisch 0,5–1,5 %. Höhere Volatilität erhöht die Unsicherheit bei den Ausgaben."
+      },
+      "simulationRuns": {
+        "label": "Anzahl der Läufe",
+        "tooltip": "Monte-Carlo-Simulationen. Mehr Läufe bedeuten höhere Genauigkeit, benötigen aber mehr Rechenzeit."
+      }
+    },
+    "expenses": {
+      "monthly": {
+        "health": "Gesundheit",
+        "food": "Lebensmittel",
+        "entertainment": "Unterhaltung",
+        "shopping": "Einkäufe",
+        "utilities": "Nebenkosten"
+      },
+      "annual": {
+        "vacations": "Urlaub",
+        "repairs": "Reparaturen",
+        "carMaintenance": "Fahrzeugunterhalt"
+      }
+    },
+    "saved": {
+      "title": "Gespeicherte Setups",
+      "empty": "Keine gespeicherten Setups",
+      "actions": {
+        "saveAs": "Speichern unter…",
+        "loadPlaceholder": "Setup laden…",
+        "delete": "{name} löschen",
+        "reset": "Auf Standardwerte zurücksetzen"
+      },
+      "dialog": {
+        "title": "Setup speichern",
+        "description": "Vergeben Sie einen Namen, um die aktuellen Parameter später wiederzufinden.",
+        "nameLabel": "Name",
+        "placeholder": "z. B. Konservativ, Wachstumsfokus",
+        "cancel": "Abbrechen",
+        "confirm": "Setup speichern"
+      }
+    }
+  },
+  "report": {
+    "errors": {
+      "requestFailed": "PDF-Erstellung fehlgeschlagen: {status}",
+      "generic": "PDF konnte nicht erstellt werden"
+    },
+    "disabled": {
+      "noData": "Keine Daten",
+      "runSimulation": "Simulation zuerst ausführen"
+    },
+    "actions": {
+      "generating": "Erstelle…",
+      "generate": "Bericht erstellen"
+    }
+  },
+  "successCard": {
+    "title": "Erfolgswahrscheinlichkeit",
+    "messages": {
+      "excellent": "Ausgezeichnet! Sehr hohe Erfolgswahrscheinlichkeit",
+      "veryGood": "Sehr gute Chance, Ihre Ziele zu erreichen",
+      "good": "Gute Chance – Optimierung prüfen",
+      "moderate": "Mittlere Erfolgsquote – Plan überprüfen",
+      "low": "Niedrige Erfolgsquote – deutliche Anpassungen nötig",
+      "veryLow": "Sehr niedrige Erfolgsquote – Plan grundlegend überarbeiten"
+    },
+    "summary": {
+      "basedOn": "Basis",
+      "runs": "{count} Läufe",
+      "detail": "{rate}% von {runs} laufen nicht vor dem Endalter leer."
+    },
+    "progress": {
+      "min": "0%",
+      "label": "Erfolgsquote",
+      "max": "100%"
+    }
+  },
+  "simulationChart": {
+    "loading": {
+      "title": "Monte-Carlo-Simulation wird ausgeführt…",
+      "subtitle": "Dies kann einen Moment dauern."
+    },
+    "empty": {
+      "title": "Keine Simulationsdaten verfügbar",
+      "subtitle": "Passen Sie die Parameter an und starten Sie die Simulation."
+    },
+    "assetTable": {
+      "toggle": "Tabelle der Vermögensmeilensteine anzeigen",
+      "caption": "Vermögensstände nach Alter und Perzentil",
+      "headers": {
+        "age": "Alter",
+        "p10": "P10",
+        "p50": "P50",
+        "p90": "P90"
+      },
+      "retirementFlag": "Ruhestand"
+    },
+    "spendingTable": {
+      "toggle": "Tabelle der Ausgaben anzeigen",
+      "caption": "Monatliche Ausgabenprojektion während des Ruhestands nach Alter und Perzentil",
+      "headers": {
+        "age": "Alter",
+        "p10": "10. Perzentil",
+        "p20": "20. Perzentil",
+        "p50": "50. Perzentil",
+        "p80": "80. Perzentil",
+        "p90": "90. Perzentil"
+      }
+    }
+  },
+  "assetsChart": {
+    "title": "Vermögensentwicklung im Zeitverlauf",
+    "liveData": "Live-Daten",
+    "reset": "Zoom zurücksetzen",
+    "description": "Diagramm der prognostizierten Vermögenswerte auf Basis einer Monte-Carlo-Simulation. Die Linien zeigen optimistisches (90. Perzentil), medianes (50. Perzentil) und pessimistisches (10. Perzentil) Szenario.",
+    "axis": {
+      "age": "Alter",
+      "assets": "Vermögen (€)"
+    },
+    "legend": {
+      "band": "P20–P80 Band",
+      "title": "Legende",
+      "p10": "10. Perzentil (pessimistisch)",
+      "p20": "20. Perzentil",
+      "p50": "50. Perzentil (Median)",
+      "p80": "80. Perzentil",
+      "p90": "90. Perzentil (optimistisch)"
+    },
+    "tooltip": {
+      "label": "Alter: {age}"
+    },
+    "markers": {
+      "retirement": "Ruhestand",
+      "pension": "Renteneintritt"
+    },
+    "aria": {
+      "description": "Vermögensdiagramm mit drei Szenarien: schlechtester Fall (10. Perzentil) in Rot, Median (50. Perzentil) in Blau und bester Fall (90. Perzentil) in Grün."
+    }
+  },
+  "spendingChart": {
+    "title": "Ausgaben im Ruhestand",
+    "reset": "Zoom zurücksetzen",
+    "description": "Geschätzte monatliche Ausgaben nach dem Renteneintritt inklusive monatlicher und annualisierter jährlicher Ausgaben.",
+    "axis": {
+      "age": "Alter",
+      "spending": "Monatliche Ausgaben (€)"
+    },
+    "tooltip": {
+      "label": "Alter: {age}"
+    },
+    "legend": {
+      "title": "Legende",
+      "p10": "10. Perzentil",
+      "p50": "50. Perzentil",
+      "p80": "80. Perzentil",
+      "p90": "90. Perzentil",
+      "note": "Beinhaltet monatliche Ausgaben plus auf den Monat umgelegte jährliche Kosten (Urlaub, Reparaturen usw.)."
+    },
+    "aria": {
+      "description": "Balkendiagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge} über verschiedene Perzentile."
+    }
+  }
+}

@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
-// streamlined header: no back link
+import { useTranslations } from 'next-intl'
+import { Link } from '@/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -13,10 +14,12 @@ import {
 import { SimulationChart } from '@/components/charts/SimulationChart'
 import { SuccessRateCard } from '@/components/charts/SuccessRateCard'
 import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
+import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
 import { ChartSkeleton, SuccessRateCardSkeleton } from '@/components/ui/skeleton'
 
 export default function SimulationPage() {
+  const t = useTranslations('simulation')
   const params = useSimulationParams()
   const results = useSimulationResults()
   const isLoading = useSimulationLoading()
@@ -36,12 +39,16 @@ export default function SimulationPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center justify-between sm:justify-start">
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Retirement Simulation</h1>
-              <Button size="sm" asChild className="sm:hidden">
-                <a href="/setup">Setup</a>
-              </Button>
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">{t('header.title')}</h1>
+              <div className="flex items-center gap-2 sm:hidden">
+                <LocaleSwitcher className="w-36" />
+                <Button size="sm" asChild>
+                  <Link href="/setup">{t('header.setupLink')}</Link>
+                </Button>
+              </div>
             </div>
             <div className="hidden sm:flex sm:items-center sm:justify-end sm:gap-3">
+              <LocaleSwitcher className="w-36" />
               <GenerateReportButton
                 results={results}
                 params={params}
@@ -49,7 +56,7 @@ export default function SimulationPage() {
                 size="sm"
               />
               <Button size="sm" asChild>
-                <a href="/setup">Setup</a>
+                <Link href="/setup">{t('header.setupLink')}</Link>
               </Button>
             </div>
           </div>
@@ -90,12 +97,9 @@ export default function SimulationPage() {
             {/* Simulation Chart */}
             <Card className="bg-white border-retirement-200 shadow-soft">
               <CardHeader>
-                <CardTitle className="text-retirement-800">
-                  Asset Projections & Spending Analysis
-                </CardTitle>
+                <CardTitle className="text-retirement-800">{t('charts.asset.title')}</CardTitle>
                 <CardDescription className="text-retirement-600">
-                  Monte Carlo simulation showing asset levels and spending over time with 10th,
-                  50th, and 90th percentiles
+                  {t('charts.asset.description')}
                 </CardDescription>
               </CardHeader>
               <CardContent>

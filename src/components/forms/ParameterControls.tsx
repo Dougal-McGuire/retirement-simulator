@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { useFormatter, useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -39,7 +40,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Badge } from '@/components/ui/badge'
 import {
   useSimulationParams,
   useUpdateParams,
@@ -51,14 +51,11 @@ import {
 } from '@/lib/stores/simulationStore'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { DEFAULT_PARAMS, SimulationParams } from '@/types'
-import { formatNumber } from '@/lib/utils'
 
 // Preset configurations
 const INVESTMENT_PRESETS = [
   {
     key: 'defensive',
-    name: 'Defensive 60/40',
-    description: 'Global 60/40 portfolio, 1994-2024 avg ~5.5% nominal',
     icon: Shield,
     color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     values: {
@@ -69,8 +66,6 @@ const INVESTMENT_PRESETS = [
   },
   {
     key: 'historical',
-    name: 'Historical Average',
-    description: 'MSCI World rolling 30-year average ~7.5%',
     icon: TrendingUp,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     values: {
@@ -81,8 +76,6 @@ const INVESTMENT_PRESETS = [
   },
   {
     key: 'growth',
-    name: 'High Growth',
-    description: 'US equities bull phase average ~9.5%',
     icon: Zap,
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     values: {
@@ -96,8 +89,6 @@ const INVESTMENT_PRESETS = [
 const INFLATION_PRESETS = [
   {
     key: 'low',
-    name: 'Low Inflation',
-    description: 'Developed markets 1990s avg ~1.8%',
     icon: ThermometerSun,
     color: 'bg-sky-100 text-sky-800 border-sky-200',
     values: {
@@ -107,8 +98,6 @@ const INFLATION_PRESETS = [
   },
   {
     key: 'target',
-    name: 'Central Bank Target',
-    description: '2-3% target range with mild swings',
     icon: Activity,
     color: 'bg-amber-100 text-amber-800 border-amber-200',
     values: {
@@ -118,8 +107,6 @@ const INFLATION_PRESETS = [
   },
   {
     key: 'elevated',
-    name: 'Elevated Prices',
-    description: 'Post-2020 spikes ~3.5% average',
     icon: Wind,
     color: 'bg-rose-100 text-rose-800 border-rose-200',
     values: {
@@ -206,6 +193,8 @@ function CollapsibleSection({
 }
 
 export function ParameterControls() {
+  const t = useTranslations('parameterControls')
+  const format = useFormatter()
   const [saveDialogOpen, setSaveDialogOpen] = React.useState(false)
   const [setupName, setSetupName] = React.useState('')
   const [selectedSetupId, setSelectedSetupId] = React.useState('')
@@ -225,6 +214,48 @@ export function ParameterControls() {
   const loadSetup = useLoadSetup()
   const deleteSetup = useDeleteSetup()
   const savedSetups = useSavedSetups()
+  const remainingWorkingYears = Math.max(0, params.retirementAge - params.currentAge)
+  const totalMonthlyExpenses = React.useMemo(
+    () => Object.values(params.monthlyExpenses).reduce((sum, value) => sum + value, 0),
+    [params.monthlyExpenses]
+  )
+  const totalAnnualExpenses = React.useMemo(
+    () => Object.values(params.annualExpenses).reduce((sum, value) => sum + value, 0),
+    [params.annualExpenses]
+  )
+  const combinedExpenses = React.useMemo(
+    () => calculateCombinedExpenses(params.monthlyExpenses, params.annualExpenses),
+    [params.annualExpenses, params.monthlyExpenses]
+  )
+
+  const formatCurrency = React.useCallback(
+    (value: number, options?: Intl.NumberFormatOptions) =>
+      format.number(value, {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+        ...options,
+      }),
+    [format]
+  )
+
+  const formatPercent = React.useCallback(
+    (value: number, options?: Intl.NumberFormatOptions) =>
+      format.number(value, {
+        style: 'percent',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 1,
+        ...options,
+      }),
+    [format]
+  )
+
+  const formatNumber = React.useCallback(
+    (value: number, options?: Intl.NumberFormatOptions) =>
+      format.number(value, { maximumFractionDigits: 0, minimumFractionDigits: 0, ...options }),
+    [format]
+  )
 
   const handleInputChange = (field: keyof SimulationParams, value: number) => {
     suspendAndDebounceResume()
@@ -307,14 +338,14 @@ export function ParameterControls() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="text-lg">Simulation Parameters</CardTitle>
+        <CardTitle className="text-lg">{t('title')}</CardTitle>
       </CardHeader>
       <CardContent>
         {/* Scenario Presets */}
         <div className="mb-6 space-y-5">
           <div>
-            <h4 className="text-sm font-semibold mb-1">Investment Performance</h4>
-            <p className="text-xs text-gray-500 mb-3">Based on rolling 30-year averages for diversified developed-market portfolios.</p>
+            <h4 className="text-sm font-semibold mb-1">{t('presets.investment.title')}</h4>
+            <p className="text-xs text-gray-500 mb-3">{t('presets.investment.description')}</p>
             <div className="grid grid-cols-1 gap-2">
               {INVESTMENT_PRESETS.map((preset) => {
                 const IconComponent = preset.icon
@@ -330,14 +361,18 @@ export function ParameterControls() {
                         <IconComponent className="h-3 w-3" />
                       </div>
                       <div className="text-left flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{preset.name}</div>
-                        <div className="text-xs text-gray-500 truncate">{preset.description}</div>
+                        <div className="font-medium text-sm truncate">
+                          {t(`presets.investment.items.${preset.key}.name`)}
+                        </div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {t(`presets.investment.items.${preset.key}.description`)}
+                        </div>
                       </div>
                       <div className="flex flex-col items-end shrink-0 text-xs text-gray-600">
                         <span className="font-semibold text-gray-800">
-                          {(preset.values.averageROI * 100).toFixed(1)}%
+                          {formatPercent(preset.values.averageROI)}
                         </span>
-                        <span>σ {(preset.values.roiVolatility * 100).toFixed(1)}%</span>
+                        <span>σ {formatPercent(preset.values.roiVolatility)}</span>
                       </div>
                     </div>
                   </Button>
@@ -347,8 +382,8 @@ export function ParameterControls() {
           </div>
 
           <div>
-            <h4 className="text-sm font-semibold mb-1">Inflation Expectations</h4>
-            <p className="text-xs text-gray-500 mb-3">Anchored to recent developed-market CPI trends.</p>
+            <h4 className="text-sm font-semibold mb-1">{t('presets.inflation.title')}</h4>
+            <p className="text-xs text-gray-500 mb-3">{t('presets.inflation.description')}</p>
             <div className="grid grid-cols-1 gap-2">
               {INFLATION_PRESETS.map((preset) => {
                 const IconComponent = preset.icon
@@ -364,14 +399,18 @@ export function ParameterControls() {
                         <IconComponent className="h-3 w-3" />
                       </div>
                       <div className="text-left flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{preset.name}</div>
-                        <div className="text-xs text-gray-500 truncate">{preset.description}</div>
+                        <div className="font-medium text-sm truncate">
+                          {t(`presets.inflation.items.${preset.key}.name`)}
+                        </div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {t(`presets.inflation.items.${preset.key}.description`)}
+                        </div>
                       </div>
                       <div className="flex flex-col items-end shrink-0 text-xs text-gray-600">
                         <span className="font-semibold text-gray-800">
-                          {(preset.values.averageInflation * 100).toFixed(1)}%
+                          {formatPercent(preset.values.averageInflation)}
                         </span>
-                        <span>σ {(preset.values.inflationVolatility * 100).toFixed(1)}%</span>
+                        <span>σ {formatPercent(preset.values.inflationVolatility)}</span>
                       </div>
                     </div>
                   </Button>
@@ -384,26 +423,26 @@ export function ParameterControls() {
         <Tabs defaultValue="personal" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="personal" className="text-xs">
-              Personal
+              {t('tabs.personal')}
             </TabsTrigger>
             <TabsTrigger value="financial" className="text-xs">
-              Financial
+              {t('tabs.financial')}
             </TabsTrigger>
             <TabsTrigger value="simulation" className="text-xs">
-              Simulation
+              {t('tabs.simulation')}
             </TabsTrigger>
           </TabsList>
 
           {/* Personal Information Tab */}
           <TabsContent value="personal" className="space-y-4">
             <CollapsibleSection
-              title="Age & Timeline"
-              description="Set age and retirement timeline"
-              defaultOpen={true}
+              title={t('sections.personal.timeline.title')}
+              description={t('sections.personal.timeline.description')}
+              defaultOpen
             >
               <ParameterField
-                label="Current Age"
-                tooltip="Your current age for planning purposes. This determines how many working years remain until retirement."
+                label={t('fields.currentAge.label')}
+                tooltip={t('fields.currentAge.tooltip')}
               >
                 <Input
                   type="number"
@@ -421,8 +460,8 @@ export function ParameterControls() {
               </ParameterField>
 
               <ParameterField
-                label="Desired Retirement Age"
-                tooltip="When you want to stop working and live off investments. Earlier retirement requires more aggressive savings."
+                label={t('fields.retirementAge.label')}
+                tooltip={t('fields.retirementAge.tooltip')}
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -434,21 +473,23 @@ export function ParameterControls() {
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>55</span>
+                    <span>{formatNumber(55)}</span>
                     <span className="font-semibold text-blue-600">
-                      {params.retirementAge} years
+                      {t('fields.retirementAge.valueLabel', {
+                        value: formatNumber(params.retirementAge),
+                      })}
                     </span>
-                    <span>70</span>
+                    <span>{formatNumber(70)}</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1 text-center">
-                    {params.retirementAge - params.currentAge} working years remaining
+                    {t('fields.retirementAge.remaining', { count: remainingWorkingYears })}
                   </div>
                 </div>
               </ParameterField>
 
               <ParameterField
-                label="Legal Retirement Age"
-                tooltip="Official retirement age when pension benefits begin. In Germany this is typically 67 years old."
+                label={t('fields.legalRetirementAge.label')}
+                tooltip={t('fields.legalRetirementAge.tooltip')}
               >
                 <Input
                   type="number"
@@ -466,8 +507,8 @@ export function ParameterControls() {
               </ParameterField>
 
               <ParameterField
-                label="Planning Until Age"
-                tooltip="Age until which to run the simulation. Typically life expectancy (85) plus buffer. Longer planning periods require more conservative withdrawals."
+                label={t('fields.endAge.label')}
+                tooltip={t('fields.endAge.tooltip')}
               >
                 <Input
                   type="number"
@@ -489,13 +530,13 @@ export function ParameterControls() {
           {/* Financial Parameters Tab */}
           <TabsContent value="financial" className="space-y-4">
             <CollapsibleSection
-              title="Assets & Savings"
-              description="Current wealth and future savings capacity"
-              defaultOpen={true}
+              title={t('sections.financial.assets.title')}
+              description={t('sections.financial.assets.description')}
+              defaultOpen
             >
               <ParameterField
-                label="Current Assets (€)"
-                tooltip="Total value of your current investments, savings, and retirement accounts. This is your starting point for wealth accumulation."
+                label={t('fields.currentAssets.label')}
+                tooltip={t('fields.currentAssets.tooltip')}
               >
                 <Input
                   type="number"
@@ -512,8 +553,8 @@ export function ParameterControls() {
               </ParameterField>
 
               <ParameterField
-                label="Annual Savings (€)"
-                tooltip="How much you can save and invest each year until retirement. Higher savings rates lead to earlier retirement possibilities."
+                label={t('fields.annualSavings.label')}
+                tooltip={t('fields.annualSavings.tooltip')}
               >
                 <Input
                   type="number"
@@ -531,13 +572,13 @@ export function ParameterControls() {
             </CollapsibleSection>
 
             <CollapsibleSection
-              title="Pension & Taxes"
-              description="Government pension and tax considerations"
-              defaultOpen={true}
+              title={t('sections.financial.pension.title')}
+              description={t('sections.financial.pension.description')}
+              defaultOpen
             >
               <ParameterField
-                label="Monthly Pension (€)"
-                tooltip="Expected monthly pension from the government system, starting at legal retirement age. This reduces your required private savings."
+                label={t('fields.monthlyPension.label')}
+                tooltip={t('fields.monthlyPension.tooltip')}
               >
                 <Input
                   type="number"
@@ -554,8 +595,8 @@ export function ParameterControls() {
               </ParameterField>
 
               <ParameterField
-                label="Capital Gains Tax"
-                tooltip="Tax rate on investment gains when selling to cover expenses. German rate: 26.375%. This affects your net withdrawal rates."
+                label={t('fields.capitalGainsTax.label')}
+                tooltip={t('fields.capitalGainsTax.tooltip')}
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -567,25 +608,31 @@ export function ParameterControls() {
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>0%</span>
+                    <span>{formatPercent(0, { maximumFractionDigits: 0 })}</span>
                     <span className="font-semibold text-blue-600">
-                      {params.capitalGainsTax.toFixed(2)}%
+                      {formatPercent(params.capitalGainsTax / 100, {
+                        maximumFractionDigits: 2,
+                      })}
                     </span>
-                    <span>50%</span>
+                    <span>{formatPercent(0.5, { maximumFractionDigits: 0 })}</span>
                   </div>
                 </div>
               </ParameterField>
             </CollapsibleSection>
 
             <CollapsibleSection
-              title="Monthly Expenses"
-              description={`€${Object.values(params.monthlyExpenses).reduce((sum, expense) => sum + expense, 0)} total monthly`}
+              title={t('sections.financial.monthly.title')}
+              description={t('sections.financial.monthly.description', {
+                value: formatCurrency(totalMonthlyExpenses),
+              })}
               defaultOpen={false}
             >
               <div className="space-y-2">
                 {Object.entries(params.monthlyExpenses).map(([key, value]) => (
                   <div key={key} className="flex items-center justify-between">
-                    <Label className="text-xs capitalize">{key}</Label>
+                    <Label className="text-xs capitalize">
+                      {t(`expenses.monthly.${key}`)}
+                    </Label>
                     <Input
                       type="number"
                       value={value}
@@ -606,7 +653,7 @@ export function ParameterControls() {
                 <div className="pt-2 border-t space-y-1">
                   <div className="flex justify-between text-sm font-semibold text-blue-600">
                     <div className="flex items-center gap-1">
-                      <span>Combined Monthly:</span>
+                      <span>{t('sections.financial.monthly.combined')}</span>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -616,35 +663,29 @@ export function ParameterControls() {
                             side="top"
                             className="max-w-xs bg-gray-900 text-white border border-gray-700"
                           >
-                            <p className="text-xs">
-                              Includes monthly expenses + 1/12th of annual expenses
-                            </p>
+                            <p className="text-xs">{t('sections.financial.monthly.tooltip')}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </div>
-                    <span>
-                      €
-                      {calculateCombinedExpenses(
-                        params.monthlyExpenses,
-                        params.annualExpenses
-                      ).combinedMonthly.toFixed(0)}
-                    </span>
+                    <span>{formatCurrency(combinedExpenses.combinedMonthly)}</span>
                   </div>
                 </div>
               </div>
             </CollapsibleSection>
 
             <CollapsibleSection
-              title="Annual Expenses"
-              description={`€${Object.values(params.annualExpenses).reduce((sum, expense) => sum + expense, 0)} total annual`}
+              title={t('sections.financial.annual.title')}
+              description={t('sections.financial.annual.description', {
+                value: formatCurrency(totalAnnualExpenses),
+              })}
               defaultOpen={false}
             >
               <div className="space-y-2">
                 {Object.entries(params.annualExpenses).map(([key, value]) => (
                   <div key={key} className="flex items-center justify-between">
                     <Label className="text-xs capitalize">
-                      {key.replace('Maintenance', 'Maint.')}
+                      {t(`expenses.annual.${key}`)}
                     </Label>
                     <Input
                       type="number"
@@ -666,7 +707,7 @@ export function ParameterControls() {
                 <div className="pt-2 border-t space-y-1">
                   <div className="flex justify-between text-sm font-semibold text-blue-600">
                     <div className="flex items-center gap-1">
-                      <span>Combined Annual:</span>
+                      <span>{t('sections.financial.annual.combined')}</span>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -676,20 +717,12 @@ export function ParameterControls() {
                             side="top"
                             className="max-w-xs bg-gray-900 text-white border border-gray-700"
                           >
-                            <p className="text-xs">
-                              Includes (monthly expenses × 12) + annual expenses
-                            </p>
+                            <p className="text-xs">{t('sections.financial.annual.tooltip')}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </div>
-                    <span>
-                      €
-                      {calculateCombinedExpenses(
-                        params.monthlyExpenses,
-                        params.annualExpenses
-                      ).combinedAnnual.toFixed(0)}
-                    </span>
+                    <span>{formatCurrency(combinedExpenses.combinedAnnual)}</span>
                   </div>
                 </div>
               </div>
@@ -699,13 +732,13 @@ export function ParameterControls() {
           {/* Simulation Parameters Tab */}
           <TabsContent value="simulation" className="space-y-4">
             <CollapsibleSection
-              title="Market Returns"
-              description="Investment performance assumptions"
-              defaultOpen={true}
+              title={t('sections.simulation.market.title')}
+              description={t('sections.simulation.market.description')}
+              defaultOpen
             >
               <ParameterField
-                label="Average ROI"
-                tooltip="Expected annual return on investments. Historical stock market: ~7-10%. Bond portfolio: ~3-5%. Diversified portfolio: ~6-8%."
+                label={t('fields.averageROI.label')}
+                tooltip={t('fields.averageROI.tooltip')}
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -717,18 +750,18 @@ export function ParameterControls() {
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>3%</span>
+                    <span>{formatPercent(0.03, { maximumFractionDigits: 0 })}</span>
                     <span className="font-semibold text-blue-600">
-                      {(params.averageROI * 100).toFixed(1)}%
+                      {formatPercent(params.averageROI)}
                     </span>
-                    <span>12%</span>
+                    <span>{formatPercent(0.12, { maximumFractionDigits: 0 })}</span>
                   </div>
                 </div>
               </ParameterField>
 
               <ParameterField
-                label="ROI Volatility"
-                tooltip="Standard deviation of returns. Higher volatility = more uncertainty. Conservative: 5-10%, Moderate: 10-15%, Aggressive: 15-25%."
+                label={t('fields.roiVolatility.label')}
+                tooltip={t('fields.roiVolatility.tooltip')}
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -740,28 +773,31 @@ export function ParameterControls() {
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>2%</span>
+                    <span>{formatPercent(0.02, { maximumFractionDigits: 0 })}</span>
                     <span className="font-semibold text-blue-600">
-                      {(params.roiVolatility * 100).toFixed(1)}%
+                      {formatPercent(params.roiVolatility)}
                     </span>
-                    <span>25%</span>
+                    <span>{formatPercent(0.25, { maximumFractionDigits: 0 })}</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1 text-center">
-                    68% of returns: {((params.averageROI - params.roiVolatility) * 100).toFixed(1)}%
-                    to {((params.averageROI + params.roiVolatility) * 100).toFixed(1)}%
+                    {t('fields.roiVolatility.range', {
+                      range: '68%',
+                      lower: formatPercent(params.averageROI - params.roiVolatility),
+                      upper: formatPercent(params.averageROI + params.roiVolatility),
+                    })}
                   </div>
                 </div>
               </ParameterField>
             </CollapsibleSection>
 
             <CollapsibleSection
-              title="Inflation Assumptions"
-              description="How costs increase over time"
-              defaultOpen={true}
+              title={t('sections.simulation.inflation.title')}
+              description={t('sections.simulation.inflation.description')}
+              defaultOpen
             >
               <ParameterField
-                label="Average Inflation"
-                tooltip="Expected annual inflation rate. ECB target: 2%. Historical average in developed countries: 2-3%."
+                label={t('fields.averageInflation.label')}
+                tooltip={t('fields.averageInflation.tooltip')}
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -773,18 +809,18 @@ export function ParameterControls() {
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>1%</span>
+                    <span>{formatPercent(0.01, { maximumFractionDigits: 0 })}</span>
                     <span className="font-semibold text-blue-600">
-                      {(params.averageInflation * 100).toFixed(1)}%
+                      {formatPercent(params.averageInflation)}
                     </span>
-                    <span>6%</span>
+                    <span>{formatPercent(0.06, { maximumFractionDigits: 0 })}</span>
                   </div>
                 </div>
               </ParameterField>
 
               <ParameterField
-                label="Inflation Volatility"
-                tooltip="How much inflation varies year-to-year. Historical range: 0.5-1.5%. Higher volatility creates more uncertainty in retirement costs."
+                label={t('fields.inflationVolatility.label')}
+                tooltip={t('fields.inflationVolatility.tooltip')}
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -798,24 +834,24 @@ export function ParameterControls() {
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>0.1%</span>
+                    <span>{formatPercent(0.001, { maximumFractionDigits: 1 })}</span>
                     <span className="font-semibold text-blue-600">
-                      {(params.inflationVolatility * 100).toFixed(1)}%
+                      {formatPercent(params.inflationVolatility)}
                     </span>
-                    <span>3%</span>
+                    <span>{formatPercent(0.03, { maximumFractionDigits: 0 })}</span>
                   </div>
                 </div>
               </ParameterField>
             </CollapsibleSection>
 
             <CollapsibleSection
-              title="Simulation Quality"
-              description="Accuracy vs performance trade-off"
+              title={t('sections.simulation.quality.title')}
+              description={t('sections.simulation.quality.description')}
               defaultOpen={false}
             >
               <ParameterField
-                label="Number of Runs"
-                tooltip="Monte Carlo simulations to run. More runs = higher accuracy but slower computation. 1000+ recommended for reliable results."
+                label={t('fields.simulationRuns.label')}
+                tooltip={t('fields.simulationRuns.tooltip')}
               >
                 <div className="px-2 py-1">
                   <Slider
@@ -827,11 +863,11 @@ export function ParameterControls() {
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>100</span>
+                    <span>{formatNumber(100)}</span>
                     <span className="font-semibold text-blue-600">
                       {formatNumber(params.simulationRuns)}
                     </span>
-                    <span>10K</span>
+                    <span>{formatNumber(10000)}</span>
                   </div>
                   <div className="text-xs text-center mt-1">
                     <span
@@ -844,10 +880,10 @@ export function ParameterControls() {
                       }
                     >
                       {params.simulationRuns >= 1000
-                        ? 'High accuracy'
+                        ? t('sections.simulation.quality.level.high')
                         : params.simulationRuns >= 500
-                          ? 'Medium accuracy'
-                          : 'Low accuracy'}
+                          ? t('sections.simulation.quality.level.medium')
+                          : t('sections.simulation.quality.level.low')}
                     </span>
                   </div>
                 </div>
@@ -861,31 +897,29 @@ export function ParameterControls() {
           <div className="space-y-4">
             {/* Named Setups */}
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold">Saved Setups</h4>
+              <h4 className="text-sm font-semibold">{t('saved.title')}</h4>
               <div className="flex gap-2 items-center">
                 <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline">
                       <Plus className="h-4 w-4 mr-2" />
-                      Save As...
+                      {t('saved.actions.saveAs')}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px] bg-white">
                     <DialogHeader>
-                      <DialogTitle>Save Setup</DialogTitle>
-                      <DialogDescription>
-                        Give your current parameters a name for easy access later.
-                      </DialogDescription>
+                      <DialogTitle>{t('saved.dialog.title')}</DialogTitle>
+                      <DialogDescription>{t('saved.dialog.description')}</DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                       <Label htmlFor="setup-name" className="text-sm font-medium">
-                        Setup Name
+                        {t('saved.dialog.nameLabel')}
                       </Label>
                       <Input
                         id="setup-name"
                         value={setupName}
                         onChange={(e) => setSetupName(e.target.value)}
-                        placeholder="e.g., Conservative Plan, Aggressive Growth"
+                        placeholder={t('saved.dialog.placeholder')}
                         className="mt-2"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleSaveSetup()
@@ -894,10 +928,10 @@ export function ParameterControls() {
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
-                        Cancel
+                        {t('saved.dialog.cancel')}
                       </Button>
                       <Button onClick={handleSaveSetup} disabled={!setupName.trim()}>
-                        Save Setup
+                        {t('saved.dialog.confirm')}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -911,12 +945,18 @@ export function ParameterControls() {
                   }}
                 >
                   <SelectTrigger className="flex-1 h-9">
-                    <SelectValue placeholder={savedSetups.length === 0 ? 'No saved setups' : 'Load setup...'} />
+                    <SelectValue
+                      placeholder={
+                        savedSetups.length === 0
+                          ? t('saved.empty')
+                          : t('saved.actions.loadPlaceholder')
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {savedSetups.length === 0 ? (
                       <SelectItem value="__placeholder" disabled>
-                        No saved setups yet
+                        {t('saved.empty')}
                       </SelectItem>
                     ) : (
                       savedSetups.map((setup) => (
@@ -939,7 +979,7 @@ export function ParameterControls() {
                                 event.stopPropagation()
                                 handleDeleteSetup(setup.id)
                               }}
-                              aria-label={`Delete ${setup.name}`}
+                              aria-label={t('saved.actions.delete', { name: setup.name })}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -955,7 +995,7 @@ export function ParameterControls() {
             {/* Reset */}
             <Button size="sm" variant="outline" onClick={handleReset} className="w-full">
               <RotateCcw className="h-4 w-4 mr-2" />
-              Reset to Defaults
+              {t('saved.actions.reset')}
             </Button>
           </div>
         </div>

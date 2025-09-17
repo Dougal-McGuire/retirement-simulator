@@ -10,6 +10,7 @@ import {
   Tooltip,
   Brush,
 } from 'recharts'
+import { useTranslations } from 'next-intl'
 import type { ChartDataPoint } from '@/types'
 
 interface SpendingChartProps {
@@ -31,23 +32,23 @@ export function SpendingChart({
   formatCurrencyShort,
   onResetZoom,
 }: SpendingChartProps) {
+  const t = useTranslations('spendingChart')
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200/50 p-6 transition-all duration-300 hover:shadow-md">
       <div className="flex items-center justify-between mb-4">
         <h4 id="spending-chart-title" className="text-lg font-semibold text-gray-900">
-          Spending Patterns During Retirement
+          {t('title')}
         </h4>
         <button
           type="button"
           onClick={onResetZoom}
           className="ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 shadow-sm"
         >
-          Reset Zoom
+          {t('reset')}
         </button>
       </div>
       <p className="text-sm text-gray-600 mb-6">
-        Estimated monthly spending after retirement across scenarios. Includes monthly expenses plus
-        annualized annual expenses.
+        {t('description')}
       </p>
       <div
         className="h-80"
@@ -82,7 +83,7 @@ export function SpendingChart({
               tickLine={{ stroke: '#d1d5db' }}
               axisLine={{ stroke: '#d1d5db' }}
               label={{
-                value: 'Age',
+                value: t('axis.age'),
                 position: 'insideBottom',
                 offset: -10,
                 style: { textAnchor: 'middle', fontSize: '12px', fill: '#6b7280' },
@@ -94,7 +95,7 @@ export function SpendingChart({
               axisLine={{ stroke: '#d1d5db' }}
               tickFormatter={formatCurrencyShort}
               label={{
-                value: 'Monthly Spending (€)',
+                value: t('axis.spending'),
                 angle: -90,
                 position: 'insideLeft',
                 style: { textAnchor: 'middle', fontSize: '12px', fill: '#6b7280' },
@@ -102,7 +103,7 @@ export function SpendingChart({
             />
             <Tooltip
               formatter={(value: number, name: string) => [formatCurrency(value), name]}
-              labelFormatter={(age) => `Age: ${age}`}
+              labelFormatter={(age) => t('tooltip.label', { age })}
               contentStyle={{
                 backgroundColor: 'rgba(255, 255, 255, 0.98)',
                 border: '1px solid #e5e7eb',
@@ -118,7 +119,7 @@ export function SpendingChart({
             <Bar
               dataKey="spending_p10"
               fill="url(#spendingGradient1)"
-              name="10th Percentile"
+              name={t('legend.p10')}
               radius={[2, 2, 0, 0]}
               animationBegin={200}
               animationDuration={1700}
@@ -127,7 +128,7 @@ export function SpendingChart({
             <Bar
               dataKey="spending_p50"
               fill="url(#spendingGradient2)"
-              name="50th Percentile (Median)"
+              name={t('legend.p50')}
               radius={[2, 2, 0, 0]}
               animationBegin={300}
               animationDuration={1800}
@@ -136,7 +137,7 @@ export function SpendingChart({
             <Bar
               dataKey="spending_p80"
               fill="#34d399"
-              name="80th Percentile"
+              name={t('legend.p80')}
               radius={[2, 2, 0, 0]}
               animationBegin={300}
               animationDuration={1800}
@@ -145,7 +146,7 @@ export function SpendingChart({
             <Bar
               dataKey="spending_p90"
               fill="url(#spendingGradient3)"
-              name="90th Percentile"
+              name={t('legend.p90')}
               radius={[2, 2, 0, 0]}
               animationBegin={400}
               animationDuration={1900}
@@ -165,13 +166,12 @@ export function SpendingChart({
         </ResponsiveContainer>
       </div>
       <div id="spending-chart-description" className="sr-only">
-        Monthly spending bar chart showing spending patterns from retirement age {retirementAge}{' '}
-        onwards across percentiles.
+        {t('aria.description', { retirementAge })}
       </div>
       <div
         className="flex flex-wrap justify-center gap-6 mt-6 p-4 bg-gray-50/50 rounded-lg border border-gray-200/50"
         role="list"
-        aria-label="Chart legend"
+        aria-label={t('legend.title')}
       >
         <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
           <div
@@ -179,7 +179,7 @@ export function SpendingChart({
             aria-hidden="true"
           ></div>
           <span className="text-sm font-medium text-gray-700 group-hover:text-amber-600 transition-colors">
-            10th Percentile
+            {t('legend.p10')}
           </span>
         </div>
         <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
@@ -188,7 +188,7 @@ export function SpendingChart({
             aria-hidden="true"
           ></div>
           <span className="text-sm font-medium text-gray-700 group-hover:text-purple-600 transition-colors">
-            50th Percentile
+            {t('legend.p50')}
           </span>
         </div>
         <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
@@ -197,13 +197,11 @@ export function SpendingChart({
             aria-hidden="true"
           ></div>
           <span className="text-sm font-medium text-gray-700 group-hover:text-orange-600 transition-colors">
-            90th Percentile
+            {t('legend.p90')}
           </span>
         </div>
       </div>
-      <p className="text-xs text-gray-500 text-center mt-2">
-        Includes monthly expenses plus annualized annual expenses (vacations, repairs, etc.)
-      </p>
+      <p className="text-xs text-gray-500 text-center mt-2">{t('legend.note')}</p>
     </div>
   )
 }

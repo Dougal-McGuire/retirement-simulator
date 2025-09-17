@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Settings, ChevronRight } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -19,6 +20,7 @@ interface ParameterSidebarProps {
 
 export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const t = useTranslations('parameterSidebar')
 
   return (
     <>
@@ -41,7 +43,7 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
               className="fixed bottom-4 left-4 z-40 shadow-lg bg-white hover:bg-gray-50 border-2 border-gray-200"
             >
               <Settings className="h-4 w-4 mr-2" />
-              Parameters
+              {t('trigger')}
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </SheetTrigger>
@@ -49,11 +51,9 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
             <SheetHeader className="p-6 pb-4">
               <SheetTitle className="flex items-center">
                 <Settings className="h-5 w-5 mr-2" />
-                Simulation Parameters
+                {t('title')}
               </SheetTitle>
-              <SheetDescription>
-                Adjust your retirement planning parameters and see results update in real-time.
-              </SheetDescription>
+              <SheetDescription>{t('description')}</SheetDescription>
             </SheetHeader>
             <div className="px-6 pb-6 overflow-y-auto max-h-[calc(100vh-120px)]">
               <ParameterControls />

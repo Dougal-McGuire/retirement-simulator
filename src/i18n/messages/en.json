@@ -1,0 +1,449 @@
+{
+  "layout": {
+    "skipLinks": {
+      "main": "Skip to main content",
+      "navigation": "Skip to navigation"
+    }
+  },
+  "localeSwitcher": {
+    "label": "Language",
+    "options": {
+      "en": "English",
+      "de": "Deutsch"
+    }
+  },
+  "setup": {
+    "header": {
+      "title": "Setup",
+      "simulationLink": "Go to Simulation"
+    },
+    "progress": {
+      "step": "Step {current} of {total}",
+      "percentComplete": "{percent}% complete"
+    },
+    "buttons": {
+      "back": "Back",
+      "next": "Next",
+      "complete": "Complete Setup"
+    },
+    "steps": {
+      "personal": {
+        "title": "Personal Information",
+        "description": "Your age and retirement timeline"
+      },
+      "assets": {
+        "title": "Assets & Income",
+        "description": "Current assets and savings plan"
+      },
+      "monthly": {
+        "title": "Monthly Expenses",
+        "description": "Regular monthly costs"
+      },
+      "annual": {
+        "title": "Annual Expenses",
+        "description": "Yearly expenses like vacations"
+      },
+      "market": {
+        "title": "Market Assumptions",
+        "description": "Investment returns and inflation"
+      }
+    },
+    "personal": {
+      "fields": {
+        "currentAge": {
+          "label": "Current Age",
+          "help": "How old are you now?"
+        },
+        "retirementAge": {
+          "label": "Intended Retirement Age",
+          "tooltip": "When you want to stop working and live off investments. Earlier retirement requires more aggressive savings.",
+          "help": "When you plan to stop working. The simulator uses this to calculate remaining working years.",
+          "valueLabel": "Age {value}",
+          "remaining": "{count, plural, one {# working year remaining} other {# working years remaining}}"
+        },
+        "legalRetirementAge": {
+          "label": "Legal Retirement Age",
+          "tooltip": "Official retirement age when pension benefits begin. In Germany this is typically 67 years old.",
+          "help": "Determines when statutory pension income starts in the plan."
+        },
+        "endAge": {
+          "label": "Planning Horizon (End Age)",
+          "tooltip": "Plan until what age? (typically 85-95)",
+          "help": "How long your retirement plan should run. Use life expectancy plus a safety margin."
+        }
+      }
+    },
+    "assets": {
+      "fields": {
+        "currentAssets": {
+          "label": "Current Assets (€)",
+          "help": "Total value of your current investments and savings"
+        },
+        "annualSavings": {
+          "label": "Annual Savings (€)",
+          "help": "How much do you save per year until retirement?"
+        },
+        "monthlyPension": {
+          "label": "Monthly Pension (€)",
+          "help": "Expected monthly pension from legal retirement age"
+        }
+      }
+    },
+    "monthly": {
+      "intro": "Enter your expected monthly expenses during retirement:",
+      "total": "Total Monthly:",
+      "annualEquivalent": "Annual: {value}",
+      "labels": {
+        "health": "Health & Insurance",
+        "food": "Food & Dining",
+        "entertainment": "Entertainment & Leisure",
+        "shopping": "Shopping & Miscellaneous",
+        "utilities": "Utilities & Housing"
+      }
+    },
+    "annual": {
+      "intro": "Enter your expected annual expenses during retirement:",
+      "total": "Total Annual:",
+      "labels": {
+        "vacations": "Vacations & Travel",
+        "repairs": "Home Repairs",
+        "carMaintenance": "Car Maintenance"
+      }
+    },
+    "market": {
+      "averageROI": {
+        "label": "Average ROI (Return on Investment)",
+        "help": "Expected average annual return on your investments"
+      },
+      "averageInflation": {
+        "label": "Average Inflation",
+        "help": "Expected average annual inflation rate"
+      },
+      "simulationRuns": {
+        "label": "Simulation Runs",
+        "help": "More runs = more accurate results but slower computation"
+      }
+    }
+  },
+  "simulation": {
+    "header": {
+      "title": "Retirement Simulation",
+      "setupLink": "Setup"
+    },
+    "charts": {
+      "asset": {
+        "title": "Asset Projections & Spending Analysis",
+        "description": "Monte Carlo simulation showing asset levels and spending over time with 10th, 50th, and 90th percentiles"
+      }
+    }
+  },
+  "parameterSidebar": {
+    "trigger": "Parameters",
+    "title": "Simulation Parameters",
+    "description": "Adjust your retirement planning parameters and see results update in real time."
+  },
+  "parameterControls": {
+    "title": "Simulation Parameters",
+    "presets": {
+      "investment": {
+        "title": "Investment Performance",
+        "description": "Based on rolling 30-year averages for diversified developed-market portfolios.",
+        "items": {
+          "defensive": {
+            "name": "Defensive 60/40",
+            "description": "Global 60/40 portfolio, 1994-2024 avg ~5.5% nominal"
+          },
+          "historical": {
+            "name": "Historical Average",
+            "description": "MSCI World rolling 30-year average ~7.5%"
+          },
+          "growth": {
+            "name": "High Growth",
+            "description": "US equities bull phase average ~9.5%"
+          }
+        }
+      },
+      "inflation": {
+        "title": "Inflation Expectations",
+        "description": "Anchored to recent developed-market CPI trends.",
+        "items": {
+          "low": {
+            "name": "Low Inflation",
+            "description": "Developed markets 1990s avg ~1.8%"
+          },
+          "target": {
+            "name": "Central Bank Target",
+            "description": "2-3% target range with mild swings"
+          },
+          "elevated": {
+            "name": "Elevated Prices",
+            "description": "Post-2020 spikes ~3.5% average"
+          }
+        }
+      }
+    },
+    "tabs": {
+      "personal": "Personal",
+      "financial": "Financial",
+      "simulation": "Simulation"
+    },
+    "sections": {
+      "personal": {
+        "timeline": {
+          "title": "Age & Timeline",
+          "description": "Set age and retirement timeline"
+        }
+      },
+      "financial": {
+        "assets": {
+          "title": "Assets & Savings",
+          "description": "Current wealth and future savings capacity"
+        },
+        "pension": {
+          "title": "Pension & Taxes",
+          "description": "Government pension and tax considerations"
+        },
+        "monthly": {
+          "title": "Monthly Expenses",
+          "description": "Total monthly expenses: {value}",
+          "combined": "Combined Monthly",
+          "tooltip": "Includes monthly expenses plus one-twelfth of annual expenses."
+        },
+        "annual": {
+          "title": "Annual Expenses",
+          "description": "Total annual expenses: {value}",
+          "combined": "Combined Annual",
+          "tooltip": "Includes monthly expenses × 12 plus annual expenses."
+        }
+      },
+      "simulation": {
+        "market": {
+          "title": "Market Returns",
+          "description": "Investment performance assumptions"
+        },
+        "inflation": {
+          "title": "Inflation Assumptions",
+          "description": "How costs increase over time"
+        },
+        "quality": {
+          "title": "Simulation Quality",
+          "description": "Accuracy versus performance trade-off",
+          "level": {
+            "high": "High accuracy",
+            "medium": "Medium accuracy",
+            "low": "Low accuracy"
+          }
+        }
+      }
+    },
+    "fields": {
+      "currentAge": {
+        "label": "Current Age",
+        "tooltip": "Your current age for planning purposes. This determines how many working years remain until retirement."
+      },
+      "retirementAge": {
+        "label": "Desired Retirement Age",
+        "tooltip": "When you want to stop working and live off investments. Earlier retirement requires more aggressive savings.",
+        "valueLabel": "Age {value}",
+        "remaining": "{count, plural, one {# working year remaining} other {# working years remaining}}"
+      },
+      "legalRetirementAge": {
+        "label": "Legal Retirement Age",
+        "tooltip": "Official retirement age when pension benefits begin. In Germany this is typically 67 years old."
+      },
+      "endAge": {
+        "label": "Planning Until Age",
+        "tooltip": "Age until which to run the simulation. Typically life expectancy (85) plus buffer. Longer planning periods require more conservative withdrawals."
+      },
+      "currentAssets": {
+        "label": "Current Assets (€)",
+        "tooltip": "Total value of your current investments, savings, and retirement accounts. This is your starting point for wealth accumulation."
+      },
+      "annualSavings": {
+        "label": "Annual Savings (€)",
+        "tooltip": "How much you can save and invest each year until retirement. Higher savings rates lead to earlier retirement possibilities."
+      },
+      "monthlyPension": {
+        "label": "Monthly Pension (€)",
+        "tooltip": "Expected monthly pension from the government system, starting at legal retirement age. This reduces your required private savings."
+      },
+      "capitalGainsTax": {
+        "label": "Capital Gains Tax",
+        "tooltip": "Tax rate on investment gains when selling to cover expenses. German rate: 26.375%. This affects your net withdrawal rates."
+      },
+      "averageROI": {
+        "label": "Average ROI",
+        "tooltip": "Expected annual return on investments. Historical stock market: ~7-10%. Bond portfolio: ~3-5%. Diversified portfolio: ~6-8%."
+      },
+      "roiVolatility": {
+        "label": "ROI Volatility",
+        "tooltip": "Standard deviation of returns. Higher volatility means more uncertainty. Conservative: 5-10%, Moderate: 10-15%, Aggressive: 15-25%.",
+        "range": "{range} of returns fall between {lower} and {upper}"
+      },
+      "averageInflation": {
+        "label": "Average Inflation",
+        "tooltip": "Expected annual inflation rate. ECB target: 2%. Historical average in developed countries: 2-3%."
+      },
+      "inflationVolatility": {
+        "label": "Inflation Volatility",
+        "tooltip": "How much inflation varies year-to-year. Historical range: 0.5-1.5%. Higher volatility creates more uncertainty in retirement costs."
+      },
+      "simulationRuns": {
+        "label": "Number of Runs",
+        "tooltip": "Monte Carlo simulations to run. More runs = higher accuracy but slower computation. 1000+ recommended for reliable results."
+      }
+    },
+    "expenses": {
+      "monthly": {
+        "health": "Health",
+        "food": "Food",
+        "entertainment": "Entertainment",
+        "shopping": "Shopping",
+        "utilities": "Utilities"
+      },
+      "annual": {
+        "vacations": "Vacations",
+        "repairs": "Repairs",
+        "carMaintenance": "Car Maintenance"
+      }
+    },
+    "saved": {
+      "title": "Saved Setups",
+      "empty": "No saved setups",
+      "actions": {
+        "saveAs": "Save As…",
+        "loadPlaceholder": "Load setup…",
+        "delete": "Delete {name}",
+        "reset": "Reset to Defaults"
+      },
+      "dialog": {
+        "title": "Save Setup",
+        "description": "Give your current parameters a name for easy access later.",
+        "nameLabel": "Setup Name",
+        "placeholder": "e.g., Conservative Plan, Aggressive Growth",
+        "cancel": "Cancel",
+        "confirm": "Save Setup"
+      }
+    }
+  },
+  "report": {
+    "errors": {
+      "requestFailed": "PDF generation failed: {status}",
+      "generic": "Failed to generate PDF"
+    },
+    "disabled": {
+      "noData": "No data",
+      "runSimulation": "Run simulation first"
+    },
+    "actions": {
+      "generating": "Generating…",
+      "generate": "Generate Report"
+    }
+  },
+  "successCard": {
+    "title": "Retirement Success Rate",
+    "messages": {
+      "excellent": "Excellent! Very high probability of success",
+      "veryGood": "Very good probability of reaching your goals",
+      "good": "Good probability, but consider optimizing",
+      "moderate": "Moderate success rate, review your plan",
+      "low": "Low success rate, significant adjustments needed",
+      "veryLow": "Very low success rate, major plan revision required"
+    },
+    "summary": {
+      "basedOn": "Based on",
+      "runs": "{count} runs",
+      "detail": "{rate}% of {runs} runs do not run out of assets before end age."
+    },
+    "progress": {
+      "min": "0%",
+      "label": "Success rate",
+      "max": "100%"
+    }
+  },
+  "simulationChart": {
+    "loading": {
+      "title": "Running Monte Carlo simulation…",
+      "subtitle": "This may take a few moments."
+    },
+    "empty": {
+      "title": "No simulation data available",
+      "subtitle": "Adjust parameters to run the simulation."
+    },
+    "assetTable": {
+      "toggle": "View asset milestone table",
+      "caption": "Portfolio value milestones by age and percentile",
+      "headers": {
+        "age": "Age",
+        "p10": "P10",
+        "p50": "P50",
+        "p90": "P90"
+      },
+      "retirementFlag": "Retirement"
+    },
+    "spendingTable": {
+      "toggle": "View spending data table",
+      "caption": "Monthly spending projections during retirement by age and percentile",
+      "headers": {
+        "age": "Age",
+        "p10": "10th Percentile",
+        "p20": "20th Percentile",
+        "p50": "50th Percentile",
+        "p80": "80th Percentile",
+        "p90": "90th Percentile"
+      }
+    }
+  },
+  "assetsChart": {
+    "title": "Asset Projections Over Time",
+    "liveData": "Live Data",
+    "reset": "Reset Zoom",
+    "description": "This chart shows projected asset values over time using Monte Carlo simulation. The three lines represent optimistic (90th percentile), median (50th percentile), and pessimistic (10th percentile) scenarios.",
+    "axis": {
+      "age": "Age",
+      "assets": "Assets (€)"
+    },
+    "legend": {
+      "band": "P20–P80 Band",
+      "title": "Chart legend",
+      "p10": "10th Percentile (Pessimistic)",
+      "p20": "20th Percentile",
+      "p50": "50th Percentile (Median)",
+      "p80": "80th Percentile",
+      "p90": "90th Percentile (Optimistic)"
+    },
+    "tooltip": {
+      "label": "Age: {age}"
+    },
+    "markers": {
+      "retirement": "Retirement",
+      "pension": "Pension Starts"
+    },
+    "aria": {
+      "description": "Asset projection chart showing three scenarios: worst case (10th percentile) in red, median (50th percentile) in blue, and best case (90th percentile) in green."
+    }
+  },
+  "spendingChart": {
+    "title": "Spending Patterns During Retirement",
+    "reset": "Reset Zoom",
+    "description": "Estimated monthly spending after retirement across scenarios. Includes monthly expenses plus annualised annual expenses.",
+    "axis": {
+      "age": "Age",
+      "spending": "Monthly Spending (€)"
+    },
+    "tooltip": {
+      "label": "Age: {age}"
+    },
+    "legend": {
+      "title": "Chart legend",
+      "p10": "10th Percentile",
+      "p50": "50th Percentile",
+      "p80": "80th Percentile",
+      "p90": "90th Percentile",
+      "note": "Includes monthly expenses plus annualized annual expenses (vacations, repairs, etc.)."
+    },
+    "aria": {
+      "description": "Monthly spending bar chart showing spending patterns from retirement age {retirementAge} onwards across percentiles."
+    }
+  }
+}

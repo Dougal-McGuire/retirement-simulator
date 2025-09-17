@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
 import { AnimatedCounter } from '@/components/ui/animated-counter'
+import { useFormatter, useTranslations } from 'next-intl'
 
 interface SuccessRateCardProps {
   successRate: number
@@ -15,13 +16,16 @@ export function SuccessRateCard({
   isLoading,
   simulationRuns = 1000,
 }: SuccessRateCardProps) {
+  const t = useTranslations('successCard')
+  const format = useFormatter()
+
   if (isLoading) {
     return (
       <Card className="border shadow-soft">
         <div className="relative">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-gray-800">
-              <span>Retirement Success Rate</span>
+              <span>{t('title')}</span>
               <div className="animate-pulse w-6 h-6 bg-gray-300 rounded" />
             </CardTitle>
           </CardHeader>
@@ -60,12 +64,12 @@ export function SuccessRateCard({
   }
 
   const getSuccessRateMessage = (rate: number) => {
-    if (rate >= 95) return 'Excellent! Very high probability of success'
-    if (rate >= 90) return 'Very good probability of reaching your goals'
-    if (rate >= 80) return 'Good probability, but consider optimizing'
-    if (rate >= 70) return 'Moderate success rate, review your plan'
-    if (rate >= 50) return 'Low success rate, significant adjustments needed'
-    return 'Very low success rate, major plan revision required'
+    if (rate >= 95) return t('messages.excellent')
+    if (rate >= 90) return t('messages.veryGood')
+    if (rate >= 80) return t('messages.good')
+    if (rate >= 70) return t('messages.moderate')
+    if (rate >= 50) return t('messages.low')
+    return t('messages.veryLow')
   }
 
   const getBorderClasses = (rate: number) => {
@@ -85,7 +89,7 @@ export function SuccessRateCard({
       <div className="relative">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center justify-between text-gray-900">
-            <span className="font-semibold">Retirement Success Rate</span>
+            <span className="font-semibold">{t('title')}</span>
             {getSuccessRateIcon(successRate)}
           </CardTitle>
         </CardHeader>
@@ -116,17 +120,17 @@ export function SuccessRateCard({
             </div>
 
             <div className="text-right text-sm text-gray-600 ml-4">
-              <p className="font-medium">Based on</p>
-              <p>{simulationRuns.toLocaleString()} runs</p>
+              <p className="font-medium">{t('summary.basedOn')}</p>
+              <p>{t('summary.runs', { count: format.number(simulationRuns) })}</p>
             </div>
           </div>
 
           {/* Progress bar */}
           <div className="mt-6">
             <div className="flex justify-between text-xs font-medium text-gray-500 mb-1">
-              <span>0%</span>
-              <span className="text-gray-700">Success Rate</span>
-              <span>100%</span>
+              <span>{t('progress.min')}</span>
+              <span className="text-gray-700">{t('progress.label')}</span>
+              <span>{t('progress.max')}</span>
             </div>
             <div className="relative">
               <div className="w-full bg-gray-200 rounded h-2">
@@ -140,8 +144,10 @@ export function SuccessRateCard({
             </div>
           </div>
           <p className="mt-4 text-xs text-gray-600">
-            {successRate.toFixed(1)}% of {simulationRuns.toLocaleString()} runs do not run out of
-            assets before end age.
+            {t('summary.detail', {
+              rate: successRate.toFixed(1),
+              runs: format.number(simulationRuns),
+            })}
           </p>
         </CardContent>
       </div>

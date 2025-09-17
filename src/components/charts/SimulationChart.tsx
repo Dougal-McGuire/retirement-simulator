@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useCallback, useRef } from 'react'
+import { useFormatter, useTranslations } from 'next-intl'
 import type { SimulationResults, ChartDataPoint } from '@/types'
 import { useSetAutoRunSuspended } from '@/lib/stores/simulationStore'
 import { AssetsChart, type BandPoint } from '@/components/charts/AssetsChart'
@@ -12,13 +13,15 @@ interface SimulationChartProps {
 }
 
 export function SimulationChart({ results, isLoading }: SimulationChartProps) {
+  const t = useTranslations('simulationChart')
+  const format = useFormatter()
   if (isLoading) {
     return (
       <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Running Monte Carlo simulation...</p>
-          <p className="text-sm text-gray-500 mt-1">This may take a few moments</p>
+          <p className="text-gray-600">{t('loading.title')}</p>
+          <p className="text-sm text-gray-500 mt-1">{t('loading.subtitle')}</p>
         </div>
       </div>
     )
@@ -28,8 +31,8 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
     return (
       <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
         <div className="text-center">
-          <p className="text-gray-600">No simulation data available</p>
-          <p className="text-sm text-gray-500 mt-1">Adjust parameters to run simulation</p>
+          <p className="text-gray-600">{t('empty.title')}</p>
+          <p className="text-sm text-gray-500 mt-1">{t('empty.subtitle')}</p>
         </div>
       </div>
     )
@@ -171,19 +174,28 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
     setAutoRunSuspended(false)
   }, [setAgeRange, setAutoRunSuspended])
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value)
+  const formatCurrency = useCallback(
+    (value: number) =>
+      format.number(value, {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }),
+    [format]
+  )
 
-  const formatCurrencyShort = (value: number) => {
-    if (value >= 1_000_000) return `€${(value / 1_000_000).toFixed(1)}M`
-    if (value >= 1_000) return `€${(value / 1_000).toFixed(0)}K`
-    return `€${value.toFixed(0)}`
-  }
+  const formatCurrencyShort = useCallback(
+    (value: number) =>
+      format.number(value, {
+        style: 'currency',
+        currency: 'EUR',
+        notation: 'compact',
+        maximumFractionDigits: 1,
+        minimumFractionDigits: 0,
+      }),
+    [format]
+  )
 
   return (
     <div className="space-y-8">
@@ -195,21 +207,22 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
         onBrushChange={onAssetsBrushChange}
         onResetZoom={resetZoom}
         formatCurrency={formatCurrency}
+        formatCurrencyShort={formatCurrencyShort}
       />
 
       <details className="mt-4">
         <summary className="text-sm text-blue-600 cursor-pointer hover:text-blue-800">
-          View asset milestone table
+          {t('assetTable.toggle')}
         </summary>
         <div className="mt-2 overflow-x-auto">
           <table className="min-w-full text-xs border border-gray-300">
-            <caption className="sr-only">Portfolio value milestones by age and percentile</caption>
+            <caption className="sr-only">{t('assetTable.caption')}</caption>
             <thead>
               <tr className="bg-gray-50">
-                <th className="border px-2 py-1 text-left">Age</th>
-                <th className="border px-2 py-1 text-right">P10</th>
-                <th className="border px-2 py-1 text-right">P50</th>
-                <th className="border px-2 py-1 text-right">P90</th>
+                <th className="border px-2 py-1 text-left">{t('assetTable.headers.age')}</th>
+                <th className="border px-2 py-1 text-right">{t('assetTable.headers.p10')}</th>
+                <th className="border px-2 py-1 text-right">{t('assetTable.headers.p50')}</th>
+                <th className="border px-2 py-1 text-right">{t('assetTable.headers.p90')}</th>
               </tr>
             </thead>
             <tbody>
@@ -224,7 +237,9 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
                   >
                     <td className="border px-2 py-1">
                       {row.age}{' '}
-                      {isRetirementAge && <span className="text-[10px] text-blue-600">(Retirement)</span>}
+                      {isRetirementAge && (
+                        <span className="text-[10px] text-blue-600">{t('assetTable.retirementFlag')}</span>
+                      )}
                     </td>
                     <td className="border px-2 py-1 text-right">{formatCurrency(row.p10)}</td>
                     <td className="border px-2 py-1 text-right">{formatCurrency(row.p50)}</td>
@@ -250,21 +265,19 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
       {/* Data Table for Accessibility */}
       <details className="mt-4">
         <summary className="text-sm text-blue-600 cursor-pointer hover:text-blue-800">
-          View spending data table
+          {t('spendingTable.toggle')}
         </summary>
         <div className="mt-2 overflow-x-auto">
           <table className="min-w-full text-xs border border-gray-300">
-            <caption className="sr-only">
-              Monthly spending projections during retirement by age and percentile
-            </caption>
+            <caption className="sr-only">{t('spendingTable.caption')}</caption>
             <thead>
               <tr className="bg-gray-50">
-                <th className="border px-2 py-1">Age</th>
-                <th className="border px-2 py-1">10th Percentile</th>
-                <th className="border px-2 py-1">20th Percentile</th>
-                <th className="border px-2 py-1">50th Percentile</th>
-                <th className="border px-2 py-1">80th Percentile</th>
-                <th className="border px-2 py-1">90th Percentile</th>
+                <th className="border px-2 py-1">{t('spendingTable.headers.age')}</th>
+                <th className="border px-2 py-1">{t('spendingTable.headers.p10')}</th>
+                <th className="border px-2 py-1">{t('spendingTable.headers.p20')}</th>
+                <th className="border px-2 py-1">{t('spendingTable.headers.p50')}</th>
+                <th className="border px-2 py-1">{t('spendingTable.headers.p80')}</th>
+                <th className="border px-2 py-1">{t('spendingTable.headers.p90')}</th>
               </tr>
             </thead>
             <tbody>
