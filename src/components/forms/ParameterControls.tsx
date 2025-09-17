@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
+import type { NumberFormatOptions } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -51,6 +52,17 @@ import {
 } from '@/lib/stores/simulationStore'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { DEFAULT_PARAMS, SimulationParams } from '@/types'
+
+type FormatterNumberOptions = Parameters<ReturnType<typeof useFormatter>['number']>[1]
+
+const composeNumberOptions = (
+  base: NumberFormatOptions,
+  override?: FormatterNumberOptions,
+): FormatterNumberOptions => {
+  if (!override) return base
+  if (typeof override === 'string') return override
+  return { ...base, ...override }
+}
 
 // Preset configurations
 const INVESTMENT_PRESETS = [
@@ -228,33 +240,49 @@ export function ParameterControls() {
     [params.annualExpenses, params.monthlyExpenses]
   )
 
+  const baseCurrencyFormat = React.useMemo<NumberFormatOptions>(
+    () => ({
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }),
+    []
+  )
+
+  const basePercentFormat = React.useMemo<NumberFormatOptions>(
+    () => ({
+      style: 'percent',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    }),
+    []
+  )
+
+  const baseNumberFormat = React.useMemo<NumberFormatOptions>(
+    () => ({
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }),
+    []
+  )
+
   const formatCurrency = React.useCallback(
-    (value: number, options?: Intl.NumberFormatOptions) =>
-      format.number(value, {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-        ...options,
-      }),
-    [format]
+    (value: number, options?: FormatterNumberOptions) =>
+      format.number(value, composeNumberOptions(baseCurrencyFormat, options)),
+    [baseCurrencyFormat, format]
   )
 
   const formatPercent = React.useCallback(
-    (value: number, options?: Intl.NumberFormatOptions) =>
-      format.number(value, {
-        style: 'percent',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 1,
-        ...options,
-      }),
-    [format]
+    (value: number, options?: FormatterNumberOptions) =>
+      format.number(value, composeNumberOptions(basePercentFormat, options)),
+    [basePercentFormat, format]
   )
 
   const formatNumber = React.useCallback(
-    (value: number, options?: Intl.NumberFormatOptions) =>
-      format.number(value, { maximumFractionDigits: 0, minimumFractionDigits: 0, ...options }),
-    [format]
+    (value: number, options?: FormatterNumberOptions) =>
+      format.number(value, composeNumberOptions(baseNumberFormat, options)),
+    [baseNumberFormat, format]
   )
 
   const handleInputChange = (field: keyof SimulationParams, value: number) => {

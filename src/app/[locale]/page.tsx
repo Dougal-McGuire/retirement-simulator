@@ -1,5 +1,10 @@
-import { redirect } from '@/navigation'
+import { redirect } from 'next/navigation'
 
-export default function LocaleHomePage() {
-  redirect('/simulation')
+interface LocaleHomePageProps {
+  params: Promise<{ locale: string }>
+}
+
+export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
+  const { locale } = await params
+  redirect(`/${locale}/simulation`)
 }

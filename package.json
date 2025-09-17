@@ -72,5 +72,5 @@
     "ts-jest": "^29.4.1",
     "typescript": "^5"
   },
-  "packageManager": "pnpm@latest-9"
+  "packageManager": "pnpm@10.15.1"
 }
