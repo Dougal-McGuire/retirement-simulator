@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useTranslations } from 'next-intl'
+import { useEffect, useMemo } from 'react'
+import { useFormatter, useTranslations } from 'next-intl'
+import { Sparkles } from 'lucide-react'
 import { Link } from '@/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,10 +21,35 @@ import { ChartSkeleton, SuccessRateCardSkeleton } from '@/components/ui/skeleton
 
 export default function SimulationPage() {
   const t = useTranslations('simulation')
+  const format = useFormatter()
   const params = useSimulationParams()
   const results = useSimulationResults()
   const isLoading = useSimulationLoading()
   const runSimulation = useSimulationStore((state) => state.runSimulation)
+
+  const successRate = results?.successRate
+  const formattedRuns = useMemo(
+    () => format.number(params.simulationRuns),
+    [format, params.simulationRuns]
+  )
+
+  const formattedSuccessRate = useMemo(() => {
+    if (successRate == null) return null
+    return format.number(successRate / 100, {
+      style: 'percent',
+      minimumFractionDigits: successRate % 1 === 0 ? 0 : 1,
+      maximumFractionDigits: 1,
+    })
+  }, [format, successRate])
+
+  const successTone = useMemo(() => {
+    if (successRate == null) return null
+    if (successRate >= 90) return 'high'
+    if (successRate >= 75) return 'medium'
+    return 'low'
+  }, [successRate])
+
+  const successMessage = successTone ? t(`header.confidence.${successTone}`) : null
 
   // Run initial simulation
   useEffect(() => {
@@ -33,57 +59,93 @@ export default function SimulationPage() {
   }, [results, runSimulation])
 
   return (
-    <div className="min-h-screen bg-retirement-50">
+    <div className="relative min-h-screen overflow-hidden pb-16">
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute left-[10%] top-[-140px] h-80 w-80 rounded-full bg-primary/25 blur-3xl" />
+        <div className="absolute right-[6%] top-24 h-80 w-80 rounded-full bg-accent/20 blur-3xl" />
+        <div className="absolute left-1/2 top-[420px] h-[420px] w-[520px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+      </div>
+
       {/* Header */}
-      <header id="navigation" className="bg-white border-b border-retirement-200 shadow-soft">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center justify-between sm:justify-start">
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">{t('header.title')}</h1>
-              <div className="flex items-center gap-2 sm:hidden">
-                <LocaleSwitcher className="w-36" />
-                <Button size="sm" asChild>
-                  <Link href="/setup">{t('header.setupLink')}</Link>
-                </Button>
+      <header id="navigation" className="relative z-10 pt-12 pb-6">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/80 px-6 py-8 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+            <div className="pointer-events-none absolute -right-28 -top-32 h-64 w-64 rounded-full bg-primary/25 blur-3xl" />
+            <div className="pointer-events-none absolute -left-32 bottom-0 h-72 w-72 rounded-full bg-accent/20 blur-3xl" />
+            <div className="relative flex flex-col gap-8">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-4 text-slate-900">
+                  <div className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+                    <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-primary-700">
+                      {t('header.badges.engine')}
+                    </span>
+                    <span className="rounded-full border border-white/60 bg-white/70 px-3 py-1 text-slate-600 normal-case tracking-[0.08em]">
+                      {t('header.badges.runs', { count: formattedRuns })}
+                    </span>
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-semibold sm:text-4xl">{t('header.title')}</h1>
+                    <p className="mt-3 max-w-2xl text-base text-slate-600">
+                      {t('header.subtitle')}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <LocaleSwitcher className="h-10 w-full rounded-full border-white/60 bg-white/70 text-slate-700 shadow-inner sm:w-40" />
+                  <GenerateReportButton
+                    results={results}
+                    params={params}
+                    disabled={isLoading}
+                    size="sm"
+                    buttonClassName="h-10 rounded-full bg-gradient-to-r from-primary via-indigo-500 to-sky-500 px-5 text-white shadow-lg transition hover:from-primary/90 hover:via-indigo-500/90 hover:to-sky-500/90"
+                    wrapperClassName="w-full sm:w-auto"
+                  />
+                  <Button
+                    size="sm"
+                    asChild
+                    className="h-10 rounded-full border-white/70 bg-white/80 text-slate-700 shadow-sm transition hover:border-primary/40 hover:text-primary-700"
+                  >
+                    <Link href="/setup">{t('header.setupLink')}</Link>
+                  </Button>
+                </div>
               </div>
-            </div>
-            <div className="hidden sm:flex sm:items-center sm:justify-end sm:gap-3">
-              <LocaleSwitcher className="w-36" />
-              <GenerateReportButton
-                results={results}
-                params={params}
-                disabled={isLoading}
-                size="sm"
-              />
-              <Button size="sm" asChild>
-                <Link href="/setup">{t('header.setupLink')}</Link>
-              </Button>
+
+              {formattedSuccessRate && (
+                <div className="flex flex-col gap-4 rounded-2xl border border-white/70 bg-white/75 px-5 py-4 text-slate-700 shadow-inner sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/15 text-primary-700 shadow-inner">
+                      <Sparkles className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+                        {t('header.confidenceLabel')}
+                      </p>
+                      <p className="text-2xl font-semibold text-slate-900">{formattedSuccessRate}</p>
+                    </div>
+                  </div>
+                  <div className="text-sm text-slate-600 sm:max-w-sm">
+                    {successMessage}
+                    <div className="mt-2 text-xs text-slate-500">
+                      {t('header.confidenceMeta', { count: formattedRuns })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </header>
 
-      <div className="sm:hidden bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
-          <GenerateReportButton
-            results={results}
-            params={params}
-            disabled={isLoading}
-            size="sm"
-          />
-        </div>
-      </div>
-
-      <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Parameter Controls Sidebar */}
+      <main
+        id="main-content"
+        className="relative z-10 mx-auto mt-6 max-w-7xl px-4 pb-20 sm:px-6 lg:px-8"
+      >
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
           <ParameterSidebar />
 
-          {/* Main Content */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Success Rate Card */}
+          <div className="space-y-8">
             {isLoading ? (
-              <Card>
+              <Card className="overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl ring-1 ring-slate-200/50">
                 <SuccessRateCardSkeleton />
               </Card>
             ) : (
@@ -94,15 +156,16 @@ export default function SimulationPage() {
               />
             )}
 
-            {/* Simulation Chart */}
-            <Card className="bg-white border-retirement-200 shadow-soft">
-              <CardHeader>
-                <CardTitle className="text-retirement-800">{t('charts.asset.title')}</CardTitle>
-                <CardDescription className="text-retirement-600">
+            <Card className="overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl ring-1 ring-slate-200/50">
+              <CardHeader className="border-b border-white/60 bg-white/40">
+                <CardTitle className="text-xl font-semibold text-slate-900">
+                  {t('charts.asset.title')}
+                </CardTitle>
+                <CardDescription className="mt-1 text-sm text-slate-600">
                   {t('charts.asset.description')}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 {isLoading ? (
                   <ChartSkeleton />
                 ) : (
@@ -110,203 +173,6 @@ export default function SimulationPage() {
                 )}
               </CardContent>
             </Card>
-
-            {/* Statistics Cards (removed)
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {isLoading ? (
-                <>
-                  <StatCardSkeleton />
-                  <StatCardSkeleton />
-                  <StatCardSkeleton />
-                </>
-              ) : (
-                <>
-                  <Card className="group bg-gradient-to-br from-info-50 to-info-100 border-info-200 shadow-soft hover:shadow-glow hover:-translate-y-1 transition-all duration-300 cursor-pointer animate-scale-in">
-                    <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                      <CardTitle className="text-lg text-info-800 group-hover:text-info-900 transition-colors">Current Age</CardTitle>
-                      <div className="w-10 h-10 bg-info-200 rounded-full flex items-center justify-center group-hover:bg-info-300 transition-all duration-300 group-hover:scale-110">
-                        <span className="text-info-700 font-bold text-sm">👤</span>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center space-x-3">
-                        <div className="text-3xl font-bold text-info-600 group-hover:text-info-700 transition-colors">
-                          {params.currentAge}
-                        </div>
-                        <div className="text-info-500 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                          <span className="text-sm font-medium">years</span>
-                        </div>
-                      </div>
-                      <p className="text-sm text-info-700 mt-2 group-hover:text-info-800 transition-colors">
-                        Years until retirement: <span className="font-semibold">{params.retirementAge - params.currentAge}</span>
-                      </p>
-                      <div className="mt-3 h-1 bg-info-200 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-info-400 to-info-600 rounded-full transition-all duration-1000 group-hover:from-info-500 group-hover:to-info-700"
-                          style={{ 
-                            width: `${Math.min(100, ((params.currentAge - 20) / (params.retirementAge - 20)) * 100)}%` 
-                          }}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="group bg-gradient-to-br from-success-50 to-success-100 border-success-500/20 shadow-soft hover:shadow-success hover:-translate-y-1 transition-all duration-300 cursor-pointer animate-scale-in">
-                    <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                      <CardTitle className="text-lg text-success-700 group-hover:text-success-800 transition-colors">Monthly Expenses</CardTitle>
-                      <div className="w-10 h-10 bg-success-100 rounded-full flex items-center justify-center group-hover:bg-success-200 transition-all duration-300 group-hover:scale-110 shadow-sm">
-                        <span className="text-success-600 font-bold text-sm">💰</span>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center space-x-2">
-                        <div className="text-3xl font-bold text-success-600 group-hover:text-success-700 transition-colors">
-                          €{calculateCombinedExpenses(params.monthlyExpenses, params.annualExpenses).combinedMonthly.toFixed(0)}
-                        </div>
-                        <div className="text-success-500 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100">
-                          <span className="text-xs font-medium">/month</span>
-                        </div>
-                      </div>
-                      <div className="mt-2 space-y-1">
-                        <p className="text-sm text-success-700 group-hover:text-success-800 transition-colors">
-                          Annual: <span className="font-semibold">€{calculateCombinedExpenses(params.monthlyExpenses, params.annualExpenses).combinedAnnual.toFixed(0)}</span>
-                        </p>
-                        <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-2 group-hover:translate-y-0">
-                          <div className="w-2 h-2 bg-success-500 rounded-full animate-pulse-soft"></div>
-                          <p className="text-xs text-success-600">
-                            Includes monthly + annual/12
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="group bg-gradient-to-br from-warning-50 to-warning-100 border-warning-500/20 shadow-soft hover:shadow-warning hover:-translate-y-1 transition-all duration-300 cursor-pointer animate-scale-in">
-                    <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                      <CardTitle className="text-lg text-warning-700 group-hover:text-warning-800 transition-colors">Simulation Runs</CardTitle>
-                      <div className="w-10 h-10 bg-warning-100 rounded-full flex items-center justify-center group-hover:bg-warning-200 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 shadow-sm">
-                        <span className="text-warning-600 font-bold text-sm">🎯</span>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center space-x-3">
-                        <div className="text-3xl font-bold text-warning-600 group-hover:text-warning-700 transition-colors">
-                          {formatNumber(params.simulationRuns)}
-                        </div>
-                        <div className="text-warning-500 opacity-0 group-hover:opacity-100 transition-all duration-300 transform -translate-x-2 group-hover:translate-x-0">
-                          <div className="flex space-x-1">
-                            <div className="w-1 h-1 bg-warning-500 rounded-full animate-ping" />
-                            <div className="w-1 h-1 bg-warning-500 rounded-full animate-ping" style={{ animationDelay: '0.2s' }} />
-                            <div className="w-1 h-1 bg-warning-500 rounded-full animate-ping" style={{ animationDelay: '0.4s' }} />
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-sm text-warning-700 mt-2 group-hover:text-warning-800 transition-colors">
-                        Monte Carlo iterations
-                      </p>
-                      <div className="mt-3 flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-2 group-hover:translate-y-0">
-                        <div className="flex-1 h-1 bg-warning-200 rounded-full">
-                          <div className="h-full bg-gradient-to-r from-warning-400 to-warning-600 rounded-full w-full transition-all duration-1000" />
-                        </div>
-                        <span className="text-xs text-warning-600 font-medium">100%</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </>
-              )}
-            </div>
-            */}
-
-            {/* Information Card (removed)
-            <Card className="group bg-gradient-to-br from-retirement-50 via-retirement-100 to-info-50 border-retirement-200 shadow-medium hover:shadow-strong transition-all duration-500 overflow-hidden relative animate-fade-in">
-              <div className="absolute inset-0 bg-gradient-to-br from-retirement-100/30 to-info-100/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <CardHeader className="relative">
-                <CardTitle className="text-retirement-800 group-hover:text-retirement-900 transition-colors flex items-center space-x-3">
-                  <span className="text-2xl">🧠</span>
-                  <span>How This Simulation Works</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-blue-700 relative">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="group/item bg-white/50 p-4 rounded-lg border border-blue-200/50 hover:bg-white/70 hover:border-blue-300/70 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-8 h-8 bg-blue-200 group-hover/item:bg-blue-300 rounded-full flex items-center justify-center transition-all duration-300 group-hover/item:scale-110">
-                        <span className="text-blue-700 text-sm">🎲</span>
-                      </div>
-                      <h4 className="font-semibold text-blue-800 group-hover/item:text-blue-900 transition-colors">Monte Carlo Method</h4>
-                    </div>
-                    <p className="text-sm text-blue-700 group-hover/item:text-blue-800 transition-colors leading-relaxed">
-                      Runs thousands of scenarios with random market returns and inflation rates 
-                      based on your specified averages and volatility parameters.
-                    </p>
-                    <div className="mt-3 opacity-0 group-hover/item:opacity-100 transition-all duration-300 transform translate-y-2 group-hover/item:translate-y-0">
-                      <div className="flex items-center space-x-2 text-xs text-blue-600">
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                        <span>Simulates market uncertainty</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="group/item bg-white/50 p-4 rounded-lg border border-indigo-200/50 hover:bg-white/70 hover:border-indigo-300/70 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-8 h-8 bg-indigo-200 group-hover/item:bg-indigo-300 rounded-full flex items-center justify-center transition-all duration-300 group-hover/item:scale-110">
-                        <span className="text-indigo-700 text-sm">⚡</span>
-                      </div>
-                      <h4 className="font-semibold text-indigo-800 group-hover/item:text-indigo-900 transition-colors">Two-Phase Modeling</h4>
-                    </div>
-                    <p className="text-sm text-indigo-700 group-hover/item:text-indigo-800 transition-colors leading-relaxed">
-                      Models both accumulation phase (working years with savings) and 
-                      distribution phase (retirement years with expenses and pension income).
-                    </p>
-                    <div className="mt-3 opacity-0 group-hover/item:opacity-100 transition-all duration-300 transform translate-y-2 group-hover/item:translate-y-0">
-                      <div className="flex items-center space-x-2 text-xs text-indigo-600">
-                        <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></div>
-                        <span>Accumulation → Distribution</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="group/item bg-white/50 p-4 rounded-lg border border-purple-200/50 hover:bg-white/70 hover:border-purple-300/70 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-8 h-8 bg-purple-200 group-hover/item:bg-purple-300 rounded-full flex items-center justify-center transition-all duration-300 group-hover/item:scale-110">
-                        <span className="text-purple-700 text-sm">🎯</span>
-                      </div>
-                      <h4 className="font-semibold text-purple-800 group-hover/item:text-purple-900 transition-colors">Success Rate</h4>
-                    </div>
-                    <p className="text-sm text-purple-700 group-hover/item:text-purple-800 transition-colors leading-relaxed">
-                      Percentage of simulations where you don't run out of money before age {params.endAge}.
-                      Higher is better for retirement confidence.
-                    </p>
-                    <div className="mt-3 opacity-0 group-hover/item:opacity-100 transition-all duration-300 transform translate-y-2 group-hover/item:translate-y-0">
-                      <div className="flex items-center space-x-2 text-xs text-purple-600">
-                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                        <span>Measures plan reliability</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="group/item bg-white/50 p-4 rounded-lg border border-teal-200/50 hover:bg-white/70 hover:border-teal-300/70 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-8 h-8 bg-teal-200 group-hover/item:bg-teal-300 rounded-full flex items-center justify-center transition-all duration-300 group-hover/item:scale-110">
-                        <span className="text-teal-700 text-sm">📊</span>
-                      </div>
-                      <h4 className="font-semibold text-teal-800 group-hover/item:text-teal-900 transition-colors">Percentile Analysis</h4>
-                    </div>
-                    <p className="text-sm text-teal-700 group-hover/item:text-teal-800 transition-colors leading-relaxed">
-                      Shows 10th (pessimistic), 50th (median), and 90th (optimistic) percentiles 
-                      to understand the range of possible outcomes.
-                    </p>
-                    <div className="mt-3 opacity-0 group-hover/item:opacity-100 transition-all duration-300 transform translate-y-2 group-hover/item:translate-y-0">
-                      <div className="flex items-center space-x-2 text-xs text-teal-600">
-                        <div className="w-2 h-2 bg-teal-400 rounded-full animate-pulse"></div>
-                        <span>Shows outcome range</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            */}
           </div>
         </div>
       </main>

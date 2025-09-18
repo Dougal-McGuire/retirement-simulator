@@ -41,7 +41,7 @@ export function LabeledNumberInput({
         max={max}
         className={className}
       />
-      {helpText && <p className="text-sm text-gray-500 mt-1">{helpText}</p>}
+      {helpText && <p className="mt-1 text-sm text-slate-500">{helpText}</p>}
     </div>
   )
 }

@@ -15,11 +15,17 @@
   "setup": {
     "header": {
       "title": "Setup",
-      "simulationLink": "Go to Simulation"
+      "subtitle": "Craft your baseline assumptions before running the retirement engine.",
+      "simulationLink": "Go to Simulation",
+      "badges": {
+        "guide": "Guided setup",
+        "time": "≈5 min"
+      }
     },
     "progress": {
       "step": "Step {current} of {total}",
-      "percentComplete": "{percent}% complete"
+      "percentComplete": "{percent}% complete",
+      "autosave": "Progress auto-saves locally"
     },
     "buttons": {
       "back": "Back",
@@ -128,7 +134,19 @@
   "simulation": {
     "header": {
       "title": "Retirement Simulation",
-      "setupLink": "Setup"
+      "subtitle": "Build, adjust, and monitor retirement plans with live Monte Carlo confidence.",
+      "setupLink": "Setup",
+      "badges": {
+        "engine": "Live Monte Carlo",
+        "runs": "{count} runs per update"
+      },
+      "confidenceLabel": "Success probability",
+      "confidence": {
+        "high": "Your plan is in great shape. Keep contributions steady and review yearly.",
+        "medium": "A solid outlook with room to improve—tweak spending or asset allocation for more certainty.",
+        "low": "Confidence is strained. Increase savings, revisit expenses, or adjust risk to improve resilience."
+      },
+      "confidenceMeta": "Based on {count} stochastic simulations"
     },
     "charts": {
       "asset": {
@@ -353,7 +371,8 @@
     "summary": {
       "basedOn": "Based on",
       "runs": "{count} runs",
-      "detail": "{rate}% of {runs} runs do not run out of assets before end age."
+      "detail": "{rate}% of {runs} runs do not run out of assets before end age.",
+      "confidenceLabel": "Plan confidence"
     },
     "progress": {
       "min": "0%",

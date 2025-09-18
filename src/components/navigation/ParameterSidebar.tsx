@@ -27,8 +27,11 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
       {/* Desktop Sidebar */}
       <div className={`hidden lg:block lg:col-span-1 ${className}`}>
         <div className="sticky top-6">
-          <div className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-invisible">
-            <ParameterControls />
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-x-6 top-0 h-32 rounded-full bg-primary/15 blur-3xl" />
+            <div className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-invisible">
+              <ParameterControls />
+            </div>
           </div>
         </div>
       </div>
@@ -40,22 +43,27 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
             <Button
               variant="outline"
               size="sm"
-              className="fixed bottom-4 left-4 z-40 shadow-lg bg-white hover:bg-gray-50 border-2 border-gray-200"
+              className="fixed bottom-4 left-4 z-40 rounded-full border-white/70 bg-white/80 px-4 shadow-2xl backdrop-blur transition hover:border-primary/40 hover:bg-white"
             >
               <Settings className="h-4 w-4 mr-2" />
               {t('trigger')}
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-full sm:w-96 p-0">
-            <SheetHeader className="p-6 pb-4">
-              <SheetTitle className="flex items-center">
+          <SheetContent
+            side="left"
+            className="w-full border-white/60 bg-white/80 p-0 shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur-xl sm:w-96"
+          >
+            <SheetHeader className="border-b border-white/60 bg-white/50 p-6 pb-4">
+              <SheetTitle className="flex items-center text-lg font-semibold text-slate-900">
                 <Settings className="h-5 w-5 mr-2" />
                 {t('title')}
               </SheetTitle>
-              <SheetDescription>{t('description')}</SheetDescription>
+              <SheetDescription className="text-sm text-slate-600">
+                {t('description')}
+              </SheetDescription>
             </SheetHeader>
-            <div className="px-6 pb-6 overflow-y-auto max-h-[calc(100vh-120px)]">
+            <div className="max-h-[calc(100vh-120px)] overflow-y-auto px-6 pb-6">
               <ParameterControls />
             </div>
           </SheetContent>

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { FileText, Download, Loader2 } from 'lucide-react'
 import { SimulationResults, SimulationParams } from '@/types'
 
@@ -12,6 +13,8 @@ interface GenerateReportButtonProps {
   disabled?: boolean
   variant?: 'default' | 'outline' | 'ghost'
   size?: 'sm' | 'default' | 'lg'
+  buttonClassName?: string
+  wrapperClassName?: string
 }
 
 export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
@@ -20,6 +23,8 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
   disabled = false,
   variant = 'default',
   size = 'default',
+  buttonClassName,
+  wrapperClassName,
 }) => {
   const t = useTranslations('report')
   const locale = useLocale()
@@ -82,7 +87,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
 
   if (!canGenerate) {
     return (
-      <Button variant={variant} size={size} disabled>
+      <Button variant={variant} size={size} disabled className={buttonClassName}>
         <FileText className="w-4 h-4 mr-2" />
         {!results ? t('disabled.noData') : t('disabled.runSimulation')}
       </Button>
@@ -90,8 +95,14 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
   }
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <Button variant={variant} size={size} onClick={handleGenerate} disabled={isGenerating}>
+    <div className={cn('flex flex-col items-center gap-2', wrapperClassName)}>
+      <Button
+        variant={variant}
+        size={size}
+        onClick={handleGenerate}
+        disabled={isGenerating}
+        className={buttonClassName}
+      >
         {isGenerating ? (
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
         ) : (

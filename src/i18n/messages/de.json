@@ -15,11 +15,17 @@
   "setup": {
     "header": {
       "title": "Setup",
-      "simulationLink": "Zur Simulation"
+      "subtitle": "Definieren Sie Ihre Basisannahmen, bevor Sie die Ruhestands-Engine starten.",
+      "simulationLink": "Zur Simulation",
+      "badges": {
+        "guide": "Geführtes Setup",
+        "time": "≈5 Min"
+      }
     },
     "progress": {
       "step": "Schritt {current} von {total}",
-      "percentComplete": "{percent}% abgeschlossen"
+      "percentComplete": "{percent}% abgeschlossen",
+      "autosave": "Fortschritt wird lokal automatisch gespeichert"
     },
     "buttons": {
       "back": "Zurück",
@@ -128,7 +134,19 @@
   "simulation": {
     "header": {
       "title": "Ruhestandssimulation",
-      "setupLink": "Setup"
+      "subtitle": "Planen, justieren und überwachen Sie Ihren Ruhestand mit Live-Monte-Carlo-Ergebnissen.",
+      "setupLink": "Setup",
+      "badges": {
+        "engine": "Live-Monte-Carlo",
+        "runs": "{count} Läufe pro Aktualisierung"
+      },
+      "confidenceLabel": "Erfolgswahrscheinlichkeit",
+      "confidence": {
+        "high": "Ihr Plan ist sehr robust. Halten Sie Beiträge stabil und prüfen Sie ihn jährlich.",
+        "medium": "Solide Aussichten mit Verbesserungspotenzial – Ausgaben oder Anlageaufteilung feinjustieren.",
+        "low": "Aktuell angespannt. Sparrate erhöhen, Ausgaben senken oder Risiko neu ausrichten."
+      },
+      "confidenceMeta": "Basiert auf {count} stochastischen Simulationen"
     },
     "charts": {
       "asset": {
@@ -353,7 +371,8 @@
     "summary": {
       "basedOn": "Basis",
       "runs": "{count} Läufe",
-      "detail": "{rate}% von {runs} laufen nicht vor dem Endalter leer."
+      "detail": "{rate}% von {runs} laufen nicht vor dem Endalter leer.",
+      "confidenceLabel": "Plan-Vertrauen"
     },
     "progress": {
       "min": "0%",

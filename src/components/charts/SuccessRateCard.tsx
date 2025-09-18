@@ -1,9 +1,11 @@
 'use client'
 
+import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
 import { AnimatedCounter } from '@/components/ui/animated-counter'
 import { useFormatter, useTranslations } from 'next-intl'
+import { cn } from '@/lib/utils'
 
 interface SuccessRateCardProps {
   successRate: number
@@ -21,29 +23,29 @@ export function SuccessRateCard({
 
   if (isLoading) {
     return (
-      <Card className="border shadow-soft">
+      <Card className="overflow-hidden rounded-3xl border border-white/70 bg-white/85 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl ring-1 ring-slate-200/40">
         <div className="relative">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-gray-800">
+          <CardHeader className="border-b border-white/60 bg-white/50 pb-3">
+            <CardTitle className="flex items-center justify-between text-slate-800">
               <span>{t('title')}</span>
-              <div className="animate-pulse w-6 h-6 bg-gray-300 rounded" />
+              <div className="h-6 w-6 animate-pulse rounded-full bg-slate-200" />
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center space-x-3">
-                  <div className="animate-pulse h-10 w-24 bg-gray-300 rounded" />
+                  <div className="h-10 w-24 animate-pulse rounded-xl bg-slate-200" />
                 </div>
-                <div className="animate-pulse h-3 w-40 bg-gray-300 rounded mt-3" />
+                <div className="mt-3 h-3 w-40 animate-pulse rounded-full bg-slate-200" />
               </div>
               <div className="text-right">
-                <div className="animate-pulse h-3 w-20 bg-gray-300 rounded mb-1" />
-                <div className="animate-pulse h-3 w-24 bg-gray-300 rounded" />
+                <div className="mb-1 h-3 w-20 animate-pulse rounded-full bg-slate-200" />
+                <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200" />
               </div>
             </div>
             <div className="mt-6">
-              <div className="animate-pulse h-2 w-full bg-gray-300 rounded" />
+              <div className="h-2 w-full animate-pulse rounded-full bg-slate-200" />
             </div>
           </CardContent>
         </div>
@@ -51,16 +53,10 @@ export function SuccessRateCard({
     )
   }
 
-  const getSuccessRateColor = (rate: number) => {
-    if (rate >= 90) return 'text-emerald-600'
-    if (rate >= 75) return 'text-amber-600'
-    return 'text-red-600'
-  }
-
   const getSuccessRateIcon = (rate: number) => {
-    if (rate >= 90) return <TrendingUp className="h-5 w-5 text-emerald-600" />
+    if (rate >= 90) return <TrendingUp className="h-5 w-5 text-emerald-500" />
     if (rate >= 75) return <AlertTriangle className="h-6 w-6 text-amber-500" />
-    return <TrendingDown className="h-6 w-6 text-red-500" />
+    return <TrendingDown className="h-6 w-6 text-rose-500" />
   }
 
   const getSuccessRateMessage = (rate: number) => {
@@ -72,78 +68,86 @@ export function SuccessRateCard({
     return t('messages.veryLow')
   }
 
-  const getBorderClasses = (rate: number) => {
-    if (rate >= 90) return 'border-emerald-200'
-    if (rate >= 75) return 'border-amber-200'
-    return 'border-red-200'
-  }
-
-  const getProgressColor = (rate: number) => {
-    if (rate >= 90) return 'bg-emerald-500'
-    if (rate >= 75) return 'bg-amber-500'
-    return 'bg-red-500'
-  }
+  const tone = useMemo(() => {
+    if (successRate >= 90)
+      return {
+        card: 'border-emerald-300/50 ring-emerald-200/30 shadow-[0_26px_80px_rgba(16,185,129,0.18)]',
+        chip: 'bg-emerald-100/80 text-emerald-700',
+        text: 'text-emerald-700',
+        progress: 'from-emerald-400 to-emerald-600',
+      }
+    if (successRate >= 75)
+      return {
+        card: 'border-amber-300/60 ring-amber-200/30 shadow-[0_26px_80px_rgba(245,158,11,0.16)]',
+        chip: 'bg-amber-100/80 text-amber-700',
+        text: 'text-amber-700',
+        progress: 'from-amber-400 to-amber-600',
+      }
+    return {
+      card: 'border-rose-300/60 ring-rose-200/30 shadow-[0_26px_80px_rgba(244,63,94,0.16)]',
+      chip: 'bg-rose-100/80 text-rose-700',
+      text: 'text-rose-700',
+      progress: 'from-rose-400 to-rose-600',
+    }
+  }, [successRate])
 
   return (
-    <Card className={`border ${getBorderClasses(successRate)}`}>
+    <Card
+      className={cn(
+        'relative overflow-hidden rounded-3xl border border-white/70 bg-white/85 backdrop-blur-xl ring-1 ring-slate-200/40 transition-shadow',
+        tone.card
+      )}
+    >
       <div className="relative">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center justify-between text-gray-900">
-            <span className="font-semibold">{t('title')}</span>
+        <CardHeader className="border-b border-white/60 bg-white/50 pb-4">
+          <CardTitle className="flex items-center justify-between text-slate-900">
+            <span className="text-base font-semibold">{t('title')}</span>
             {getSuccessRateIcon(successRate)}
           </CardTitle>
         </CardHeader>
 
         <CardContent>
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
-              <div className="flex items-center space-x-2 mb-2">
+              <div className="mb-3 flex items-center gap-3">
+                <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', tone.chip)}>
+                  {t('summary.confidenceLabel')}
+                </span>
                 <AnimatedCounter
                   end={successRate}
                   duration={2.5}
                   decimals={1}
                   suffix="%"
-                  className={`text-4xl font-bold ${getSuccessRateColor(successRate)}`}
+                  className={cn('text-4xl font-bold', tone.text)}
                 />
               </div>
-              <p
-                className={`text-sm font-medium transition-colors duration-300 ${
-                  successRate >= 90
-                    ? 'text-emerald-700'
-                    : successRate >= 75
-                      ? 'text-amber-700'
-                      : 'text-red-700'
-                }`}
-              >
+              <p className={cn('text-sm font-medium transition-colors duration-300', tone.text)}>
                 {getSuccessRateMessage(successRate)}
               </p>
             </div>
 
-            <div className="text-right text-sm text-gray-600 ml-4">
-              <p className="font-medium">{t('summary.basedOn')}</p>
-              <p>{t('summary.runs', { count: format.number(simulationRuns) })}</p>
+            <div className="ml-0 text-sm text-slate-600 sm:text-right">
+              <p className="font-medium text-slate-500">{t('summary.basedOn')}</p>
+              <p className="text-slate-700">{t('summary.runs', { count: format.number(simulationRuns) })}</p>
             </div>
           </div>
 
-          {/* Progress bar */}
           <div className="mt-6">
-            <div className="flex justify-between text-xs font-medium text-gray-500 mb-1">
+            <div className="mb-1 flex justify-between text-xs font-medium text-slate-500">
               <span>{t('progress.min')}</span>
-              <span className="text-gray-700">{t('progress.label')}</span>
+              <span className="text-slate-600">{t('progress.label')}</span>
               <span>{t('progress.max')}</span>
             </div>
             <div className="relative">
-              <div className="w-full bg-gray-200 rounded h-2">
+              <div className="h-2 w-full rounded-full bg-slate-200">
                 <div
-                  className={`h-2 rounded ${getProgressColor(successRate)}`}
-                  style={{
-                    width: `${Math.max(3, Math.min(100, successRate))}%`,
-                  }}
-                ></div>
+                  className={cn('h-2 rounded-full bg-gradient-to-r', tone.progress)}
+                  style={{ width: `${Math.max(3, Math.min(100, successRate))}%` }}
+                />
               </div>
             </div>
           </div>
-          <p className="mt-4 text-xs text-gray-600">
+          <p className="mt-4 text-xs text-slate-500">
             {t('summary.detail', {
               rate: successRate.toFixed(1),
               runs: format.number(simulationRuns),

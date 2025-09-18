@@ -18,6 +18,7 @@ import {
   MarketAssumptionsStep,
 } from '@/types'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
+import { cn } from '@/lib/utils'
 
 const STEP_KEYS = ['personal', 'assets', 'monthly', 'annual', 'market'] as const
 
@@ -168,6 +169,11 @@ export default function SetupPage() {
     }))
   }
 
+  const glassCardClass =
+    'overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl ring-1 ring-slate-200/50'
+  const inputClassName =
+    'mt-2 h-12 rounded-2xl border-white/60 bg-white/80 shadow-inner focus-visible:border-primary/40 focus-visible:ring-primary/30'
+
   const renderStepContent = () => {
     switch (activeStepKey) {
       case 'personal':
@@ -179,11 +185,14 @@ export default function SetupPage() {
               value={formData.personal.currentAge}
               onChange={(value) => updateFormData('personal', 'currentAge', value)}
               helpText={t('personal.fields.currentAge.help')}
+              className={inputClassName}
             />
 
             <div>
-              <Label htmlFor="retirementAge">{t('personal.fields.retirementAge.label')}</Label>
-              <div className="mt-2 px-2">
+              <Label htmlFor="retirementAge" className="text-sm font-semibold text-slate-800">
+                {t('personal.fields.retirementAge.label')}
+              </Label>
+              <div className="mt-3 rounded-2xl border border-white/60 bg-white/80 p-4 shadow-inner">
                 <Slider
                   id="retirementAge"
                   value={[formData.personal.retirementAge]}
@@ -193,17 +202,15 @@ export default function SetupPage() {
                   step={1}
                   className="w-full"
                 />
-                <div className="flex justify-between text-sm text-gray-500 mt-2">
+                <div className="mt-3 flex items-center justify-between text-xs font-medium text-slate-500">
                   <span>{formatInteger(50)}</span>
-                  <span className="font-semibold text-blue-600">
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-primary-600">
                     {formatInteger(formData.personal.retirementAge)}
                   </span>
                   <span>{formatInteger(70)}</span>
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
-                {t('personal.fields.retirementAge.help')}
-              </p>
+              <p className="mt-2 text-sm text-slate-500">{t('personal.fields.retirementAge.help')}</p>
             </div>
 
             <LabeledNumberInput
@@ -212,6 +219,7 @@ export default function SetupPage() {
               value={formData.personal.legalRetirementAge}
               onChange={(value) => updateFormData('personal', 'legalRetirementAge', value)}
               helpText={t('personal.fields.legalRetirementAge.help')}
+              className={inputClassName}
             />
 
             <LabeledNumberInput
@@ -220,6 +228,7 @@ export default function SetupPage() {
               value={formData.personal.endAge}
               onChange={(value) => updateFormData('personal', 'endAge', value)}
               helpText={t('personal.fields.endAge.help')}
+              className={inputClassName}
             />
           </div>
         )
@@ -233,6 +242,7 @@ export default function SetupPage() {
               value={formData.assets.currentAssets}
               onChange={(value) => updateFormData('assets', 'currentAssets', value)}
               helpText={t('assets.fields.currentAssets.help')}
+              className={inputClassName}
             />
 
             <LabeledNumberInput
@@ -241,6 +251,7 @@ export default function SetupPage() {
               value={formData.assets.annualSavings}
               onChange={(value) => updateFormData('assets', 'annualSavings', value)}
               helpText={t('assets.fields.annualSavings.help')}
+              className={inputClassName}
             />
 
             <LabeledNumberInput
@@ -249,6 +260,7 @@ export default function SetupPage() {
               value={formData.assets.monthlyPension}
               onChange={(value) => updateFormData('assets', 'monthlyPension', value)}
               helpText={t('assets.fields.monthlyPension.help')}
+              className={inputClassName}
             />
           </div>
         )
@@ -258,8 +270,8 @@ export default function SetupPage() {
         const totalMonthly = monthlyKeys.reduce((sum, key) => sum + formData.monthly[key], 0)
 
         return (
-          <div className="space-y-4">
-            <p className="text-gray-600">{t('monthly.intro')}</p>
+          <div className="space-y-5">
+            <p className="text-sm text-slate-600">{t('monthly.intro')}</p>
             {monthlyKeys.map((key) => (
               <LabeledNumberInput
                 key={key}
@@ -267,14 +279,15 @@ export default function SetupPage() {
                 label={t(`monthly.labels.${key}`)}
                 value={formData.monthly[key]}
                 onChange={(value) => updateFormData('monthly', key, value)}
+                className={inputClassName}
               />
             ))}
-            <div className="pt-4 border-t">
-              <div className="flex justify-between text-lg font-semibold">
+            <div className="mt-6 rounded-2xl border border-white/60 bg-white/75 p-4 shadow-inner">
+              <div className="flex items-center justify-between text-base font-semibold text-slate-800">
                 <span>{t('monthly.total')}</span>
-                <span className="text-blue-600">{formatCurrency(totalMonthly)}</span>
+                <span className="text-primary-600">{formatCurrency(totalMonthly)}</span>
               </div>
-              <div className="text-sm text-gray-500 mt-1">
+              <div className="mt-2 text-sm text-slate-500">
                 {t('monthly.annualEquivalent', {
                   value: formatCurrency(totalMonthly * 12),
                 })}
@@ -289,8 +302,8 @@ export default function SetupPage() {
         const totalAnnual = annualKeys.reduce((sum, key) => sum + formData.annual[key], 0)
 
         return (
-          <div className="space-y-4">
-            <p className="text-gray-600">{t('annual.intro')}</p>
+          <div className="space-y-5">
+            <p className="text-sm text-slate-600">{t('annual.intro')}</p>
             {annualKeys.map((key) => (
               <LabeledNumberInput
                 key={key}
@@ -298,12 +311,13 @@ export default function SetupPage() {
                 label={t(`annual.labels.${key}`)}
                 value={formData.annual[key]}
                 onChange={(value) => updateFormData('annual', key, value)}
+                className={inputClassName}
               />
             ))}
-            <div className="pt-4 border-t">
-              <div className="flex justify-between text-lg font-semibold">
+            <div className="mt-6 rounded-2xl border border-white/60 bg-white/75 p-4 shadow-inner">
+              <div className="flex items-center justify-between text-base font-semibold text-slate-800">
                 <span>{t('annual.total')}</span>
-                <span className="text-blue-600">{formatCurrency(totalAnnual)}</span>
+                <span className="text-primary-600">{formatCurrency(totalAnnual)}</span>
               </div>
             </div>
           </div>
@@ -314,8 +328,10 @@ export default function SetupPage() {
         return (
           <div className="space-y-6">
             <div>
-              <Label htmlFor="averageROI">{t('market.averageROI.label')}</Label>
-              <div className="mt-2 px-2">
+              <Label htmlFor="averageROI" className="text-sm font-semibold text-slate-800">
+                {t('market.averageROI.label')}
+              </Label>
+              <div className="mt-3 rounded-2xl border border-white/60 bg-white/80 p-4 shadow-inner">
                 <Slider
                   id="averageROI"
                   value={[formData.market.averageROI * 100]}
@@ -325,20 +341,22 @@ export default function SetupPage() {
                   step={0.5}
                   className="w-full"
                 />
-                <div className="flex justify-between text-sm text-gray-500 mt-2">
+                <div className="mt-3 flex items-center justify-between text-xs font-medium text-slate-500">
                   <span>{formatPercent(0.03, 0)}</span>
-                  <span className="font-semibold text-blue-600">
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-primary-600">
                     {formatPercent(formData.market.averageROI, 1)}
                   </span>
                   <span>{formatPercent(0.12, 0)}</span>
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-1">{t('market.averageROI.help')}</p>
+              <p className="mt-2 text-sm text-slate-500">{t('market.averageROI.help')}</p>
             </div>
 
             <div>
-              <Label htmlFor="averageInflation">{t('market.averageInflation.label')}</Label>
-              <div className="mt-2 px-2">
+              <Label htmlFor="averageInflation" className="text-sm font-semibold text-slate-800">
+                {t('market.averageInflation.label')}
+              </Label>
+              <div className="mt-3 rounded-2xl border border-white/60 bg-white/80 p-4 shadow-inner">
                 <Slider
                   id="averageInflation"
                   value={[formData.market.averageInflation * 100]}
@@ -350,20 +368,22 @@ export default function SetupPage() {
                   step={0.1}
                   className="w-full"
                 />
-                <div className="flex justify-between text-sm text-gray-500 mt-2">
+                <div className="mt-3 flex items-center justify-between text-xs font-medium text-slate-500">
                   <span>{formatPercent(0.01, 0)}</span>
-                  <span className="font-semibold text-blue-600">
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-primary-600">
                     {formatPercent(formData.market.averageInflation, 1)}
                   </span>
                   <span>{formatPercent(0.06, 0)}</span>
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-1">{t('market.averageInflation.help')}</p>
+              <p className="mt-2 text-sm text-slate-500">{t('market.averageInflation.help')}</p>
             </div>
 
             <div>
-              <Label htmlFor="simulationRuns">{t('market.simulationRuns.label')}</Label>
-              <div className="mt-2 px-2">
+              <Label htmlFor="simulationRuns" className="text-sm font-semibold text-slate-800">
+                {t('market.simulationRuns.label')}
+              </Label>
+              <div className="mt-3 rounded-2xl border border-white/60 bg-white/80 p-4 shadow-inner">
                 <Slider
                   id="simulationRuns"
                   value={[formData.market.simulationRuns]}
@@ -373,15 +393,15 @@ export default function SetupPage() {
                   step={100}
                   className="w-full"
                 />
-                <div className="flex justify-between text-sm text-gray-500 mt-2">
+                <div className="mt-3 flex items-center justify-between text-xs font-medium text-slate-500">
                   <span>{formatInteger(100)}</span>
-                  <span className="font-semibold text-blue-600">
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-primary-600">
                     {formatInteger(formData.market.simulationRuns)}
                   </span>
                   <span>{formatInteger(5000)}</span>
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-1">{t('market.simulationRuns.help')}</p>
+              <p className="mt-2 text-sm text-slate-500">{t('market.simulationRuns.help')}</p>
             </div>
           </div>
         )
@@ -392,117 +412,174 @@ export default function SetupPage() {
   }
 
   const progressPercent = Math.round(((currentStep + 1) / steps.length) * 100)
+  const progressLabel = t('progress.step', { current: currentStep + 1, total: steps.length })
+  const percentLabel = t('progress.percentComplete', { percent: progressPercent })
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">{t('header.title')}</h1>
-            <div className="flex items-center gap-2 sm:justify-end">
-              <LocaleSwitcher className="w-36" />
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/simulation">{t('header.simulationLink')}</Link>
-              </Button>
+    <div className="relative min-h-screen overflow-hidden pb-16">
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute left-[8%] top-[-120px] h-72 w-72 rounded-full bg-primary/25 blur-3xl" />
+        <div className="absolute right-[10%] top-16 h-80 w-80 rounded-full bg-accent/20 blur-3xl" />
+        <div className="absolute left-1/2 top-[420px] h-[420px] w-[520px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+      </div>
+
+      <header id="navigation" className="relative z-10 pt-12 pb-6">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className={cn(glassCardClass, 'relative overflow-hidden px-6 py-8')}>
+            <div className="pointer-events-none absolute -right-24 -top-28 h-64 w-64 rounded-full bg-primary/25 blur-3xl" />
+            <div className="pointer-events-none absolute -left-28 bottom-0 h-72 w-72 rounded-full bg-accent/25 blur-3xl" />
+
+            <div className="relative flex flex-col gap-8">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-4 text-slate-900">
+                  <div className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+                    <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-primary-700">
+                      {t('header.badges.guide')}
+                    </span>
+                    <span className="rounded-full border border-white/60 bg-white/70 px-3 py-1 text-slate-600 normal-case tracking-[0.08em]">
+                      {t('header.badges.time')}
+                    </span>
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-semibold sm:text-4xl">{t('header.title')}</h1>
+                    <p className="mt-3 max-w-2xl text-base text-slate-600">{t('header.subtitle')}</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <LocaleSwitcher className="h-10 w-full rounded-full border-white/60 bg-white/70 text-slate-700 shadow-inner sm:w-40" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="h-10 rounded-full border-white/70 bg-white/80 px-5 text-slate-700 shadow-sm transition hover:border-primary/40 hover:text-primary-700"
+                  >
+                    <Link href="/simulation">{t('header.simulationLink')}</Link>
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 border-t border-white/60 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                  <span className="rounded-full border border-white/60 bg-white/70 px-3 py-1 font-semibold text-slate-700">
+                    {progressLabel}
+                  </span>
+                  <span className="text-slate-500">{percentLabel}</span>
+                  <span className="text-xs text-slate-400">{t('progress.autosave')}</span>
+                </div>
+                <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-200/80 sm:max-w-sm">
+                  <span
+                    className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary via-indigo-500 to-sky-500 transition-all duration-500"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-medium text-gray-500">
-              {t('progress.step', { current: currentStep + 1, total: steps.length })}
-            </span>
-            <span className="text-sm text-gray-500">
-              {t('progress.percentComplete', { percent: progressPercent })}
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
-            />
-          </div>
-        </div>
+      <main className="relative z-10 mx-auto mt-8 max-w-5xl px-4 pb-20 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <aside className={cn(glassCardClass, 'p-6')}>
+            <div className="flex items-center justify-between text-sm text-slate-600">
+              <span>{progressLabel}</span>
+              <span className="font-semibold text-slate-800">{progressPercent}%</span>
+            </div>
+            <div className="mt-6 space-y-6">
+              {steps.map((step, index) => {
+                const isCompleted = index < currentStep
+                const isActive = index === currentStep
+                const canNavigate = index <= currentStep
 
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div className="flex flex-col items-center">
-                  <button
-                    type="button"
-                    onClick={() => handleStepClick(index)}
-                    disabled={index > currentStep}
-                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
-                      index < currentStep
-                        ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 cursor-pointer'
-                        : index === currentStep
-                          ? 'border-blue-600 text-blue-600 bg-blue-50'
-                          : 'border-gray-300 text-gray-300 cursor-not-allowed'
-                    } ${index <= currentStep ? 'hover:scale-105' : ''}`}
-                  >
-                    {index < currentStep ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <span>{index + 1}</span>
+                return (
+                  <div key={step.id} className="relative pl-12">
+                    {index < steps.length - 1 && (
+                      <span
+                        className={cn(
+                          'absolute left-5 top-11 h-[calc(100%-2.75rem)] w-px rounded-full',
+                          isCompleted ? 'bg-gradient-to-b from-primary via-indigo-500 to-sky-500' : 'bg-slate-200/70'
+                        )}
+                      />
                     )}
-                  </button>
-                  <div className="mt-2 text-center">
-                    <div
-                      className={`text-xs font-medium leading-tight ${
-                        index <= currentStep ? 'text-gray-900' : 'text-gray-400'
-                      } max-w-[96px] mx-auto`}
+
+                    <button
+                      type="button"
+                      onClick={() => handleStepClick(index)}
+                      disabled={!canNavigate}
+                      className={cn(
+                        'absolute left-0 top-0 flex size-10 items-center justify-center rounded-full border-2 transition-all duration-200',
+                        isCompleted &&
+                          'border-transparent bg-gradient-to-br from-primary via-indigo-500 to-sky-500 text-white shadow-lg',
+                        isActive && !isCompleted && 'border-primary/50 bg-white text-primary-600 shadow-md',
+                        !isCompleted && !isActive && 'border-slate-200 text-slate-300',
+                        canNavigate ? 'cursor-pointer hover:scale-105' : 'cursor-default'
+                      )}
                     >
-                      {step.title}
+                      {isCompleted ? <Check className="h-5 w-5" /> : <span className="text-sm font-semibold">{index + 1}</span>}
+                    </button>
+
+                    <div>
+                      <p
+                        className={cn(
+                          'text-sm font-semibold',
+                          isCompleted || isActive ? 'text-slate-900' : 'text-slate-400'
+                        )}
+                      >
+                        {step.title}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">{step.description}</p>
                     </div>
                   </div>
-                </div>
-                {index < steps.length - 1 && (
-                  <div
-                    className={`w-16 h-0.5 ml-2 transition-colors duration-300 ${
-                      index < currentStep ? 'bg-blue-600' : 'bg-gray-300'
-                    }`}
-                  />
+                )
+              })}
+            </div>
+          </aside>
+
+          <section className="space-y-8">
+            <Card className={cn(glassCardClass)}>
+              <CardHeader className="border-b border-white/60 bg-white/40">
+                <CardTitle className="text-xl font-semibold text-slate-900">
+                  {steps[currentStep].title}
+                </CardTitle>
+                <CardDescription className="mt-1 text-sm text-slate-600">
+                  {steps[currentStep].description}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-6">{renderStepContent()}</CardContent>
+            </Card>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                variant="outline"
+                onClick={handleBack}
+                disabled={currentStep === 0}
+                className={cn(
+                  'flex items-center justify-center gap-2 rounded-full border-white/70 bg-white/80 px-5 py-2 text-slate-700 shadow-sm transition hover:border-primary/40 hover:text-primary-700',
+                  currentStep === 0 && 'opacity-60'
                 )}
-              </div>
-            ))}
-          </div>
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>{t('buttons.back')}</span>
+              </Button>
+
+              <Button
+                onClick={handleNext}
+                className="flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-primary via-indigo-500 to-sky-500 px-6 py-2 text-white shadow-lg transition hover:from-primary/90 hover:via-indigo-500/90 hover:to-sky-500/90"
+              >
+                <span>
+                  {currentStep === steps.length - 1 ? t('buttons.complete') : t('buttons.next')}
+                </span>
+                {currentStep === steps.length - 1 ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <ArrowRight className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </section>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{steps[currentStep].title}</CardTitle>
-            <CardDescription>{steps[currentStep].description}</CardDescription>
-          </CardHeader>
-          <CardContent>{renderStepContent()}</CardContent>
-        </Card>
-
-        <div className="flex items-center justify-between mt-8">
-          <Button
-            variant="outline"
-            onClick={handleBack}
-            disabled={currentStep === 0}
-            className="flex items-center space-x-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>{t('buttons.back')}</span>
-          </Button>
-
-          <Button onClick={handleNext} className="flex items-center space-x-2">
-            <span>
-              {currentStep === steps.length - 1 ? t('buttons.complete') : t('buttons.next')}
-            </span>
-            {currentStep === steps.length - 1 ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <ArrowRight className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      </div>
+      </main>
     </div>
   )
 }

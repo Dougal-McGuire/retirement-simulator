@@ -144,18 +144,20 @@ interface ParameterFieldProps {
 function ParameterField({ label, tooltip, children }: ParameterFieldProps) {
   return (
     <div>
-      <div className="flex items-center gap-1 mb-1">
-        <Label className="text-xs font-semibold">{label}</Label>
+      <div className="mb-2 flex items-center gap-2">
+        <Label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          {label}
+        </Label>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <HelpCircle className="h-3 w-3 text-gray-400 cursor-help" />
+              <HelpCircle className="h-3.5 w-3.5 cursor-help text-slate-400 transition-colors hover:text-slate-600" />
             </TooltipTrigger>
             <TooltipContent
               side="right"
-              className="max-w-xs bg-gray-900 text-white border border-gray-700"
+              className="max-w-xs rounded-xl border border-slate-900/40 bg-slate-900/95 px-3 py-2 text-white shadow-xl backdrop-blur"
             >
-              <p className="text-xs">{tooltip}</p>
+              <p className="text-xs leading-relaxed text-slate-100/90">{tooltip}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -186,15 +188,15 @@ function CollapsibleSection({
       <CollapsibleTrigger asChild>
         <Button
           variant="ghost"
-          className="w-full justify-between p-0 h-auto font-medium text-sm hover:bg-transparent"
+          className="group w-full justify-between rounded-2xl bg-white/40 p-3 text-left text-sm font-semibold text-slate-800 shadow-inner transition-all hover:bg-white/60"
         >
           <div className="flex flex-col items-start">
-            <span className="text-gray-900">{title}</span>
-            {description && (
-              <span className="text-xs text-gray-500 font-normal">{description}</span>
-            )}
+            <span>{title}</span>
+            {description && <span className="text-xs font-normal text-slate-500">{description}</span>}
           </div>
-          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <span className="rounded-full border border-slate-200/70 bg-white/80 p-2 text-slate-500 shadow-sm transition-all group-hover:border-primary/30 group-hover:text-primary-600">
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </span>
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="pt-3">
@@ -378,16 +380,22 @@ export function ParameterControls() {
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="text-lg">{t('title')}</CardTitle>
+    <Card className="w-full overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl ring-1 ring-slate-200/50">
+      <CardHeader className="border-b border-white/60 bg-white/40 px-6 py-5">
+        <CardTitle className="text-xl font-semibold text-slate-900">
+          {t('title')}
+        </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6 p-6">
         {/* Scenario Presets */}
         <div className="mb-6 space-y-5">
           <div>
-            <h4 className="text-sm font-semibold mb-1">{t('presets.investment.title')}</h4>
-            <p className="text-xs text-gray-500 mb-3">{t('presets.investment.description')}</p>
+            <h4 className="text-sm font-semibold text-slate-900">
+              {t('presets.investment.title')}
+            </h4>
+            <p className="mt-1 text-xs text-slate-500">
+              {t('presets.investment.description')}
+            </p>
             <div className="grid grid-cols-1 gap-2">
               {INVESTMENT_PRESETS.map((preset) => {
                 const IconComponent = preset.icon
@@ -396,22 +404,24 @@ export function ParameterControls() {
                     key={preset.key}
                     variant="outline"
                     onClick={() => applyInvestmentPreset(preset.key)}
-                    className="h-auto p-2 justify-start hover:bg-gray-50"
+                    className="h-auto justify-start rounded-2xl border-slate-200/60 bg-white/70 p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-lg"
                   >
                     <div className="flex items-center gap-2 w-full min-w-0">
-                      <div className={`p-1.5 rounded-full shrink-0 ${preset.color}`}>
+                      <div
+                        className={`shrink-0 rounded-full border p-2 text-xs font-semibold ${preset.color}`}
+                      >
                         <IconComponent className="h-3 w-3" />
                       </div>
                       <div className="text-left flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">
+                        <div className="truncate text-sm font-semibold text-slate-800">
                           {t(`presets.investment.items.${preset.key}.name`)}
                         </div>
-                        <div className="text-xs text-gray-500 truncate">
+                        <div className="text-xs text-slate-500 truncate">
                           {t(`presets.investment.items.${preset.key}.description`)}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end shrink-0 text-xs text-gray-600">
-                        <span className="font-semibold text-gray-800">
+                      <div className="flex shrink-0 flex-col items-end text-xs text-slate-500">
+                        <span className="font-semibold text-slate-700">
                           {formatPercent(preset.values.averageROI)}
                         </span>
                         <span>σ {formatPercent(preset.values.roiVolatility)}</span>
@@ -425,7 +435,7 @@ export function ParameterControls() {
 
           <div>
             <h4 className="text-sm font-semibold mb-1">{t('presets.inflation.title')}</h4>
-            <p className="text-xs text-gray-500 mb-3">{t('presets.inflation.description')}</p>
+            <p className="text-xs text-slate-500 mb-3">{t('presets.inflation.description')}</p>
             <div className="grid grid-cols-1 gap-2">
               {INFLATION_PRESETS.map((preset) => {
                 const IconComponent = preset.icon
@@ -434,22 +444,24 @@ export function ParameterControls() {
                     key={preset.key}
                     variant="outline"
                     onClick={() => applyInflationPreset(preset.key)}
-                    className="h-auto p-2 justify-start hover:bg-gray-50"
+                    className="h-auto justify-start rounded-2xl border-slate-200/60 bg-white/70 p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/30 hover:bg-accent/5 hover:shadow-lg"
                   >
                     <div className="flex items-center gap-2 w-full min-w-0">
-                      <div className={`p-1.5 rounded-full shrink-0 ${preset.color}`}>
+                      <div
+                        className={`shrink-0 rounded-full border p-2 text-xs font-semibold ${preset.color}`}
+                      >
                         <IconComponent className="h-3 w-3" />
                       </div>
                       <div className="text-left flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">
+                        <div className="truncate text-sm font-semibold text-slate-800">
                           {t(`presets.inflation.items.${preset.key}.name`)}
                         </div>
-                        <div className="text-xs text-gray-500 truncate">
+                        <div className="text-xs text-slate-500 truncate">
                           {t(`presets.inflation.items.${preset.key}.description`)}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end shrink-0 text-xs text-gray-600">
-                        <span className="font-semibold text-gray-800">
+                      <div className="flex shrink-0 flex-col items-end text-xs text-slate-500">
+                        <span className="font-semibold text-slate-700">
                           {formatPercent(preset.values.averageInflation)}
                         </span>
                         <span>σ {formatPercent(preset.values.inflationVolatility)}</span>
@@ -463,7 +475,7 @@ export function ParameterControls() {
         </div>
 
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsList className="mb-4 w-full justify-between">
             <TabsTrigger value="personal" className="text-xs">
               {t('tabs.personal')}
             </TabsTrigger>
@@ -514,7 +526,7 @@ export function ParameterControls() {
                     step={1}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
                     <span>{formatNumber(retirementSliderMin)}</span>
                     <span className="font-semibold text-blue-600">
                       {t('fields.retirementAge.valueLabel', {
@@ -523,7 +535,7 @@ export function ParameterControls() {
                     </span>
                     <span>{formatNumber(retirementSliderMax)}</span>
                   </div>
-                  <div className="text-xs text-gray-500 mt-1 text-center">
+                  <div className="text-xs text-slate-500 mt-1 text-center">
                     {t('fields.retirementAge.remaining', { count: remainingWorkingYears })}
                   </div>
                 </div>
@@ -649,7 +661,7 @@ export function ParameterControls() {
                     step={0.25}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
                     <span>{formatPercent(0, { maximumFractionDigits: 0 })}</span>
                     <span className="font-semibold text-blue-600">
                       {formatPercent(params.capitalGainsTax / 100, {
@@ -791,7 +803,7 @@ export function ParameterControls() {
                     step={0.5}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
                     <span>{formatPercent(0.03, { maximumFractionDigits: 0 })}</span>
                     <span className="font-semibold text-blue-600">
                       {formatPercent(params.averageROI)}
@@ -814,14 +826,14 @@ export function ParameterControls() {
                     step={0.5}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
                     <span>{formatPercent(0.02, { maximumFractionDigits: 0 })}</span>
                     <span className="font-semibold text-blue-600">
                       {formatPercent(params.roiVolatility)}
                     </span>
                     <span>{formatPercent(0.25, { maximumFractionDigits: 0 })}</span>
                   </div>
-                  <div className="text-xs text-gray-500 mt-1 text-center">
+                  <div className="text-xs text-slate-500 mt-1 text-center">
                     {t('fields.roiVolatility.range', {
                       range: '68%',
                       lower: formatPercent(params.averageROI - params.roiVolatility),
@@ -850,7 +862,7 @@ export function ParameterControls() {
                     step={0.1}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
                     <span>{formatPercent(0.01, { maximumFractionDigits: 0 })}</span>
                     <span className="font-semibold text-blue-600">
                       {formatPercent(params.averageInflation)}
@@ -875,7 +887,7 @@ export function ParameterControls() {
                     step={0.1}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
                     <span>{formatPercent(0.001, { maximumFractionDigits: 1 })}</span>
                     <span className="font-semibold text-blue-600">
                       {formatPercent(params.inflationVolatility)}
@@ -904,7 +916,7 @@ export function ParameterControls() {
                     step={100}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
                     <span>{formatNumber(100)}</span>
                     <span className="font-semibold text-blue-600">
                       {formatNumber(params.simulationRuns)}
@@ -1006,7 +1018,7 @@ export function ParameterControls() {
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex flex-col text-left">
                               <span className="font-medium">{setup.name}</span>
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-slate-500">
                                 {new Date(setup.timestamp).toLocaleDateString()}
                               </span>
                             </div>
@@ -1014,7 +1026,7 @@ export function ParameterControls() {
                               type="button"
                               size="icon"
                               variant="ghost"
-                              className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                              className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
                               onMouseDown={(event) => event.preventDefault()}
                               onClick={(event) => {
                                 event.preventDefault()
