@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import puppeteer from 'puppeteer-core'
-import Handlebars, { type HelperDelegate } from 'handlebars'
-import { readFileSync, existsSync } from 'fs'
+import Handlebars from 'handlebars'
+import type { HelperOptions } from 'handlebars'
+import IntlMessageFormat from 'intl-messageformat'
+import { readFileSync } from 'fs'
 import { join } from 'path'
 import { transformToReportData } from '@/lib/transformers/reportDataTransformer'
 import { ReportDataSchema, type ReportData } from '@/lib/pdf-generator/schema/reportData'
 import { renderLineChart, renderBarChart, type ChartSeries } from '@/lib/pdf-generator/charts/vega'
-import * as formatters from '@/lib/pdf-generator/utils/formatters'
+import { defaultLocale, locales, type Locale } from '@/i18n/config'
+import { loadMessages } from '@/i18n/request'
+import { createFormatterHelpers } from '@/lib/pdf-generator/utils/formatters'
+import type { AbstractIntlMessages } from 'next-intl'
 
 // Dynamic import for chromium to avoid issues in dev
 let chromium: any = null
@@ -23,18 +28,12 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60 // Increase timeout for PDF generation
 
-// Register Handlebars helpers
-Object.entries(formatters).forEach(([name, fn]) => {
-  Handlebars.registerHelper(name, fn as unknown as HelperDelegate)
-})
-Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b)
-
-async function loadTemplates(baseDir: string) {
+async function loadTemplates(baseDir: string, hbs: typeof Handlebars) {
   const templatesDir = join(baseDir, 'templates')
 
   // Register partial
   const kpiTilePartial = readFileSync(join(templatesDir, 'components', 'kpi-tile.hbs'), 'utf-8')
-  Handlebars.registerPartial('kpi-tile', kpiTilePartial)
+  hbs.registerPartial('kpi-tile', kpiTilePartial)
 
   // Load templates
   const templates = {
@@ -51,42 +50,44 @@ async function loadTemplates(baseDir: string) {
   }
 
   return {
-    base: Handlebars.compile(templates.base),
-    cover: Handlebars.compile(templates.cover),
-    toc: Handlebars.compile(templates.toc),
-    exec: Handlebars.compile(templates.exec),
-    profile: Handlebars.compile(templates.profile),
-    assets: Handlebars.compile(templates.assets),
-    spending: Handlebars.compile(templates.spending),
-    risk: Handlebars.compile(templates.risk),
-    recos: Handlebars.compile(templates.recos),
-    appendix: Handlebars.compile(templates.appendix),
+    base: hbs.compile(templates.base),
+    cover: hbs.compile(templates.cover),
+    toc: hbs.compile(templates.toc),
+    exec: hbs.compile(templates.exec),
+    profile: hbs.compile(templates.profile),
+    assets: hbs.compile(templates.assets),
+    spending: hbs.compile(templates.spending),
+    risk: hbs.compile(templates.risk),
+    recos: hbs.compile(templates.recos),
+    appendix: hbs.compile(templates.appendix),
   }
 }
 
-async function generateCharts(data: ReportData) {
+type TranslateFn = (key: string, values?: Record<string, unknown>) => string
+
+async function generateCharts(data: ReportData, t: TranslateFn) {
   // Assets projection chart
   const assetsSeries: ChartSeries[] = [
     {
-      name: 'P10 (Pessimistic)',
+      name: t('pdf.charts.assets.series.p10'),
       values: data.projections.milestones.map((m) => ({ x: m.age, y: m.p10 })),
     },
     {
-      name: 'P20',
+      name: t('pdf.charts.assets.series.p20'),
       values: data.projections.milestones.map((m) => ({ x: m.age, y: m.p20 ?? m.p50 })),
       color: '#f59e0b',
     },
     {
-      name: 'P50 (Median)',
+      name: t('pdf.charts.assets.series.p50'),
       values: data.projections.milestones.map((m) => ({ x: m.age, y: m.p50 })),
     },
     {
-      name: 'P80',
+      name: t('pdf.charts.assets.series.p80'),
       values: data.projections.milestones.map((m) => ({ x: m.age, y: m.p80 ?? m.p50 })),
       color: '#34d399',
     },
     {
-      name: 'P90 (Optimistic)',
+      name: t('pdf.charts.assets.series.p90'),
       values: data.projections.milestones.map((m) => ({ x: m.age, y: m.p90 })),
     },
   ]
@@ -94,8 +95,8 @@ async function generateCharts(data: ReportData) {
   const assetsChart = await renderLineChart(assetsSeries, {
     width: 560,
     height: 320,
-    xTitle: 'Age (Years)',
-    yTitle: 'Portfolio Value (€)',
+    xTitle: t('pdf.charts.assets.axes.x'),
+    yTitle: t('pdf.charts.assets.axes.y'),
     band: {
       values: data.projections.milestones.map((m) => ({ x: m.age, yTop: m.p80 ?? m.p50, yBottom: m.p20 ?? m.p50 })),
       color: '#60a5fa',
@@ -105,14 +106,14 @@ async function generateCharts(data: ReportData) {
 
   // Spending breakdown chart
   const spendingCategories = [
-    'Healthcare',
-    'Food & Groceries',
-    'Entertainment',
-    'Shopping',
-    'Utilities',
-    'Vacations',
-    'Home Repairs',
-    'Car',
+    t('pdf.charts.spending.categories.health'),
+    t('pdf.charts.spending.categories.food'),
+    t('pdf.charts.spending.categories.entertainment'),
+    t('pdf.charts.spending.categories.shopping'),
+    t('pdf.charts.spending.categories.utilities'),
+    t('pdf.charts.spending.categories.vacations'),
+    t('pdf.charts.spending.categories.repairs'),
+    t('pdf.charts.spending.categories.car'),
   ]
 
   const spendingValues = [
@@ -129,11 +130,198 @@ async function generateCharts(data: ReportData) {
   const spendingChart = await renderBarChart(spendingCategories, spendingValues, {
     width: 560,
     height: 320,
-    xTitle: 'Expense Category',
-    yTitle: 'Annual Amount (€)',
+    xTitle: t('pdf.charts.spending.axes.x'),
+    yTitle: t('pdf.charts.spending.axes.y'),
   })
 
   return { assetsChart, spendingChart }
+}
+
+const PLAN_HEALTH_LABEL_MAP: Record<string, string> = {
+  Strong: 'strong',
+  Moderate: 'moderate',
+  'Needs Attention': 'needsAttention',
+}
+
+const PLAN_HEALTH_REASON_MAP: Record<string, string> = {
+  'solid savings rate': 'solidSavingsRate',
+  'moderate bridge drawdown': 'moderateBridge',
+  'high success probability': 'highSuccessProbability',
+  'balanced assumptions': 'balancedAssumptions',
+}
+
+const RECOMMENDATION_TITLE_MAP: Record<string, string> = {
+  'Increase Savings Rate': 'increaseSavingsRate',
+  'Delay Retirement': 'delayRetirement',
+  'Optimize Investment Mix': 'optimizeInvestmentMix',
+  'Review Spending Plan': 'reviewSpendingPlan',
+  'Maximize Tax-Deferred Contributions': 'maximizeTaxDeferred',
+  'Consider Volatility Reduction': 'considerVolatilityReduction',
+  'Review Insurance Coverage': 'reviewInsuranceCoverage',
+}
+
+const RECOMMENDATION_CATEGORY_MAP: Record<string, string> = {
+  'Savings Strategy': 'savingsStrategy',
+  Timing: 'timing',
+  'Investment Strategy': 'investmentStrategy',
+  'Expense Management': 'expenseManagement',
+  'Tax Planning': 'taxPlanning',
+  'Risk Management': 'riskManagement',
+  Protection: 'protection',
+}
+
+const RECOMMENDATION_BODY_MAP: Record<string, string> = {
+  'Your current success rate indicates potential challenges. Consider increasing your annual savings by 10-20% to improve retirement security.':
+    'increaseSavingsRate',
+  'Working an additional 2-3 years could significantly improve your success rate by allowing more time for asset accumulation.':
+    'delayRetirement',
+  'Review your asset allocation to ensure appropriate balance between growth and stability for your risk tolerance.':
+    'optimizeInvestmentMix',
+  'Your expenses are high relative to savings. Consider reviewing discretionary spending to improve financial flexibility.':
+    'reviewSpendingPlan',
+  'Ensure you are taking full advantage of tax-advantaged retirement accounts to reduce current tax liability and enhance long-term growth.':
+    'maximizeTaxDeferred',
+  'Your portfolio has high volatility. As you approach retirement, consider gradually shifting to more stable investments.':
+    'considerVolatilityReduction',
+  'Evaluate current insurance policies including health, long-term care, and life insurance to ensure adequate protection.':
+    'reviewInsuranceCoverage',
+}
+
+const IMPACT_MAP: Record<string, string> = {
+  High: 'high',
+  Medium: 'medium',
+  Low: 'low',
+}
+
+const IMPACT_PRIORITY_MAP: Record<string, number> = {
+  High: 1,
+  Medium: 2,
+  Low: 3,
+}
+
+const IMPACT_TIMELINE_KEY_MAP: Record<string, string> = {
+  High: 'immediate',
+  Medium: 'months3to6',
+  Low: 'months12',
+}
+
+const IMPACT_BENEFIT_KEY_MAP: Record<string, string> = {
+  High: 'high',
+  Medium: 'medium',
+  Low: 'low',
+}
+
+function createTranslatorFn(locale: Locale, messages: AbstractIntlMessages): TranslateFn {
+  const cache = new Map<string, IntlMessageFormat>()
+
+  const resolveMessage = (path: string): unknown =>
+    path.split('.').reduce<unknown>((acc, segment) => {
+      if (acc && typeof acc === 'object' && segment in (acc as Record<string, unknown>)) {
+        return (acc as Record<string, unknown>)[segment]
+      }
+      return undefined
+    }, messages)
+
+  return (key, values = {}) => {
+    const message = resolveMessage(key)
+    if (typeof message !== 'string') {
+      return key
+    }
+
+    let formatter = cache.get(key)
+    if (!formatter) {
+      formatter = new IntlMessageFormat(message, locale)
+      cache.set(key, formatter)
+    }
+
+    const output = formatter.format(values)
+    if (Array.isArray(output)) {
+      return output.join('')
+    }
+    return String(output)
+  }
+}
+
+function localizeReportData(data: ReportData, t: TranslateFn) {
+  const summary = data.summary
+    ? (() => {
+        const planHealthLabelKey = PLAN_HEALTH_LABEL_MAP[data.summary.planHealthLabel]
+        const planHealthLabelText = planHealthLabelKey
+          ? t(`pdf.summary.planHealthLabel.${planHealthLabelKey}`)
+          : data.summary.planHealthLabel
+
+        const reasonsSource =
+          data.summary.planHealthWhyBits && data.summary.planHealthWhyBits.length > 0
+            ? data.summary.planHealthWhyBits
+            : data.summary.planHealthWhy
+              ? [data.summary.planHealthWhy]
+              : []
+
+        const planHealthWhyItems = reasonsSource.map((reason) => {
+          const reasonKey = PLAN_HEALTH_REASON_MAP[reason]
+          return reasonKey ? t(`pdf.summary.planHealthWhy.bits.${reasonKey}`) : reason
+        })
+
+        const planHealthWhyText = planHealthWhyItems.join(' + ')
+
+        const topActionsText = (data.summary.topActions || []).map((title) => {
+          const key = RECOMMENDATION_TITLE_MAP[title]
+          return key ? t(`pdf.recommendations.titles.${key}`) : title
+        })
+
+        const topActionsDetailed = (data.summary.topActionsDetailed || []).map((item) => {
+          const titleKey = RECOMMENDATION_TITLE_MAP[item.title]
+          return {
+            ...item,
+            titleText: titleKey ? t(`pdf.recommendations.titles.${titleKey}`) : item.title,
+            upliftRangeText: t('pdf.summary.topActions.range', {
+              min: item.upliftMin,
+              max: item.upliftMax,
+            }),
+          }
+        })
+
+        return {
+          ...data.summary,
+          planHealthLabelKey,
+          planHealthLabelText,
+          planHealthWhyItems,
+          planHealthWhyText,
+          topActionsText,
+          topActionsDetailed,
+        }
+      })()
+    : undefined
+
+  const recommendations = data.recommendations.map((rec) => {
+    const titleKey = RECOMMENDATION_TITLE_MAP[rec.title]
+    const categoryKey = RECOMMENDATION_CATEGORY_MAP[rec.category]
+    const bodyKey = RECOMMENDATION_BODY_MAP[rec.body]
+    const impactKey = IMPACT_MAP[rec.impact]
+    const timelineKey = IMPACT_TIMELINE_KEY_MAP[rec.impact]
+    const benefitKey = IMPACT_BENEFIT_KEY_MAP[rec.impact]
+
+    return {
+      ...rec,
+      titleText: titleKey ? t(`pdf.recommendations.titles.${titleKey}`) : rec.title,
+      categoryText: categoryKey ? t(`pdf.recommendations.categories.${categoryKey}`) : rec.category,
+      bodyText: bodyKey ? t(`pdf.recommendations.bodies.${bodyKey}`) : rec.body,
+      impactText: impactKey ? t(`pdf.recommendations.impact.${impactKey}`) : rec.impact,
+      priorityRank: IMPACT_PRIORITY_MAP[rec.impact] ?? 3,
+      timelineText: timelineKey
+        ? t(`pdf.recommendations.priority.timeline.${timelineKey}`)
+        : t('pdf.recommendations.priority.timeline.default'),
+      benefitText: benefitKey
+        ? t(`pdf.recommendations.priority.benefit.${benefitKey}`)
+        : t('pdf.recommendations.priority.benefit.default'),
+    }
+  })
+
+  return {
+    ...data,
+    summary,
+    recommendations,
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -148,11 +336,34 @@ export async function POST(req: NextRequest) {
     })
 
     // Parse request body
-    const { params, results } = await req.json()
+    const { params, results, locale: requestedLocale } = await req.json()
 
     if (!params || !results) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
     }
+
+    const locale = locales.includes(requestedLocale as Locale)
+      ? (requestedLocale as Locale)
+      : defaultLocale
+
+    const messages = await loadMessages(locale)
+    const translator = createTranslatorFn(locale, messages)
+
+    const hbs = Handlebars.create()
+    const formatterHelpers = createFormatterHelpers(locale)
+
+    Object.entries(formatterHelpers).forEach(([name, fn]) => {
+      hbs.registerHelper(name, fn as (...args: unknown[]) => unknown)
+    })
+
+    hbs.registerHelper('eq', (a: unknown, b: unknown) => a === b)
+    hbs.registerHelper('t', function (key: string, options?: HelperOptions) {
+      return translator(key, options?.hash ?? {})
+    })
+    hbs.registerHelper('successBadgeLabel', (successRate: number) => {
+      const badgeKey = formatterHelpers.getSuccessBadgeKey(successRate)
+      return translator(`pdf.exec.badges.${badgeKey}`)
+    })
 
     // Transform data to PDF generator format
     const reportData = transformToReportData(params, results)
@@ -168,10 +379,10 @@ export async function POST(req: NextRequest) {
     const baseDir = join(process.cwd(), 'src', 'lib', 'pdf-generator')
 
     // Load templates
-    const templates = await loadTemplates(baseDir)
+    const templates = await loadTemplates(baseDir, hbs)
 
     // Generate charts
-    const charts = await generateCharts(validatedData)
+    const charts = await generateCharts(validatedData, translator)
 
     // Load CSS
     const stylesDir = join(baseDir, 'styles')
@@ -190,26 +401,31 @@ export async function POST(req: NextRequest) {
 
     const combinedCSS = tokensCSS + '\n' + updatedPrintCSS
 
+    const localizedData = localizeReportData(validatedData, translator)
+
+    const baseContext = { ...localizedData, locale, taxRateAdjusted }
+
     // Render sections in client-friendly order
     const sections = [
-      templates.cover(validatedData),
-      templates.exec(validatedData),
-      templates.toc(validatedData),
-      templates.profile({ ...validatedData, taxRateAdjusted }),
-      templates.assets({ ...validatedData, ...charts }),
-      templates.spending({ ...validatedData, ...charts }),
-      templates.risk(validatedData),
-      templates.recos(validatedData),
-      templates.appendix(validatedData),
+      templates.cover(baseContext),
+      templates.exec(baseContext),
+      templates.toc(baseContext),
+      templates.profile(baseContext),
+      templates.assets({ ...baseContext, ...charts }),
+      templates.spending({ ...baseContext, ...charts }),
+      templates.risk(baseContext),
+      templates.recos(baseContext),
+      templates.appendix(baseContext),
     ].join('\n')
 
     // Render full HTML
     const now = new Date()
-    const reportDate = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`
+    const reportDate = formatterHelpers.formatDate(now.toISOString())
     const html = templates.base({
       css: combinedCSS,
       content: sections,
       reportDate,
+      locale,
     })
 
     // Launch Puppeteer with different settings for production/dev
@@ -273,7 +489,7 @@ export async function POST(req: NextRequest) {
     const headerTemplate = `
       <div style="font-size:8px; width:100%; padding:0 16px; color:#6b7280;">
         <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-          <span>Retirement Plan</span>
+          <span>${translator('pdf.header.title')}</span>
           <span>${reportDate}</span>
         </div>
       </div>`
@@ -281,7 +497,7 @@ export async function POST(req: NextRequest) {
     const footerTemplate = `
       <div style="font-size:8px; width:100%; padding:0 16px; color:#9ca3af;">
         <div style="display:flex; justify-content:center; width:100%;">
-          <span>Retirement Plan — ${reportDate} — Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+          <span>${translator('pdf.footer.title')} — ${reportDate} — ${translator('pdf.footer.page')} <span class="pageNumber"></span> ${translator('pdf.footer.of')} <span class="totalPages"></span></span>
         </div>
       </div>`
 

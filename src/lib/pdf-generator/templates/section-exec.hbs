@@ -1,74 +1,89 @@
 <div id="executive-summary" class="page-break">
-  <h1>Plan Health Snapshot</h1>
+  <h1>{{t 'pdf.exec.title'}}</h1>
   
   <div class="content">
-    <p>This comprehensive retirement planning analysis evaluates your financial trajectory through {{projections.milestones.length}} years of projections, 
-    utilizing Monte Carlo simulation with {{formatNumber assumptions.mcRuns}} iterations to account for market volatility and economic uncertainty.</p>
+    <p>
+      {{t 'pdf.exec.intro' years=projections.milestones.length runs=assumptions.mcRuns}}
+    </p>
     
     <div class="kpi-grid">
       {{> kpi-tile 
         value=(concat summary.planHealthScore "/100")
-        label=(concat "Plan health — " summary.planHealthLabel)
-        note=(concat (capitalize summary.planHealthWhy))
+        label=(t 'pdf.exec.kpis.planHealth.label' label=summary.planHealthLabelText)
+        note=summary.planHealthWhyText
       }}
       {{> kpi-tile 
         value=(formatPercent projections.successRatePct)
-        label="Success probability"
-        badge=(getSuccessBadge projections.successRatePct)
+        label=(t 'pdf.exec.kpis.successProbability.label')
+        badge=(successBadgeLabel projections.successRatePct)
         badgeColor=(getSuccessBadgeColor projections.successRatePct)
-        note=(concat "In " (formatPercent projections.successRatePct) " of " (formatNumber assumptions.mcRuns) " paths assets last to age " person.horizonAge)
+        note=(t 'pdf.exec.kpis.successProbability.note' rate=projections.successRatePct runs=assumptions.mcRuns age=person.horizonAge)
       }}
       
       {{> kpi-tile 
         value=(formatEUR finances.currentAssetsEUR)
-        label="Current Assets"
-        note="Starting portfolio value"
+        label=(t 'pdf.exec.kpis.currentAssets.label')
+        note=(t 'pdf.exec.kpis.currentAssets.note')
       }}
       
       {{> kpi-tile 
         value=(formatEUR finances.annualSavingsEUR)
-        label="Annual Savings"
-        note="Pre-retirement contribution"
+        label=(t 'pdf.exec.kpis.annualSavings.label')
+        note=(t 'pdf.exec.kpis.annualSavings.note')
       }}
       
       {{> kpi-tile 
         value=(formatEUR finances.expectedMonthlyPensionEUR)
-        label="Expected Monthly Pension"
-        note=(concat "Starting at age " person.pensionAge)
+        label=(t 'pdf.exec.kpis.monthlyPension.label')
+        note=(t 'pdf.exec.kpis.monthlyPension.note' age=person.pensionAge)
       }}
 
       {{> kpi-tile 
         value=(formatEUR (getTotalAnnualSpending spending))
-        label="Total Annual Spending"
-        note="Includes monthly and annual expenses"
+        label=(t 'pdf.exec.kpis.totalSpending.label')
+        note=(t 'pdf.exec.kpis.totalSpending.note')
       }}
       {{#if summary.bridge}}
       {{> kpi-tile 
         value=(formatEUR summary.bridge.cashNeedEUR)
-        label=(concat "Bridge years (" summary.bridge.startAge "–" summary.bridge.endAge ")")
-        note=(concat "Funded " summary.bridge.portfolioSharePct "% portfolio / " summary.bridge.cashBucketYears " years cash")
+        label=(t 'pdf.exec.kpis.bridge.label' start=summary.bridge.startAge end=summary.bridge.endAge)
+        note=(t 'pdf.exec.kpis.bridge.note' portfolio=summary.bridge.portfolioSharePct years=summary.bridge.cashBucketYears)
       }}
       {{/if}}
     </div>
     
     <div class="callout callout-info">
-      <div class="callout-title">Key Findings</div>
+      <div class="callout-title">{{t 'pdf.exec.keyFindings.title'}}</div>
       <ul>
-        <li>Plan health: <strong>{{summary.planHealthScore}}/100 ({{summary.planHealthLabel}})</strong> — {{summary.planHealthWhy}}</li>
-        <li>Success probability: <strong>{{formatPercent projections.successRatePct}}</strong> — In {{formatPercent projections.successRatePct}} of {{formatNumber assumptions.mcRuns}} paths assets last to age {{person.horizonAge}}</li>
+        <li>
+          {{t 'pdf.exec.keyFindings.planHealth.label'}}
+          <strong>{{summary.planHealthScore}}/100 ({{summary.planHealthLabelText}})</strong>
+          — {{summary.planHealthWhyText}}
+        </li>
+        <li>
+          {{t 'pdf.exec.keyFindings.successProbability.label'}}
+          <strong>{{formatPercent projections.successRatePct}}</strong>
+          — {{t 'pdf.exec.keyFindings.successProbability.detail' rate=projections.successRatePct runs=assumptions.mcRuns age=person.horizonAge}}
+        </li>
         {{#if summary.bridge}}
-        <li>Bridge years {{summary.bridge.startAge}}–{{summary.bridge.endAge}} need: <strong>{{formatEUR summary.bridge.cashNeedEUR}}</strong> — funded {{summary.bridge.portfolioSharePct}}% portfolio / {{summary.bridge.cashBucketYears}} years cash</li>
+        <li>
+          {{t 'pdf.exec.keyFindings.bridge.label' start=summary.bridge.startAge end=summary.bridge.endAge}}
+          <strong>{{formatEUR summary.bridge.cashNeedEUR}}</strong>
+          — {{t 'pdf.exec.keyFindings.bridge.detail' portfolio=summary.bridge.portfolioSharePct years=summary.bridge.cashBucketYears}}
+        </li>
         {{/if}}
-        <li>Years until retirement: {{subtract person.retireAge person.currentAge}}</li>
+        <li>
+          {{t 'pdf.exec.keyFindings.retirementCountdown' years=(subtract person.retireAge person.currentAge)}}
+        </li>
       </ul>
     </div>
 
     {{#if summary.topActionsDetailed}}
     <div class="callout callout-warning">
-      <div class="callout-title">Do next (expected uplift)</div>
+      <div class="callout-title">{{t 'pdf.exec.nextSteps.title'}}</div>
       <ul>
         {{#each summary.topActionsDetailed}}
-          <li>{{this.title}} → <strong>+{{this.upliftMin}}–{{this.upliftMax}}</strong> points</li>
+          <li>{{this.titleText}} → <strong>{{this.upliftRangeText}}</strong></li>
         {{/each}}
       </ul>
     </div>

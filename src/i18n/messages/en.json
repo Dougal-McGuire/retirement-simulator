@@ -445,5 +445,758 @@
     "aria": {
       "description": "Monthly spending bar chart showing spending patterns from retirement age {retirementAge} onwards across percentiles."
     }
+  },
+  "pdf": {
+    "base": {
+      "title": "Retirement Planning Analysis Report"
+    },
+    "header": {
+      "title": "Retirement Plan"
+    },
+    "footer": {
+      "title": "Retirement Plan",
+      "page": "Page",
+      "of": "of"
+    },
+    "cover": {
+      "title": "Retirement Plan Snapshot",
+      "subtitle": "Comprehensive Financial Projection Report",
+      "meta": {
+        "age": "Age",
+        "generated": "Generated",
+        "reportId": "Report ID",
+        "version": "Version"
+      },
+      "disclaimer": "This report contains financial projections based on Monte Carlo simulations. Past performance is not indicative of future results. All projections are subject to market volatility and uncertainty."
+    },
+    "summary": {
+      "planHealthLabel": {
+        "strong": "Strong",
+        "moderate": "Moderate",
+        "needsAttention": "Needs attention"
+      },
+      "planHealthWhy": {
+        "bits": {
+          "solidSavingsRate": "solid savings rate",
+          "moderateBridge": "moderate bridge drawdown",
+          "highSuccessProbability": "high success probability",
+          "balancedAssumptions": "balanced assumptions"
+        }
+      },
+      "topActions": {
+        "range": "+{min}–{max} pts"
+      }
+    },
+    "exec": {
+      "title": "Plan Health Snapshot",
+      "intro": "This comprehensive retirement planning analysis evaluates your financial trajectory through {years, number} years of projections, utilizing Monte Carlo simulation with {runs, number} iterations to account for market volatility and economic uncertainty.",
+      "kpis": {
+        "planHealth": {
+          "label": "Plan health — {label}"
+        },
+        "successProbability": {
+          "label": "Success probability",
+          "note": "In {rate, number, ::percent} of {runs, number} paths assets last to age {age}"
+        },
+        "currentAssets": {
+          "label": "Current assets",
+          "note": "Starting portfolio value"
+        },
+        "annualSavings": {
+          "label": "Annual savings",
+          "note": "Pre-retirement contribution"
+        },
+        "monthlyPension": {
+          "label": "Expected monthly pension",
+          "note": "Starting at age {age}"
+        },
+        "totalSpending": {
+          "label": "Total annual spending",
+          "note": "Includes monthly and annual expenses"
+        },
+        "bridge": {
+          "label": "Bridge years ({start}–{end})",
+          "note": "Funded {portfolio}% portfolio / {years} years cash"
+        }
+      },
+      "keyFindings": {
+        "title": "Key findings",
+        "planHealth": {
+          "label": "Plan health:"
+        },
+        "successProbability": {
+          "label": "Success probability:",
+          "detail": "In {rate, number, ::percent} of {runs, number} paths assets last to age {age}"
+        },
+        "bridge": {
+          "label": "Bridge years {start}–{end} need:",
+          "detail": "Funded {portfolio}% portfolio / {years} years cash"
+        },
+        "retirementCountdown": "Years until retirement: {years}"
+      },
+      "nextSteps": {
+        "title": "Do next (expected uplift)"
+      },
+      "badges": {
+        "excellent": "Excellent",
+        "good": "Good",
+        "moderate": "Moderate",
+        "needsReview": "Needs review"
+      }
+    },
+    "charts": {
+      "assets": {
+        "series": {
+          "p10": "P10 (Pessimistic)",
+          "p20": "P20",
+          "p50": "P50 (Median)",
+          "p80": "P80",
+          "p90": "P90 (Optimistic)"
+        },
+        "axes": {
+          "x": "Age (years)",
+          "y": "Portfolio value (€)"
+        }
+      },
+      "spending": {
+        "categories": {
+          "health": "Healthcare",
+          "food": "Food & groceries",
+          "entertainment": "Entertainment",
+          "shopping": "Shopping",
+          "utilities": "Utilities",
+          "vacations": "Vacations",
+          "repairs": "Home repairs",
+          "car": "Car"
+        },
+        "axes": {
+          "x": "Expense category",
+          "y": "Annual amount (€)"
+        }
+      }
+    },
+    "assets": {
+      "title": "Asset projections",
+      "intro": "The following projections show the evolution of your portfolio value across different probability scenarios. The P10, P50, and P90 percentiles represent pessimistic, median, and optimistic outcomes respectively.",
+      "overTime": {
+        "title": "Portfolio value over time",
+        "chartAria": "Portfolio value projections by percentile",
+        "caption": "Figure {figure}. Median (P50) path bold; shaded band (P10–P90) conveys uncertainty."
+      },
+      "milestones": {
+        "title": "Key milestone values",
+        "aria": "Key milestone portfolio values by percentile",
+        "headers": {
+          "age": "Age",
+          "p10": "P10 (pessimistic)",
+          "p50": "P50 (median)",
+          "p90": "P90 (optimistic)"
+        },
+        "retirementLabel": "Retirement"
+      },
+      "success": {
+        "title": "Success probability analysis",
+        "kpis": {
+          "overall": {
+            "label": "Overall success rate",
+            "note": "Probability of maintaining positive assets through planning horizon"
+          },
+          "failed": {
+            "label": "Failed scenarios",
+            "note": "Out of {runs, number} simulations"
+          }
+        }
+      },
+      "phases": {
+        "title": "Portfolio phases",
+        "accumulation": {
+          "title": "Accumulation phase (ages {start}–{end})",
+          "duration": "Duration: {years, number} years",
+          "annualContribution": "Annual contribution: {amount, number, ::currency/EUR}",
+          "totalContribution": "Total contributions: {amount, number, ::currency/EUR}",
+          "compound": "Investment returns compound during this period"
+        },
+        "distribution": {
+          "title": "Distribution phase (ages {start}–{end})",
+          "duration": "Duration: {years, number} years",
+          "annualSpending": "Annual spending: {amount, number, ::currency/EUR} (inflation-adjusted)",
+          "pensionIncome": "Pension income from age {age}: {amount, number, ::currency/EUR} annually",
+          "gapYears": "Gap years ({start}–{end}): No pension support"
+        }
+      },
+      "stats": {
+        "title": "Statistical summary",
+        "aria": "Statistical summary at retirement and plan end",
+        "headers": {
+          "metric": "Metric",
+          "atRetirement": "At retirement (age {age})",
+          "atHorizon": "At age {age}"
+        },
+        "rows": {
+          "median": "Median portfolio value",
+          "p90": "90th percentile value",
+          "p10": "10th percentile value"
+        }
+      }
+    },
+    "toc": {
+      "title": "Table of contents",
+      "sections": {
+        "exec": {
+          "title": "Plan health snapshot",
+          "subsections": {
+            "keyFindings": "Key findings"
+          }
+        },
+        "profile": {
+          "title": "Personal profile & assumptions",
+          "subsections": {
+            "demographics": "Demographic information",
+            "finances": "Financial starting position",
+            "market": "Market assumptions",
+            "tax": "Tax assumptions",
+            "simulation": "Simulation parameters"
+          }
+        },
+        "assets": {
+          "title": "Asset projections",
+          "subsections": {
+            "overTime": "Portfolio value over time",
+            "milestones": "Key milestone values",
+            "success": "Success probability analysis",
+            "phases": "Portfolio phases"
+          }
+        },
+        "spending": {
+          "title": "Spending analysis",
+          "subsections": {
+            "breakdown": "Annual spending breakdown",
+            "monthly": "Monthly recurring expenses",
+            "annual": "Annual expenses",
+            "inflation": "Inflation impact",
+            "sustainability": "Spending sustainability"
+          }
+        },
+        "risk": {
+          "title": "Risk assessment",
+          "subsections": {
+            "market": "Market risk",
+            "longevity": "Longevity risk",
+            "scenarios": "Scenario analysis",
+            "stress": "Stress test results",
+            "mitigation": "Mitigation strategies",
+            "indicators": "Key indicators"
+          }
+        },
+        "recommendations": {
+          "title": "Recommendations",
+          "subsections": {
+            "priority": "Priority matrix",
+            "nextSteps": "Next steps",
+            "services": "Professional services"
+          }
+        }
+      }
+    },
+    "profile": {
+      "title": "Personal profile & assumptions",
+      "demographics": {
+        "title": "Demographic information",
+        "aria": "Demographic parameters and planning horizon",
+        "headers": {
+          "parameter": "Parameter",
+          "value": "Value",
+          "details": "Details"
+        },
+        "rows": {
+          "currentAge": {
+            "label": "Current age",
+            "value": "{age, number} years",
+            "detail": "Analysis baseline"
+          },
+          "retirementAge": {
+            "label": "Retirement age",
+            "value": "{age, number} years",
+            "detail": "{years, number} years from now"
+          },
+          "pensionAge": {
+            "label": "Pension start age",
+            "value": "{age, number} years",
+            "detail": "State pension eligibility"
+          },
+          "horizonAge": {
+            "label": "Planning horizon",
+            "value": "{age, number} years",
+            "detail": "Life expectancy assumption"
+          }
+        }
+      },
+      "finances": {
+        "title": "Financial starting position",
+        "aria": "Financial starting position",
+        "headers": {
+          "category": "Asset/Income category",
+          "amount": "Amount",
+          "notes": "Notes"
+        },
+        "rows": {
+          "currentAssets": {
+            "label": "Current portfolio value",
+            "detail": "Invested assets today"
+          },
+          "annualSavings": {
+            "label": "Annual savings rate",
+            "detail": "Pre-retirement contributions"
+          },
+          "monthlyPension": {
+            "label": "Expected monthly pension",
+            "detail": "From age {age}"
+          },
+          "annualPension": {
+            "label": "Annual pension income",
+            "detail": "Total yearly benefit"
+          }
+        }
+      },
+      "market": {
+        "title": "Market assumptions",
+        "aria": "Market and inflation assumptions",
+        "headers": {
+          "parameter": "Parameter",
+          "mean": "Mean",
+          "stdev": "Standard deviation",
+          "description": "Description"
+        },
+        "rows": {
+          "roi": {
+            "label": "Return on investment",
+            "detail": "Expected portfolio returns"
+          },
+          "inflation": {
+            "label": "Inflation rate",
+            "detail": "Cost of living adjustment"
+          },
+          "realReturn": {
+            "label": "Real return",
+            "detail": "Inflation-adjusted return"
+          }
+        }
+      },
+      "tax": {
+        "title": "Tax assumptions",
+        "aria": "Tax assumptions",
+        "headers": {
+          "type": "Tax type",
+          "rate": "Rate",
+          "application": "Application"
+        },
+        "rows": {
+          "capGains": {
+            "label": "Capital gains tax",
+            "detail": "Applied to investment gains"
+          }
+        },
+        "adjustedFootnote": "Tax rate was adjusted from an invalid input value. Original value appeared to be a data entry error."
+      },
+      "simulation": {
+        "title": "Simulation parameters",
+        "callout": {
+          "title": "Monte Carlo configuration",
+          "simulations": "Number of simulations: {runs, number}",
+          "distribution": "Random distribution: Normal (Box-Muller transform)",
+          "timeSteps": "Time steps: Annual projections",
+          "successCriteria": "Success criteria: Portfolio remains positive through age {age}"
+        }
+      }
+    },
+    "spending": {
+      "title": "Spending analysis",
+      "intro": "Your spending requirements form the foundation of retirement planning. The following analysis breaks down your expected expenses and projects their evolution over time.",
+      "breakdown": {
+        "title": "Annual spending breakdown",
+        "chartAria": "Annual spending by category",
+        "caption": "Figure {figure}. Spending mix highlights where adjustments have most impact."
+      },
+      "details": {
+        "title": "Detailed expense categories"
+      },
+      "monthly": {
+        "title": "Monthly recurring expenses",
+        "headers": {
+          "category": "Category",
+          "monthly": "Monthly amount",
+          "annual": "Annual total",
+          "total25": "25-year total (nominal)"
+        },
+        "rows": {
+          "health": "Healthcare",
+          "food": "Food & dining",
+          "entertainment": "Entertainment",
+          "shopping": "Shopping & miscellaneous",
+          "utilities": "Utilities & housing"
+        }
+      },
+      "annual": {
+        "title": "Annual expenses",
+        "headers": {
+          "category": "Category",
+          "annual": "Annual amount",
+          "total25": "25-year total (nominal)"
+        },
+        "rows": {
+          "vacations": "Vacations & travel",
+          "repairs": "Home maintenance & repairs",
+          "car": "Vehicle & transportation"
+        }
+      },
+      "inflation": {
+        "title": "Inflation impact",
+        "calloutTitle": "Cost of living adjustments",
+        "expectedRate": "Expected inflation rate: {rate}",
+        "today": "Today's annual spending: {amount}",
+        "tenYears": "Projected spending in 10 years: {amount}",
+        "twentyYears": "Projected spending in 20 years: {amount}"
+      },
+      "sustainability": {
+        "title": "Spending sustainability",
+        "intro": "Your portfolio must generate sufficient returns and withdrawals to cover:",
+        "prePension": {
+          "title": "Pre-pension period (ages {start}–{end})",
+          "detail": "Full spending from portfolio"
+        },
+        "pension": {
+          "title": "Pension period (ages {start}–{end})",
+          "detail": "Spending minus pension income"
+        }
+      }
+    },
+    "risk": {
+      "title": "Risk assessment",
+      "intro": "Understanding and managing risk is crucial for retirement success. This section analyzes key risk factors that could impact your financial security.",
+      "market": {
+        "title": "Market risk",
+        "aria": "Market risk factors and mitigations",
+        "headers": {
+          "factor": "Risk factor",
+          "assumption": "Current assumption",
+          "impact": "Impact level",
+          "mitigation": "Mitigation strategy"
+        },
+        "rows": {
+          "volatility": {
+            "factor": "Return volatility",
+            "assumption": "σ = {stdev}",
+            "impact": "High",
+            "mitigation": "Diversification across asset classes"
+          },
+          "sequence": {
+            "factor": "Sequence of returns",
+            "assumption": "Monte Carlo modeled",
+            "impact": "High",
+            "mitigation": "Flexible withdrawal strategy"
+          },
+          "inflation": {
+            "factor": "Inflation erosion",
+            "assumption": "{mean} mean",
+            "impact": "Medium",
+            "mitigation": "Real asset allocation"
+          },
+          "currency": {
+            "factor": "Currency risk",
+            "assumption": "EUR-denominated",
+            "impact": "Low",
+            "mitigation": "Local currency focus"
+          }
+        }
+      },
+      "longevity": {
+        "title": "Longevity risk",
+        "calloutTitle": "Planning horizon analysis",
+        "horizon": "Current planning horizon: age {age} ({years, number} years)",
+        "retirementYears": "Years in retirement: {years, number}",
+        "shortfallRisk": "Risk of outliving assets: {probability}"
+      },
+      "scenarios": {
+        "title": "Scenario analysis",
+        "stressTitle": "Stress test results",
+        "aria": "Stress test scenarios and impacts",
+        "headers": {
+          "scenario": "Scenario",
+          "portfolio": "Portfolio impact",
+          "success": "Success rate impact"
+        },
+        "rows": {
+          "base": {
+            "name": "Base case",
+            "portfolio": "As projected"
+          },
+          "highInflation": {
+            "name": "High inflation (+2%)",
+            "portfolio": "−15% real value",
+            "success": "~{value}"
+          },
+          "lowReturns": {
+            "name": "Low returns (−2%)",
+            "portfolio": "−25% terminal value",
+            "success": "~{value}"
+          },
+          "longevity": {
+            "name": "Extended longevity (+5 years)",
+            "portfolio": "Additional withdrawals",
+            "success": "~{value}"
+          }
+        }
+      },
+      "mitigation": {
+        "title": "Risk mitigation strategies",
+        "tiles": {
+          "diversify": {
+            "value": "Diversify",
+            "label": "Investment strategy",
+            "note": "Spread risk across multiple asset classes and geographies"
+          },
+          "flexible": {
+            "value": "Flexible",
+            "label": "Spending approach",
+            "note": "Adjust withdrawals based on market conditions"
+          },
+          "buffer": {
+            "value": "Buffer",
+            "label": "Safety margin",
+            "note": "Maintain emergency reserves for market downturns"
+          },
+          "review": {
+            "value": "Review",
+            "label": "Regular assessment",
+            "note": "Annual portfolio and assumption reviews"
+          }
+        }
+      },
+      "indicators": {
+        "title": "Key risk indicators",
+        "calloutTitle": "Warning signals to monitor",
+        "items": {
+          "trackingError": "Portfolio value falls below P10 projection for your age",
+          "spendingRate": "Annual spending exceeds 5% of portfolio value",
+          "inflation": "Inflation persistently exceeds {threshold}",
+          "performance": "Investment returns lag assumptions for 3+ consecutive years"
+        }
+      }
+    },
+    "recommendations": {
+      "title": "Recommendations",
+      "intro": "Based on the comprehensive analysis of your financial situation, the following strategic recommendations are provided to optimize your retirement outcomes.",
+      "impactLabel": "{impact} impact",
+      "titles": {
+        "increaseSavingsRate": "Increase savings rate",
+        "delayRetirement": "Delay retirement",
+        "optimizeInvestmentMix": "Optimize investment mix",
+        "reviewSpendingPlan": "Review spending plan",
+        "maximizeTaxDeferred": "Maximize tax-deferred contributions",
+        "considerVolatilityReduction": "Consider volatility reduction",
+        "reviewInsuranceCoverage": "Review insurance coverage"
+      },
+      "categories": {
+        "savingsStrategy": "Savings strategy",
+        "timing": "Timing",
+        "investmentStrategy": "Investment strategy",
+        "expenseManagement": "Expense management",
+        "taxPlanning": "Tax planning",
+        "riskManagement": "Risk management",
+        "protection": "Protection"
+      },
+      "bodies": {
+        "increaseSavingsRate": "Your current success rate indicates potential challenges. Consider increasing your annual savings by 10–20% to improve retirement security.",
+        "delayRetirement": "Working an additional 2–3 years could significantly improve your success rate by allowing more time for asset accumulation.",
+        "optimizeInvestmentMix": "Review your asset allocation to ensure appropriate balance between growth and stability for your risk tolerance.",
+        "reviewSpendingPlan": "Your expenses are high relative to savings. Consider reviewing discretionary spending to improve financial flexibility.",
+        "maximizeTaxDeferred": "Ensure you are taking full advantage of tax-advantaged retirement accounts to reduce current tax liability and enhance long-term growth.",
+        "considerVolatilityReduction": "Your portfolio has high volatility. As you approach retirement, consider gradually shifting to more stable investments.",
+        "reviewInsuranceCoverage": "Evaluate current insurance policies including health, long-term care, and life insurance to ensure adequate protection."
+      },
+      "impact": {
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      },
+      "priority": {
+        "title": "Implementation priority matrix",
+        "headers": {
+          "rank": "Priority",
+          "recommendation": "Recommendation",
+          "timeline": "Timeline",
+          "benefit": "Expected benefit"
+        },
+        "timeline": {
+          "immediate": "Immediate",
+          "months3to6": "3–6 months",
+          "months12": "12 months",
+          "default": "To be scheduled"
+        },
+        "benefit": {
+          "high": "Significant improvement",
+          "medium": "Moderate enhancement",
+          "low": "Incremental benefit",
+          "default": "Benefit to be determined"
+        }
+      },
+      "nextSteps": {
+        "title": "Next steps",
+        "calloutTitle": "Action plan",
+        "items": {
+          "review": {
+            "title": "Review and validate",
+            "detail": "Confirm all assumptions and input data reflect your current situation"
+          },
+          "prioritize": {
+            "title": "Prioritize actions",
+            "detail": "Focus on high-impact recommendations first"
+          },
+          "consult": {
+            "title": "Consult professionals",
+            "detail": "Engage qualified financial and tax advisors for implementation"
+          },
+          "monitor": {
+            "title": "Monitor progress",
+            "detail": "Schedule quarterly reviews of your portfolio and assumptions"
+          },
+          "adjust": {
+            "title": "Adjust as needed",
+            "detail": "Update the plan based on life changes and market conditions"
+          }
+        }
+      },
+      "services": {
+        "title": "Professional services",
+        "intro": "Consider engaging the following professionals to implement these recommendations:",
+        "items": {
+          "financialPlanner": {
+            "title": "Financial planner",
+            "detail": "Comprehensive retirement strategy and portfolio management"
+          },
+          "taxAdvisor": {
+            "title": "Tax advisor",
+            "detail": "Optimize tax-deferred contributions and withdrawal strategies"
+          },
+          "estateAttorney": {
+            "title": "Estate attorney",
+            "detail": "Ensure proper wealth transfer and legacy planning"
+          },
+          "insuranceSpecialist": {
+            "title": "Insurance specialist",
+            "detail": "Review coverage gaps and protection needs"
+          }
+        }
+      }
+    },
+    "appendix": {
+      "title": "Appendix: Methodology",
+      "monteCarlo": {
+        "title": "Monte Carlo simulation",
+        "description": "This report employs Monte Carlo simulation, a computational technique that uses repeated random sampling to model the probability of different outcomes in retirement planning."
+      },
+      "technical": {
+        "title": "Technical implementation",
+        "headers": {
+          "component": "Component",
+          "implementation": "Implementation"
+        },
+        "rows": {
+          "randomGeneration": {
+            "component": "Random number generation",
+            "implementation": "Box-Muller transform for normal distribution"
+          },
+          "simulationCount": {
+            "component": "Simulation count",
+            "implementation": "{runs} independent runs"
+          },
+          "timeSteps": {
+            "component": "Time steps",
+            "implementation": "Annual projections with monthly granularity for expenses"
+          },
+          "distribution": {
+            "component": "Distribution parameters",
+            "implementation": "μ = {mean}, σ = {stdev}"
+          }
+        }
+      },
+      "calculation": {
+        "title": "Calculation methodology",
+        "calloutTitle": "Portfolio evolution formula",
+        "variablesIntro": "Where:",
+        "variables": {
+          "vt": "V(t) = Portfolio value at time t",
+          "rt": "r(t) = Investment return (stochastic)",
+          "ct": "C(t) = Contributions (pre-retirement) or pension (post-pension age)",
+          "wt": "W(t) = Withdrawals for expenses",
+          "it": "i(t) = Inflation rate (stochastic)"
+        }
+      },
+      "statistics": {
+        "title": "Statistical measures",
+        "percentiles": {
+          "title": "Percentile calculations",
+          "description": "The report presents three key percentiles from the simulation results:",
+          "p10": {
+            "title": "P10 (10th percentile)",
+            "detail": "Pessimistic scenario – 90% of outcomes exceed this value"
+          },
+          "p50": {
+            "title": "P50 (50th percentile / median)",
+            "detail": "Central tendency – half of outcomes above, half below"
+          },
+          "p90": {
+            "title": "P90 (90th percentile)",
+            "detail": "Optimistic scenario – only 10% of outcomes exceed this value"
+          }
+        },
+        "success": {
+          "title": "Success rate definition",
+          "description": "A simulation run is considered successful if the portfolio maintains a positive balance through the entire planning horizon (age {age}). The success rate represents the percentage of all simulation runs that meet this criterion."
+        }
+      },
+      "limitations": {
+        "title": "Assumptions and limitations",
+        "calloutTitle": "Important considerations",
+        "items": {
+          "distribution": "Returns are assumed to follow a normal distribution, which may not capture extreme market events",
+          "inflationModel": "Inflation is modeled as constant in real terms across all expense categories",
+          "taxPolicy": "Tax rates and regulations are assumed to remain constant",
+          "unexpected": "No consideration for unexpected one-time expenses or windfalls",
+          "healthcare": "Healthcare costs may increase faster than general inflation",
+          "pension": "Pension benefits assumed to be inflation-adjusted and guaranteed"
+        }
+      },
+      "glossary": {
+        "title": "Glossary of terms",
+        "headers": {
+          "term": "Term",
+          "definition": "Definition"
+        },
+        "items": {
+          "monteCarlo": {
+            "term": "Monte Carlo simulation",
+            "definition": "Statistical technique using random sampling to model uncertainty"
+          },
+          "successRate": {
+            "term": "Success rate",
+            "definition": "Percentage of simulations where portfolio lasts through planning horizon"
+          },
+          "realReturn": {
+            "term": "Real return",
+            "definition": "Investment return adjusted for inflation"
+          },
+          "sequenceRisk": {
+            "term": "Sequence of returns risk",
+            "definition": "Risk that poor returns early in retirement significantly impact outcomes"
+          },
+          "planningHorizon": {
+            "term": "Planning horizon",
+            "definition": "The age through which the plan projects (life expectancy assumption)"
+          }
+        }
+      }
+    }
   }
+
 }

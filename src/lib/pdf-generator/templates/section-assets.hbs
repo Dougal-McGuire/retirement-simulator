@@ -1,32 +1,36 @@
 <div id="assets" class="page-break">
-  <h1>Asset Projections</h1>
+  <h1>{{t 'pdf.assets.title'}}</h1>
   
   <div class="content">
-    <p>The following projections show the evolution of your portfolio value across different probability scenarios. 
-    The P10, P50, and P90 percentiles represent pessimistic, median, and optimistic outcomes respectively.</p>
+    <p>{{t 'pdf.assets.intro'}}</p>
     
-    <h2 id="assets-over-time">Portfolio Value Over Time</h2>
+    <h2 id="assets-over-time">{{t 'pdf.assets.overTime.title'}}</h2>
     
-    <figure class="avoid-break" data-fig="assets-projection" aria-label="Portfolio value projections by percentile">
+    <figure class="avoid-break" data-fig="assets-projection" aria-label="{{t 'pdf.assets.overTime.chartAria'}}">
       {{{assetsChart}}}
-      <figcaption>Figure {{figureNumber 1}}. Median (P50) path bold; shaded band (P10–P90) conveys uncertainty.</figcaption>
+      <figcaption>{{t 'pdf.assets.overTime.caption' figure=(figureNumber 1)}}</figcaption>
     </figure>
     
-    <h2 id="assets-milestones">Key Milestone Values</h2>
+    <h2 id="assets-milestones">{{t 'pdf.assets.milestones.title'}}</h2>
     
-    <table class="avoid-break" aria-label="Key milestone portfolio values by percentile">
+    <table class="avoid-break" aria-label="{{t 'pdf.assets.milestones.aria'}}">
       <thead>
         <tr>
-          <th>Age</th>
-          <th>P10 (Pessimistic)</th>
-          <th>P50 (Median)</th>
-          <th>P90 (Optimistic)</th>
+          <th>{{t 'pdf.assets.milestones.headers.age'}}</th>
+          <th>{{t 'pdf.assets.milestones.headers.p10'}}</th>
+          <th>{{t 'pdf.assets.milestones.headers.p50'}}</th>
+          <th>{{t 'pdf.assets.milestones.headers.p90'}}</th>
         </tr>
       </thead>
       <tbody>
         {{#each projections.milestones}}
         <tr{{#if (isRetirementAge this.age ../person.retireAge)}} style="background: var(--line); font-weight: 600;"{{/if}}>
-          <td>{{this.age}}{{#if (isRetirementAge this.age ../person.retireAge)}} (Retirement){{/if}}</td>
+          <td>
+            {{this.age}}
+            {{#if (isRetirementAge this.age ../person.retireAge)}}
+              ({{t 'pdf.assets.milestones.retirementLabel'}})
+            {{/if}}
+          </td>
           <td>{{formatEUR this.p10}}</td>
           <td>{{formatEUR this.p50}}</td>
           <td>{{formatEUR this.p90}}</td>
@@ -35,69 +39,69 @@
       </tbody>
     </table>
     
-    <h2 id="assets-success">Success Probability Analysis</h2>
+    <h2 id="assets-success">{{t 'pdf.assets.success.title'}}</h2>
     
     <div class="kpi-grid">
       {{> kpi-tile 
         value=(formatPercent projections.successRatePct)
-        label="Overall Success Rate"
-        badge=(getSuccessBadge projections.successRatePct)
+        label=(t 'pdf.assets.success.kpis.overall.label')
+        badge=(successBadgeLabel projections.successRatePct)
         badgeColor=(getSuccessBadgeColor projections.successRatePct)
-        note="Probability of maintaining positive assets through planning horizon"
+        note=(t 'pdf.assets.success.kpis.overall.note')
       }}
       
       {{> kpi-tile 
         value=(formatNumber (getFailureCount assumptions.mcRuns projections.successRatePct))
-        label="Failed Scenarios"
-        note=(concat "Out of " (formatNumber assumptions.mcRuns) " simulations")
+        label=(t 'pdf.assets.success.kpis.failed.label')
+        note=(t 'pdf.assets.success.kpis.failed.note' runs=assumptions.mcRuns)
       }}
     </div>
     
-    <h2 id="assets-phases">Portfolio Phases</h2>
+    <h2 id="assets-phases">{{t 'pdf.assets.phases.title'}}</h2>
     
     <div class="callout callout-info">
-      <div class="callout-title">Accumulation Phase (Ages {{person.currentAge}}–{{subtract person.retireAge 1}})</div>
+      <div class="callout-title">{{t 'pdf.assets.phases.accumulation.title' start=person.currentAge end=(subtract person.retireAge 1)}}</div>
       <ul>
-        <li>Duration: {{subtract person.retireAge person.currentAge}} years</li>
-        <li>Annual contribution: {{formatEUR finances.annualSavingsEUR}}</li>
-        <li>Total contributions: {{formatEUR (multiply finances.annualSavingsEUR (subtract person.retireAge person.currentAge))}}</li>
-        <li>Investment returns compound during this period</li>
+        <li>{{t 'pdf.assets.phases.accumulation.duration' years=(subtract person.retireAge person.currentAge)}}</li>
+        <li>{{t 'pdf.assets.phases.accumulation.annualContribution' amount=finances.annualSavingsEUR}}</li>
+        <li>{{t 'pdf.assets.phases.accumulation.totalContribution' amount=(multiply finances.annualSavingsEUR (subtract person.retireAge person.currentAge))}}</li>
+        <li>{{t 'pdf.assets.phases.accumulation.compound'}}</li>
       </ul>
     </div>
     
     <div class="callout callout-warning">
-      <div class="callout-title">Distribution Phase (Ages {{person.retireAge}}–{{person.horizonAge}})</div>
+      <div class="callout-title">{{t 'pdf.assets.phases.distribution.title' start=person.retireAge end=person.horizonAge}}</div>
       <ul>
-        <li>Duration: {{subtract person.horizonAge person.retireAge}} years</li>
-        <li>Annual spending: {{formatEUR (getTotalAnnualSpending spending)}} (inflation-adjusted)</li>
-        <li>Pension income from age {{person.pensionAge}}: {{formatEUR (multiply finances.expectedMonthlyPensionEUR 12)}} annually</li>
-        <li>Gap years ({{person.retireAge}}–{{subtract person.pensionAge 1}}): No pension support</li>
+        <li>{{t 'pdf.assets.phases.distribution.duration' years=(subtract person.horizonAge person.retireAge)}}</li>
+        <li>{{t 'pdf.assets.phases.distribution.annualSpending' amount=(getTotalAnnualSpending spending)}}</li>
+        <li>{{t 'pdf.assets.phases.distribution.pensionIncome' age=person.pensionAge amount=(multiply finances.expectedMonthlyPensionEUR 12)}}</li>
+        <li>{{t 'pdf.assets.phases.distribution.gapYears' start=person.retireAge end=(subtract person.pensionAge 1)}}</li>
       </ul>
     </div>
     
-    <h2 id="assets-stats">Statistical Summary</h2>
+    <h2 id="assets-stats">{{t 'pdf.assets.stats.title'}}</h2>
     
-    <table class="avoid-break" aria-label="Statistical summary at retirement and at plan end">
+    <table class="avoid-break" aria-label="{{t 'pdf.assets.stats.aria'}}">
       <thead>
         <tr>
-          <th>Metric</th>
-          <th>At Retirement (Age {{person.retireAge}})</th>
-          <th>At Age {{person.horizonAge}}</th>
+          <th>{{t 'pdf.assets.stats.headers.metric'}}</th>
+          <th>{{t 'pdf.assets.stats.headers.atRetirement' age=person.retireAge}}</th>
+          <th>{{t 'pdf.assets.stats.headers.atHorizon' age=person.horizonAge}}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Median Portfolio Value</td>
+          <td>{{t 'pdf.assets.stats.rows.median'}}</td>
           <td>{{formatEUR (getRetirementMedian projections person)}}</td>
           <td>{{formatEUR (getFinalMedian projections)}}</td>
         </tr>
         <tr>
-          <td>90th Percentile Value</td>
+          <td>{{t 'pdf.assets.stats.rows.p90'}}</td>
           <td>{{formatEUR (getRetirement90th projections person)}}</td>
           <td>{{formatEUR (getFinal90th projections)}}</td>
         </tr>
         <tr>
-          <td>10th Percentile Value</td>
+          <td>{{t 'pdf.assets.stats.rows.p10'}}</td>
           <td>{{formatEUR (getRetirement10th projections person)}}</td>
           <td>{{formatEUR (getFinal10th projections)}}</td>
         </tr>

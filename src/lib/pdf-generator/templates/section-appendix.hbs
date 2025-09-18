@@ -1,126 +1,116 @@
 <div id='appendix' class='page-break'>
-  <h1>Appendix: Methodology</h1>
+  <h1>{{t 'pdf.appendix.title'}}</h1>
 
   <div class='content'>
-    <h2 id='appendix-monte-carlo'>Monte Carlo Simulation</h2>
+    <h2 id='appendix-monte-carlo'>{{t 'pdf.appendix.monteCarlo.title'}}</h2>
 
-    <p>This report employs Monte Carlo simulation, a computational technique that uses repeated
-      random sampling to model the probability of different outcomes in retirement planning.</p>
+    <p>{{t 'pdf.appendix.monteCarlo.description'}}</p>
 
-    <h3 id='appendix-technical'>Technical Implementation</h3>
+    <h3 id='appendix-technical'>{{t 'pdf.appendix.technical.title'}}</h3>
 
     <table class='avoid-break'>
       <thead>
         <tr>
-          <th>Component</th>
-          <th>Implementation</th>
+          <th>{{t 'pdf.appendix.technical.headers.component'}}</th>
+          <th>{{t 'pdf.appendix.technical.headers.implementation'}}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Random Number Generation</td>
-          <td>Box-Muller transform for normal distribution</td>
+          <td>{{t 'pdf.appendix.technical.rows.randomGeneration.component'}}</td>
+          <td>{{t 'pdf.appendix.technical.rows.randomGeneration.implementation'}}</td>
         </tr>
         <tr>
-          <td>Simulation Count</td>
-          <td>{{formatNumber assumptions.mcRuns}} independent runs</td>
+          <td>{{t 'pdf.appendix.technical.rows.simulationCount.component'}}</td>
+          <td>{{t 'pdf.appendix.technical.rows.simulationCount.implementation' runs=(formatNumber assumptions.mcRuns)}}</td>
         </tr>
         <tr>
-          <td>Time Steps</td>
-          <td>Annual projections with monthly granularity for expenses</td>
+          <td>{{t 'pdf.appendix.technical.rows.timeSteps.component'}}</td>
+          <td>{{t 'pdf.appendix.technical.rows.timeSteps.implementation'}}</td>
         </tr>
         <tr>
-          <td>Distribution Parameters</td>
-          <td>μ =
-            {{formatPercent assumptions.roiMean 2}}, σ =
-            {{formatPercent assumptions.roiStdev 2}}</td>
+          <td>{{t 'pdf.appendix.technical.rows.distribution.component'}}</td>
+          <td>{{t 'pdf.appendix.technical.rows.distribution.implementation' mean=(formatPercent assumptions.roiMean 2) stdev=(formatPercent assumptions.roiStdev 2)}}</td>
         </tr>
       </tbody>
     </table>
 
-    <h3 id='appendix-calculation'>Calculation Methodology</h3>
+    <h3 id='appendix-calculation'>{{t 'pdf.appendix.calculation.title'}}</h3>
 
     <div class='callout callout-info'>
-      <div class='callout-title'>Portfolio Evolution Formula</div>
+      <div class='callout-title'>{{t 'pdf.appendix.calculation.calloutTitle'}}</div>
       <p style='font-family: monospace; margin: var(--s-2) 0;'>
         V(t+1) = V(t) × (1 + r(t)) + C(t) - W(t) × (1 + i(t))
       </p>
-      <p>Where:</p>
+      <p>{{t 'pdf.appendix.calculation.variablesIntro'}}</p>
       <ul>
-        <li>V(t) = Portfolio value at time t</li>
-        <li>r(t) = Investment return (stochastic)</li>
-        <li>C(t) = Contributions (pre-retirement) or pension (post-pension age)</li>
-        <li>W(t) = Withdrawals for expenses</li>
-        <li>i(t) = Inflation rate (stochastic)</li>
+        <li>{{t 'pdf.appendix.calculation.variables.vt'}}</li>
+        <li>{{t 'pdf.appendix.calculation.variables.rt'}}</li>
+        <li>{{t 'pdf.appendix.calculation.variables.ct'}}</li>
+        <li>{{t 'pdf.appendix.calculation.variables.wt'}}</li>
+        <li>{{t 'pdf.appendix.calculation.variables.it'}}</li>
       </ul>
     </div>
 
-    <h2 id='appendix-statistics'>Statistical Measures</h2>
+    <h2 id='appendix-statistics'>{{t 'pdf.appendix.statistics.title'}}</h2>
 
-    <h3 id='appendix-percentiles'>Percentile Calculations</h3>
+    <h3 id='appendix-percentiles'>{{t 'pdf.appendix.statistics.percentiles.title'}}</h3>
 
-    <p>The report presents three key percentiles from the simulation results:</p>
+    <p>{{t 'pdf.appendix.statistics.percentiles.description'}}</p>
 
     <ul>
-      <li><strong>P10 (10th Percentile):</strong>
-        Pessimistic scenario - 90% of outcomes exceed this value</li>
-      <li><strong>P50 (50th Percentile/Median):</strong>
-        Central tendency - half of outcomes above, half below</li>
-      <li><strong>P90 (90th Percentile):</strong>
-        Optimistic scenario - only 10% of outcomes exceed this value</li>
+      <li><strong>{{t 'pdf.appendix.statistics.percentiles.p10.title'}}:</strong> {{t 'pdf.appendix.statistics.percentiles.p10.detail'}}</li>
+      <li><strong>{{t 'pdf.appendix.statistics.percentiles.p50.title'}}:</strong> {{t 'pdf.appendix.statistics.percentiles.p50.detail'}}</li>
+      <li><strong>{{t 'pdf.appendix.statistics.percentiles.p90.title'}}:</strong> {{t 'pdf.appendix.statistics.percentiles.p90.detail'}}</li>
     </ul>
 
-    <h3 id='appendix-success'>Success Rate Definition</h3>
+    <h3 id='appendix-success'>{{t 'pdf.appendix.statistics.success.title'}}</h3>
 
-    <p>A simulation run is considered successful if the portfolio maintains a positive balance
-      through the entire planning horizon (age
-      {{person.horizonAge}}). The success rate represents the percentage of all simulation runs that
-      meet this criterion.</p>
+    <p>{{t 'pdf.appendix.statistics.success.description' age=person.horizonAge}}</p>
 
-    <h2 id='appendix-limitations'>Assumptions and Limitations</h2>
+    <h2 id='appendix-limitations'>{{t 'pdf.appendix.limitations.title'}}</h2>
 
     <div class='callout callout-warning'>
-      <div class='callout-title'>Important Considerations</div>
+      <div class='callout-title'>{{t 'pdf.appendix.limitations.calloutTitle'}}</div>
       <ul>
-        <li>Returns are assumed to follow a normal distribution, which may not capture extreme
-          market events</li>
-        <li>Inflation is modeled as constant in real terms across all expense categories</li>
-        <li>Tax rates and regulations are assumed to remain constant</li>
-        <li>No consideration for unexpected one-time expenses or windfalls</li>
-        <li>Healthcare costs may increase faster than general inflation</li>
-        <li>Pension benefits assumed to be inflation-adjusted and guaranteed</li>
+        <li>{{t 'pdf.appendix.limitations.items.distribution'}}</li>
+        <li>{{t 'pdf.appendix.limitations.items.inflationModel'}}</li>
+        <li>{{t 'pdf.appendix.limitations.items.taxPolicy'}}</li>
+        <li>{{t 'pdf.appendix.limitations.items.unexpected'}}</li>
+        <li>{{t 'pdf.appendix.limitations.items.healthcare'}}</li>
+        <li>{{t 'pdf.appendix.limitations.items.pension'}}</li>
       </ul>
     </div>
 
-    <h2 id='appendix-glossary'>Glossary of Terms</h2>
+    <h2 id='appendix-glossary'>{{t 'pdf.appendix.glossary.title'}}</h2>
 
     <table class='avoid-break'>
       <thead>
         <tr>
-          <th>Term</th>
-          <th>Definition</th>
+          <th>{{t 'pdf.appendix.glossary.headers.term'}}</th>
+          <th>{{t 'pdf.appendix.glossary.headers.definition'}}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Monte Carlo Simulation</td>
-          <td>Statistical technique using random sampling to model uncertainty</td>
+          <td>{{t 'pdf.appendix.glossary.items.monteCarlo.term'}}</td>
+          <td>{{t 'pdf.appendix.glossary.items.monteCarlo.definition'}}</td>
         </tr>
         <tr>
-          <td>Success Rate</td>
-          <td>Percentage of simulations where portfolio lasts through planning horizon</td>
+          <td>{{t 'pdf.appendix.glossary.items.successRate.term'}}</td>
+          <td>{{t 'pdf.appendix.glossary.items.successRate.definition'}}</td>
         </tr>
         <tr>
-          <td>Real Return</td>
-          <td>Investment return adjusted for inflation</td>
+          <td>{{t 'pdf.appendix.glossary.items.realReturn.term'}}</td>
+          <td>{{t 'pdf.appendix.glossary.items.realReturn.definition'}}</td>
         </tr>
         <tr>
-          <td>Sequence of Returns Risk</td>
-          <td>Risk that poor returns early in retirement significantly impact outcomes</td>
+          <td>{{t 'pdf.appendix.glossary.items.sequenceRisk.term'}}</td>
+          <td>{{t 'pdf.appendix.glossary.items.sequenceRisk.definition'}}</td>
         </tr>
         <tr>
-          <td>Planning Horizon</td>
-          <td>The age through which the plan projects (life expectancy assumption)</td>
+          <td>{{t 'pdf.appendix.glossary.items.planningHorizon.term'}}</td>
+          <td>{{t 'pdf.appendix.glossary.items.planningHorizon.definition'}}</td>
         </tr>
       </tbody>
     </table>

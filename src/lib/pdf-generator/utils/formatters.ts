@@ -1,150 +1,198 @@
-// Number and currency formatters with proper German/European formatting
+import type { Locale } from '@/i18n/config'
+import type { Person, Projections, Spending } from '@/lib/pdf-generator/schema/reportData'
 
-const NARROW_NBSP = '\u202F' // Narrow no-break space
+const localeMap: Record<Locale, string> = {
+  en: 'en-US',
+  de: 'de-DE',
+}
 
-export function formatEUR(value: number): string {
-  // Format with German locale
-  const formatted = new Intl.NumberFormat('de-DE', {
+const NARROW_NBSP = '\u202F'
+
+type FormatterHelpers = Record<string, (...args: any[]) => any>
+
+type SuccessBadgeKey = 'excellent' | 'good' | 'moderate' | 'needsReview'
+
+type LocaleAwareFormatters = {
+  formatEUR: (value: number) => string
+  formatNumber: (value: number) => string
+  formatPercent: (value: number, decimals?: number) => string
+  formatDate: (dateString: string) => string
+}
+
+function createLocaleAwareFormatters(locale: Locale): LocaleAwareFormatters {
+  const numberLocale = localeMap[locale] ?? localeMap.en
+
+  const currencyFormatter = new Intl.NumberFormat(numberLocale, {
     style: 'currency',
     currency: 'EUR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value)
+  })
 
-  // Replace regular space with narrow no-break space before € symbol
-  return formatted.replace(/\s€/, `${NARROW_NBSP}€`)
-}
-
-export function formatNumber(value: number): string {
-  return new Intl.NumberFormat('de-DE', {
+  const integerFormatter = new Intl.NumberFormat(numberLocale, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value)
+  })
+
+  function formatEUR(value: number): string {
+    const formatted = currencyFormatter.format(value)
+    return formatted.replace(/\s€/, `${NARROW_NBSP}€`)
+  }
+
+  function formatNumber(value: number): string {
+    return integerFormatter.format(value)
+  }
+
+  function formatPercent(value: number, decimals: number = 1): string {
+    const validDecimals =
+      typeof decimals === 'number' && !Number.isNaN(decimals)
+        ? Math.max(0, Math.min(20, decimals))
+        : 1
+
+    const normalizedValue = value > 1 ? value / 100 : value
+
+    return new Intl.NumberFormat(numberLocale, {
+      style: 'percent',
+      minimumFractionDigits: validDecimals,
+      maximumFractionDigits: validDecimals,
+    }).format(normalizedValue)
+  }
+
+  function formatDate(dateString: string): string {
+    const date = new Date(dateString)
+    return new Intl.DateTimeFormat(numberLocale, {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(date)
+  }
+
+  return {
+    formatEUR,
+    formatNumber,
+    formatPercent,
+    formatDate,
+  }
 }
 
-export function formatPercent(value: number, decimals: number = 1): string {
-  // Ensure decimals is valid
-  const validDecimals =
-    typeof decimals === 'number' && !isNaN(decimals) ? Math.max(0, Math.min(20, decimals)) : 1
+function createGeneralHelpers(): FormatterHelpers {
+  const multiply = (a: number, b: number): number => a * b
+  const subtract = (a: number, b: number): number => a - b
+  const concat = (...args: unknown[]): string => {
+    const values = args.slice(0, -1) as string[]
+    return values.join('')
+  }
+  const figureNumber = (num: number): string => `${num}`
+  const capitalize = (str?: string): string => {
+    if (!str) return ''
+    return str.charAt(0).toUpperCase() + str.slice(1)
+  }
 
-  // Value might be in decimal (0.05) or percentage (5) format
-  const normalizedValue = value > 1 ? value / 100 : value
+  const getSpendingPercent = (amount: number, spending: Spending): number => {
+    const total = getTotalAnnualSpending(spending)
+    const annualAmount = amount * 12
+    return total > 0 ? (annualAmount / total) * 100 : 0
+  }
 
-  return new Intl.NumberFormat('de-DE', {
-    style: 'percent',
-    minimumFractionDigits: validDecimals,
-    maximumFractionDigits: validDecimals,
-  }).format(normalizedValue)
+  const getTotalMonthlySpending = (spending: Spending): number => {
+    const monthly = spending.monthly || {}
+    return (
+      (monthly.health || 0) +
+      (monthly.food || 0) +
+      (monthly.entertainment || 0) +
+      (monthly.shopping || 0) +
+      (monthly.utilities || 0)
+    )
+  }
+
+  const getTotalAnnualSpending = (spending: Spending): number => {
+    const monthlyTotal = getTotalMonthlySpending(spending) * 12
+    const annual = spending.annual || {}
+    const annualTotal = (annual.vacations || 0) + (annual.homeRepairs || 0) + (annual.car || 0)
+    return monthlyTotal + annualTotal
+  }
+
+  const successBadge = (successRate: number): SuccessBadgeKey => {
+    if (successRate >= 90) return 'excellent'
+    if (successRate >= 75) return 'good'
+    if (successRate >= 50) return 'moderate'
+    return 'needsReview'
+  }
+
+  const successBadgeColor = (successRate: number): string => {
+    if (successRate >= 90) return 'excellent'
+    if (successRate >= 75) return 'good'
+    if (successRate >= 50) return 'warning'
+    return 'danger'
+  }
+
+  const getFailureCount = (totalRuns: number, successRatePct: number): number => {
+    const successRate = successRatePct / 100
+    return Math.round(totalRuns * (1 - successRate))
+  }
+
+  const getRetirementMedian = (projections: Projections, person: Person): number => {
+    const retirementMilestone = projections.milestones.find((m) => m.age === person.retireAge)
+    return retirementMilestone ? retirementMilestone.p50 : 0
+  }
+
+  const getRetirement10th = (projections: Projections, person: Person): number => {
+    const retirementMilestone = projections.milestones.find((m) => m.age === person.retireAge)
+    return retirementMilestone ? retirementMilestone.p10 : 0
+  }
+
+  const getRetirement90th = (projections: Projections, person: Person): number => {
+    const retirementMilestone = projections.milestones.find((m) => m.age === person.retireAge)
+    return retirementMilestone ? retirementMilestone.p90 : 0
+  }
+
+  const getFinalMedian = (projections: Projections): number => {
+    const lastMilestone = projections.milestones[projections.milestones.length - 1]
+    return lastMilestone ? lastMilestone.p50 : 0
+  }
+
+  const getFinal10th = (projections: Projections): number => {
+    const lastMilestone = projections.milestones[projections.milestones.length - 1]
+    return lastMilestone ? lastMilestone.p10 : 0
+  }
+
+  const getFinal90th = (projections: Projections): number => {
+    const lastMilestone = projections.milestones[projections.milestones.length - 1]
+    return lastMilestone ? lastMilestone.p90 : 0
+  }
+
+  const isRetirementAge = (age: number, retireAge: number): boolean => age === retireAge
+
+  return {
+    multiply,
+    subtract,
+    concat,
+    figureNumber,
+    capitalize,
+    getSpendingPercent,
+    getTotalMonthlySpending,
+    getTotalAnnualSpending,
+    getSuccessBadgeKey: successBadge,
+    getSuccessBadgeColor: successBadgeColor,
+    getFailureCount,
+    getRetirementMedian,
+    getRetirement10th,
+    getRetirement90th,
+    getFinalMedian,
+    getFinal10th,
+    getFinal90th,
+    isRetirementAge,
+  }
 }
 
-export function formatDate(dateString: string): string {
-  const date = new Date(dateString)
-  // DD.MM.YYYY as requested for DACH conventions
-  const d = String(date.getDate()).padStart(2, '0')
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const y = String(date.getFullYear())
-  return `${d}.${m}.${y}`
+export function createFormatterHelpers(locale: Locale): FormatterHelpers {
+  const localeAware = createLocaleAwareFormatters(locale)
+  const general = createGeneralHelpers()
+
+  return {
+    ...localeAware,
+    ...general,
+  }
 }
 
-// Helper functions for Handlebars templates
-export function multiply(a: number, b: number): number {
-  return a * b
-}
-
-export function subtract(a: number, b: number): number {
-  return a - b
-}
-
-import type { Spending, Projections, Person } from '@/lib/pdf-generator/schema/reportData'
-
-export function getSpendingPercent(amount: number, spending: Spending): number {
-  const total = getTotalAnnualSpending(spending)
-  const annualAmount = amount * 12 // Convert monthly to annual
-  return total > 0 ? (annualAmount / total) * 100 : 0
-}
-
-export function getTotalMonthlySpending(spending: Spending): number {
-  const monthly = spending.monthly || {}
-  return (
-    (monthly.health || 0) +
-    (monthly.food || 0) +
-    (monthly.entertainment || 0) +
-    (monthly.shopping || 0) +
-    (monthly.utilities || 0)
-  )
-}
-
-export function getTotalAnnualSpending(spending: Spending): number {
-  const monthlyTotal = getTotalMonthlySpending(spending) * 12
-  const annual = spending.annual || {}
-  const annualTotal = (annual.vacations || 0) + (annual.homeRepairs || 0) + (annual.car || 0)
-  return monthlyTotal + annualTotal
-}
-
-export function getSuccessBadge(successRate: number): string {
-  if (successRate >= 90) return 'Excellent'
-  if (successRate >= 75) return 'Good'
-  if (successRate >= 50) return 'Moderate'
-  return 'Needs Review'
-}
-
-export function getSuccessBadgeColor(successRate: number): string {
-  if (successRate >= 90) return 'excellent'
-  if (successRate >= 75) return 'good'
-  if (successRate >= 50) return 'warning'
-  return 'danger'
-}
-
-export function getFailureCount(totalRuns: number, successRatePct: number): number {
-  const successRate = successRatePct / 100
-  return Math.round(totalRuns * (1 - successRate))
-}
-
-export function getRetirementMedian(projections: Projections, person: Person): number {
-  const retirementMilestone = projections.milestones.find((m) => m.age === person.retireAge)
-  return retirementMilestone ? retirementMilestone.p50 : 0
-}
-
-export function getRetirement10th(projections: Projections, person: Person): number {
-  const retirementMilestone = projections.milestones.find((m) => m.age === person.retireAge)
-  return retirementMilestone ? retirementMilestone.p10 : 0
-}
-
-export function getRetirement90th(projections: Projections, person: Person): number {
-  const retirementMilestone = projections.milestones.find((m) => m.age === person.retireAge)
-  return retirementMilestone ? retirementMilestone.p90 : 0
-}
-
-export function getFinalMedian(projections: Projections): number {
-  const lastMilestone = projections.milestones[projections.milestones.length - 1]
-  return lastMilestone ? lastMilestone.p50 : 0
-}
-
-export function getFinal10th(projections: Projections): number {
-  const lastMilestone = projections.milestones[projections.milestones.length - 1]
-  return lastMilestone ? lastMilestone.p10 : 0
-}
-
-export function getFinal90th(projections: Projections): number {
-  const lastMilestone = projections.milestones[projections.milestones.length - 1]
-  return lastMilestone ? lastMilestone.p90 : 0
-}
-
-export function isRetirementAge(age: number, retireAge: number): boolean {
-  return age === retireAge
-}
-
-export function concat(...args: unknown[]): string {
-  // Remove last argument (Handlebars options object)
-  const values = args.slice(0, -1) as string[]
-  return values.join('')
-}
-
-export function figureNumber(num: number): string {
-  return `${num}`
-}
-
-export function capitalize(str?: string): string {
-  if (!str) return ''
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
+export type { SuccessBadgeKey }

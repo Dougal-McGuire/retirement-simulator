@@ -1,143 +1,142 @@
 <div id='profile' class='page-break'>
-  <h1>Personal Profile & Assumptions</h1>
+  <h1>{{t 'pdf.profile.title'}}</h1>
 
   <div class='content'>
-    <h2 id='profile-demographics'>Demographic Information</h2>
+    <h2 id='profile-demographics'>{{t 'pdf.profile.demographics.title'}}</h2>
 
-    <table class='avoid-break' aria-label='Demographic parameters and planning horizon'>
+    <table class='avoid-break' aria-label='{{t "pdf.profile.demographics.aria"}}'>
       <thead>
         <tr>
-          <th>Parameter</th>
-          <th>Value</th>
-          <th>Details</th>
+          <th>{{t 'pdf.profile.demographics.headers.parameter'}}</th>
+          <th>{{t 'pdf.profile.demographics.headers.value'}}</th>
+          <th>{{t 'pdf.profile.demographics.headers.details'}}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Current Age</td>
-          <td>{{person.currentAge}} years</td>
-          <td>Analysis baseline</td>
+          <td>{{t 'pdf.profile.demographics.rows.currentAge.label'}}</td>
+          <td>{{t 'pdf.profile.demographics.rows.currentAge.value' age=person.currentAge}}</td>
+          <td>{{t 'pdf.profile.demographics.rows.currentAge.detail'}}</td>
         </tr>
         <tr>
-          <td>Retirement Age</td>
-          <td>{{person.retireAge}} years</td>
-          <td>{{subtract person.retireAge person.currentAge}} years from now</td>
+          <td>{{t 'pdf.profile.demographics.rows.retirementAge.label'}}</td>
+          <td>{{t 'pdf.profile.demographics.rows.retirementAge.value' age=person.retireAge}}</td>
+          <td>{{t 'pdf.profile.demographics.rows.retirementAge.detail' years=(subtract person.retireAge person.currentAge)}}</td>
         </tr>
         <tr>
-          <td>Pension Start Age</td>
-          <td>{{person.pensionAge}} years</td>
-          <td>State pension eligibility</td>
+          <td>{{t 'pdf.profile.demographics.rows.pensionAge.label'}}</td>
+          <td>{{t 'pdf.profile.demographics.rows.pensionAge.value' age=person.pensionAge}}</td>
+          <td>{{t 'pdf.profile.demographics.rows.pensionAge.detail'}}</td>
         </tr>
         <tr>
-          <td>Planning Horizon</td>
-          <td>{{person.horizonAge}} years</td>
-          <td>Life expectancy assumption</td>
+          <td>{{t 'pdf.profile.demographics.rows.horizonAge.label'}}</td>
+          <td>{{t 'pdf.profile.demographics.rows.horizonAge.value' age=person.horizonAge}}</td>
+          <td>{{t 'pdf.profile.demographics.rows.horizonAge.detail'}}</td>
         </tr>
       </tbody>
     </table>
 
-    <h2 id='profile-finances'>Financial Starting Position</h2>
+    <h2 id='profile-finances'>{{t 'pdf.profile.finances.title'}}</h2>
 
-    <table class='avoid-break' aria-label='Financial starting position'>
+    <table class='avoid-break' aria-label='{{t "pdf.profile.finances.aria"}}'>
       <thead>
         <tr>
-          <th>Asset/Income Category</th>
-          <th>Amount</th>
-          <th>Notes</th>
+          <th>{{t 'pdf.profile.finances.headers.category'}}</th>
+          <th>{{t 'pdf.profile.finances.headers.amount'}}</th>
+          <th>{{t 'pdf.profile.finances.headers.notes'}}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Current Portfolio Value</td>
+          <td>{{t 'pdf.profile.finances.rows.currentAssets.label'}}</td>
           <td>{{formatEUR finances.currentAssetsEUR}}</td>
-          <td>Invested assets today</td>
+          <td>{{t 'pdf.profile.finances.rows.currentAssets.detail'}}</td>
         </tr>
         <tr>
-          <td>Annual Savings Rate</td>
+          <td>{{t 'pdf.profile.finances.rows.annualSavings.label'}}</td>
           <td>{{formatEUR finances.annualSavingsEUR}}</td>
-          <td>Pre-retirement contributions</td>
+          <td>{{t 'pdf.profile.finances.rows.annualSavings.detail'}}</td>
         </tr>
         <tr>
-          <td>Expected Monthly Pension</td>
+          <td>{{t 'pdf.profile.finances.rows.monthlyPension.label'}}</td>
           <td>{{formatEUR finances.expectedMonthlyPensionEUR}}</td>
-          <td>From age {{person.pensionAge}}</td>
+          <td>{{t 'pdf.profile.finances.rows.monthlyPension.detail' age=person.pensionAge}}</td>
         </tr>
         <tr>
-          <td>Annual Pension Income</td>
+          <td>{{t 'pdf.profile.finances.rows.annualPension.label'}}</td>
           <td>{{formatEUR (multiply finances.expectedMonthlyPensionEUR 12)}}</td>
-          <td>Total yearly benefit</td>
+          <td>{{t 'pdf.profile.finances.rows.annualPension.detail'}}</td>
         </tr>
       </tbody>
     </table>
 
-    <h2 id='profile-market'>Market Assumptions</h2>
+    <h2 id='profile-market'>{{t 'pdf.profile.market.title'}}</h2>
 
-    <table class='avoid-break' aria-label='Market and inflation assumptions'>
+    <table class='avoid-break' aria-label='{{t "pdf.profile.market.aria"}}'>
       <thead>
         <tr>
-          <th>Parameter</th>
-          <th>Mean</th>
-          <th>Standard Deviation</th>
-          <th>Description</th>
+          <th>{{t 'pdf.profile.market.headers.parameter'}}</th>
+          <th>{{t 'pdf.profile.market.headers.mean'}}</th>
+          <th>{{t 'pdf.profile.market.headers.stdev'}}</th>
+          <th>{{t 'pdf.profile.market.headers.description'}}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Return on Investment</td>
+          <td>{{t 'pdf.profile.market.rows.roi.label'}}</td>
           <td>{{formatPercent assumptions.roiMean 1}}</td>
           <td>{{formatPercent assumptions.roiStdev 1}}</td>
-          <td>Expected portfolio returns</td>
+          <td>{{t 'pdf.profile.market.rows.roi.detail'}}</td>
         </tr>
         <tr>
-          <td>Inflation Rate</td>
+          <td>{{t 'pdf.profile.market.rows.inflation.label'}}</td>
           <td>{{formatPercent assumptions.inflationMean 1}}</td>
           <td>{{formatPercent assumptions.inflationStdev 1}}</td>
-          <td>Cost of living adjustment</td>
+          <td>{{t 'pdf.profile.market.rows.inflation.detail'}}</td>
         </tr>
         <tr>
-          <td>Real Return</td>
+          <td>{{t 'pdf.profile.market.rows.realReturn.label'}}</td>
           <td>{{formatPercent (subtract assumptions.roiMean assumptions.inflationMean) 1}}</td>
           <td>—</td>
-          <td>Inflation-adjusted return</td>
+          <td>{{t 'pdf.profile.market.rows.realReturn.detail'}}</td>
         </tr>
       </tbody>
     </table>
 
-    <h3 id='profile-tax'>Tax Assumptions</h3>
+    <h3 id='profile-tax'>{{t 'pdf.profile.tax.title'}}</h3>
 
-    <table class='avoid-break' aria-label='Tax assumptions'>
+    <table class='avoid-break' aria-label='{{t "pdf.profile.tax.aria"}}'>
       <thead>
         <tr>
-          <th>Tax Type</th>
-          <th>Rate</th>
-          <th>Application</th>
+          <th>{{t 'pdf.profile.tax.headers.type'}}</th>
+          <th>{{t 'pdf.profile.tax.headers.rate'}}</th>
+          <th>{{t 'pdf.profile.tax.headers.application'}}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Capital Gains Tax{{#if taxRateAdjusted}}*{{/if}}</td>
+          <td>{{t 'pdf.profile.tax.rows.capGains.label'}}{{#if taxRateAdjusted}}*{{/if}}</td>
           <td>{{formatPercent assumptions.capGainsTaxRatePct 2}}</td>
-          <td>Applied to investment gains</td>
+          <td>{{t 'pdf.profile.tax.rows.capGains.detail'}}</td>
         </tr>
       </tbody>
     </table>
 
     {{#if taxRateAdjusted}}
       <p class='text-muted' style='font-size: var(--small); margin-top: var(--s-2);'>
-        * Tax rate was adjusted from an invalid input value. Original value appeared to be a data
-        entry error.
+        * {{t 'pdf.profile.tax.adjustedFootnote'}}
       </p>
     {{/if}}
 
-    <h3 id='profile-sim'>Simulation Parameters</h3>
+    <h3 id='profile-sim'>{{t 'pdf.profile.simulation.title'}}</h3>
 
     <div class='callout callout-info'>
-      <div class='callout-title'>Monte Carlo Configuration</div>
+      <div class='callout-title'>{{t 'pdf.profile.simulation.callout.title'}}</div>
       <ul>
-        <li>Number of simulations: {{formatNumber assumptions.mcRuns}}</li>
-        <li>Random distribution: Normal (Box-Muller transform)</li>
-        <li>Time steps: Annual projections</li>
-        <li>Success criteria: Portfolio remains positive through age {{person.horizonAge}}</li>
+        <li>{{t 'pdf.profile.simulation.callout.simulations' runs=assumptions.mcRuns}}</li>
+        <li>{{t 'pdf.profile.simulation.callout.distribution'}}</li>
+        <li>{{t 'pdf.profile.simulation.callout.timeSteps'}}</li>
+        <li>{{t 'pdf.profile.simulation.callout.successCriteria' age=person.horizonAge}}</li>
       </ul>
     </div>
   </div>

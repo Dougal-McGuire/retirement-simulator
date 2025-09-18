@@ -1,62 +1,60 @@
 <div id='spending' class='page-break'>
-  <h1>Spending Analysis</h1>
+  <h1>{{t 'pdf.spending.title'}}</h1>
 
   <div class='content'>
-    <p>Your spending requirements form the foundation of retirement planning. The following analysis
-      breaks down your expected expenses and projects their evolution over time.</p>
+    <p>{{t 'pdf.spending.intro'}}</p>
 
-    <h2 id='spending-breakdown'>Annual Spending Breakdown</h2>
+    <h2 id='spending-breakdown'>{{t 'pdf.spending.breakdown.title'}}</h2>
 
     <figure
       class='avoid-break'
       data-fig='spending-breakdown'
-      aria-label='Annual spending by category'
+      aria-label='{{t "pdf.spending.breakdown.chartAria"}}'
     >
       {{{spendingChart}}}
-      <figcaption>Figure
-        {{figureNumber 2}}. Spending mix highlights where adjustments have most impact.</figcaption>
+      <figcaption>{{t 'pdf.spending.breakdown.caption' figure=(figureNumber 2)}}</figcaption>
     </figure>
 
-    <h2 id='spending-details'>Detailed Expense Categories</h2>
+    <h2 id='spending-details'>{{t 'pdf.spending.details.title'}}</h2>
 
-    <h3 id='spending-monthly'>Monthly Recurring Expenses</h3>
+    <h3 id='spending-monthly'>{{t 'pdf.spending.monthly.title'}}</h3>
 
     <table class='avoid-break'>
       <thead>
         <tr>
-          <th>Category</th>
-          <th>Monthly Amount</th>
-          <th>Annual Total</th>
-          <th>25-Year Total (Nominal)</th>
+          <th>{{t 'pdf.spending.monthly.headers.category'}}</th>
+          <th>{{t 'pdf.spending.monthly.headers.monthly'}}</th>
+          <th>{{t 'pdf.spending.monthly.headers.annual'}}</th>
+          <th>{{t 'pdf.spending.monthly.headers.total25'}}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Healthcare</td>
+          <td>{{t 'pdf.spending.monthly.rows.health'}}</td>
           <td>{{formatEUR spending.monthly.health}}</td>
           <td>{{formatEUR (multiply spending.monthly.health 12)}}</td>
           <td>{{formatEUR (multiply (multiply spending.monthly.health 12) 25)}}</td>
         </tr>
         <tr>
-          <td>Food & Groceries</td>
+          <td>{{t 'pdf.spending.monthly.rows.food'}}</td>
           <td>{{formatEUR spending.monthly.food}}</td>
           <td>{{formatEUR (multiply spending.monthly.food 12)}}</td>
           <td>{{formatEUR (multiply (multiply spending.monthly.food 12) 25)}}</td>
         </tr>
         <tr>
-          <td>Entertainment</td>
+          <td>{{t 'pdf.spending.monthly.rows.entertainment'}}</td>
           <td>{{formatEUR spending.monthly.entertainment}}</td>
           <td>{{formatEUR (multiply spending.monthly.entertainment 12)}}</td>
           <td>{{formatEUR (multiply (multiply spending.monthly.entertainment 12) 25)}}</td>
         </tr>
         <tr>
-          <td>Shopping</td>
+          <td>{{t 'pdf.spending.monthly.rows.shopping'}}</td>
           <td>{{formatEUR spending.monthly.shopping}}</td>
           <td>{{formatEUR (multiply spending.monthly.shopping 12)}}</td>
           <td>{{formatEUR (multiply (multiply spending.monthly.shopping 12) 25)}}</td>
         </tr>
         <tr>
-          <td>Utilities</td>
+          <td>{{t 'pdf.spending.monthly.rows.utilities'}}</td>
           <td>{{formatEUR spending.monthly.utilities}}</td>
           <td>{{formatEUR (multiply spending.monthly.utilities 12)}}</td>
           <td>{{formatEUR (multiply (multiply spending.monthly.utilities 12) 25)}}</td>
@@ -64,59 +62,60 @@
       </tbody>
     </table>
 
-    <h3 id='spending-annual'>Annual Expenses</h3>
+    <h3 id='spending-annual'>{{t 'pdf.spending.annual.title'}}</h3>
 
     <table class='avoid-break'>
       <thead>
         <tr>
-          <th>Category</th>
-          <th>Annual Amount</th>
-          <th>25-Year Total (Nominal)</th>
+          <th>{{t 'pdf.spending.annual.headers.category'}}</th>
+          <th>{{t 'pdf.spending.annual.headers.annual'}}</th>
+          <th>{{t 'pdf.spending.annual.headers.total25'}}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Vacations & Travel</td>
+          <td>{{t 'pdf.spending.annual.rows.vacations'}}</td>
           <td>{{formatEUR spending.annual.vacations}}</td>
           <td>{{formatEUR (multiply spending.annual.vacations 25)}}</td>
         </tr>
         <tr>
-          <td>Home Maintenance & Repairs</td>
+          <td>{{t 'pdf.spending.annual.rows.repairs'}}</td>
           <td>{{formatEUR spending.annual.homeRepairs}}</td>
           <td>{{formatEUR (multiply spending.annual.homeRepairs 25)}}</td>
         </tr>
         <tr>
-          <td>Vehicle & Transportation</td>
+          <td>{{t 'pdf.spending.annual.rows.car'}}</td>
           <td>{{formatEUR spending.annual.car}}</td>
           <td>{{formatEUR (multiply spending.annual.car 25)}}</td>
         </tr>
       </tbody>
     </table>
 
-    <h2 id='spending-inflation'>Inflation Impact</h2>
+    <h2 id='spending-inflation'>{{t 'pdf.spending.inflation.title'}}</h2>
 
     <div class='callout callout-warning'>
-      <div class='callout-title'>Cost of Living Adjustments</div>
+      <div class='callout-title'>{{t 'pdf.spending.inflation.calloutTitle'}}</div>
       <ul>
-        <li>Expected inflation rate: {{formatPercent assumptions.inflationMean 1}} annually</li>
-        <li>Today's annual spending: {{formatEUR (getTotalAnnualSpending spending)}}</li>
-        <li>Projected spending in 10 years:
-          {{formatEUR (multiply (getTotalAnnualSpending spending) 1.28)}}</li>
-        <li>Projected spending in 20 years:
-          {{formatEUR (multiply (getTotalAnnualSpending spending) 1.64)}}</li>
+        <li>{{t 'pdf.spending.inflation.expectedRate' rate=(formatPercent assumptions.inflationMean 1)}}</li>
+        <li>{{t 'pdf.spending.inflation.today' amount=(formatEUR (getTotalAnnualSpending spending))}}</li>
+        <li>{{t 'pdf.spending.inflation.tenYears' amount=(formatEUR (multiply (getTotalAnnualSpending spending) 1.28))}}</li>
+        <li>{{t 'pdf.spending.inflation.twentyYears' amount=(formatEUR (multiply (getTotalAnnualSpending spending) 1.64))}}</li>
       </ul>
     </div>
 
-    <h2 id='spending-sustainability'>Spending Sustainability</h2>
+    <h2 id='spending-sustainability'>{{t 'pdf.spending.sustainability.title'}}</h2>
 
-    <p>Your portfolio must generate sufficient returns and withdrawals to cover:</p>
+    <p>{{t 'pdf.spending.sustainability.intro'}}</p>
 
     <ul>
-      <li><strong>Pre-pension period (Ages
-          {{person.retireAge}}–{{subtract person.pensionAge 1}}):</strong>
-        Full spending from portfolio</li>
-      <li><strong>Pension period (Ages {{person.pensionAge}}–{{person.horizonAge}}):</strong>
-        Spending minus pension income</li>
+      <li>
+        <strong>{{t 'pdf.spending.sustainability.prePension.title' start=person.retireAge end=(subtract person.pensionAge 1)}}:</strong>
+        {{t 'pdf.spending.sustainability.prePension.detail'}}
+      </li>
+      <li>
+        <strong>{{t 'pdf.spending.sustainability.pension.title' start=person.pensionAge end=person.horizonAge}}:</strong>
+        {{t 'pdf.spending.sustainability.pension.detail'}}
+      </li>
     </ul>
   </div>
 </div>

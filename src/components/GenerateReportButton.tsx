@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { FileText, Download, Loader2 } from 'lucide-react'
 import { SimulationResults, SimulationParams } from '@/types'
@@ -22,6 +22,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
   size = 'default',
 }) => {
   const t = useTranslations('report')
+  const locale = useLocale()
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,6 +37,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
       body: JSON.stringify({
         params: params || results?.params,
         results,
+        locale,
       }),
     })
 

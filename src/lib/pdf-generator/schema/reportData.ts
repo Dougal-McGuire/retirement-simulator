@@ -78,6 +78,7 @@ export const SummarySchema = z
     planHealthScore: z.number().min(0).max(100),
     planHealthLabel: z.enum(['Strong', 'Moderate', 'Needs Attention']),
     planHealthWhy: z.string().optional(),
+    planHealthWhyBits: z.array(z.string()).optional(),
     successProbabilityPct: z.number().min(0).max(100),
     bridge: z.object({
       startAge: z.number(),

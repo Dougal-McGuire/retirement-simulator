@@ -67,7 +67,8 @@ export function transformToReportData(
   if (yearsInBridge <= 6 && bridgeCashNeedEUR <= params.currentAssets * 0.3)
     whyBits.push('moderate bridge drawdown')
   if (results.successRate >= 80) whyBits.push('high success probability')
-  const planHealthWhy = whyBits.length ? whyBits.join(' + ') : 'balanced assumptions'
+  const planHealthWhyBits = whyBits.length ? [...whyBits] : ['balanced assumptions']
+  const planHealthWhy = planHealthWhyBits.join(' + ')
 
   const topRecs = generateRecommendations(params, results)
   const topActions = topRecs.slice(0, 2).map((r) => r.title)
@@ -173,6 +174,7 @@ export function transformToReportData(
       planHealthScore,
       planHealthLabel,
       planHealthWhy,
+      planHealthWhyBits,
       successProbabilityPct: results.successRate,
       bridge: {
         startAge: bridgeStart,

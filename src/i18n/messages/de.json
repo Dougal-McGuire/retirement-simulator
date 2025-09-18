@@ -445,5 +445,758 @@
     "aria": {
       "description": "Balkendiagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge} über verschiedene Perzentile."
     }
+  },
+  "pdf": {
+    "base": {
+      "title": "Rentenplanung – Analysebericht"
+    },
+    "header": {
+      "title": "Rentenplan"
+    },
+    "footer": {
+      "title": "Rentenplan",
+      "page": "Seite",
+      "of": "von"
+    },
+    "cover": {
+      "title": "Rentenplan auf einen Blick",
+      "subtitle": "Umfassender Finanzprojektion-Bericht",
+      "meta": {
+        "age": "Alter",
+        "generated": "Erstellt",
+        "reportId": "Berichts-ID",
+        "version": "Version"
+      },
+      "disclaimer": "Dieser Bericht enthält Finanzprojektionen auf Basis von Monte-Carlo-Simulationen. Frühere Wertentwicklungen lassen keine Rückschlüsse auf zukünftige Ergebnisse zu. Alle Projektionen unterliegen Marktvolatilität und Unsicherheiten."
+    },
+    "summary": {
+      "planHealthLabel": {
+        "strong": "Stark",
+        "moderate": "Solide",
+        "needsAttention": "Handlungsbedarf"
+      },
+      "planHealthWhy": {
+        "bits": {
+          "solidSavingsRate": "starke Sparquote",
+          "moderateBridge": "moderater Überbrückungsverbrauch",
+          "highSuccessProbability": "hohe Erfolgswahrscheinlichkeit",
+          "balancedAssumptions": "ausgewogene Annahmen"
+        }
+      },
+      "topActions": {
+        "range": "+{min}–{max} Punkte"
+      }
+    },
+    "exec": {
+      "title": "Gesamtzustand des Plans",
+      "intro": "Diese umfassende Analyse bewertet Ihren finanziellen Verlauf über {years, number} Projektionsjahre und nutzt {runs, number} Monte-Carlo-Simulationen, um Marktvolatilität und ökonomische Unsicherheit abzubilden.",
+      "kpis": {
+        "planHealth": {
+          "label": "Planqualität — {label}"
+        },
+        "successProbability": {
+          "label": "Erfolgswahrscheinlichkeit",
+          "note": "In {rate, number, ::percent} von {runs, number} Pfaden reichen die Vermögenswerte bis Alter {age}"
+        },
+        "currentAssets": {
+          "label": "Aktuelle Vermögenswerte",
+          "note": "Startwert des Portfolios"
+        },
+        "annualSavings": {
+          "label": "Jährliche Sparrate",
+          "note": "Einzahlungen vor dem Ruhestand"
+        },
+        "monthlyPension": {
+          "label": "Erwartete Monatsrente",
+          "note": "Ab Alter {age}"
+        },
+        "totalSpending": {
+          "label": "Gesamtausgaben pro Jahr",
+          "note": "Monatliche und jährliche Kosten kombiniert"
+        },
+        "bridge": {
+          "label": "Überbrückungsjahre ({start}–{end})",
+          "note": "Finanziert: {portfolio}% Portfolio / {years} Jahre Cash"
+        }
+      },
+      "keyFindings": {
+        "title": "Zentrale Erkenntnisse",
+        "planHealth": {
+          "label": "Planqualität:"
+        },
+        "successProbability": {
+          "label": "Erfolgswahrscheinlichkeit:",
+          "detail": "In {rate, number, ::percent} von {runs, number} Pfaden reichen die Vermögenswerte bis Alter {age}"
+        },
+        "bridge": {
+          "label": "Überbrückungsbedarf {start}–{end}:",
+          "detail": "Finanziert: {portfolio}% Portfolio / {years} Jahre Cash"
+        },
+        "retirementCountdown": "Jahre bis zum Ruhestand: {years}"
+      },
+      "nextSteps": {
+        "title": "Nächste Schritte (erwarteter Zugewinn)"
+      },
+      "badges": {
+        "excellent": "Exzellent",
+        "good": "Gut",
+        "moderate": "Ausgeglichen",
+        "needsReview": "Überprüfung nötig"
+      }
+    },
+    "charts": {
+      "assets": {
+        "series": {
+          "p10": "P10 (pessimistisch)",
+          "p20": "P20",
+          "p50": "P50 (Median)",
+          "p80": "P80",
+          "p90": "P90 (optimistisch)"
+        },
+        "axes": {
+          "x": "Alter (Jahre)",
+          "y": "Portfoliowert (€)"
+        }
+      },
+      "spending": {
+        "categories": {
+          "health": "Gesundheit",
+          "food": "Lebensmittel",
+          "entertainment": "Freizeit",
+          "shopping": "Einkäufe",
+          "utilities": "Nebenkosten",
+          "vacations": "Urlaub",
+          "repairs": "Reparaturen",
+          "car": "Auto"
+        },
+        "axes": {
+          "x": "Ausgabenkategorie",
+          "y": "Jahresbetrag (€)"
+        }
+      }
+    },
+    "assets": {
+      "title": "Vermögensprognosen",
+      "intro": "Die Projektionen zeigen die Entwicklung Ihres Portfolios in unterschiedlichen Wahrscheinlichkeitsszenarien. P10, P50 und P90 stehen für pessimistische, mittlere und optimistische Verläufe.",
+      "overTime": {
+        "title": "Portfoliowert im Zeitverlauf",
+        "chartAria": "Portfolioprojektionen nach Perzentilen",
+        "caption": "Abbildung {figure}. Medianpfad (P50) fett dargestellt; Schattierung (P10–P90) zeigt Bandbreite."
+      },
+      "milestones": {
+        "title": "Wichtige Meilensteine",
+        "aria": "Portfoliowerte nach Perzentilen",
+        "headers": {
+          "age": "Alter",
+          "p10": "P10 (pessimistisch)",
+          "p50": "P50 (Median)",
+          "p90": "P90 (optimistisch)"
+        },
+        "retirementLabel": "Ruhestand"
+      },
+      "success": {
+        "title": "Analyse der Erfolgswahrscheinlichkeit",
+        "kpis": {
+          "overall": {
+            "label": "Gesamterfolgsrate",
+            "note": "Wahrscheinlichkeit, dass das Portfolio bis zum Ende der Planung positiv bleibt"
+          },
+          "failed": {
+            "label": "Fehlgeschlagene Szenarien",
+            "note": "Von insgesamt {runs, number} Simulationen"
+          }
+        }
+      },
+      "phases": {
+        "title": "Phasen des Portfolios",
+        "accumulation": {
+          "title": "Ansparphase (Alter {start}–{end})",
+          "duration": "Dauer: {years, number} Jahre",
+          "annualContribution": "Jährliche Einzahlung: {amount, number, ::currency/EUR}",
+          "totalContribution": "Gesamteinzahlungen: {amount, number, ::currency/EUR}",
+          "compound": "Erträge werden reinvestiert und verzinsen sich"
+        },
+        "distribution": {
+          "title": "Entnahmephase (Alter {start}–{end})",
+          "duration": "Dauer: {years, number} Jahre",
+          "annualSpending": "Jährliche Ausgaben: {amount, number, ::currency/EUR} (inflationsbereinigt)",
+          "pensionIncome": "Rente ab Alter {age}: {amount, number, ::currency/EUR} p.a.",
+          "gapYears": "Lücke ({start}–{end}): keine Rentenzahlung"
+        }
+      },
+      "stats": {
+        "title": "Statistischer Überblick",
+        "aria": "Statistische Kennzahlen zum Ruhestand und Planende",
+        "headers": {
+          "metric": "Kennzahl",
+          "atRetirement": "Zum Ruhestand (Alter {age})",
+          "atHorizon": "Mit Alter {age}"
+        },
+        "rows": {
+          "median": "Median-Portfoliowert",
+          "p90": "90. Perzentil",
+          "p10": "10. Perzentil"
+        }
+      }
+    },
+    "toc": {
+      "title": "Inhaltsverzeichnis",
+      "sections": {
+        "exec": {
+          "title": "Planübersicht",
+          "subsections": {
+            "keyFindings": "Kernaussagen"
+          }
+        },
+        "profile": {
+          "title": "Profil & Annahmen",
+          "subsections": {
+            "demographics": "Persönliche Daten",
+            "finances": "Finanzielle Ausgangslage",
+            "market": "Marktannahmen",
+            "tax": "Steuerannahmen",
+            "simulation": "Simulationseinstellungen"
+          }
+        },
+        "assets": {
+          "title": "Vermögensprognosen",
+          "subsections": {
+            "overTime": "Portfoliowert im Zeitverlauf",
+            "milestones": "Meilensteinwerte",
+            "success": "Erfolgsanalyse",
+            "phases": "Portfolio-Phasen"
+          }
+        },
+        "spending": {
+          "title": "Ausgabenanalyse",
+          "subsections": {
+            "breakdown": "Ausgaben nach Kategorien",
+            "monthly": "Monatliche Ausgaben",
+            "annual": "Jährliche Ausgaben",
+            "inflation": "Inflationseinfluss",
+            "sustainability": "Nachhaltigkeit der Ausgaben"
+          }
+        },
+        "risk": {
+          "title": "Risikobewertung",
+          "subsections": {
+            "market": "Marktrisiken",
+            "longevity": "Langlebigkeitsrisiko",
+            "scenarios": "Szenarioanalyse",
+            "stress": "Stresstest",
+            "mitigation": "Risikoreduktion",
+            "indicators": "Indikatoren"
+          }
+        },
+        "recommendations": {
+          "title": "Empfehlungen",
+          "subsections": {
+            "priority": "Prioritätenmatrix",
+            "nextSteps": "Nächste Schritte",
+            "services": "Professionelle Unterstützung"
+          }
+        }
+      }
+    },
+    "profile": {
+      "title": "Profil & Annahmen",
+      "demographics": {
+        "title": "Persönliche Angaben",
+        "aria": "Demografische Parameter und Planungshorizont",
+        "headers": {
+          "parameter": "Parameter",
+          "value": "Wert",
+          "details": "Details"
+        },
+        "rows": {
+          "currentAge": {
+            "label": "Aktuelles Alter",
+            "value": "{age, number} Jahre",
+            "detail": "Referenzpunkt der Analyse"
+          },
+          "retirementAge": {
+            "label": "Ruhestandsalter",
+            "value": "{age, number} Jahre",
+            "detail": "In {years, number} Jahren"
+          },
+          "pensionAge": {
+            "label": "Renteneintritt",
+            "value": "{age, number} Jahre",
+            "detail": "Beginn der gesetzlichen Rente"
+          },
+          "horizonAge": {
+            "label": "Planungshorizont",
+            "value": "{age, number} Jahre",
+            "detail": "Erwartete Lebensdauer"
+          }
+        }
+      },
+      "finances": {
+        "title": "Finanzielle Ausgangslage",
+        "aria": "Finanzdaten",
+        "headers": {
+          "category": "Kategorie",
+          "amount": "Betrag",
+          "notes": "Anmerkung"
+        },
+        "rows": {
+          "currentAssets": {
+            "label": "Aktuelles Portfolio",
+            "detail": "Investiertes Vermögen heute"
+          },
+          "annualSavings": {
+            "label": "Jährliche Sparrate",
+            "detail": "Einzahlungen bis zum Ruhestand"
+          },
+          "monthlyPension": {
+            "label": "Erwartete Monatsrente",
+            "detail": "Ab Alter {age}"
+          },
+          "annualPension": {
+            "label": "Jährliche Renteneinnahmen",
+            "detail": "Gesamtleistung pro Jahr"
+          }
+        }
+      },
+      "market": {
+        "title": "Marktannahmen",
+        "aria": "Markt- und Inflationsannahmen",
+        "headers": {
+          "parameter": "Parameter",
+          "mean": "Mittelwert",
+          "stdev": "Standardabweichung",
+          "description": "Beschreibung"
+        },
+        "rows": {
+          "roi": {
+            "label": "Rendite",
+            "detail": "Erwartete Portfolioerträge"
+          },
+          "inflation": {
+            "label": "Inflation",
+            "detail": "Teuerungsrate"
+          },
+          "realReturn": {
+            "label": "Realrendite",
+            "detail": "Rendite nach Inflation"
+          }
+        }
+      },
+      "tax": {
+        "title": "Steuern",
+        "aria": "Steuerannahmen",
+        "headers": {
+          "type": "Steuerart",
+          "rate": "Satz",
+          "application": "Anwendung"
+        },
+        "rows": {
+          "capGains": {
+            "label": "Kapitalertragsteuer",
+            "detail": "Auf realisierte Gewinne"
+          }
+        },
+        "adjustedFootnote": "Der Steuersatz wurde von einem ungültigen Eingabewert korrigiert. Der ursprüngliche Wert war vermutlich ein Eingabefehler."
+      },
+      "simulation": {
+        "title": "Simulationseinstellungen",
+        "callout": {
+          "title": "Monte-Carlo-Konfiguration",
+          "simulations": "Anzahl Simulationen: {runs, number}",
+          "distribution": "Verteilung: Normal (Box-Muller)",
+          "timeSteps": "Zeitschritte: jährliche Projektionen",
+          "successCriteria": "Erfolgskriterium: Portfolio bleibt bis Alter {age} positiv"
+        }
+      }
+    },
+    "spending": {
+      "title": "Ausgabenanalyse",
+      "intro": "Ihre Ausgaben bestimmen die Anforderungen an den Ruhestandsplan. Die folgende Analyse stellt erwartete Kosten dar und zeigt deren Entwicklung.",
+      "breakdown": {
+        "title": "Jährliche Ausgaben nach Kategorie",
+        "chartAria": "Jährliche Ausgaben je Kategorie",
+        "caption": "Abbildung {figure}. Die Ausgabenstruktur zeigt, wo Anpassungen den größten Effekt haben."
+      },
+      "details": {
+        "title": "Detailansicht der Ausgabenkategorien"
+      },
+      "monthly": {
+        "title": "Monatliche Fixkosten",
+        "headers": {
+          "category": "Kategorie",
+          "monthly": "Monatsbetrag",
+          "annual": "Jahresbetrag",
+          "total25": "Summe über 25 Jahre (nominal)"
+        },
+        "rows": {
+          "health": "Gesundheit & Versicherung",
+          "food": "Lebensmittel",
+          "entertainment": "Freizeit & Kultur",
+          "shopping": "Einkäufe & Sonstiges",
+          "utilities": "Wohnen & Nebenkosten"
+        }
+      },
+      "annual": {
+        "title": "Jährliche Einzelposten",
+        "headers": {
+          "category": "Kategorie",
+          "annual": "Jahresbetrag",
+          "total25": "Summe über 25 Jahre (nominal)"
+        },
+        "rows": {
+          "vacations": "Urlaub & Reisen",
+          "repairs": "Hausreparaturen",
+          "car": "Fahrzeug & Mobilität"
+        }
+      },
+      "inflation": {
+        "title": "Einfluss der Inflation",
+        "calloutTitle": "Anpassung der Lebenshaltungskosten",
+        "expectedRate": "Erwartete Inflationsrate: {rate}",
+        "today": "Heutige Jahresausgaben: {amount}",
+        "tenYears": "Ausgaben in 10 Jahren (heutige Preise): {amount}",
+        "twentyYears": "Ausgaben in 20 Jahren (heutige Preise): {amount}"
+      },
+      "sustainability": {
+        "title": "Tragfähigkeit der Ausgaben",
+        "intro": "Ihr Portfolio muss Erträge und Entnahmen abdecken für:",
+        "prePension": {
+          "title": "Vor der Rente (Alter {start}–{end})",
+          "detail": "Gesamte Ausgaben werden dem Portfolio entnommen"
+        },
+        "pension": {
+          "title": "Mit Rente (Alter {start}–{end})",
+          "detail": "Ausgaben abzüglich Renteneinnahmen"
+        }
+      }
+    },
+    "risk": {
+      "title": "Risikobewertung",
+      "intro": "Das Verständnis der Risiken ist entscheidend für einen erfolgreichen Ruhestand. Dieser Abschnitt beleuchtet Einflussfaktoren, die Ihre finanzielle Sicherheit gefährden können.",
+      "market": {
+        "title": "Marktrisiken",
+        "aria": "Marktrisiken und Gegenmaßnahmen",
+        "headers": {
+          "factor": "Risikofaktor",
+          "assumption": "Annahme",
+          "impact": "Auswirkung",
+          "mitigation": "Gegenmaßnahme"
+        },
+        "rows": {
+          "volatility": {
+            "factor": "Renditevolatilität",
+            "assumption": "σ = {stdev}",
+            "impact": "Hoch",
+            "mitigation": "Diversifikation über Anlageklassen"
+          },
+          "sequence": {
+            "factor": "Reihenfolgenrisiko",
+            "assumption": "Monte-Carlo-modelliert",
+            "impact": "Hoch",
+            "mitigation": "Flexible Entnahmestrategie"
+          },
+          "inflation": {
+            "factor": "Inflation",
+            "assumption": "{mean} Durchschnitt",
+            "impact": "Mittel",
+            "mitigation": "Reale Anlagenbeimischung"
+          },
+          "currency": {
+            "factor": "Währungsrisiko",
+            "assumption": "EUR-basiert",
+            "impact": "Gering",
+            "mitigation": "Fokus auf Heimatwährung"
+          }
+        }
+      },
+      "longevity": {
+        "title": "Langlebigkeitsrisiko",
+        "calloutTitle": "Analyse des Planungshorizonts",
+        "horizon": "Geplanter Horizont: Alter {age} ({years, number} Jahre)",
+        "retirementYears": "Jahre im Ruhestand: {years, number}",
+        "shortfallRisk": "Risiko, Vermögen aufzubrauchen: {probability}"
+      },
+      "scenarios": {
+        "title": "Szenarioanalyse",
+        "stressTitle": "Stresstest-Ergebnisse",
+        "aria": "Szenarien und Auswirkungen",
+        "headers": {
+          "scenario": "Szenario",
+          "portfolio": "Portfoliowirkung",
+          "success": "Erfolgswahrscheinlichkeit"
+        },
+        "rows": {
+          "base": {
+            "name": "Basisszenario",
+            "portfolio": "Wie projiziert"
+          },
+          "highInflation": {
+            "name": "Hohe Inflation (+2%)",
+            "portfolio": "−15% reale Kaufkraft",
+            "success": "~{value}"
+          },
+          "lowReturns": {
+            "name": "Niedrige Renditen (−2%)",
+            "portfolio": "−25% Endwert",
+            "success": "~{value}"
+          },
+          "longevity": {
+            "name": "Länger leben (+5 Jahre)",
+            "portfolio": "Zusätzliche Entnahmen",
+            "success": "~{value}"
+          }
+        }
+      },
+      "mitigation": {
+        "title": "Strategien zur Risikoreduktion",
+        "tiles": {
+          "diversify": {
+            "value": "Diversifizieren",
+            "label": "Anlagestrategie",
+            "note": "Risikostreuung über Anlageklassen und Regionen"
+          },
+          "flexible": {
+            "value": "Flexibel",
+            "label": "Entnahmeansatz",
+            "note": "Entnahmen an Marktentwicklungen anpassen"
+          },
+          "buffer": {
+            "value": "Puffer",
+            "label": "Sicherheitsreserve",
+            "note": "Liquiditätsreserve für Marktrückgänge vorhalten"
+          },
+          "review": {
+            "value": "Prüfen",
+            "label": "Regelmäßige Kontrolle",
+            "note": "Jährliche Überprüfung von Portfolio und Annahmen"
+          }
+        }
+      },
+      "indicators": {
+        "title": "Wichtige Risikokennzahlen",
+        "calloutTitle": "Warnsignale im Blick behalten",
+        "items": {
+          "trackingError": "Portfoliowert fällt unter die P10-Projektion Ihres Alters",
+          "spendingRate": "Jährliche Ausgaben übersteigen 5% des Portfolios",
+          "inflation": "Inflation liegt dauerhaft über {threshold}",
+          "performance": "Renditen bleiben 3+ Jahre unter den Annahmen"
+        }
+      }
+    },
+    "recommendations": {
+      "title": "Empfehlungen",
+      "intro": "Auf Basis der Analyse ergeben sich folgende strategische Empfehlungen, um Ihren Ruhestandsplan zu optimieren.",
+      "impactLabel": "{impact}-Wirkung",
+      "titles": {
+        "increaseSavingsRate": "Sparrate erhöhen",
+        "delayRetirement": "Ruhestand verschieben",
+        "optimizeInvestmentMix": "Anlageaufteilung optimieren",
+        "reviewSpendingPlan": "Ausgabenplan prüfen",
+        "maximizeTaxDeferred": "Steuerbegünstigte Konten ausschöpfen",
+        "considerVolatilityReduction": "Volatilität reduzieren",
+        "reviewInsuranceCoverage": "Versicherungsschutz prüfen"
+      },
+      "categories": {
+        "savingsStrategy": "Sparstrategie",
+        "timing": "Timing",
+        "investmentStrategy": "Anlagestrategie",
+        "expenseManagement": "Kostenmanagement",
+        "taxPlanning": "Steuerplanung",
+        "riskManagement": "Risikosteuerung",
+        "protection": "Absicherung"
+      },
+      "bodies": {
+        "increaseSavingsRate": "Die Erfolgsquote ist angespannt. Eine Erhöhung der jährlichen Sparrate um 10–20 % verbessert die Sicherheit Ihres Plans.",
+        "delayRetirement": "Ein späterer Ruhestand um 2–3 Jahre erhöht die Ansparzeit und die Erfolgswahrscheinlichkeit deutlich.",
+        "optimizeInvestmentMix": "Überprüfen Sie die Asset-Allokation, um Rendite und Stabilität passend zu Ihrem Risikoprofil auszubalancieren.",
+        "reviewSpendingPlan": "Die Ausgaben sind im Verhältnis zur Sparleistung hoch. Prüfen Sie flexible Ausgabenkürzungen.",
+        "maximizeTaxDeferred": "Nutzen Sie steuerbegünstigte Vorsorgekonten vollständig, um Steuern zu senken und Wachstum zu fördern.",
+        "considerVolatilityReduction": "Das Portfolio ist volatil. Nähern Sie sich dem Ruhestand mit einem graduellen Wechsel in stabilere Anlagen.",
+        "reviewInsuranceCoverage": "Überprüfen Sie Versicherungen (Gesundheit, Pflege, Leben), um Versorgungslücken zu schließen."
+      },
+      "impact": {
+        "high": "Hoch",
+        "medium": "Mittel",
+        "low": "Gering"
+      },
+      "priority": {
+        "title": "Prioritätenmatrix",
+        "headers": {
+          "rank": "Priorität",
+          "recommendation": "Empfehlung",
+          "timeline": "Zeitplan",
+          "benefit": "Erwarteter Nutzen"
+        },
+        "timeline": {
+          "immediate": "Sofort",
+          "months3to6": "3–6 Monate",
+          "months12": "12 Monate",
+          "default": "Termin planen"
+        },
+        "benefit": {
+          "high": "Deutliche Verbesserung",
+          "medium": "Spürbarer Zugewinn",
+          "low": "Schrittweise Verbesserung",
+          "default": "Nutzen wird definiert"
+        }
+      },
+      "nextSteps": {
+        "title": "Nächste Schritte",
+        "calloutTitle": "Aktionsplan",
+        "items": {
+          "review": {
+            "title": "Prüfen & bestätigen",
+            "detail": "Sicherstellen, dass alle Eingaben den Ist-Zustand widerspiegeln"
+          },
+          "prioritize": {
+            "title": "Prioritäten setzen",
+            "detail": "Zuerst Maßnahmen mit hoher Wirkung umsetzen"
+          },
+          "consult": {
+            "title": "Experten hinzuziehen",
+            "detail": "Finanz- und Steuerberater für die Umsetzung einbinden"
+          },
+          "monitor": {
+            "title": "Fortschritt überwachen",
+            "detail": "Quartalsweise Überprüfung von Portfolio und Annahmen"
+          },
+          "adjust": {
+            "title": "Anpassen",
+            "detail": "Plan bei Lebensereignissen oder Marktänderungen aktualisieren"
+          }
+        }
+      },
+      "services": {
+        "title": "Professionelle Unterstützung",
+        "intro": "Für die Umsetzung empfehlen sich folgende Fachleute:",
+        "items": {
+          "financialPlanner": {
+            "title": "Finanzplaner",
+            "detail": "Ganzheitliche Ruhestandsstrategie und Portfoliobetreuung"
+          },
+          "taxAdvisor": {
+            "title": "Steuerberater",
+            "detail": "Optimierung steuerbegünstigter Ein- und Auszahlungen"
+          },
+          "estateAttorney": {
+            "title": "Erbrechtsanwalt",
+            "detail": "Sicherstellung von Vermögensübergabe und Nachlassplanung"
+          },
+          "insuranceSpecialist": {
+            "title": "Versicherungsspezialist",
+            "detail": "Absicherungslücken erkennen und schließen"
+          }
+        }
+      }
+    },
+    "appendix": {
+      "title": "Anhang: Methodik",
+      "monteCarlo": {
+        "title": "Monte-Carlo-Simulation",
+        "description": "Der Bericht nutzt Monte-Carlo-Simulationen – wiederholte Zufallssamples, um die Wahrscheinlichkeit verschiedener Ruhestandsergebnisse abzubilden."
+      },
+      "technical": {
+        "title": "Technische Umsetzung",
+        "headers": {
+          "component": "Komponente",
+          "implementation": "Implementierung"
+        },
+        "rows": {
+          "randomGeneration": {
+            "component": "Zufallszahlen",
+            "implementation": "Box-Muller-Transformation für Normalverteilung"
+          },
+          "simulationCount": {
+            "component": "Anzahl Simulationen",
+            "implementation": "{runs} unabhängige Durchläufe"
+          },
+          "timeSteps": {
+            "component": "Zeitschritte",
+            "implementation": "Jährliche Projektionen mit monatlicher Ausgabenauflösung"
+          },
+          "distribution": {
+            "component": "Verteilungsparameter",
+            "implementation": "μ = {mean}, σ = {stdev}"
+          }
+        }
+      },
+      "calculation": {
+        "title": "Berechnungsmethodik",
+        "calloutTitle": "Formel für die Portfolioentwicklung",
+        "variablesIntro": "Dabei gilt:",
+        "variables": {
+          "vt": "V(t) = Portfoliowert zum Zeitpunkt t",
+          "rt": "r(t) = Rendite (stochastisch)",
+          "ct": "C(t) = Einzahlungen (vor Ruhestand) bzw. Rente",
+          "wt": "W(t) = Entnahmen für Ausgaben",
+          "it": "i(t) = Inflation (stochastisch)"
+        }
+      },
+      "statistics": {
+        "title": "Statistische Kennzahlen",
+        "percentiles": {
+          "title": "Perzentilberechnungen",
+          "description": "Die Simulation liefert drei relevante Perzentile:",
+          "p10": {
+            "title": "P10 (10. Perzentil)",
+            "detail": "Pessimistisches Szenario – 90 % der Ergebnisse liegen darüber"
+          },
+          "p50": {
+            "title": "P50 (Median)",
+            "detail": "Zentrales Szenario – Hälfte der Ergebnisse liegt darüber bzw. darunter"
+          },
+          "p90": {
+            "title": "P90 (90. Perzentil)",
+            "detail": "Optimistisches Szenario – nur 10 % der Ergebnisse liegen höher"
+          }
+        },
+        "success": {
+          "title": "Definition der Erfolgsquote",
+          "description": "Ein Durchlauf gilt als erfolgreich, wenn das Portfolio bis Alter {age} positiv bleibt. Die Erfolgsquote entspricht dem Anteil dieser Durchläufe."
+        }
+      },
+      "limitations": {
+        "title": "Annahmen & Grenzen",
+        "calloutTitle": "Wichtige Hinweise",
+        "items": {
+          "distribution": "Renditen folgen einer Normalverteilung und bilden Extremereignisse ggf. nicht ab",
+          "inflationModel": "Inflation wird über alle Ausgabenkategorien gleich angenommen",
+          "taxPolicy": "Steuersätze und Regelungen gelten als konstant",
+          "unexpected": "Außergewöhnliche Einmalereignisse werden nicht berücksichtigt",
+          "healthcare": "Gesundheitskosten können stärker steigen als die allgemeine Inflation",
+          "pension": "Rentenleistungen gelten als garantiert und inflationsangepasst"
+        }
+      },
+      "glossary": {
+        "title": "Begriffsverzeichnis",
+        "headers": {
+          "term": "Begriff",
+          "definition": "Definition"
+        },
+        "items": {
+          "monteCarlo": {
+            "term": "Monte-Carlo-Simulation",
+            "definition": "Statistische Technik, die Unsicherheit mittels Zufallssamples modelliert"
+          },
+          "successRate": {
+            "term": "Erfolgsquote",
+            "definition": "Anteil der Simulationen, in denen das Portfolio bis zum Planungshorizont trägt"
+          },
+          "realReturn": {
+            "term": "Realrendite",
+            "definition": "Rendite nach Abzug der Inflation"
+          },
+          "sequenceRisk": {
+            "term": "Reihenfolgenrisiko",
+            "definition": "Gefahr, dass frühe Verluste den Ruhestand stark belasten"
+          },
+          "planningHorizon": {
+            "term": "Planungshorizont",
+            "definition": "Alter, bis zu dem die Planung reicht (Lebenserwartung)"
+          }
+        }
+      }
+    }
   }
+
 }

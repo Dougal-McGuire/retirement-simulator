@@ -10,6 +10,11 @@ const messagesImports: Record<Locale, MessagesImport> = {
   de: () => import('./messages/de.json').then((module) => module.default),
 }
 
+export async function loadMessages(locale: Locale): Promise<AbstractIntlMessages> {
+  const normalizedLocale = locales.includes(locale) ? locale : defaultLocale
+  return messagesImports[normalizedLocale]()
+}
+
 export default getRequestConfig(async ({ requestLocale }) => {
   const locale = (await requestLocale) as Locale | undefined
   const normalizedLocale = locales.includes(locale as Locale)
@@ -20,7 +25,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
     notFound()
   }
 
-  const messages = await messagesImports[normalizedLocale]()
+  const messages = await loadMessages(normalizedLocale)
 
   return {
     locale: normalizedLocale,
