@@ -154,9 +154,9 @@
 
 @media print {
   /* Hide interactive elements and navigation */
-  header,
-  nav,
-  footer,
+  header:not([data-print-visible]),
+  nav:not([data-print-visible]),
+  footer:not([data-print-visible]),
   .no-print,
   .print-hidden {
     display: none !important;

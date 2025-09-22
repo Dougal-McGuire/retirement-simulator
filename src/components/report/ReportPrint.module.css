@@ -1,0 +1,331 @@
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@page {
+  size: A4;
+  margin: 20mm 18mm 24mm;
+  @top-center {
+    content: element(report-header);
+  }
+  @bottom-center {
+    content: element(report-footer);
+  }
+}
+
+@page :first {
+  margin-top: 30mm;
+}
+
+:global(body) {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 12pt;
+  line-height: 1.333;
+  color: #111827;
+  background: #ffffff;
+  margin: 0;
+  padding: 0;
+}
+
+:global(main) {
+  display: flex;
+  flex-direction: column;
+  gap: 24pt;
+}
+
+:global(header) {
+  position: running(report-header);
+  font-size: 10pt;
+  color: #4b5563;
+  margin: 0;
+  padding: 0 18mm;
+  height: 0;
+}
+
+:global(footer) {
+  position: running(report-footer);
+  font-size: 10pt;
+  color: #6b7280;
+  text-align: center;
+  margin: 0;
+  padding: 0 18mm;
+  height: 0;
+}
+
+:global(header::after) {
+  content: attr(data-title) ' – ' attr(data-date) ' – ' string(section);
+}
+
+:global(footer::after) {
+  content: attr(data-page-label) ' ' counter(page) ' ' attr(data-page-of) ' ' counter(pages);
+}
+
+:global(h1) {
+  font-size: 32pt;
+  line-height: 1.125;
+  margin: 0 0 16pt;
+}
+
+:global(h2) {
+  font-size: 24pt;
+  line-height: 1.166;
+  margin: 0 0 12pt;
+  break-after: avoid;
+}
+
+:global(h3) {
+  font-size: 18pt;
+  line-height: 1.222;
+  margin: 0 0 8pt;
+  break-after: avoid;
+}
+
+:global([data-running-header]) {
+  string-set: section content();
+}
+
+:global(p) {
+  margin: 0 0 12pt;
+  widows: 2;
+  orphans: 2;
+}
+
+:global(p:last-child) {
+  margin-bottom: 0;
+}
+
+:global(figure) {
+  margin: 0;
+  break-inside: avoid;
+}
+
+:global(figcaption) {
+  margin-top: 8pt;
+  font-size: 10pt;
+  color: #4b5563;
+}
+
+:global(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16pt;
+  break-inside: avoid;
+}
+
+:global(th),
+:global(td) {
+  text-align: left;
+  padding: 6pt 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+:global(thead th) {
+  font-size: 10pt;
+  text-transform: uppercase;
+  color: #6b7280;
+  letter-spacing: 0.08em;
+}
+
+.card {
+  border: 1px solid #d1d5db;
+  border-radius: 8pt;
+  padding: 16pt;
+  display: flex;
+  flex-direction: column;
+  gap: 8pt;
+  background: #f9fafb;
+  break-inside: avoid;
+}
+
+.gridTwo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16pt;
+}
+
+.gridThree {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16pt;
+}
+
+.lead {
+  font-size: 14pt;
+  line-height: 1.4;
+  color: #1f2937;
+}
+
+.metaList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8pt 16pt;
+  font-size: 11pt;
+}
+
+.muted {
+  color: #4b5563;
+}
+
+.tocList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6pt;
+}
+
+.tocItem {
+  font-size: 12pt;
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+}
+
+.tocLink {
+  text-decoration: none;
+  color: #111827;
+  flex-shrink: 0;
+  background: #ffffff;
+  padding-right: 6pt;
+}
+
+.tocLeader {
+  flex: 1;
+  border-bottom: 0.75pt dotted #d1d5db;
+  margin: 0 8pt;
+  transform: translateY(-2pt);
+}
+
+.tocPage {
+  color: #4b5563;
+  flex-shrink: 0;
+  min-width: 18pt;
+  text-align: right;
+  background: #ffffff;
+  padding-left: 6pt;
+  font-variant-numeric: tabular-nums;
+}
+
+.tocPage::before {
+  content: target-counter(attr(data-target), page);
+}
+
+.tocPage[data-page-number]::before {
+  content: attr(data-page-number);
+}
+
+.badgeRow {
+  display: flex;
+  gap: 8pt;
+  flex-wrap: wrap;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 4pt 10pt;
+  background: #111827;
+  color: #f9fafb;
+  font-size: 10pt;
+  font-weight: 600;
+}
+
+.kpiValue {
+  font-size: 24pt;
+  font-weight: 600;
+  color: #111827;
+}
+
+.kpiLabel {
+  font-size: 11pt;
+  color: #4b5563;
+}
+
+.surface {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8pt;
+  padding: 16pt;
+  display: flex;
+  flex-direction: column;
+  gap: 12pt;
+  break-inside: avoid;
+}
+
+.callout {
+  border-left: 4pt solid #111827;
+  padding-left: 12pt;
+  font-size: 11pt;
+  color: #1f2937;
+}
+
+.smallCaps {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+}
+
+.captionStrong {
+  font-weight: 600;
+}
+
+.breakInsideAvoid {
+  break-inside: avoid;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.cover {
+  min-height: calc(100vh - 60mm);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24pt;
+  padding-top: 48pt;
+}
+
+.coverMeta {
+  display: grid;
+  gap: 8pt;
+  font-size: 11pt;
+}
+
+.reportMain {
+  display: flex;
+  flex-direction: column;
+  gap: 32pt;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12pt;
+}
+
+.breakBeforePage {
+  break-before: page;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}

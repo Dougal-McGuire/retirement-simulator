@@ -116,6 +116,7 @@ export const ReportDataSchema = z.object({
       version: z.string().default('1.0.0'),
     })
     .optional(),
+  locale: z.string().optional(),
 })
 
 export type Person = z.infer<typeof PersonSchema>
