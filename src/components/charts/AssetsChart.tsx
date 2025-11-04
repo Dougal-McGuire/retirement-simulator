@@ -44,6 +44,15 @@ export function AssetsChart({
 }: AssetsChartProps) {
   const t = useTranslations('assetsChart')
 
+  // Check if ages are close together (within 2 years) to avoid label overlap
+  const ageDifference = Math.abs(retirementAge - legalRetirementAge)
+  const areAgesClose = ageDifference <= 2
+
+  // Calculate offsets to stack labels vertically when ages are close
+  // Negative offset moves label up, positive moves it down
+  const retirementLabelOffset = areAgesClose ? -10 : 0 // Retirement higher
+  const pensionLabelOffset = areAgesClose ? 10 : 0 // Pension lower, stacked below
+
   return (
     <div className="space-y-6 border-3 border-neo-black bg-neo-white p-6 shadow-neo">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -163,6 +172,7 @@ export function AssetsChart({
               label={{
                 value: t('markers.retirement'),
                 position: 'top',
+                offset: retirementLabelOffset,
                 style: { fill: '#dc2626', fontSize: '11px', fontWeight: 'semibold', whiteSpace: 'normal', wordBreak: 'break-word' },
               }}
               className="transition-all duration-300 hover:stroke-red-400"
@@ -175,6 +185,7 @@ export function AssetsChart({
               label={{
                 value: t('markers.pension'),
                 position: 'top',
+                offset: pensionLabelOffset,
                 style: { fill: '#059669', fontSize: '11px', fontWeight: 'semibold', whiteSpace: 'normal', wordBreak: 'break-word' },
               }}
               className="transition-all duration-300 hover:stroke-green-400"
