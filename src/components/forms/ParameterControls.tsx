@@ -10,20 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import {
-  RotateCcw,
-  HelpCircle,
-  Trash2,
-  Plus,
-  ChevronDown,
-  ChevronRight,
-  Zap,
-  Shield,
-  TrendingUp,
-  Activity,
-  ThermometerSun,
-  Wind,
-} from 'lucide-react'
+import { RotateCcw, HelpCircle, Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -41,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
 import {
   useSimulationParams,
   useUpdateParams,
@@ -51,7 +39,7 @@ import {
   useSetAutoRunSuspended,
 } from '@/lib/stores/simulationStore'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
-import { DEFAULT_PARAMS, SimulationParams } from '@/types'
+import { DEFAULT_PARAMS, SimulationParams, type OneTimeIncome } from '@/types'
 
 type FormatterNumberOptions = Parameters<ReturnType<typeof useFormatter>['number']>[1]
 
@@ -68,8 +56,6 @@ const composeNumberOptions = (
 const INVESTMENT_PRESETS = [
   {
     key: 'defensive',
-    icon: Shield,
-    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     values: {
       averageROI: 0.055,
       roiVolatility: 0.1,
@@ -78,8 +64,6 @@ const INVESTMENT_PRESETS = [
   },
   {
     key: 'historical',
-    icon: TrendingUp,
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
     values: {
       averageROI: 0.075,
       roiVolatility: 0.15,
@@ -88,8 +72,6 @@ const INVESTMENT_PRESETS = [
   },
   {
     key: 'growth',
-    icon: Zap,
-    color: 'bg-orange-100 text-orange-800 border-orange-200',
     values: {
       averageROI: 0.095,
       roiVolatility: 0.2,
@@ -101,8 +83,6 @@ const INVESTMENT_PRESETS = [
 const INFLATION_PRESETS = [
   {
     key: 'low',
-    icon: ThermometerSun,
-    color: 'bg-sky-100 text-sky-800 border-sky-200',
     values: {
       averageInflation: 0.018,
       inflationVolatility: 0.005,
@@ -110,8 +90,6 @@ const INFLATION_PRESETS = [
   },
   {
     key: 'target',
-    icon: Activity,
-    color: 'bg-amber-100 text-amber-800 border-amber-200',
     values: {
       averageInflation: 0.025,
       inflationVolatility: 0.008,
@@ -119,8 +97,6 @@ const INFLATION_PRESETS = [
   },
   {
     key: 'elevated',
-    icon: Wind,
-    color: 'bg-rose-100 text-rose-800 border-rose-200',
     values: {
       averageInflation: 0.035,
       inflationVolatility: 0.012,
@@ -134,6 +110,13 @@ const sanitizeNumberInput = (rawValue: string, fallback: number): number => {
   return Number.isFinite(next) ? next : fallback
 }
 
+const isClose = (a: number, b: number, epsilon = 0.0005) => Math.abs(a - b) <= epsilon
+
+const FIELD_INPUT_CLASS =
+  'h-11 border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em]'
+const COMPACT_INPUT_CLASS =
+  'h-10 w-24 border-2 border-neo-black bg-neo-white px-2 text-right text-[0.68rem] font-semibold uppercase tracking-[0.12em]'
+
 // Helper component for parameters with tooltips
 interface ParameterFieldProps {
   label: string
@@ -145,19 +128,21 @@ function ParameterField({ label, tooltip, children }: ParameterFieldProps) {
   return (
     <div>
       <div className="mb-2 flex items-center gap-2">
-        <Label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <Label className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-neo-black">
           {label}
         </Label>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <HelpCircle className="h-3.5 w-3.5 cursor-help text-slate-400 transition-colors hover:text-slate-600" />
+              <HelpCircle className="h-3.5 w-3.5 cursor-help text-muted-foreground/70 transition-colors hover:text-neo-black" />
             </TooltipTrigger>
             <TooltipContent
               side="right"
-              className="max-w-xs rounded-xl border border-slate-900/40 bg-slate-900/95 px-3 py-2 text-white shadow-xl backdrop-blur"
+              className="max-w-xs border-4 border-neo-black bg-neo-white px-3 py-2 text-neo-black shadow-neo"
             >
-              <p className="text-xs leading-relaxed text-slate-100/90">{tooltip}</p>
+              <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] leading-relaxed">
+                {tooltip}
+              </p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -187,20 +172,24 @@ function CollapsibleSection({
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
         <Button
-          variant="ghost"
-          className="group w-full justify-between rounded-2xl bg-white/40 p-3 text-left text-sm font-semibold text-slate-800 shadow-inner transition-all hover:bg-white/60"
+          variant="outline"
+          className="flex h-16 w-full items-center justify-between border-3 border-neo-black bg-neo-white px-6 text-left text-[0.74rem] font-extrabold uppercase tracking-[0.14em] text-neo-black shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md"
         >
-          <div className="flex flex-col items-start">
-            <span>{title}</span>
-            {description && <span className="text-xs font-normal text-slate-500">{description}</span>}
+          <div className="flex flex-col items-start gap-1">
+            <span className="text-left text-[0.82rem] font-extrabold uppercase tracking-[0.14em] leading-tight">
+              {title}
+            </span>
+            {description && (
+              <span className="max-w-full text-[0.6rem] font-semibold uppercase tracking-[0.08em] leading-tight text-muted-foreground">
+                {description}
+              </span>
+            )}
           </div>
-          <span className="rounded-full border border-slate-200/70 bg-white/80 p-2 text-slate-500 shadow-sm transition-all group-hover:border-primary/30 group-hover:text-primary-600">
-            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </span>
+          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="pt-3">
-        <div className="space-y-3 border-l-2 border-gray-100 pl-4 ml-2">{children}</div>
+      <CollapsibleContent className="pt-4">
+        <div className="space-y-5">{children}</div>
       </CollapsibleContent>
     </Collapsible>
   )
@@ -241,6 +230,20 @@ export function ParameterControls() {
     () => calculateCombinedExpenses(params.monthlyExpenses, params.annualExpenses),
     [params.annualExpenses, params.monthlyExpenses]
   )
+  const oneTimeIncomes = params.oneTimeIncomes ?? []
+  const defaultOneTimeIncomeAge = React.useMemo(
+    () =>
+      Math.min(
+        params.endAge,
+        Math.max(params.retirementAge, params.currentAge + 1)
+      ),
+    [params.currentAge, params.endAge, params.retirementAge]
+  )
+  const clampOneTimeIncomeAge = React.useCallback(
+    (age: number) => Math.min(params.endAge, Math.max(params.currentAge, Math.round(age))),
+    [params.currentAge, params.endAge]
+  )
+  const sanitizeIncomeAmount = React.useCallback((amount: number) => Math.max(0, Math.round(amount)), [])
 
   React.useEffect(() => {
     if (params.retirementAge < params.currentAge) {
@@ -282,6 +285,31 @@ export function ParameterControls() {
     }),
     []
   )
+
+  const investmentPresetKey = React.useMemo<
+    (typeof INVESTMENT_PRESETS)[number]['key'] | undefined
+  >(() => {
+    const match = INVESTMENT_PRESETS.find((preset) => {
+      const matchesReturn = isClose(params.averageROI, preset.values.averageROI)
+      const matchesVolatility = isClose(params.roiVolatility, preset.values.roiVolatility)
+      const matchesRuns =
+        preset.values.simulationRuns == null ||
+        preset.values.simulationRuns === params.simulationRuns
+      return matchesReturn && matchesVolatility && matchesRuns
+    })
+    return match?.key
+  }, [params.averageROI, params.roiVolatility, params.simulationRuns])
+
+  const inflationPresetKey = React.useMemo<
+    (typeof INFLATION_PRESETS)[number]['key'] | undefined
+  >(() => {
+    const match = INFLATION_PRESETS.find(
+      (preset) =>
+        isClose(params.averageInflation, preset.values.averageInflation) &&
+        isClose(params.inflationVolatility, preset.values.inflationVolatility)
+    )
+    return match?.key
+  }, [params.averageInflation, params.inflationVolatility])
 
   const formatCurrency = React.useCallback(
     (value: number, options?: FormatterNumberOptions) =>
@@ -336,6 +364,39 @@ export function ParameterControls() {
     updateParams(DEFAULT_PARAMS)
   }
 
+  const handleAddOneTimeIncome = (income: OneTimeIncome) => {
+    suspendAndDebounceResume()
+    const nextIncome: OneTimeIncome = {
+      age: clampOneTimeIncomeAge(income.age),
+      amount: sanitizeIncomeAmount(income.amount),
+    }
+    updateParams({
+      oneTimeIncomes: [...oneTimeIncomes, nextIncome],
+    })
+  }
+
+  const handleUpdateOneTimeIncome = (index: number, income: OneTimeIncome) => {
+    if (!oneTimeIncomes[index]) return
+    suspendAndDebounceResume()
+    const next = oneTimeIncomes.map((existing, existingIndex) =>
+      existingIndex === index
+        ? {
+            age: clampOneTimeIncomeAge(income.age),
+            amount: sanitizeIncomeAmount(income.amount),
+          }
+        : existing
+    )
+    updateParams({ oneTimeIncomes: next })
+  }
+
+  const handleRemoveOneTimeIncome = (index: number) => {
+    if (!oneTimeIncomes[index]) return
+    suspendAndDebounceResume()
+    updateParams({
+      oneTimeIncomes: oneTimeIncomes.filter((_, existingIndex) => existingIndex !== index),
+    })
+  }
+
   const applyInvestmentPreset = (presetKey: (typeof INVESTMENT_PRESETS)[number]['key']) => {
     const preset = INVESTMENT_PRESETS.find((item) => item.key === presetKey)
     if (!preset) return
@@ -380,115 +441,102 @@ export function ParameterControls() {
   }
 
   return (
-    <Card className="w-full overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl ring-1 ring-slate-200/50">
-      <CardHeader className="border-b border-white/60 bg-white/40 px-6 py-5">
-        <CardTitle className="text-xl font-semibold text-slate-900">
+    <Card className="w-full border-3 border-neo-black bg-neo-white shadow-neo">
+      <CardHeader className="border-b-3 border-neo-black bg-neo-white px-6 py-5">
+        <CardTitle className="text-[1.05rem] font-black uppercase tracking-[0.22em] text-neo-black">
           {t('title')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6 p-6">
-        {/* Scenario Presets */}
-        <div className="mb-6 space-y-5">
-          <div>
-            <h4 className="text-sm font-semibold text-slate-900">
+      <CardContent className="space-y-8 p-6">
+        <section className="grid gap-6">
+          <div className="space-y-3">
+            <h4 className="text-[0.78rem] font-extrabold uppercase tracking-[0.2em] text-neo-black">
               {t('presets.investment.title')}
             </h4>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               {t('presets.investment.description')}
             </p>
-            <div className="grid grid-cols-1 gap-2">
-              {INVESTMENT_PRESETS.map((preset) => {
-                const IconComponent = preset.icon
-                return (
-                  <Button
-                    key={preset.key}
-                    variant="outline"
-                    onClick={() => applyInvestmentPreset(preset.key)}
-                    className="h-auto justify-start rounded-2xl border-slate-200/60 bg-white/70 p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-lg"
-                  >
-                    <div className="flex items-center gap-2 w-full min-w-0">
-                      <div
-                        className={`shrink-0 rounded-full border p-2 text-xs font-semibold ${preset.color}`}
-                      >
-                        <IconComponent className="h-3 w-3" />
-                      </div>
-                      <div className="text-left flex-1 min-w-0">
-                        <div className="truncate text-sm font-semibold text-slate-800">
-                          {t(`presets.investment.items.${preset.key}.name`)}
-                        </div>
-                        <div className="text-xs text-slate-500 truncate">
-                          {t(`presets.investment.items.${preset.key}.description`)}
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end text-xs text-slate-500">
-                        <span className="font-semibold text-slate-700">
-                          {formatPercent(preset.values.averageROI)}
-                        </span>
-                        <span>σ {formatPercent(preset.values.roiVolatility)}</span>
-                      </div>
+            <Select
+              value={investmentPresetKey ?? undefined}
+              onValueChange={applyInvestmentPreset}
+            >
+              <SelectTrigger size="sm" className="justify-between bg-neo-white">
+                <SelectValue placeholder={t('presets.investment.placeholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {INVESTMENT_PRESETS.map((preset) => (
+                  <SelectItem key={preset.key} value={preset.key}>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.18em]">
+                        {t(`presets.investment.items.${preset.key}.name`)}
+                      </span>
+                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        {t(`presets.investment.items.${preset.key}.description`)}
+                      </span>
+                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        {formatPercent(preset.values.averageROI)} · σ{' '}
+                        {formatPercent(preset.values.roiVolatility)}
+                      </span>
                     </div>
-                  </Button>
-                )
-              })}
-            </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div>
-            <h4 className="text-sm font-semibold mb-1">{t('presets.inflation.title')}</h4>
-            <p className="text-xs text-slate-500 mb-3">{t('presets.inflation.description')}</p>
-            <div className="grid grid-cols-1 gap-2">
-              {INFLATION_PRESETS.map((preset) => {
-                const IconComponent = preset.icon
-                return (
-                  <Button
-                    key={preset.key}
-                    variant="outline"
-                    onClick={() => applyInflationPreset(preset.key)}
-                    className="h-auto justify-start rounded-2xl border-slate-200/60 bg-white/70 p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/30 hover:bg-accent/5 hover:shadow-lg"
-                  >
-                    <div className="flex items-center gap-2 w-full min-w-0">
-                      <div
-                        className={`shrink-0 rounded-full border p-2 text-xs font-semibold ${preset.color}`}
-                      >
-                        <IconComponent className="h-3 w-3" />
-                      </div>
-                      <div className="text-left flex-1 min-w-0">
-                        <div className="truncate text-sm font-semibold text-slate-800">
-                          {t(`presets.inflation.items.${preset.key}.name`)}
-                        </div>
-                        <div className="text-xs text-slate-500 truncate">
-                          {t(`presets.inflation.items.${preset.key}.description`)}
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end text-xs text-slate-500">
-                        <span className="font-semibold text-slate-700">
-                          {formatPercent(preset.values.averageInflation)}
-                        </span>
-                        <span>σ {formatPercent(preset.values.inflationVolatility)}</span>
-                      </div>
+          <div className="space-y-3">
+            <h4 className="text-[0.78rem] font-extrabold uppercase tracking-[0.2em] text-neo-black">
+              {t('presets.inflation.title')}
+            </h4>
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              {t('presets.inflation.description')}
+            </p>
+            <Select
+              value={inflationPresetKey ?? undefined}
+              onValueChange={applyInflationPreset}
+            >
+              <SelectTrigger size="sm" className="justify-between bg-neo-white">
+                <SelectValue placeholder={t('presets.inflation.placeholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {INFLATION_PRESETS.map((preset) => (
+                  <SelectItem key={preset.key} value={preset.key}>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.18em]">
+                        {t(`presets.inflation.items.${preset.key}.name`)}
+                      </span>
+                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        {t(`presets.inflation.items.${preset.key}.description`)}
+                      </span>
+                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        {formatPercent(preset.values.averageInflation)} · σ{' '}
+                        {formatPercent(preset.values.inflationVolatility)}
+                      </span>
                     </div>
-                  </Button>
-                )
-              })}
-            </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
+        </section>
 
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="mb-4 w-full justify-between">
-            <TabsTrigger value="personal" className="text-xs">
-              {t('tabs.personal')}
-            </TabsTrigger>
-            <TabsTrigger value="financial" className="text-xs">
-              {t('tabs.financial')}
-            </TabsTrigger>
-            <TabsTrigger value="simulation" className="text-xs">
-              {t('tabs.simulation')}
-            </TabsTrigger>
-          </TabsList>
+          <div className="border-3 border-neo-black shadow-neo-sm">
+            <TabsList className="grid grid-cols-3 border-b-3 border-neo-black divide-x-[3px] divide-neo-black bg-neo-white">
+              <TabsTrigger value="personal">
+                {t('tabs.personal')}
+              </TabsTrigger>
+              <TabsTrigger value="financial">
+                {t('tabs.financial')}
+              </TabsTrigger>
+              <TabsTrigger value="simulation">
+                {t('tabs.simulation')}
+              </TabsTrigger>
+            </TabsList>
 
+            <div className="border-t-3 border-neo-black bg-neo-white p-6">
           {/* Personal Information Tab */}
-          <TabsContent value="personal" className="space-y-4">
+          <TabsContent value="personal" className="space-y-6">
             <CollapsibleSection
               title={t('sections.personal.timeline.title')}
               description={t('sections.personal.timeline.description')}
@@ -507,7 +555,7 @@ export function ParameterControls() {
                       sanitizeNumberInput(e.target.value, params.currentAge)
                     )
                   }
-                  className="h-8 text-sm"
+                  className={FIELD_INPUT_CLASS}
                   min={18}
                   max={80}
                 />
@@ -526,16 +574,16 @@ export function ParameterControls() {
                     step={1}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     <span>{formatNumber(retirementSliderMin)}</span>
-                    <span className="font-semibold text-blue-600">
+                    <span className="border-2 border-neo-black bg-neo-yellow px-3 py-1 text-neo-black">
                       {t('fields.retirementAge.valueLabel', {
                         value: formatNumber(retirementSliderValue),
                       })}
                     </span>
                     <span>{formatNumber(retirementSliderMax)}</span>
                   </div>
-                  <div className="text-xs text-slate-500 mt-1 text-center">
+                  <div className="mt-2 text-center text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     {t('fields.retirementAge.remaining', { count: remainingWorkingYears })}
                   </div>
                 </div>
@@ -554,7 +602,7 @@ export function ParameterControls() {
                       sanitizeNumberInput(e.target.value, params.legalRetirementAge)
                     )
                   }
-                  className="h-8 text-sm"
+                  className={FIELD_INPUT_CLASS}
                   min={60}
                   max={70}
                 />
@@ -573,7 +621,7 @@ export function ParameterControls() {
                       sanitizeNumberInput(e.target.value, params.endAge)
                     )
                   }
-                  className="h-8 text-sm"
+                  className={FIELD_INPUT_CLASS}
                   min={70}
                   max={100}
                 />
@@ -582,7 +630,7 @@ export function ParameterControls() {
           </TabsContent>
 
           {/* Financial Parameters Tab */}
-          <TabsContent value="financial" className="space-y-4">
+          <TabsContent value="financial" className="space-y-6">
             <CollapsibleSection
               title={t('sections.financial.assets.title')}
               description={t('sections.financial.assets.description')}
@@ -601,7 +649,7 @@ export function ParameterControls() {
                       sanitizeNumberInput(e.target.value, params.currentAssets)
                     )
                   }
-                  className="h-8 text-sm"
+                  className={FIELD_INPUT_CLASS}
                   min={0}
                 />
               </ParameterField>
@@ -619,7 +667,7 @@ export function ParameterControls() {
                       sanitizeNumberInput(e.target.value, params.annualSavings)
                     )
                   }
-                  className="h-8 text-sm"
+                  className={FIELD_INPUT_CLASS}
                   min={0}
                 />
               </ParameterField>
@@ -643,7 +691,7 @@ export function ParameterControls() {
                       sanitizeNumberInput(e.target.value, params.monthlyPension)
                     )
                   }
-                  className="h-8 text-sm"
+                  className={FIELD_INPUT_CLASS}
                   min={0}
                 />
               </ParameterField>
@@ -661,9 +709,9 @@ export function ParameterControls() {
                     step={0.25}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     <span>{formatPercent(0, { maximumFractionDigits: 0 })}</span>
-                    <span className="font-semibold text-blue-600">
+                    <span className="border-2 border-neo-black bg-neo-white px-3 py-1 text-neo-black">
                       {formatPercent(params.capitalGainsTax / 100, {
                         maximumFractionDigits: 2,
                       })}
@@ -672,6 +720,36 @@ export function ParameterControls() {
                   </div>
                 </div>
               </ParameterField>
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              title={t('sections.financial.oneTime.title')}
+              description={t('sections.financial.oneTime.description')}
+              defaultOpen={false}
+            >
+              <OneTimeIncomeList
+                incomes={oneTimeIncomes}
+                minAge={params.currentAge}
+                maxAge={params.endAge}
+                defaultAge={defaultOneTimeIncomeAge}
+                strings={{
+                  addButton: t('fields.oneTimeIncomes.add'),
+                  empty: t('fields.oneTimeIncomes.empty'),
+                  ageLabel: t('fields.oneTimeIncomes.ageLabel'),
+                  amountLabel: t('fields.oneTimeIncomes.amountLabel'),
+                  remove: t('fields.oneTimeIncomes.remove'),
+                  summaryLabel: t('fields.oneTimeIncomes.summary'),
+                  tableHeaders: {
+                    age: t('fields.oneTimeIncomes.table.age'),
+                    amount: t('fields.oneTimeIncomes.table.amount'),
+                    actions: t('fields.oneTimeIncomes.table.actions'),
+                  },
+                }}
+                onAdd={handleAddOneTimeIncome}
+                onUpdate={handleUpdateOneTimeIncome}
+                onRemove={handleRemoveOneTimeIncome}
+                formatCurrency={(value) => formatCurrency(value)}
+              />
             </CollapsibleSection>
 
             <CollapsibleSection
@@ -684,7 +762,7 @@ export function ParameterControls() {
               <div className="space-y-2">
                 {Object.entries(params.monthlyExpenses).map(([key, value]) => (
                   <div key={key} className="flex items-center justify-between">
-                    <Label className="text-xs capitalize">
+                    <Label className="text-[0.62rem] font-semibold uppercase tracking-[0.12em]">
                       {t(`expenses.monthly.${key}`)}
                     </Label>
                     <Input
@@ -699,7 +777,7 @@ export function ParameterControls() {
                           )
                         )
                       }
-                      className="h-7 w-20 text-xs"
+                      className={COMPACT_INPUT_CLASS}
                       min={0}
                     />
                   </div>
@@ -715,9 +793,11 @@ export function ParameterControls() {
                           </TooltipTrigger>
                           <TooltipContent
                             side="top"
-                            className="max-w-xs bg-gray-900 text-white border border-gray-700"
+                            className="max-w-xs border-3 border-neo-black bg-neo-white px-3 py-2 text-neo-black shadow-neo-sm"
                           >
-                            <p className="text-xs">{t('sections.financial.monthly.tooltip')}</p>
+                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]">
+                              {t('sections.financial.monthly.tooltip')}
+                            </p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -738,7 +818,7 @@ export function ParameterControls() {
               <div className="space-y-2">
                 {Object.entries(params.annualExpenses).map(([key, value]) => (
                   <div key={key} className="flex items-center justify-between">
-                    <Label className="text-xs capitalize">
+                    <Label className="text-[0.62rem] font-semibold uppercase tracking-[0.12em]">
                       {t(`expenses.annual.${key}`)}
                     </Label>
                     <Input
@@ -753,7 +833,7 @@ export function ParameterControls() {
                           )
                         )
                       }
-                      className="h-7 w-20 text-xs"
+                      className={COMPACT_INPUT_CLASS}
                       min={0}
                     />
                   </div>
@@ -769,9 +849,11 @@ export function ParameterControls() {
                           </TooltipTrigger>
                           <TooltipContent
                             side="top"
-                            className="max-w-xs bg-gray-900 text-white border border-gray-700"
+                            className="max-w-xs border-3 border-neo-black bg-neo-white px-3 py-2 text-neo-black shadow-neo-sm"
                           >
-                            <p className="text-xs">{t('sections.financial.annual.tooltip')}</p>
+                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]">
+                              {t('sections.financial.annual.tooltip')}
+                            </p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -784,7 +866,7 @@ export function ParameterControls() {
           </TabsContent>
 
           {/* Simulation Parameters Tab */}
-          <TabsContent value="simulation" className="space-y-4">
+          <TabsContent value="simulation" className="space-y-6">
             <CollapsibleSection
               title={t('sections.simulation.market.title')}
               description={t('sections.simulation.market.description')}
@@ -803,9 +885,9 @@ export function ParameterControls() {
                     step={0.5}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     <span>{formatPercent(0.03, { maximumFractionDigits: 0 })}</span>
-                    <span className="font-semibold text-blue-600">
+                    <span className="border-2 border-neo-black bg-neo-white px-3 py-1 text-neo-black">
                       {formatPercent(params.averageROI)}
                     </span>
                     <span>{formatPercent(0.12, { maximumFractionDigits: 0 })}</span>
@@ -826,14 +908,14 @@ export function ParameterControls() {
                     step={0.5}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     <span>{formatPercent(0.02, { maximumFractionDigits: 0 })}</span>
-                    <span className="font-semibold text-blue-600">
+                    <span className="border-2 border-neo-black bg-neo-white px-3 py-1 text-neo-black">
                       {formatPercent(params.roiVolatility)}
                     </span>
                     <span>{formatPercent(0.25, { maximumFractionDigits: 0 })}</span>
                   </div>
-                  <div className="text-xs text-slate-500 mt-1 text-center">
+                  <div className="mt-2 text-center text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     {t('fields.roiVolatility.range', {
                       range: '68%',
                       lower: formatPercent(params.averageROI - params.roiVolatility),
@@ -862,9 +944,9 @@ export function ParameterControls() {
                     step={0.1}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     <span>{formatPercent(0.01, { maximumFractionDigits: 0 })}</span>
-                    <span className="font-semibold text-blue-600">
+                    <span className="border-2 border-neo-black bg-neo-white px-3 py-1 text-neo-black">
                       {formatPercent(params.averageInflation)}
                     </span>
                     <span>{formatPercent(0.06, { maximumFractionDigits: 0 })}</span>
@@ -887,9 +969,9 @@ export function ParameterControls() {
                     step={0.1}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     <span>{formatPercent(0.001, { maximumFractionDigits: 1 })}</span>
-                    <span className="font-semibold text-blue-600">
+                    <span className="border-2 border-neo-black bg-neo-white px-3 py-1 text-neo-black">
                       {formatPercent(params.inflationVolatility)}
                     </span>
                     <span>{formatPercent(0.03, { maximumFractionDigits: 0 })}</span>
@@ -916,14 +998,14 @@ export function ParameterControls() {
                     step={100}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     <span>{formatNumber(100)}</span>
-                    <span className="font-semibold text-blue-600">
+                    <span className="border-2 border-neo-black bg-neo-white px-3 py-1 text-neo-black">
                       {formatNumber(params.simulationRuns)}
                     </span>
                     <span>{formatNumber(10000)}</span>
                   </div>
-                  <div className="text-xs text-center mt-1">
+                  <div className="mt-2 text-center text-[0.6rem] font-semibold uppercase tracking-[0.12em]">
                     <span
                       className={
                         params.simulationRuns >= 1000
@@ -944,6 +1026,8 @@ export function ParameterControls() {
               </ParameterField>
             </CollapsibleSection>
           </TabsContent>
+            </div>
+          </div>
         </Tabs>
 
         {/* Save/Load/Reset Controls */}
@@ -951,12 +1035,14 @@ export function ParameterControls() {
           <div className="space-y-4">
             {/* Named Setups */}
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold">{t('saved.title')}</h4>
-              <div className="flex gap-2 items-center">
+              <h4 className="text-[0.75rem] font-extrabold uppercase tracking-[0.18em]">
+                {t('saved.title')}
+              </h4>
+              <div className="flex items-center gap-2">
                 <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
+                    <Button size="sm" variant="outline" className="h-10 px-4">
+                      <Plus className="mr-2 h-4 w-4" />
                       {t('saved.actions.saveAs')}
                     </Button>
                   </DialogTrigger>
@@ -974,7 +1060,7 @@ export function ParameterControls() {
                         value={setupName}
                         onChange={(e) => setSetupName(e.target.value)}
                         placeholder={t('saved.dialog.placeholder')}
-                        className="mt-2"
+                        className={`${FIELD_INPUT_CLASS} mt-2`}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleSaveSetup()
                         }}
@@ -998,7 +1084,7 @@ export function ParameterControls() {
                     handleLoadSetup(value)
                   }}
                 >
-                  <SelectTrigger className="flex-1 h-9">
+                  <SelectTrigger size="sm" className="flex-1">
                     <SelectValue
                       placeholder={
                         savedSetups.length === 0
@@ -1017,8 +1103,10 @@ export function ParameterControls() {
                         <SelectItem key={setup.id} value={setup.id}>
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex flex-col text-left">
-                              <span className="font-medium">{setup.name}</span>
-                              <span className="text-xs text-slate-500">
+                              <span className="text-[0.68rem] font-semibold uppercase tracking-[0.12em]">
+                                {setup.name}
+                              </span>
+                              <span className="text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                                 {new Date(setup.timestamp).toLocaleDateString()}
                               </span>
                             </div>
@@ -1026,7 +1114,7 @@ export function ParameterControls() {
                               type="button"
                               size="icon"
                               variant="ghost"
-                              className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                              className="h-8 w-8 border-3 border-neo-black bg-neo-white text-muted-foreground shadow-neo-sm hover:bg-neo-red hover:text-neo-white"
                               onMouseDown={(event) => event.preventDefault()}
                               onClick={(event) => {
                                 event.preventDefault()
@@ -1047,7 +1135,7 @@ export function ParameterControls() {
             </div>
 
             {/* Reset */}
-            <Button size="sm" variant="outline" onClick={handleReset} className="w-full">
+            <Button size="sm" variant="outline" onClick={handleReset} className="h-10 w-full">
               <RotateCcw className="h-4 w-4 mr-2" />
               {t('saved.actions.reset')}
             </Button>

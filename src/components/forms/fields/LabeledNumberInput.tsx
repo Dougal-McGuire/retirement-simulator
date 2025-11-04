@@ -2,6 +2,7 @@
 
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 interface LabeledNumberInputProps {
   id: string
@@ -21,12 +22,17 @@ export function LabeledNumberInput({
   onChange,
   min,
   max,
-  className = 'mt-2',
+  className,
   helpText,
 }: LabeledNumberInputProps) {
   return (
-    <div>
-      <Label htmlFor={id}>{label}</Label>
+    <div className="space-y-2">
+      <Label
+        htmlFor={id}
+        className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-neo-black"
+      >
+        {label}
+      </Label>
       <Input
         id={id}
         type="number"
@@ -39,9 +45,16 @@ export function LabeledNumberInput({
         }}
         min={min}
         max={max}
-        className={className}
+        className={cn(
+          'h-11 border-2 border-neo-black font-semibold uppercase tracking-[0.12em]',
+          className
+        )}
       />
-      {helpText && <p className="mt-1 text-sm text-slate-500">{helpText}</p>}
+      {helpText && (
+        <p className="mt-2 text-[0.65rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          {helpText}
+        </p>
+      )}
     </div>
   )
 }

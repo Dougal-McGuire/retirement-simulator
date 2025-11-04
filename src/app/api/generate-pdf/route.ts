@@ -1,14 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import puppeteer from 'puppeteer-core'
+import type { Browser, Viewport } from 'puppeteer-core'
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { transformToReportData } from '@/lib/transformers/reportDataTransformer'
 import { ReportDataSchema, type ReportData } from '@/lib/pdf-generator/schema/reportData'
 import { getReportCache } from '@/lib/pdf-generator/reportCache'
 
-let chromium: any = null
+type ChromiumModule = (
+  typeof import('@sparticuz/chromium') & {
+    setHeadlessMode?: boolean
+    setGraphicsMode?: boolean
+  }
+) & {
+  args: string[]
+  defaultViewport: unknown
+  executablePath: () => Promise<string>
+  headless: boolean
+}
+
+let chromium: ChromiumModule | null = null
 if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
-  const ch = require('@sparticuz/chromium')
+  const ch: ChromiumModule = require('@sparticuz/chromium')
   ch.setHeadlessMode = true
   ch.setGraphicsMode = false
   chromium = ch
@@ -23,7 +36,7 @@ async function launchBrowser() {
     const executablePath = await chromium.executablePath()
     return puppeteer.launch({
       args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
+      defaultViewport: chromium.defaultViewport as Viewport | null | undefined,
       executablePath,
       headless: chromium.headless,
     })
@@ -68,7 +81,7 @@ function resolveExecutablePath(): string | undefined {
 }
 
 export async function POST(req: NextRequest) {
-  let browser: puppeteer.Browser | null = null
+  let browser: Browser | null = null
   let cacheKey: string | null = null
 
   try {
@@ -112,11 +125,13 @@ export async function POST(req: NextRequest) {
     await page.setCacheEnabled(false)
     await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 0 })
     await page.emulateMediaType('print')
-    await page.evaluate(() =>
-      'fonts' in document
-        ? (document as any).fonts.ready.then(() => true)
-        : Promise.resolve(true)
-    )
+    await page.evaluate(() => {
+      const doc = document as Document & { fonts?: FontFaceSet }
+      if (doc.fonts) {
+        return doc.fonts.ready.then(() => true)
+      }
+      return true
+    })
     await page.waitForFunction('window.__REPORT_READY__ === true', { timeout: 15000 })
     await page.waitForFunction(() => Array.from(document.querySelectorAll('[data-toc-page]')).every((el) => el.getAttribute('data-page-number')), { timeout: 5000 }).catch(() => null)
     await page.evaluate(() => {
@@ -153,11 +168,16 @@ export async function POST(req: NextRequest) {
 
     await page.close()
 
-    return new NextResponse(pdf, {
+    const pdfArrayBuffer = new ArrayBuffer(pdf.byteLength)
+    new Uint8Array(pdfArrayBuffer).set(pdf)
+    const pdfBlob = new Blob([pdfArrayBuffer], { type: 'application/pdf' })
+
+    return new NextResponse(pdfBlob.stream(), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="rentenplan-${reportId}.pdf"`,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Content-Length': pdfBlob.size.toString(),
       },
     })
   } catch (error) {

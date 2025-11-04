@@ -8,7 +8,7 @@ const localeMap: Record<Locale, string> = {
 
 const NARROW_NBSP = '\u202F'
 
-type FormatterHelpers = Record<string, (...args: any[]) => any>
+type SuccessBadgeColor = 'excellent' | 'good' | 'warning' | 'danger'
 
 type SuccessBadgeKey = 'excellent' | 'good' | 'moderate' | 'needsReview'
 
@@ -75,11 +75,34 @@ function createLocaleAwareFormatters(locale: Locale): LocaleAwareFormatters {
   }
 }
 
-function createGeneralHelpers(): FormatterHelpers {
+type GeneralHelpers = {
+  multiply: (a: number, b: number) => number
+  subtract: (a: number, b: number) => number
+  concat: (...args: unknown[]) => string
+  figureNumber: (num: number) => string
+  capitalize: (str?: string) => string
+  getSpendingPercent: (amount: number, spending: Spending) => number
+  getTotalMonthlySpending: (spending: Spending) => number
+  getTotalAnnualSpending: (spending: Spending) => number
+  getSuccessBadgeKey: (successRate: number) => SuccessBadgeKey
+  getSuccessBadgeColor: (successRate: number) => SuccessBadgeColor
+  getFailureCount: (totalRuns: number, successRatePct: number) => number
+  getRetirementMedian: (projections: Projections, person: Person) => number
+  getRetirement10th: (projections: Projections, person: Person) => number
+  getRetirement90th: (projections: Projections, person: Person) => number
+  getFinalMedian: (projections: Projections) => number
+  getFinal10th: (projections: Projections) => number
+  getFinal90th: (projections: Projections) => number
+  isRetirementAge: (age: number, retireAge: number) => boolean
+}
+
+type FormatterHelpers = LocaleAwareFormatters & GeneralHelpers
+
+function createGeneralHelpers(): GeneralHelpers {
   const multiply = (a: number, b: number): number => a * b
   const subtract = (a: number, b: number): number => a - b
   const concat = (...args: unknown[]): string => {
-    const values = args.slice(0, -1) as string[]
+    const values = args.slice(0, -1).filter((value): value is string => typeof value === 'string')
     return values.join('')
   }
   const figureNumber = (num: number): string => `${num}`
@@ -119,7 +142,7 @@ function createGeneralHelpers(): FormatterHelpers {
     return 'needsReview'
   }
 
-  const successBadgeColor = (successRate: number): string => {
+  const successBadgeColor = (successRate: number): SuccessBadgeColor => {
     if (successRate >= 90) return 'excellent'
     if (successRate >= 75) return 'good'
     if (successRate >= 50) return 'warning'

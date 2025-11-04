@@ -11,7 +11,7 @@ interface GenerateReportButtonProps {
   results: SimulationResults | null
   params?: SimulationParams | null
   disabled?: boolean
-  variant?: 'default' | 'outline' | 'ghost'
+  variant?: 'default' | 'outline' | 'ghost' | 'secondary' | 'destructive'
   size?: 'sm' | 'default' | 'lg'
   buttonClassName?: string
   wrapperClassName?: string
@@ -87,8 +87,8 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
 
   if (!canGenerate) {
     return (
-      <Button variant={variant} size={size} disabled className={buttonClassName}>
-        <FileText className="w-4 h-4 mr-2" />
+      <Button variant={variant} size={size} disabled className={cn(buttonClassName)}>
+        <FileText className="mr-2 h-4 w-4" />
         {!results ? t('disabled.noData') : t('disabled.runSimulation')}
       </Button>
     )
@@ -101,17 +101,21 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
         size={size}
         onClick={handleGenerate}
         disabled={isGenerating}
-        className={buttonClassName}
+        className={cn(buttonClassName)}
       >
         {isGenerating ? (
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : (
-          <Download className="w-4 h-4 mr-2" />
+          <Download className="mr-2 h-4 w-4" />
         )}
         {isGenerating ? t('actions.generating') : t('actions.generate')}
       </Button>
 
-      {error && <div className="text-sm text-red-600 max-w-xs text-center">{error}</div>}
+      {error && (
+        <div className="max-w-xs text-center text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-neo-red">
+          {error}
+        </div>
+      )}
     </div>
   )
 }

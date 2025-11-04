@@ -1,59 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
 @layer base {
   :root {
-    --background: 216 65% 97%;
-    --foreground: 222 52% 12%;
+    --background: 0 0% 100%;
+    --foreground: 223 31% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 222 52% 12%;
+    --card-foreground: 223 31% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 52% 12%;
-    --primary: 249 87% 63%;
+    --popover-foreground: 223 31% 12%;
+    --primary: 220 92% 54%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 215 71% 94%;
-    --secondary-foreground: 222 47% 22%;
-    --muted: 220 32% 92%;
-    --muted-foreground: 226 20% 42%;
-    --accent: 188 78% 42%;
-    --accent-foreground: 190 86% 12%;
-    --destructive: 3 82% 58%;
+    --secondary: 43 97% 54%;
+    --secondary-foreground: 223 31% 12%;
+    --muted: 213 23% 92%;
+    --muted-foreground: 221 26% 36%;
+    --accent: 351 100% 64%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 82% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 27% 86%;
-    --input: 220 27% 86%;
-    --ring: 249 87% 63%;
-    --chart-1: 219 88% 60%;
-    --chart-2: 191 83% 45%;
-    --chart-3: 281 83% 69%;
-    --chart-4: 33 94% 62%;
-    --chart-5: 342 82% 63%;
-    --radius: 0.9rem;
+    --border: 0 0% 8%;
+    --input: 223 31% 12%;
+    --ring: 220 92% 54%;
+    --chart-1: 222 94% 54%;
+    --chart-2: 43 97% 54%;
+    --chart-3: 351 100% 64%;
+    --chart-4: 152 95% 38%;
+    --chart-5: 282 88% 60%;
+    --radius: 0px;
+    --neo-border-strong: #05080f;
+    --neo-surface: #ffffff;
+    --neo-surface-muted: #f2f4f7;
+    --neo-grid-line: rgba(5, 8, 15, 0.05);
   }
 
   .dark {
-    --background: 225 56% 6%;
+    --background: 225 67% 6%;
     --foreground: 210 40% 96%;
-    --card: 225 46% 10%;
+    --card: 225 61% 10%;
     --card-foreground: 210 40% 96%;
-    --popover: 225 46% 10%;
+    --popover: 225 61% 10%;
     --popover-foreground: 210 40% 96%;
-    --primary: 249 93% 68%;
-    --primary-foreground: 233 36% 12%;
-    --secondary: 220 35% 18%;
-    --secondary-foreground: 210 40% 92%;
-    --muted: 220 35% 20%;
-    --muted-foreground: 216 20% 70%;
-    --accent: 187 72% 40%;
-    --accent-foreground: 192 82% 12%;
-    --destructive: 0 63% 38%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 220 27% 26%;
-    --input: 220 27% 26%;
-    --ring: 248 90% 70%;
-    --chart-1: 221 100% 71%;
-    --chart-2: 189 85% 56%;
-    --chart-3: 286 89% 74%;
-    --chart-4: 35 97% 66%;
-    --chart-5: 348 86% 68%;
+    --primary: 213 87% 72%;
+    --primary-foreground: 225 67% 6%;
+    --secondary: 43 97% 54%;
+    --secondary-foreground: 225 67% 6%;
+    --muted: 225 20% 20%;
+    --muted-foreground: 212 32% 82%;
+    --accent: 351 100% 64%;
+    --accent-foreground: 225 67% 6%;
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 225 67% 6%;
+    --border: 210 40% 96%;
+    --input: 210 40% 96%;
+    --ring: 213 87% 72%;
+    --chart-1: 213 87% 72%;
+    --chart-2: 198 100% 68%;
+    --chart-3: 351 100% 72%;
+    --chart-4: 45 100% 60%;
+    --chart-5: 282 88% 70%;
+    --neo-border-strong: #cbd5f5;
+    --neo-surface: #0c1220;
+    --neo-surface-muted: #101a2f;
+    --neo-grid-line: rgba(203, 213, 245, 0.09);
   }
 }
 
@@ -64,32 +73,36 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: var(--font-plus-jakarta), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-      sans-serif;
+    font-family: 'IBM Plex Mono', var(--font-plus-jakarta), 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+      'Segoe UI', sans-serif;
     min-height: 100vh;
     position: relative;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.7;
   }
+  /* Neo-brutalist geometric background */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     z-index: -2;
     pointer-events: none;
-    background:
-      radial-gradient(60% 45% at 10% 10%, rgba(79, 70, 229, 0.28), transparent 65%),
-      radial-gradient(45% 35% at 85% 12%, rgba(14, 165, 233, 0.3), transparent 60%),
-      radial-gradient(55% 50% at 50% 105%, rgba(236, 72, 153, 0.18), transparent 70%),
-      linear-gradient(180deg, rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0));
+    background: radial-gradient(circle at top left, rgba(6, 17, 38, 0.06), transparent 45%),
+      radial-gradient(circle at bottom right, rgba(6, 17, 38, 0.05), transparent 50%), hsl(var(--background));
   }
+  /* Bold geometric shapes */
   body::after {
     content: '';
     position: fixed;
     inset: 0;
-    z-index: -3;
+    z-index: -1;
     pointer-events: none;
-    background-image: radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 0);
-    background-size: 24px 24px;
-    opacity: 0.4;
+    background-image:
+      linear-gradient(90deg, var(--neo-grid-line) 1px, transparent 1px),
+      linear-gradient(180deg, var(--neo-grid-line) 1px, transparent 1px);
+    background-size: 120px 120px;
+    opacity: 1;
   }
   h1,
   h2,
@@ -97,11 +110,58 @@
   h4,
   h5,
   h6 {
-    font-family: var(--font-sora), var(--font-plus-jakarta), 'Segoe UI', sans-serif;
-    letter-spacing: -0.02em;
+    font-family: 'Space Grotesk', var(--font-sora), var(--font-plus-jakarta), 'Segoe UI', sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  h1 {
+    font-weight: 900;
+    letter-spacing: 0.12em;
   }
   p {
-    color: hsl(var(--foreground) / 0.8);
+    color: hsl(var(--foreground) / 0.85);
+    max-width: 68ch;
+  }
+
+  strong {
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+}
+
+@layer components {
+  .neo-surface {
+    background-color: var(--neo-surface);
+    border: 3px solid var(--neo-border-strong);
+    box-shadow: 6px 6px 0 var(--neo-border-strong);
+  }
+
+  .neo-surface-muted {
+    background-color: var(--neo-surface-muted);
+    border: 3px solid var(--neo-border-strong);
+    box-shadow: 6px 6px 0 rgba(5, 8, 15, 0.28);
+  }
+
+  .neo-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border: 3px solid var(--neo-border-strong);
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.28em;
+    box-shadow: 4px 4px 0 var(--neo-border-strong);
+  }
+
+  .neo-divider {
+    width: 100%;
+    border-bottom: 3px solid var(--neo-border-strong);
   }
 }
 
@@ -110,7 +170,7 @@
   @keyframes fadeInUp {
     from {
       opacity: 0;
-      transform: translate3d(0, 40px, 0);
+      transform: translate3d(0, 20px, 0);
     }
     to {
       opacity: 1;
@@ -128,21 +188,82 @@
   }
 
   .animate-fade-in {
-    animation: fadeInUp 0.8s ease-out forwards;
+    animation: fadeInUp 0.2s ease-out forwards;
   }
 
   .animate-fade-in-delayed {
-    animation: fadeInUp 0.8s ease-out forwards 0.2s;
+    animation: fadeInUp 0.2s ease-out forwards 0.1s;
     opacity: 0;
   }
 
   .animate-fade-in-more-delayed {
-    animation: fadeInUp 0.8s ease-out forwards 0.4s;
+    animation: fadeInUp 0.2s ease-out forwards 0.2s;
     opacity: 0;
   }
 
   .animate-shimmer {
     animation: shimmer 2s infinite;
+  }
+
+  /* Fast, crisp transitions for neo-brutalism */
+  .transition-neo {
+    transition:
+      transform 100ms ease,
+      box-shadow 100ms ease,
+      background-color 100ms ease,
+      color 100ms ease,
+      border-color 100ms ease;
+  }
+
+  /* Neo-brutalist button hover effect */
+  .hover-neo {
+    transition: all 0.1s ease;
+  }
+
+  .hover-neo:hover {
+    transform: translate(2px, 2px);
+  }
+
+  /* Neo-brutalist focus state */
+  .focus-neo:focus {
+    outline: 3px solid #000000;
+    outline-offset: 2px;
+  }
+
+  /* Bold borders */
+  .border-neo {
+    border: 3px solid #000000;
+  }
+
+  .border-neo-bold {
+    border: 4px solid #000000;
+  }
+
+  .border-neo-thick {
+    border: 6px solid #000000;
+  }
+
+  /* Mobile-adapted borders */
+  @media (max-width: 768px) {
+    .border-neo {
+      border-width: 2px;
+    }
+
+    .border-neo-bold {
+      border-width: 3px;
+    }
+
+    .shadow-neo {
+      box-shadow: 2px 2px 0px #000000 !important;
+    }
+
+    .shadow-neo-md {
+      box-shadow: 3px 3px 0px #000000 !important;
+    }
+
+    .shadow-neo-lg {
+      box-shadow: 4px 4px 0px #000000 !important;
+    }
   }
 }
 

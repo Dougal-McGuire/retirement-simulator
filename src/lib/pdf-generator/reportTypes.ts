@@ -1,5 +1,7 @@
 import type { Milestone, Recommendation, ReportData, Summary } from '@/lib/pdf-generator/schema/reportData'
 
+type SummaryBridge = NonNullable<Summary>['bridge']
+
 export type ReportLocale = 'de' | 'en'
 
 const PLAN_HEALTH_LABELS_DE: Record<string, string> = {
@@ -116,7 +118,7 @@ export interface ReportProfile {
     label: string | null
     reasons: string[]
   }
-  bridge?: Summary['bridge']
+  bridge?: SummaryBridge
   highlights: string[]
 }
 
@@ -153,11 +155,11 @@ export interface ReportScenario {
   label: string
   description: string
   probability?: number
-  bridge?: Summary['bridge']
+  bridge?: SummaryBridge
 }
 
 export interface ReportRecommendations {
-  primary: Recommendation[]
+  primary: Array<Recommendation & { impactLabel?: string }>
 }
 
 export interface ReportContent {
@@ -314,7 +316,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
               category: RECOMMENDATION_CATEGORIES_DE[rec.category] ?? 'Allgemeine Strategie',
               body:
                 RECOMMENDATION_BODIES_DE[rec.body] ?? 'Vertiefte Analyse empfohlen, um konkrete Handlungsschritte zu definieren.',
-              impact: RECOMMENDATION_IMPACT_DE[rec.impact] ?? 'unbekannt',
+              impactLabel: RECOMMENDATION_IMPACT_DE[rec.impact] ?? rec.impact,
             }))
           : data.recommendations,
     },

@@ -28,7 +28,6 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
       <div className={`hidden lg:block lg:col-span-1 ${className}`}>
         <div className="sticky top-6">
           <div className="relative">
-            <div className="pointer-events-none absolute inset-x-6 top-0 h-32 rounded-full bg-primary/15 blur-3xl" />
             <div className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-invisible">
               <ParameterControls />
             </div>
@@ -41,25 +40,25 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
-              className="fixed bottom-4 left-4 z-40 rounded-full border-white/70 bg-white/80 px-4 shadow-2xl backdrop-blur transition hover:border-primary/40 hover:bg-white"
+              className="fixed bottom-5 left-5 z-40 h-12 min-w-[11rem] shadow-neo"
             >
-              <Settings className="h-4 w-4 mr-2" />
+              <Settings className="mr-2 h-4 w-4" />
               {t('trigger')}
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="w-full border-white/60 bg-white/80 p-0 shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur-xl sm:w-96"
+            className="w-full border-3 border-neo-black bg-neo-white p-0 shadow-neo sm:w-96"
           >
-            <SheetHeader className="border-b border-white/60 bg-white/50 p-6 pb-4">
-              <SheetTitle className="flex items-center text-lg font-semibold text-slate-900">
-                <Settings className="h-5 w-5 mr-2" />
+            <SheetHeader className="border-b-3 border-neo-black bg-neo-white px-6 py-5">
+              <SheetTitle className="flex items-center text-lg font-bold uppercase tracking-[0.18em] text-neo-black">
+                <Settings className="mr-2 h-5 w-5" />
                 {t('title')}
               </SheetTitle>
-              <SheetDescription className="text-sm text-slate-600">
+              <SheetDescription className="text-sm font-medium text-muted-foreground">
                 {t('description')}
               </SheetDescription>
             </SheetHeader>

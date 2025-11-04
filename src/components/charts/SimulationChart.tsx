@@ -6,6 +6,7 @@ import type { SimulationResults, ChartDataPoint } from '@/types'
 import { useSetAutoRunSuspended } from '@/lib/stores/simulationStore'
 import { AssetsChart, type BandPoint } from '@/components/charts/AssetsChart'
 import { SpendingChart } from '@/components/charts/SpendingChart'
+import { cn } from '@/lib/utils'
 
 interface SimulationChartProps {
   results: SimulationResults | null
@@ -17,23 +18,27 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
   const format = useFormatter()
   if (isLoading) {
     return (
-      <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">{t('loading.title')}</p>
-          <p className="text-sm text-gray-500 mt-1">{t('loading.subtitle')}</p>
-        </div>
+      <div className="flex h-96 flex-col items-center justify-center gap-3 border-3 border-neo-black bg-neo-white text-center shadow-neo">
+        <div className="h-12 w-12 animate-spin border-3 border-neo-black border-t-transparent" />
+        <p className="text-[0.78rem] font-bold uppercase tracking-[0.16em]">
+          {t('loading.title')}
+        </p>
+        <p className="max-w-xs text-[0.65rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          {t('loading.subtitle')}
+        </p>
       </div>
     )
   }
 
   if (!results) {
     return (
-      <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
-        <div className="text-center">
-          <p className="text-gray-600">{t('empty.title')}</p>
-          <p className="text-sm text-gray-500 mt-1">{t('empty.subtitle')}</p>
-        </div>
+      <div className="flex h-96 flex-col items-center justify-center gap-3 border-3 border-neo-black bg-neo-white text-center shadow-neo">
+        <p className="text-[0.78rem] font-bold uppercase tracking-[0.16em] text-neo-black">
+          {t('empty.title')}
+        </p>
+        <p className="max-w-xs text-[0.65rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          {t('empty.subtitle')}
+        </p>
       </div>
     )
   }
@@ -53,6 +58,11 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
         spending_p50: Math.round(results.spendingPercentiles.p50[index]),
         spending_p80: Math.round(results.spendingPercentiles.p80[index]),
         spending_p90: Math.round(results.spendingPercentiles.p90[index]),
+        withdrawal_rate_p50:
+          results.assetPercentiles.p50[index] > 0
+            ? (results.spendingPercentiles.p50[index] * 12) /
+              results.assetPercentiles.p50[index]
+            : null,
       })),
     [results]
   )
@@ -210,19 +220,19 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
         formatCurrencyShort={formatCurrencyShort}
       />
 
-      <details className="mt-4">
-        <summary className="text-sm text-blue-600 cursor-pointer hover:text-blue-800">
+      <details className="mt-5 border-3 border-neo-black bg-neo-white p-4 shadow-neo-sm">
+        <summary className="cursor-pointer text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-neo-blue">
           {t('assetTable.toggle')}
         </summary>
-        <div className="mt-2 overflow-x-auto">
-          <table className="min-w-full text-xs border border-gray-300">
+        <div className="mt-4 overflow-x-auto border-t-3 border-neo-black pt-4">
+          <table className="min-w-full border-3 border-neo-black bg-neo-white text-[0.68rem] uppercase tracking-[0.12em]">
             <caption className="sr-only">{t('assetTable.caption')}</caption>
             <thead>
-              <tr className="bg-gray-50">
-                <th className="border px-2 py-1 text-left">{t('assetTable.headers.age')}</th>
-                <th className="border px-2 py-1 text-right">{t('assetTable.headers.p10')}</th>
-                <th className="border px-2 py-1 text-right">{t('assetTable.headers.p50')}</th>
-                <th className="border px-2 py-1 text-right">{t('assetTable.headers.p90')}</th>
+              <tr className="bg-muted">
+                <th className="border border-neo-black px-3 py-2 text-left">{t('assetTable.headers.age')}</th>
+                <th className="border border-neo-black px-3 py-2 text-right">{t('assetTable.headers.p10')}</th>
+                <th className="border border-neo-black px-3 py-2 text-right">{t('assetTable.headers.p50')}</th>
+                <th className="border border-neo-black px-3 py-2 text-right">{t('assetTable.headers.p90')}</th>
               </tr>
             </thead>
             <tbody>
@@ -231,19 +241,19 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
                 return (
                   <tr
                     key={row.age}
-                    className={`border ${
-                      isRetirementAge ? 'bg-blue-50 font-semibold' : 'bg-white'
-                    }`}
+                    className={cn('border-b border-neo-black', isRetirementAge ? 'bg-neo-blue/10 font-bold text-neo-blue' : 'bg-neo-white text-foreground')}
                   >
-                    <td className="border px-2 py-1">
+                    <td className="border border-neo-black px-3 py-2">
                       {row.age}{' '}
                       {isRetirementAge && (
-                        <span className="text-[10px] text-blue-600">{t('assetTable.retirementFlag')}</span>
+                        <span className="ml-2 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-neo-blue">
+                          {t('assetTable.retirementFlag')}
+                        </span>
                       )}
                     </td>
-                    <td className="border px-2 py-1 text-right">{formatCurrency(row.p10)}</td>
-                    <td className="border px-2 py-1 text-right">{formatCurrency(row.p50)}</td>
-                    <td className="border px-2 py-1 text-right">{formatCurrency(row.p90)}</td>
+                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(row.p10)}</td>
+                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(row.p50)}</td>
+                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(row.p90)}</td>
                   </tr>
                 )
               })}
@@ -263,34 +273,34 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
       />
 
       {/* Data Table for Accessibility */}
-      <details className="mt-4">
-        <summary className="text-sm text-blue-600 cursor-pointer hover:text-blue-800">
+      <details className="mt-5 border-3 border-neo-black bg-neo-white p-4 shadow-neo-sm">
+        <summary className="cursor-pointer text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-neo-blue">
           {t('spendingTable.toggle')}
         </summary>
-        <div className="mt-2 overflow-x-auto">
-          <table className="min-w-full text-xs border border-gray-300">
+        <div className="mt-4 overflow-x-auto border-t-3 border-neo-black pt-4">
+          <table className="min-w-full border-3 border-neo-black bg-neo-white text-[0.68rem] uppercase tracking-[0.12em]">
             <caption className="sr-only">{t('spendingTable.caption')}</caption>
             <thead>
-              <tr className="bg-gray-50">
-                <th className="border px-2 py-1">{t('spendingTable.headers.age')}</th>
-                <th className="border px-2 py-1">{t('spendingTable.headers.p10')}</th>
-                <th className="border px-2 py-1">{t('spendingTable.headers.p20')}</th>
-                <th className="border px-2 py-1">{t('spendingTable.headers.p50')}</th>
-                <th className="border px-2 py-1">{t('spendingTable.headers.p80')}</th>
-                <th className="border px-2 py-1">{t('spendingTable.headers.p90')}</th>
+              <tr className="bg-muted">
+                <th className="border border-neo-black px-3 py-2 text-left">{t('spendingTable.headers.age')}</th>
+                <th className="border border-neo-black px-3 py-2 text-right">{t('spendingTable.headers.p10')}</th>
+                <th className="border border-neo-black px-3 py-2 text-right">{t('spendingTable.headers.p20')}</th>
+                <th className="border border-neo-black px-3 py-2 text-right">{t('spendingTable.headers.p50')}</th>
+                <th className="border border-neo-black px-3 py-2 text-right">{t('spendingTable.headers.p80')}</th>
+                <th className="border border-neo-black px-3 py-2 text-right">{t('spendingTable.headers.p90')}</th>
               </tr>
             </thead>
             <tbody>
               {chartData
                 .filter((d) => d.age >= results.params.retirementAge && d.age % 5 === 0)
                 .map((data, index) => (
-                  <tr key={index}>
-                    <td className="border px-2 py-1">{data.age}</td>
-                    <td className="border px-2 py-1">{formatCurrency(data.spending_p10)}</td>
-                    <td className="border px-2 py-1">{formatCurrency(data.spending_p20)}</td>
-                    <td className="border px-2 py-1">{formatCurrency(data.spending_p50)}</td>
-                    <td className="border px-2 py-1">{formatCurrency(data.spending_p80)}</td>
-                    <td className="border px-2 py-1">{formatCurrency(data.spending_p90)}</td>
+                  <tr key={index} className="border-b border-neo-black">
+                    <td className="border border-neo-black px-3 py-2 text-left">{data.age}</td>
+                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(data.spending_p10)}</td>
+                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(data.spending_p20)}</td>
+                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(data.spending_p50)}</td>
+                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(data.spending_p80)}</td>
+                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(data.spending_p90)}</td>
                   </tr>
                 ))}
             </tbody>

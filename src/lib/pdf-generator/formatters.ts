@@ -4,8 +4,11 @@ const dateFormatters = new Map<string, Intl.DateTimeFormat>()
 export const nbsp = '\u00a0'
 export const nnbsp = '\u202f'
 
-function formatterKey(locale: string, options: Record<string, unknown>): string {
-  return `${locale}:${Object.entries(options)
+type FormatterOptions = Intl.NumberFormatOptions | Intl.DateTimeFormatOptions
+
+function formatterKey(locale: string, options: FormatterOptions): string {
+  const pairs = Object.entries(options as Record<string, unknown>)
+  return `${locale}:${pairs
     .map(([key, value]) => `${key}=${String(value)}`)
     .join('|')}`
 }

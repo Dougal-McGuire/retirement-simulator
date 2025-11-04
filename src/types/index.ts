@@ -10,6 +10,7 @@ export interface SimulationParams {
   currentAssets: number
   annualSavings: number
   monthlyPension: number
+  oneTimeIncomes: OneTimeIncome[]
 
   // Market parameters
   averageROI: number
@@ -67,6 +68,7 @@ export interface AssetsIncomeStep {
   currentAssets: number
   annualSavings: number
   monthlyPension: number
+  oneTimeIncomes: OneTimeIncome[]
 }
 
 export interface MonthlyExpensesStep {
@@ -123,6 +125,11 @@ export interface SimulationStore {
   clearResults: () => void
 }
 
+export interface OneTimeIncome {
+  age: number
+  amount: number
+}
+
 // Chart data interfaces
 export interface ChartDataPoint {
   age: number
@@ -136,6 +143,13 @@ export interface ChartDataPoint {
   spending_p50: number
   spending_p80: number
   spending_p90: number
+  withdrawal_rate_p50: number | null
+}
+
+declare global {
+  interface Window {
+    __APPLY_TOC__?: () => void
+  }
 }
 
 // Default values
@@ -147,6 +161,7 @@ export const DEFAULT_PARAMS: SimulationParams = {
   currentAssets: 630000,
   annualSavings: 48000,
   monthlyPension: 5000,
+  oneTimeIncomes: [],
   averageROI: 0.07,
   roiVolatility: 0.15,
   averageInflation: 0.025,

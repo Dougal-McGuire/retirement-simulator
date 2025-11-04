@@ -14,6 +14,7 @@ import {
 } from 'recharts'
 import { useTranslations } from 'next-intl'
 import type { ChartDataPoint } from '@/types'
+import { Button } from '@/components/ui/button'
 
 export type BandPoint = ChartDataPoint & {
   assets_band_lower: number
@@ -44,27 +45,36 @@ export function AssetsChart({
   const t = useTranslations('assetsChart')
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200/50 p-6 transition-all duration-300 hover:shadow-md">
-      <div className="flex items-center justify-between mb-4">
-        <h4 id="asset-chart-title" className="text-lg font-semibold text-gray-900">
-          {t('title')}
-        </h4>
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-          <span className="text-xs text-gray-500">{t('liveData')}</span>
-          <button
+    <div className="space-y-6 border-3 border-neo-black bg-neo-white p-6 shadow-neo">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h4
+            id="asset-chart-title"
+            className="text-lg font-extrabold uppercase tracking-[0.2em] text-neo-black"
+          >
+            {t('title')}
+          </h4>
+          <p className="mt-2 max-w-2xl text-[0.72rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            {t('description')}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="h-3 w-3 border-3 border-neo-black bg-neo-blue animate-pulse" />
+          <span className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {t('liveData')}
+          </span>
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onResetZoom}
-            className="ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 shadow-sm"
             aria-label={t('reset')}
+            className="px-4"
           >
             {t('reset')}
-          </button>
+          </Button>
         </div>
       </div>
-      <p className="text-sm text-gray-600 mb-6">
-        {t('description')}
-      </p>
       <div
         className="h-80 group"
         role="img"
@@ -83,34 +93,29 @@ export function AssetsChart({
                 <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              opacity={0.3}
-              stroke="#e5e7eb"
-              className="transition-opacity duration-300 group-hover:opacity-40"
-            />
+            <CartesianGrid strokeDasharray="0 0" opacity={0.15} stroke="#000000" />
             <XAxis
               dataKey="age"
-              tick={{ fontSize: 11, fill: '#6b7280' }}
-              tickLine={{ stroke: '#d1d5db' }}
-              axisLine={{ stroke: '#d1d5db' }}
+              tick={{ fontSize: 11, fill: '#000000' }}
+              tickLine={{ stroke: '#000000' }}
+              axisLine={{ stroke: '#000000' }}
               label={{
                 value: t('axis.age'),
                 position: 'insideBottom',
                 offset: -10,
-                style: { textAnchor: 'middle', fontSize: '12px', fill: '#6b7280' },
+                style: { textAnchor: 'middle', fontSize: '12px', fill: '#000000' },
               }}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: '#6b7280' }}
-              tickLine={{ stroke: '#d1d5db' }}
-              axisLine={{ stroke: '#d1d5db' }}
+              tick={{ fontSize: 11, fill: '#000000' }}
+              tickLine={{ stroke: '#000000' }}
+              axisLine={{ stroke: '#000000' }}
               tickFormatter={formatCurrencyShort}
               label={{
                 value: t('axis.assets'),
                 angle: -90,
                 position: 'insideLeft',
-                style: { textAnchor: 'middle', fontSize: '12px', fill: '#6b7280' },
+                style: { textAnchor: 'middle', fontSize: '12px', fill: '#000000' },
               }}
             />
             {/* Shaded uncertainty band between P20 and P80 */}
@@ -127,7 +132,7 @@ export function AssetsChart({
               dataKey="assets_band_height"
               stackId="band"
               stroke="none"
-              fill="#60a5fa"
+              fill="#0e67f6"
               fillOpacity={0.18}
               name={t('legend.band')}
               isAnimationActive={false}
@@ -136,16 +141,19 @@ export function AssetsChart({
               formatter={(value: number, name: string) => [formatCurrency(value), name]}
               labelFormatter={(age) => t('tooltip.label', { age })}
               contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                border: '1px solid #e5e7eb',
-                borderRadius: '12px',
+                backgroundColor: '#ffffff',
+                border: '3px solid #05080f',
+                borderRadius: '0px',
                 fontSize: '12px',
-                boxShadow:
-                  '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                backdropFilter: 'blur(10px)',
+                boxShadow: '6px 6px 0 #05080f',
               }}
-              labelStyle={{ fontWeight: 'semibold', color: '#374151' }}
-              cursor={{ stroke: '#6b7280', strokeWidth: 1, strokeDasharray: '3 3' }}
+              labelStyle={{
+                fontWeight: 800,
+                color: '#05080f',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+              }}
+              cursor={{ stroke: '#05080f', strokeWidth: 1.5, strokeDasharray: '4 2' }}
             />
             <ReferenceLine
               x={retirementAge}
@@ -174,7 +182,7 @@ export function AssetsChart({
             <Line
               type="monotone"
               dataKey="assets_p10"
-              stroke="#ef4444"
+              stroke="#ff3b5c"
               strokeWidth={2.5}
               dot={false}
               name={t('legend.p10')}
@@ -186,7 +194,7 @@ export function AssetsChart({
             <Line
               type="monotone"
               dataKey="assets_p20"
-              stroke="#f59e0b"
+              stroke="#f6c90e"
               strokeWidth={2}
               dot={false}
               name={t('legend.p20')}
@@ -198,7 +206,7 @@ export function AssetsChart({
             <Line
               type="monotone"
               dataKey="assets_p50"
-              stroke="#3b82f6"
+              stroke="#0e67f6"
               strokeWidth={3.5}
               dot={false}
               name={t('legend.p50')}
@@ -210,7 +218,7 @@ export function AssetsChart({
             <Line
               type="monotone"
               dataKey="assets_p80"
-              stroke="#34d399"
+              stroke="#2ad576"
               strokeWidth={2}
               dot={false}
               name={t('legend.p80')}
@@ -222,7 +230,7 @@ export function AssetsChart({
             <Line
               type="monotone"
               dataKey="assets_p90"
-              stroke="#10b981"
+              stroke="#14c2c9"
               strokeWidth={2.5}
               dot={false}
               name={t('legend.p90')}
@@ -248,55 +256,30 @@ export function AssetsChart({
         {t('aria.description')}
       </div>
       <div
-        className="flex flex-wrap justify-center gap-6 mt-6 p-4 bg-gray-50/50 rounded-lg border border-gray-200/50"
+        className="mt-6 flex flex-wrap justify-center gap-4 border-3 border-neo-black bg-neo-white p-4"
         role="list"
         aria-label={t('legend.title')}
       >
-        <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
+        {[
+          { color: '#ff3b5c', label: t('legend.p10') },
+          { color: '#f6c90e', label: t('legend.p20') },
+          { color: '#0e67f6', label: t('legend.p50') },
+          { color: '#2ad576', label: t('legend.p80') },
+          { color: '#14c2c9', label: t('legend.p90') },
+        ].map((item) => (
           <div
-            className="w-6 h-1 bg-gradient-to-r from-red-500 to-red-400 rounded-full transition-all duration-300 group-hover:shadow-lg group-hover:shadow-red-200"
-            aria-hidden="true"
-          ></div>
-          <span className="text-sm font-medium text-gray-700 group-hover:text-red-600 transition-colors">
-            {t('legend.p10')}
-          </span>
-        </div>
-        <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
-          <div
-            className="w-6 h-1 bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-300 group-hover:shadow-lg group-hover:shadow-amber-200"
-            aria-hidden="true"
-          ></div>
-          <span className="text-sm font-medium text-gray-700 group-hover:text-amber-600 transition-colors">
-            {t('legend.p20')}
-          </span>
-        </div>
-        <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
-          <div
-            className="w-6 h-1 bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-300 group-hover:shadow-lg group-hover:shadow-blue-200"
-            aria-hidden="true"
-          ></div>
-          <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
-            {t('legend.p50')}
-          </span>
-        </div>
-        <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
-          <div
-            className="w-6 h-1 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-300 group-hover:shadow-lg group-hover:shadow-emerald-200"
-            aria-hidden="true"
-          ></div>
-          <span className="text-sm font-medium text-gray-700 group-hover:text-emerald-600 transition-colors">
-            {t('legend.p80')}
-          </span>
-        </div>
-        <div className="flex items-center gap-3 group cursor-pointer" role="listitem">
-          <div
-            className="w-6 h-1 bg-gradient-to-r from-teal-500 to-teal-400 rounded-full transition-all duration-300 group-hover:shadow-lg group-hover:shadow-teal-200"
-            aria-hidden="true"
-          ></div>
-          <span className="text-sm font-medium text-gray-700 group-hover:text-teal-600 transition-colors">
-            {t('legend.p90')}
-          </span>
-        </div>
+            key={item.label}
+            className="flex items-center gap-3 uppercase tracking-[0.16em] text-[0.72rem] font-semibold"
+            role="listitem"
+          >
+            <div
+              className="h-3 w-3 border-3 border-neo-black"
+              aria-hidden="true"
+              style={{ backgroundColor: item.color }}
+            />
+            <span>{item.label}</span>
+          </div>
+        ))}
       </div>
     </div>
   )

@@ -93,6 +93,21 @@
           "label": "Monthly Pension (€)",
           "help": "Expected monthly pension from legal retirement age"
         }
+      },
+      "oneTimeIncomes": {
+        "title": "One-time incomes",
+        "help": "Add expected lump-sum inflows like insurance payouts or inheritances.",
+        "add": "Add income",
+        "empty": "No one-time incomes yet",
+        "ageLabel": "Age paid out",
+        "amountLabel": "Amount (€)",
+        "remove": "Remove income",
+        "table": {
+          "age": "Age",
+          "amount": "Amount (€)",
+          "actions": "Actions"
+        },
+        "summary": "Total scheduled"
       }
     },
     "monthly": {
@@ -166,6 +181,7 @@
       "investment": {
         "title": "Investment Performance",
         "description": "Based on rolling 30-year averages for diversified developed-market portfolios.",
+        "placeholder": "Select investment preset…",
         "items": {
           "defensive": {
             "name": "Defensive 60/40",
@@ -184,6 +200,7 @@
       "inflation": {
         "title": "Inflation Expectations",
         "description": "Anchored to recent developed-market CPI trends.",
+        "placeholder": "Select inflation preset…",
         "items": {
           "low": {
             "name": "Low Inflation",
@@ -220,6 +237,10 @@
         "pension": {
           "title": "Pension & Taxes",
           "description": "Government pension and tax considerations"
+        },
+        "oneTime": {
+          "title": "One-time incomes",
+          "description": "Schedule lump-sum inflows like insurance payouts or inheritances"
         },
         "monthly": {
           "title": "Monthly Expenses",
@@ -284,6 +305,22 @@
       "monthlyPension": {
         "label": "Monthly Pension (€)",
         "tooltip": "Expected monthly pension from the government system, starting at legal retirement age. This reduces your required private savings."
+      },
+      "oneTimeIncomes": {
+        "label": "One-time incomes",
+        "tooltip": "Add lump-sum inflows such as insurance payouts, home sales, or inheritances. These are invested at the start of the year following the age you choose.",
+        "description": "Set expected one-off cash boosts to add to the plan.",
+        "add": "Add income",
+        "empty": "No one-time incomes scheduled",
+        "ageLabel": "Age received",
+        "amountLabel": "Amount (€)",
+        "remove": "Remove income",
+        "table": {
+          "age": "Age",
+          "amount": "Amount (€)",
+          "actions": "Actions"
+        },
+        "summary": "Total scheduled"
       },
       "capitalGainsTax": {
         "label": "Capital Gains Tax",
@@ -448,7 +485,8 @@
     "description": "Estimated monthly spending after retirement across scenarios. Includes monthly expenses plus annualised annual expenses.",
     "axis": {
       "age": "Age",
-      "spending": "Monthly Spending (€)"
+      "spending": "Monthly Spending (€)",
+      "withdrawalRate": "Annual Withdrawal Rate (%)"
     },
     "tooltip": {
       "label": "Age: {age}"
@@ -459,10 +497,11 @@
       "p50": "50th Percentile",
       "p80": "80th Percentile",
       "p90": "90th Percentile",
+      "withdrawalRate": "Median withdrawal rate",
       "note": "Includes monthly expenses plus annualized annual expenses (vacations, repairs, etc.)."
     },
     "aria": {
-      "description": "Monthly spending bar chart showing spending patterns from retirement age {retirementAge} onwards across percentiles."
+      "description": "Monthly spending bar chart showing spending patterns from retirement age {retirementAge} onwards across percentiles, with a line for the median annual withdrawal rate."
     }
   },
   "pdf": {

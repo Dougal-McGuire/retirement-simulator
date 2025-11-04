@@ -23,29 +23,29 @@ export function SuccessRateCard({
 
   if (isLoading) {
     return (
-      <Card className="overflow-hidden rounded-3xl border border-white/70 bg-white/85 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl ring-1 ring-slate-200/40">
+      <Card className="overflow-hidden">
         <div className="relative">
-          <CardHeader className="border-b border-white/60 bg-white/50 pb-3">
-            <CardTitle className="flex items-center justify-between text-slate-800">
+          <CardHeader className="border-b-4 border-neo-black bg-muted pb-3">
+            <CardTitle className="flex items-center justify-between">
               <span>{t('title')}</span>
-              <div className="h-6 w-6 animate-pulse rounded-full bg-slate-200" />
+              <div className="h-6 w-6 animate-pulse rounded-none bg-slate-300 border-2 border-neo-black" />
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center space-x-3">
-                  <div className="h-10 w-24 animate-pulse rounded-xl bg-slate-200" />
+                  <div className="h-10 w-24 animate-pulse rounded-none bg-slate-300 border-2 border-neo-black" />
                 </div>
-                <div className="mt-3 h-3 w-40 animate-pulse rounded-full bg-slate-200" />
+                <div className="mt-3 h-3 w-40 animate-pulse rounded-none bg-slate-300" />
               </div>
               <div className="text-right">
-                <div className="mb-1 h-3 w-20 animate-pulse rounded-full bg-slate-200" />
-                <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200" />
+                <div className="mb-1 h-3 w-20 animate-pulse rounded-none bg-slate-300" />
+                <div className="h-3 w-24 animate-pulse rounded-none bg-slate-300" />
               </div>
             </div>
             <div className="mt-6">
-              <div className="h-2 w-full animate-pulse rounded-full bg-slate-200" />
+              <div className="h-3 w-full animate-pulse rounded-none bg-slate-300 border-2 border-neo-black" />
             </div>
           </CardContent>
         </div>
@@ -54,9 +54,9 @@ export function SuccessRateCard({
   }
 
   const getSuccessRateIcon = (rate: number) => {
-    if (rate >= 90) return <TrendingUp className="h-5 w-5 text-emerald-500" />
-    if (rate >= 75) return <AlertTriangle className="h-6 w-6 text-amber-500" />
-    return <TrendingDown className="h-6 w-6 text-rose-500" />
+    if (rate >= 90) return <TrendingUp className="h-6 w-6 text-neo-green" />
+    if (rate >= 75) return <AlertTriangle className="h-6 w-6 text-warning-600" />
+    return <TrendingDown className="h-6 w-6 text-neo-red" />
   }
 
   const getSuccessRateMessage = (rate: number) => {
@@ -71,46 +71,55 @@ export function SuccessRateCard({
   const tone = useMemo(() => {
     if (successRate >= 90)
       return {
-        card: 'border-emerald-300/50 ring-emerald-200/30 shadow-[0_26px_80px_rgba(16,185,129,0.18)]',
-        chip: 'bg-emerald-100/80 text-emerald-700',
-        text: 'text-emerald-700',
-        progress: 'from-emerald-400 to-emerald-600',
+        card: 'shadow-neo-green',
+        chip: 'bg-neo-green text-neo-black',
+        text: 'text-neo-green',
+        progress: 'bg-neo-green',
+        bg: 'bg-success-50',
       }
     if (successRate >= 75)
       return {
-        card: 'border-amber-300/60 ring-amber-200/30 shadow-[0_26px_80px_rgba(245,158,11,0.16)]',
-        chip: 'bg-amber-100/80 text-amber-700',
-        text: 'text-amber-700',
-        progress: 'from-amber-400 to-amber-600',
+        card: 'shadow-[6px_6px_0px_#f6c90e]',
+        chip: 'bg-warning-500 text-neo-black',
+        text: 'text-warning-600',
+        progress: 'bg-warning-500',
+        bg: 'bg-warning-50',
       }
     return {
-      card: 'border-rose-300/60 ring-rose-200/30 shadow-[0_26px_80px_rgba(244,63,94,0.16)]',
-      chip: 'bg-rose-100/80 text-rose-700',
-      text: 'text-rose-700',
-      progress: 'from-rose-400 to-rose-600',
+      card: 'shadow-neo-red',
+      chip: 'bg-neo-red text-neo-white',
+      text: 'text-neo-red',
+      progress: 'bg-neo-red',
+      bg: 'bg-red-50',
     }
   }, [successRate])
 
   return (
     <Card
       className={cn(
-        'relative overflow-hidden rounded-3xl border border-white/70 bg-white/85 backdrop-blur-xl ring-1 ring-slate-200/40 transition-shadow',
-        tone.card
+        'relative overflow-hidden border-3 border-neo-black',
+        tone.card,
+        tone.bg
       )}
     >
       <div className="relative">
-        <CardHeader className="border-b border-white/60 bg-white/50 pb-4">
-          <CardTitle className="flex items-center justify-between text-slate-900">
-            <span className="text-base font-semibold">{t('title')}</span>
+        <CardHeader className="border-b-3 border-neo-black bg-neo-white pb-5">
+          <CardTitle className="flex items-center justify-between text-lg font-extrabold uppercase tracking-[0.2em]">
+            <span>{t('title')}</span>
             {getSuccessRateIcon(successRate)}
           </CardTitle>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="bg-neo-white">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
-              <div className="mb-3 flex items-center gap-3">
-                <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', tone.chip)}>
+              <div className="mb-4 flex items-center gap-4">
+                <span
+                  className={cn(
+                    'neo-chip px-4 py-2 text-[0.7rem] tracking-[0.2em] shadow-neo-sm',
+                    tone.chip
+                  )}
+                >
                   {t('summary.confidenceLabel')}
                 </span>
                 <AnimatedCounter
@@ -118,36 +127,38 @@ export function SuccessRateCard({
                   duration={2.5}
                   decimals={1}
                   suffix="%"
-                  className={cn('text-4xl font-bold', tone.text)}
+                  className={cn('text-6xl font-black tracking-tight', tone.text)}
                 />
               </div>
-              <p className={cn('text-sm font-medium transition-colors duration-300', tone.text)}>
+              <p className={cn('text-[0.74rem] font-bold uppercase tracking-[0.16em]', tone.text)}>
                 {getSuccessRateMessage(successRate)}
               </p>
             </div>
 
-            <div className="ml-0 text-sm text-slate-600 sm:text-right">
-              <p className="font-medium text-slate-500">{t('summary.basedOn')}</p>
-              <p className="text-slate-700">{t('summary.runs', { count: format.number(simulationRuns) })}</p>
+            <div className="ml-0 text-[0.72rem] uppercase tracking-[0.16em] sm:text-right">
+              <p className="font-bold text-foreground">{t('summary.basedOn')}</p>
+              <p className="font-semibold text-muted-foreground">
+                {t('summary.runs', { count: format.number(simulationRuns) })}
+              </p>
             </div>
           </div>
 
           <div className="mt-6">
-            <div className="mb-1 flex justify-between text-xs font-medium text-slate-500">
+            <div className="mb-3 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               <span>{t('progress.min')}</span>
-              <span className="text-slate-600">{t('progress.label')}</span>
+              <span>{t('progress.label')}</span>
               <span>{t('progress.max')}</span>
             </div>
             <div className="relative">
-              <div className="h-2 w-full rounded-full bg-slate-200">
+              <div className="h-5 w-full border-3 border-neo-black bg-neo-white">
                 <div
-                  className={cn('h-2 rounded-full bg-gradient-to-r', tone.progress)}
+                  className={cn('h-full border-r-3 border-neo-black', tone.progress)}
                   style={{ width: `${Math.max(3, Math.min(100, successRate))}%` }}
                 />
               </div>
             </div>
           </div>
-          <p className="mt-4 text-xs text-slate-500">
+          <p className="mt-5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             {t('summary.detail', {
               rate: successRate.toFixed(1),
               runs: format.number(simulationRuns),

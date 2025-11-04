@@ -28,11 +28,7 @@ export function LocaleSwitcher({ className }: LocaleSwitcherProps) {
 
   return (
     <Select value={locale} onValueChange={handleChange} disabled={isPending}>
-      <SelectTrigger
-        size="sm"
-        aria-label={t('label')}
-        className={cn('w-32 justify-between', className)}
-      >
+      <SelectTrigger aria-label={t('label')} className={cn('w-48 justify-between', className)}>
         <SelectValue placeholder={t(`options.${locale}`)} />
       </SelectTrigger>
       <SelectContent>

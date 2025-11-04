@@ -121,6 +121,23 @@ function runSingleSimulation(params: SimulationParams): {
   let currentAssets = params.currentAssets
   let costBasis = params.currentAssets // Track original investment amount
 
+  const oneTimeIncomeSchedule = new Map<number, number>()
+  if (Array.isArray(params.oneTimeIncomes)) {
+    for (const income of params.oneTimeIncomes) {
+      if (!income) continue
+      const amount = Math.max(0, Number(income.amount) || 0)
+      if (amount <= 0) continue
+      const payoutAge = Math.floor(Number(income.age))
+      if (!Number.isFinite(payoutAge)) continue
+      const depositAge = payoutAge + 1
+      if (depositAge < params.currentAge || depositAge > params.endAge) continue
+      oneTimeIncomeSchedule.set(
+        depositAge,
+        (oneTimeIncomeSchedule.get(depositAge) ?? 0) + amount
+      )
+    }
+  }
+
   // Calculate total monthly and annual expenses
   const totalMonthlyExpense = Object.values(params.monthlyExpenses).reduce(
     (sum, expense) => sum + expense,
@@ -138,6 +155,13 @@ function runSingleSimulation(params: SimulationParams): {
   const effectiveRetirementAge = Math.max(params.retirementAge, params.currentAge)
 
   for (let age = params.currentAge; age <= params.endAge; age++) {
+    const scheduledIncome = oneTimeIncomeSchedule.get(age)
+    if (scheduledIncome && scheduledIncome > 0) {
+      currentAssets += scheduledIncome
+      costBasis += scheduledIncome
+      oneTimeIncomeSchedule.delete(age)
+    }
+
     if (age < effectiveRetirementAge) {
       // Accumulation phase (working years)
       const roiFactor = sampleLognormalFactorFromArithmetic(

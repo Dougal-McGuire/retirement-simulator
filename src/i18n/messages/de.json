@@ -93,6 +93,21 @@
           "label": "Monatliche Rente (€)",
           "help": "Erwartete gesetzliche Rente ab dem gesetzlichen Rentenalter"
         }
+      },
+      "oneTimeIncomes": {
+        "title": "Einmalige Einnahmen",
+        "help": "Fügen Sie erwartete Einmalzahlungen wie Versicherungen oder Erbschaften hinzu.",
+        "add": "Einnahme hinzufügen",
+        "empty": "Noch keine Einmalzahlungen erfasst",
+        "ageLabel": "Auszahlungsalter",
+        "amountLabel": "Betrag (€)",
+        "remove": "Einnahme entfernen",
+        "table": {
+          "age": "Alter",
+          "amount": "Betrag (€)",
+          "actions": "Aktionen"
+        },
+        "summary": "Geplante Gesamtsumme"
       }
     },
     "monthly": {
@@ -163,10 +178,11 @@
   "parameterControls": {
     "title": "Simulationsparameter",
     "presets": {
-      "investment": {
-        "title": "Anlageperformance",
-        "description": "Basierend auf rollierenden 30-Jahres-Durchschnitten diversifizierter Industrieländer-Portfolios.",
-        "items": {
+  "investment": {
+    "title": "Anlageperformance",
+    "description": "Basierend auf rollierenden 30-Jahres-Durchschnitten diversifizierter Industrieländer-Portfolios.",
+    "placeholder": "Preset auswählen…",
+    "items": {
           "defensive": {
             "name": "Defensiv 60/40",
             "description": "Globales 60/40-Portfolio, 1994–2024 Ø ~5,5% nominal"
@@ -181,9 +197,10 @@
           }
         }
       },
-      "inflation": {
-        "title": "Inflationserwartungen",
-        "description": "An aktuelle Verbraucherpreis-Trends in Industrieländern angelehnt.",
+  "inflation": {
+    "title": "Inflationserwartungen",
+    "description": "An aktuelle Verbraucherpreis-Trends in Industrieländern angelehnt.",
+    "placeholder": "Inflationsszenario wählen…",
         "items": {
           "low": {
             "name": "Niedrige Inflation",
@@ -220,6 +237,10 @@
         "pension": {
           "title": "Rente & Steuern",
           "description": "Gesetzliche Rente und steuerliche Aspekte"
+        },
+        "oneTime": {
+          "title": "Einmalige Einnahmen",
+          "description": "Planen Sie Einmalzuflüsse wie Versicherungsleistungen oder Erbschaften"
         },
         "monthly": {
           "title": "Monatliche Ausgaben",
@@ -284,6 +305,22 @@
       "monthlyPension": {
         "label": "Monatliche Rente (€)",
         "tooltip": "Erwartete gesetzliche Rente ab dem gesetzlichen Rentenalter – reduziert den privaten Bedarf."
+      },
+      "oneTimeIncomes": {
+        "label": "Einmalige Einnahmen",
+        "tooltip": "Erfassen Sie Einmalzuflüsse (Versicherungen, Immobilienverkauf, Erbschaften). Diese werden zu Beginn des Folgejahres investiert.",
+        "description": "Verwalten Sie einmalige Cash-Zuflüsse für den Plan.",
+        "add": "Einnahme hinzufügen",
+        "empty": "Keine Einmalzahlungen geplant",
+        "ageLabel": "Alter bei Auszahlung",
+        "amountLabel": "Betrag (€)",
+        "remove": "Einnahme entfernen",
+        "table": {
+          "age": "Alter",
+          "amount": "Betrag (€)",
+          "actions": "Aktionen"
+        },
+        "summary": "Geplante Gesamtsumme"
       },
       "capitalGainsTax": {
         "label": "Kapitalertragsteuer",
@@ -448,7 +485,8 @@
     "description": "Geschätzte monatliche Ausgaben nach dem Renteneintritt inklusive monatlicher und annualisierter jährlicher Ausgaben.",
     "axis": {
       "age": "Alter",
-      "spending": "Monatliche Ausgaben (€)"
+      "spending": "Monatliche Ausgaben (€)",
+      "withdrawalRate": "Jährliche Entnahmerate (%)"
     },
     "tooltip": {
       "label": "Alter: {age}"
@@ -459,10 +497,11 @@
       "p50": "50. Perzentil",
       "p80": "80. Perzentil",
       "p90": "90. Perzentil",
+      "withdrawalRate": "Median-Entnahmerate",
       "note": "Beinhaltet monatliche Ausgaben plus auf den Monat umgelegte jährliche Kosten (Urlaub, Reparaturen usw.)."
     },
     "aria": {
-      "description": "Balkendiagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge} über verschiedene Perzentile."
+      "description": "Balkendiagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge} über verschiedene Perzentile, ergänzt um eine Linie mit der medianen jährlichen Entnahmerate."
     }
   },
   "pdf": {

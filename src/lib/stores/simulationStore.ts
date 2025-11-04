@@ -6,11 +6,28 @@ import {
   SimulationStore,
   SavedSetup,
   DEFAULT_PARAMS,
+  OneTimeIncome,
 } from '@/types'
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 
 const STORAGE_KEY = 'retirement-simulator-params'
 const SAVED_SETUPS_KEY = 'retirement-simulator-saved-setups'
+
+const sanitizeOneTimeIncomes = (incomes: unknown): OneTimeIncome[] => {
+  if (!Array.isArray(incomes)) return []
+  return incomes
+    .map((entry) => {
+      if (!entry) return null
+      const rawAge = Number((entry as { age?: unknown }).age)
+      const rawAmount = Number((entry as { amount?: unknown }).amount)
+      if (!Number.isFinite(rawAge) || !Number.isFinite(rawAmount)) return null
+      return {
+        age: rawAge,
+        amount: Math.max(0, rawAmount),
+      }
+    })
+    .filter((income): income is OneTimeIncome => income !== null)
+}
 
 export const useSimulationStore = create<SimulationStore>()(
   persist(
@@ -26,7 +43,17 @@ export const useSimulationStore = create<SimulationStore>()(
 
       updateParams: (partial: Partial<SimulationParams>) => {
         const currentParams = get().params
-        const newParams = { ...currentParams, ...partial }
+        const nextOneTimeIncomes =
+          partial.oneTimeIncomes !== undefined
+            ? sanitizeOneTimeIncomes(partial.oneTimeIncomes)
+            : Array.isArray(currentParams.oneTimeIncomes)
+              ? currentParams.oneTimeIncomes
+              : []
+        const newParams = {
+          ...currentParams,
+          ...partial,
+          oneTimeIncomes: nextOneTimeIncomes,
+        }
 
         set({
           params: newParams,
@@ -105,7 +132,10 @@ export const useSimulationStore = create<SimulationStore>()(
           if (stored) {
             const params = JSON.parse(stored) as SimulationParams
             set({
-              params,
+              params: {
+                ...params,
+                oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
+              },
               error: null,
             })
             // Run simulation with loaded parameters
@@ -124,7 +154,10 @@ export const useSimulationStore = create<SimulationStore>()(
             id: Date.now().toString(),
             name,
             timestamp: Date.now(),
-            params: { ...params },
+            params: {
+              ...params,
+              oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
+            },
           }
 
           const updatedSetups = [newSetup, ...savedSetups].slice(0, 10) // Keep only last 10
@@ -142,7 +175,10 @@ export const useSimulationStore = create<SimulationStore>()(
         const setup = savedSetups.find((s) => s.id === id)
         if (setup) {
           set({
-            params: { ...setup.params },
+            params: {
+              ...setup.params,
+              oneTimeIncomes: sanitizeOneTimeIncomes(setup.params.oneTimeIncomes),
+            },
             error: null,
           })
           // Run simulation with loaded parameters
@@ -188,10 +224,19 @@ export const useSimulationStore = create<SimulationStore>()(
               const stored = localStorage.getItem(SAVED_SETUPS_KEY)
               if (stored) {
                 const savedSetups = JSON.parse(stored) as SavedSetup[]
-                state.savedSetups = savedSetups
+                state.savedSetups = savedSetups.map((setup) => ({
+                  ...setup,
+                  params: {
+                    ...setup.params,
+                    oneTimeIncomes: sanitizeOneTimeIncomes(setup.params.oneTimeIncomes),
+                  },
+                }))
               }
             } catch (error) {
               console.error('Failed to load saved setups:', error)
+            }
+            if (state.params) {
+              state.params.oneTimeIncomes = sanitizeOneTimeIncomes(state.params.oneTimeIncomes)
             }
           }
         }
