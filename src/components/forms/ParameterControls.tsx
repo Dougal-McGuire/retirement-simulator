@@ -175,12 +175,12 @@ function CollapsibleSection({
           variant="outline"
           className="flex h-auto min-h-16 w-full items-center justify-between border-3 border-neo-black bg-neo-white px-6 py-4 text-left text-[0.74rem] font-extrabold uppercase tracking-[0.14em] text-neo-black shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md whitespace-normal"
         >
-          <div className="flex flex-1 flex-col items-start gap-1 pr-2">
-            <span className="text-left text-[0.82rem] font-extrabold uppercase tracking-[0.14em] leading-tight break-words">
+          <div className="flex flex-1 flex-col items-start gap-1 pr-2 overflow-hidden min-w-0">
+            <span className="text-left text-[0.82rem] font-extrabold uppercase tracking-[0.14em] leading-tight break-words w-full">
               {title}
             </span>
             {description && (
-              <span className="text-left text-[0.6rem] font-semibold uppercase tracking-[0.08em] leading-tight text-muted-foreground break-words">
+              <span className="text-left text-[0.6rem] font-semibold uppercase tracking-[0.08em] leading-tight text-muted-foreground break-words w-full">
                 {description}
               </span>
             )}
@@ -448,15 +448,18 @@ export function ParameterControls() {
             <h4 className="text-[0.78rem] font-extrabold uppercase tracking-[0.2em] text-neo-black">
               {t('presets.investment.title')}
             </h4>
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              {t('presets.investment.description')}
-            </p>
             <Select
               value={investmentPresetKey ?? undefined}
               onValueChange={applyInvestmentPreset}
             >
-              <SelectTrigger size="sm" className="justify-between bg-neo-white">
-                <SelectValue placeholder={t('presets.investment.placeholder')} />
+              <SelectTrigger size="sm" className="h-10 justify-between bg-neo-white">
+                <SelectValue placeholder={t('presets.investment.placeholder')}>
+                  {investmentPresetKey ? (
+                    <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em]">
+                      {t(`presets.investment.items.${investmentPresetKey}.name`)}
+                    </span>
+                  ) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {INVESTMENT_PRESETS.map((preset) => (
@@ -483,15 +486,18 @@ export function ParameterControls() {
             <h4 className="text-[0.78rem] font-extrabold uppercase tracking-[0.2em] text-neo-black">
               {t('presets.inflation.title')}
             </h4>
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              {t('presets.inflation.description')}
-            </p>
             <Select
               value={inflationPresetKey ?? undefined}
               onValueChange={applyInflationPreset}
             >
-              <SelectTrigger size="sm" className="justify-between bg-neo-white">
-                <SelectValue placeholder={t('presets.inflation.placeholder')} />
+              <SelectTrigger size="sm" className="h-10 justify-between bg-neo-white">
+                <SelectValue placeholder={t('presets.inflation.placeholder')}>
+                  {inflationPresetKey ? (
+                    <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em]">
+                      {t(`presets.inflation.items.${inflationPresetKey}.name`)}
+                    </span>
+                  ) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {INFLATION_PRESETS.map((preset) => (
