@@ -163,7 +163,7 @@ export function AssetsChart({
               label={{
                 value: t('markers.retirement'),
                 position: 'top',
-                style: { fill: '#dc2626', fontSize: '11px', fontWeight: 'semibold' },
+                style: { fill: '#dc2626', fontSize: '11px', fontWeight: 'semibold', whiteSpace: 'normal', wordBreak: 'break-word' },
               }}
               className="transition-all duration-300 hover:stroke-red-400"
             />
@@ -175,7 +175,7 @@ export function AssetsChart({
               label={{
                 value: t('markers.pension'),
                 position: 'top',
-                style: { fill: '#059669', fontSize: '11px', fontWeight: 'semibold' },
+                style: { fill: '#059669', fontSize: '11px', fontWeight: 'semibold', whiteSpace: 'normal', wordBreak: 'break-word' },
               }}
               className="transition-all duration-300 hover:stroke-green-400"
             />

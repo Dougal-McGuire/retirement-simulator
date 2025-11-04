@@ -173,19 +173,21 @@ function CollapsibleSection({
       <CollapsibleTrigger asChild>
         <Button
           variant="outline"
-          className="flex h-16 w-full items-center justify-between border-3 border-neo-black bg-neo-white px-6 text-left text-[0.74rem] font-extrabold uppercase tracking-[0.14em] text-neo-black shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md"
+          className="flex h-auto min-h-16 w-full items-center justify-between border-3 border-neo-black bg-neo-white px-6 py-4 text-left text-[0.74rem] font-extrabold uppercase tracking-[0.14em] text-neo-black shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md whitespace-normal"
         >
-          <div className="flex flex-col items-start gap-1">
-            <span className="text-left text-[0.82rem] font-extrabold uppercase tracking-[0.14em] leading-tight">
+          <div className="flex flex-1 flex-col items-start gap-1 pr-2">
+            <span className="text-left text-[0.82rem] font-extrabold uppercase tracking-[0.14em] leading-tight break-words">
               {title}
             </span>
             {description && (
-              <span className="max-w-full text-[0.6rem] font-semibold uppercase tracking-[0.08em] leading-tight text-muted-foreground">
+              <span className="text-left text-[0.6rem] font-semibold uppercase tracking-[0.08em] leading-tight text-muted-foreground break-words">
                 {description}
               </span>
             )}
           </div>
-          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <div className="flex-shrink-0">
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </div>
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="pt-4">
@@ -522,7 +524,7 @@ export function ParameterControls() {
 
         <Tabs defaultValue="personal" className="w-full">
           <div className="border-3 border-neo-black shadow-neo-sm">
-            <TabsList className="grid grid-cols-3 border-b-3 border-neo-black divide-x-[3px] divide-neo-black bg-neo-white">
+            <TabsList className="grid grid-cols-3 border-b border-neo-black divide-x-[3px] divide-neo-black bg-neo-white">
               <TabsTrigger value="personal">
                 {t('tabs.personal')}
               </TabsTrigger>

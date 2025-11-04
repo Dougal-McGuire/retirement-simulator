@@ -163,6 +163,13 @@
     width: 100%;
     border-bottom: 3px solid var(--neo-border-strong);
   }
+
+  /* Force active tab inversion in ParameterControls */
+  .grid button[data-state='active'],
+  .grid [role='tab'][data-state='active'] {
+    background-color: #05080f !important;
+    color: #ffffff !important;
+  }
 }
 
 /* Animation classes */
