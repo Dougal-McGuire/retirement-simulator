@@ -9,9 +9,10 @@ import { cn } from '@/lib/utils'
 
 interface LocaleSwitcherProps {
   className?: string
+  size?: 'sm' | 'default'
 }
 
-export function LocaleSwitcher({ className }: LocaleSwitcherProps) {
+export function LocaleSwitcher({ className, size = 'sm' }: LocaleSwitcherProps) {
   const router = useRouter()
   const pathname = usePathname()
   const locale = useLocale() as Locale
@@ -28,7 +29,7 @@ export function LocaleSwitcher({ className }: LocaleSwitcherProps) {
 
   return (
     <Select value={locale} onValueChange={handleChange} disabled={isPending}>
-      <SelectTrigger aria-label={t('label')} className={cn('w-48 justify-between', className)}>
+      <SelectTrigger aria-label={t('label')} size={size} className={cn('w-48 justify-between', className)}>
         <SelectValue placeholder={t(`options.${locale}`)} />
       </SelectTrigger>
       <SelectContent>

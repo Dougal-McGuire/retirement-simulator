@@ -99,7 +99,7 @@ export default function SimulationPage() {
                     wrapperClassName="w-full sm:w-auto"
                   />
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     asChild
                     className="min-w-[9rem]"
