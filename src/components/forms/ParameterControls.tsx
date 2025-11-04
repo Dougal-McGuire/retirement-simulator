@@ -254,13 +254,6 @@ export function ParameterControls() {
     }
   }, [params.currentAge, params.retirementAge, suspendAndDebounceResume, updateParams])
 
-  const retirementSliderMin = params.currentAge
-  const retirementSliderMax = Math.max(retirementSliderMin, params.legalRetirementAge, 70)
-  const retirementSliderValue = Math.min(
-    Math.max(params.retirementAge, retirementSliderMin),
-    retirementSliderMax
-  )
-
   const baseCurrencyFormat = React.useMemo<NumberFormatOptions>(
     () => ({
       style: 'currency',
@@ -567,24 +560,20 @@ export function ParameterControls() {
                 label={t('fields.retirementAge.label')}
                 tooltip={t('fields.retirementAge.tooltip')}
               >
-                <div className="px-2 py-1">
-                  <Slider
-                    value={[retirementSliderValue]}
-                    onValueChange={([value]) => handleInputChange('retirementAge', value)}
-                    min={retirementSliderMin}
-                    max={retirementSliderMax}
-                    step={1}
-                    className="w-full"
+                <div>
+                  <Input
+                    type="number"
+                    value={params.retirementAge}
+                    onChange={(e) =>
+                      handleInputChange(
+                        'retirementAge',
+                        sanitizeNumberInput(e.target.value, params.retirementAge)
+                      )
+                    }
+                    className={FIELD_INPUT_CLASS}
+                    min={params.currentAge}
+                    max={Math.max(params.currentAge, params.legalRetirementAge, 70)}
                   />
-                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    <span>{formatNumber(retirementSliderMin)}</span>
-                    <span className="border-2 border-neo-black bg-neo-yellow px-3 py-1 text-neo-black">
-                      {t('fields.retirementAge.valueLabel', {
-                        value: formatNumber(retirementSliderValue),
-                      })}
-                    </span>
-                    <span>{formatNumber(retirementSliderMax)}</span>
-                  </div>
                   <div className="mt-2 text-center text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     {t('fields.retirementAge.remaining', { count: remainingWorkingYears })}
                   </div>
