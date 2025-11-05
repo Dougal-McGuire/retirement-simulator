@@ -13,10 +13,6 @@ import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
 import { ExpenseList } from '@/components/forms/fields/ExpenseList'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
 import {
-  PersonalInfoStep,
-  AssetsIncomeStep,
-  ExpensesStep,
-  MarketAssumptionsStep,
   OneTimeIncome,
   CustomExpense,
   ExpenseInterval,
@@ -25,15 +21,6 @@ import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { cn } from '@/lib/utils'
 
 const STEP_KEYS = ['personal', 'assets', 'expenses', 'market'] as const
-
-type StepKey = (typeof STEP_KEYS)[number]
-
-type FormState = {
-  personal: PersonalInfoStep
-  assets: AssetsIncomeStep
-  expenses: ExpensesStep
-  market: MarketAssumptionsStep
-}
 
 const STORAGE_KEY = 'retirement-setup-progress'
 
@@ -46,31 +33,6 @@ export default function SetupPage() {
   const updateParams = useSimulationStore((state) => state.updateParams)
 
   const [currentStep, setCurrentStep] = useState(0)
-  const [formData, setFormData] = useState<FormState>({
-    personal: {
-      currentAge: params.currentAge,
-      retirementAge: params.retirementAge,
-      legalRetirementAge: params.legalRetirementAge,
-      endAge: params.endAge,
-    },
-    assets: {
-      currentAssets: params.currentAssets,
-      annualSavings: params.annualSavings,
-      monthlyPension: params.monthlyPension,
-      oneTimeIncomes: params.oneTimeIncomes ?? [],
-    },
-    expenses: {
-      customExpenses: params.customExpenses ?? [],
-    },
-    market: {
-      averageROI: params.averageROI,
-      roiVolatility: params.roiVolatility,
-      averageInflation: params.averageInflation,
-      inflationVolatility: params.inflationVolatility,
-      capitalGainsTax: params.capitalGainsTax,
-      simulationRuns: params.simulationRuns,
-    },
-  })
 
   const steps = useMemo(
     () =>
@@ -102,44 +64,26 @@ export default function SetupPage() {
   const formatInteger = (value: number) =>
     format.number(value, { maximumFractionDigits: 0, minimumFractionDigits: 0 })
 
-  // Auto-save to localStorage when form data changes
+  // Auto-save currentStep to localStorage (for continuing where user left off)
   useEffect(() => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         currentStep,
-        formData,
         timestamp: Date.now(),
       })
     )
-  }, [currentStep, formData])
+  }, [currentStep])
 
-  // Load saved progress on mount
+  // Load saved currentStep on mount (formData is already from params)
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (!saved) return
 
     try {
       const parsed = JSON.parse(saved)
-      if (typeof parsed.currentStep === 'number' && parsed.formData) {
+      if (typeof parsed.currentStep === 'number') {
         setCurrentStep(Math.min(parsed.currentStep, STEP_KEYS.length - 1))
-        setFormData((prev) => ({
-          personal: parsed.formData.personal ?? prev.personal,
-          assets: {
-            currentAssets:
-              parsed.formData.assets?.currentAssets ?? prev.assets.currentAssets,
-            annualSavings:
-              parsed.formData.assets?.annualSavings ?? prev.assets.annualSavings,
-            monthlyPension:
-              parsed.formData.assets?.monthlyPension ?? prev.assets.monthlyPension,
-            oneTimeIncomes:
-              parsed.formData.assets?.oneTimeIncomes ??
-              prev.assets.oneTimeIncomes ??
-              [],
-          },
-          expenses: parsed.formData.expenses ?? prev.expenses,
-          market: parsed.formData.market ?? prev.market,
-        }))
       }
     } catch {
       // ignore invalid cached state
@@ -152,13 +96,7 @@ export default function SetupPage() {
       return
     }
 
-    updateParams({
-      ...formData.personal,
-      ...formData.assets,
-      ...formData.expenses,
-      ...formData.market,
-    })
-
+    // Data is already in simulation store, just clear progress and navigate
     localStorage.removeItem(STORAGE_KEY)
     router.push('/simulation')
   }
@@ -173,79 +111,46 @@ export default function SetupPage() {
     setCurrentStep(stepIndex)
   }
 
-  const updateFormData = <K extends StepKey, Field extends keyof FormState[K]>(
-    step: K,
-    field: Field,
-    value: FormState[K][Field],
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [step]: {
-        ...prev[step],
-        [field]: value,
-      },
-    }))
-  }
-
   const glassCardClass = 'border-3 border-neo-black bg-neo-white shadow-neo'
   const inputClassName = 'w-full'
-  const oneTimeIncomes = formData.assets.oneTimeIncomes ?? []
 
-  const clampIncomeAge = (value: number, state: FormState) => {
+  const clampIncomeAge = (value: number) => {
     const rounded = Math.round(value)
-    return Math.max(state.personal.currentAge, Math.min(state.personal.endAge, rounded))
+    return Math.max(params.currentAge, Math.min(params.endAge, rounded))
   }
 
   const handleAddOneTimeIncome = (income: OneTimeIncome) => {
-    setFormData((prev) => {
-      const nextAge = clampIncomeAge(income.age, prev)
-      const nextAmount = Math.max(0, Math.round(income.amount))
-      return {
-        ...prev,
-        assets: {
-          ...prev.assets,
-          oneTimeIncomes: [
-            ...(prev.assets.oneTimeIncomes ?? []),
-            {
-              age: nextAge,
-              amount: nextAmount,
-              ...(income.name && { name: income.name })
-            },
-          ],
+    const nextAge = clampIncomeAge(income.age)
+    const nextAmount = Math.max(0, Math.round(income.amount))
+    updateParams({
+      oneTimeIncomes: [
+        ...params.oneTimeIncomes,
+        {
+          age: nextAge,
+          amount: nextAmount,
+          name: income.name || '',
         },
-      }
+      ],
     })
   }
 
   const handleUpdateOneTimeIncome = (index: number, income: OneTimeIncome) => {
-    setFormData((prev) => {
-      const nextIncomes = (prev.assets.oneTimeIncomes ?? []).map((existing, existingIndex) =>
-        existingIndex === index
-          ? {
-              age: clampIncomeAge(income.age, prev),
-              amount: Math.max(0, Math.round(income.amount)),
-              ...(income.name && { name: income.name })
-            }
-          : existing
-      )
-      return {
-        ...prev,
-        assets: {
-          ...prev.assets,
-          oneTimeIncomes: nextIncomes,
-        },
-      }
-    })
+    const nextIncomes = params.oneTimeIncomes.map((existing, existingIndex) =>
+      existingIndex === index
+        ? {
+            age: clampIncomeAge(income.age),
+            amount: Math.max(0, Math.round(income.amount)),
+            name: income.name || '',
+          }
+        : existing
+    )
+    updateParams({ oneTimeIncomes: nextIncomes })
   }
 
   const handleRemoveOneTimeIncome = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      assets: {
-        ...prev.assets,
-        oneTimeIncomes: (prev.assets.oneTimeIncomes ?? []).filter((_, incomeIndex) => incomeIndex !== index),
-      },
-    }))
+    updateParams({
+      oneTimeIncomes: params.oneTimeIncomes.filter((_, incomeIndex) => incomeIndex !== index),
+    })
   }
 
   const renderStepContent = () => {
@@ -256,8 +161,8 @@ export default function SetupPage() {
             <LabeledNumberInput
               id="currentAge"
               label={t('personal.fields.currentAge.label')}
-              value={formData.personal.currentAge}
-              onChange={(value) => updateFormData('personal', 'currentAge', value)}
+              value={params.currentAge}
+              onChange={(value) => updateParams({ currentAge: value })}
               helpText={t('personal.fields.currentAge.help')}
               className={inputClassName}
             />
@@ -272,8 +177,8 @@ export default function SetupPage() {
               <div className="mt-3 border-3 border-neo-black bg-neo-white px-4 py-3 shadow-neo-sm">
                 <Slider
                   id="retirementAge"
-                  value={[formData.personal.retirementAge]}
-                  onValueChange={([value]) => updateFormData('personal', 'retirementAge', value)}
+                  value={[params.retirementAge]}
+                  onValueChange={([value]) => updateParams({ retirementAge: value })}
                   min={50}
                   max={70}
                   step={1}
@@ -282,7 +187,7 @@ export default function SetupPage() {
                 <div className="mt-3 flex items-center justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>{formatInteger(50)}</span>
                   <span className="border-3 border-neo-black bg-neo-yellow px-3 py-1 text-neo-black">
-                    {formatInteger(formData.personal.retirementAge)}
+                    {formatInteger(params.retirementAge)}
                   </span>
                   <span>{formatInteger(70)}</span>
                 </div>
@@ -295,8 +200,8 @@ export default function SetupPage() {
             <LabeledNumberInput
               id="legalRetirementAge"
               label={t('personal.fields.legalRetirementAge.label')}
-              value={formData.personal.legalRetirementAge}
-              onChange={(value) => updateFormData('personal', 'legalRetirementAge', value)}
+              value={params.legalRetirementAge}
+              onChange={(value) => updateParams({ legalRetirementAge: value })}
               helpText={t('personal.fields.legalRetirementAge.help')}
               className={inputClassName}
             />
@@ -304,8 +209,8 @@ export default function SetupPage() {
             <LabeledNumberInput
               id="endAge"
               label={t('personal.fields.endAge.label')}
-              value={formData.personal.endAge}
-              onChange={(value) => updateFormData('personal', 'endAge', value)}
+              value={params.endAge}
+              onChange={(value) => updateParams({ endAge: value })}
               helpText={t('personal.fields.endAge.help')}
               className={inputClassName}
             />
@@ -318,8 +223,8 @@ export default function SetupPage() {
             <LabeledNumberInput
               id="currentAssets"
               label={t('assets.fields.currentAssets.label')}
-              value={formData.assets.currentAssets}
-              onChange={(value) => updateFormData('assets', 'currentAssets', value)}
+              value={params.currentAssets}
+              onChange={(value) => updateParams({ currentAssets: value })}
               helpText={t('assets.fields.currentAssets.help')}
               className={inputClassName}
             />
@@ -327,8 +232,8 @@ export default function SetupPage() {
             <LabeledNumberInput
               id="annualSavings"
               label={t('assets.fields.annualSavings.label')}
-              value={formData.assets.annualSavings}
-              onChange={(value) => updateFormData('assets', 'annualSavings', value)}
+              value={params.annualSavings}
+              onChange={(value) => updateParams({ annualSavings: value })}
               helpText={t('assets.fields.annualSavings.help')}
               className={inputClassName}
             />
@@ -336,8 +241,8 @@ export default function SetupPage() {
             <LabeledNumberInput
               id="monthlyPension"
               label={t('assets.fields.monthlyPension.label')}
-              value={formData.assets.monthlyPension}
-              onChange={(value) => updateFormData('assets', 'monthlyPension', value)}
+              value={params.monthlyPension}
+              onChange={(value) => updateParams({ monthlyPension: value })}
               helpText={t('assets.fields.monthlyPension.help')}
               className={inputClassName}
             />
@@ -352,10 +257,10 @@ export default function SetupPage() {
                 </p>
               </div>
               <OneTimeIncomeList
-                incomes={oneTimeIncomes}
-                minAge={formData.personal.currentAge}
-                maxAge={formData.personal.endAge}
-                defaultAge={Math.max(formData.personal.retirementAge, formData.personal.currentAge + 1)}
+                incomes={params.oneTimeIncomes}
+                minAge={params.currentAge}
+                maxAge={params.endAge}
+                defaultAge={Math.max(params.retirementAge, params.currentAge + 1)}
                 strings={{
                   addButton: t('assets.oneTimeIncomes.add'),
                   empty: t('assets.oneTimeIncomes.empty'),
@@ -402,38 +307,29 @@ export default function SetupPage() {
         ]
 
         const handleAddExpense = (expense: Omit<CustomExpense, 'id'>) => {
-          setFormData((prev) => ({
-            ...prev,
-            expenses: {
-              customExpenses: [
-                ...prev.expenses.customExpenses,
-                {
-                  ...expense,
-                  id: `expense-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-                },
-              ],
-            },
-          }))
+          updateParams({
+            customExpenses: [
+              ...params.customExpenses,
+              {
+                ...expense,
+                id: `expense-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+              },
+            ],
+          })
         }
 
         const handleUpdateExpense = (id: string, expense: Omit<CustomExpense, 'id'>) => {
-          setFormData((prev) => ({
-            ...prev,
-            expenses: {
-              customExpenses: prev.expenses.customExpenses.map((e) =>
-                e.id === id ? { ...expense, id } : e
-              ),
-            },
-          }))
+          updateParams({
+            customExpenses: params.customExpenses.map((e) =>
+              e.id === id ? { ...expense, id } : e
+            ),
+          })
         }
 
         const handleRemoveExpense = (id: string) => {
-          setFormData((prev) => ({
-            ...prev,
-            expenses: {
-              customExpenses: prev.expenses.customExpenses.filter((e) => e.id !== id),
-            },
-          }))
+          updateParams({
+            customExpenses: params.customExpenses.filter((e) => e.id !== id),
+          })
         }
 
         return (
@@ -442,7 +338,7 @@ export default function SetupPage() {
               <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 {t('expenses.intro')}
               </p>
-              {formData.expenses.customExpenses.length === 0 && (
+              {params.customExpenses.length === 0 && (
                 <div className="mt-4 space-y-3">
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     {t('expenses.templates.label')}
@@ -467,7 +363,7 @@ export default function SetupPage() {
             </div>
 
             <ExpenseList
-              expenses={formData.expenses.customExpenses}
+              expenses={params.customExpenses}
               strings={{
                 addButton: t('expenses.add'),
                 empty: t('expenses.empty'),
@@ -518,8 +414,8 @@ export default function SetupPage() {
               <div className="mt-3 border-3 border-neo-black bg-neo-white px-4 py-3 shadow-neo-sm">
                 <Slider
                   id="averageROI"
-                  value={[formData.market.averageROI * 100]}
-                  onValueChange={([value]) => updateFormData('market', 'averageROI', value / 100)}
+                  value={[params.averageROI * 100]}
+                  onValueChange={([value]) => updateParams({ averageROI: value / 100 })}
                   min={3}
                   max={12}
                   step={0.5}
@@ -528,7 +424,7 @@ export default function SetupPage() {
                 <div className="mt-3 flex items-center justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>{formatPercent(0.03, 0)}</span>
                   <span className="border-3 border-neo-black bg-neo-yellow px-3 py-1 text-neo-black">
-                    {formatPercent(formData.market.averageROI, 1)}
+                    {formatPercent(params.averageROI, 1)}
                   </span>
                   <span>{formatPercent(0.12, 0)}</span>
                 </div>
@@ -548,10 +444,8 @@ export default function SetupPage() {
               <div className="mt-3 border-3 border-neo-black bg-neo-white px-4 py-3 shadow-neo-sm">
                 <Slider
                   id="averageInflation"
-                  value={[formData.market.averageInflation * 100]}
-                  onValueChange={([value]) =>
-                    updateFormData('market', 'averageInflation', value / 100)
-                  }
+                  value={[params.averageInflation * 100]}
+                  onValueChange={([value]) => updateParams({ averageInflation: value / 100 })}
                   min={1}
                   max={6}
                   step={0.1}
@@ -560,7 +454,7 @@ export default function SetupPage() {
                 <div className="mt-3 flex items-center justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>{formatPercent(0.01, 0)}</span>
                   <span className="border-3 border-neo-black bg-neo-yellow px-3 py-1 text-neo-black">
-                    {formatPercent(formData.market.averageInflation, 1)}
+                    {formatPercent(params.averageInflation, 1)}
                   </span>
                   <span>{formatPercent(0.06, 0)}</span>
                 </div>
@@ -580,8 +474,8 @@ export default function SetupPage() {
               <div className="mt-3 border-3 border-neo-black bg-neo-white px-4 py-3 shadow-neo-sm">
                 <Slider
                   id="simulationRuns"
-                  value={[formData.market.simulationRuns]}
-                  onValueChange={([value]) => updateFormData('market', 'simulationRuns', value)}
+                  value={[params.simulationRuns]}
+                  onValueChange={([value]) => updateParams({ simulationRuns: value })}
                   min={100}
                   max={5000}
                   step={100}
@@ -590,7 +484,7 @@ export default function SetupPage() {
                 <div className="mt-3 flex items-center justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>{formatInteger(100)}</span>
                   <span className="border-3 border-neo-black bg-neo-yellow px-3 py-1 text-neo-black">
-                    {formatInteger(formData.market.simulationRuns)}
+                    {formatInteger(params.simulationRuns)}
                   </span>
                   <span>{formatInteger(5000)}</span>
                 </div>

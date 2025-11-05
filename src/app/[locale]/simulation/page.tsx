@@ -110,12 +110,13 @@ export default function SimulationPage() {
                     disabled={isLoading}
                     variant="secondary"
                     size="sm"
+                    buttonClassName="w-48"
                   />
                   <Button
                     variant="secondary"
                     size="sm"
                     asChild
-                    className="min-w-[9rem]"
+                    className="w-48"
                   >
                     <Link href="/setup">{t('header.setupLink')}</Link>
                   </Button>

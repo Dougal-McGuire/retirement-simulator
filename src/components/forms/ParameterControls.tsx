@@ -206,6 +206,7 @@ export function ParameterControls() {
   const [saveDialogOpen, setSaveDialogOpen] = React.useState(false)
   const [setupName, setSetupName] = React.useState('')
   const [selectedSetupId, setSelectedSetupId] = React.useState('')
+  const [lastLoadedSetup, setLastLoadedSetup] = React.useState<{ name: string; timestamp: number } | null>(null)
   const params = useSimulationParams()
   const updateParams = useUpdateParams()
   const setAutoRunSuspended = useSetAutoRunSuspended()
@@ -424,7 +425,10 @@ export function ParameterControls() {
 
   const handleSaveSetup = () => {
     if (setupName.trim()) {
-      saveSetup(setupName.trim())
+      const trimmedName = setupName.trim()
+      saveSetup(trimmedName)
+      // Set the newly saved setup as currently loaded
+      setLastLoadedSetup({ name: trimmedName, timestamp: Date.now() })
       setSetupName('')
       setSaveDialogOpen(false)
     }
@@ -432,8 +436,12 @@ export function ParameterControls() {
 
   const handleLoadSetup = (setupId: string) => {
     if (setupId) {
-      loadSetup(setupId)
-      setSelectedSetupId('')
+      const setup = savedSetups.find((s) => s.id === setupId)
+      if (setup) {
+        loadSetup(setupId)
+        setLastLoadedSetup({ name: setup.name, timestamp: setup.timestamp })
+        setSelectedSetupId('')
+      }
     }
   }
 
@@ -985,6 +993,28 @@ export function ParameterControls() {
               <h4 className="text-[0.75rem] font-extrabold uppercase tracking-[0.18em]">
                 {t('saved.title')}
               </h4>
+              {lastLoadedSetup && (
+                <div className="rounded-md border-2 border-neo-black bg-neo-blue/10 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                        Currently Loaded
+                      </span>
+                      <span className="text-[0.72rem] font-bold uppercase tracking-[0.12em] text-neo-black">
+                        {lastLoadedSetup.name}
+                      </span>
+                    </div>
+                    <span className="text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                      {format.dateTime(new Date(lastLoadedSetup.timestamp), {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: 'numeric',
+                      })}
+                    </span>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
                   <DialogTrigger asChild>
@@ -1031,7 +1061,7 @@ export function ParameterControls() {
                     handleLoadSetup(value)
                   }}
                 >
-                  <SelectTrigger size="sm" className="flex-1 h-auto min-h-11 py-2">
+                  <SelectTrigger size="sm" className="flex-1 h-10">
                     <SelectValue
                       placeholder={
                         savedSetups.length === 0 ? (
@@ -1080,9 +1110,15 @@ export function ParameterControls() {
                       </SelectItem>
                     ) : (
                       savedSetups.map((setup) => (
-                        <SelectItem key={setup.id} value={setup.id}>
+                        <SelectItem
+                          key={setup.id}
+                          value={setup.id}
+                        >
                           <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2">
+                            <div
+                              className="flex items-center gap-2 flex-1"
+                              onClick={() => handleLoadSetup(setup.id)}
+                            >
                               <div className="rounded border-2 border-neo-black bg-neo-blue/10 p-1">
                                 <svg
                                   className="h-3 w-3 text-neo-blue"
@@ -1120,13 +1156,10 @@ export function ParameterControls() {
                                 </div>
                               </div>
                             </div>
-                            <Button
+                            <button
                               type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 border-3 border-neo-black bg-neo-white text-muted-foreground shadow-neo-sm hover:bg-neo-red hover:text-neo-white"
-                              onMouseDown={(event) => event.preventDefault()}
-                              onClick={(event) => {
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-md bg-neo-white text-muted-foreground shadow-neo-sm hover:bg-neo-red hover:text-neo-white transition-colors"
+                              onMouseDown={(event) => {
                                 event.preventDefault()
                                 event.stopPropagation()
                                 handleDeleteSetup(setup.id)
@@ -1134,7 +1167,7 @@ export function ParameterControls() {
                               aria-label={t('saved.actions.delete', { name: setup.name })}
                             >
                               <Trash2 className="h-4 w-4" />
-                            </Button>
+                            </button>
                           </div>
                         </SelectItem>
                       ))
