@@ -18,14 +18,31 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
   const format = useFormatter()
   if (isLoading) {
     return (
-      <div className="flex h-96 flex-col items-center justify-center gap-3 border-3 border-neo-black bg-neo-white text-center shadow-neo">
-        <div className="h-12 w-12 animate-spin border-3 border-neo-black border-t-transparent" />
-        <p className="text-[0.78rem] font-bold uppercase tracking-[0.16em]">
-          {t('loading.title')}
-        </p>
-        <p className="max-w-xs text-[0.65rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          {t('loading.subtitle')}
-        </p>
+      <div className="flex h-96 flex-col items-center justify-center gap-4 border-3 border-neo-black bg-neo-white text-center shadow-neo">
+        <div className="relative">
+          <div className="h-16 w-16 animate-spin border-4 border-neo-black border-t-transparent" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-8 w-8 animate-pulse border-3 border-neo-blue bg-neo-blue/20" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-[0.82rem] font-extrabold uppercase tracking-[0.18em] text-neo-black">
+            {t('loading.title')}
+          </p>
+          <p className="max-w-md px-4 text-[0.68rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            {t('loading.subtitle')}
+          </p>
+        </div>
+        {/* Shimmer effect bars */}
+        <div className="mt-4 flex w-full max-w-md gap-2 px-8">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="h-20 flex-1 animate-pulse border-2 border-neo-black bg-gradient-to-t from-neo-blue/30 to-neo-blue/10"
+              style={{ animationDelay: `${i * 100}ms` }}
+            />
+          ))}
+        </div>
       </div>
     )
   }

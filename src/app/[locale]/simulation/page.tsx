@@ -15,6 +15,7 @@ import { SimulationChart } from '@/components/charts/SimulationChart'
 import { SuccessRateCard } from '@/components/charts/SuccessRateCard'
 import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
+import { MobileMenu } from '@/components/navigation/MobileMenu'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
 import { ChartSkeleton, SuccessRateCardSkeleton } from '@/components/ui/skeleton'
 
@@ -59,6 +60,17 @@ export default function SimulationPage() {
 
   return (
     <div className="relative min-h-screen pb-16">
+      {/* Live region for screen readers to announce simulation results */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {successRate != null && (
+          `Simulation complete. Success rate: ${formattedSuccessRate}. ${successMessage}`
+        )}
+      </div>
       {/* Header */}
       <header id="navigation" className="relative z-10 pt-12 pb-10">
         <div className="mx-auto max-w-[90rem] px-2 sm:px-3 lg:px-4">
@@ -88,15 +100,16 @@ export default function SimulationPage() {
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <LocaleSwitcher className="w-full sm:w-48" />
+
+                {/* Desktop Actions */}
+                <div className="hidden lg:flex lg:flex-col lg:gap-3">
+                  <LocaleSwitcher className="w-48" />
                   <GenerateReportButton
                     results={results}
                     params={params}
                     disabled={isLoading}
                     variant="secondary"
                     size="sm"
-                    wrapperClassName="w-full sm:w-auto"
                   />
                   <Button
                     variant="secondary"
@@ -106,6 +119,24 @@ export default function SimulationPage() {
                   >
                     <Link href="/setup">{t('header.setupLink')}</Link>
                   </Button>
+                </div>
+
+                {/* Mobile Actions */}
+                <div className="flex items-center gap-3 lg:hidden">
+                  <GenerateReportButton
+                    results={results}
+                    params={params}
+                    disabled={isLoading}
+                    variant="default"
+                    size="lg"
+                    buttonClassName="flex-1 min-h-[44px]"
+                  />
+                  <MobileMenu
+                    results={results}
+                    params={params}
+                    isLoading={isLoading}
+                    showSetupLink
+                  />
                 </div>
               </div>
               {/* Removed redundant success probability banner */}
@@ -118,7 +149,7 @@ export default function SimulationPage() {
         id="main-content"
         className="relative z-10 mx-auto mt-2 max-w-[90rem] px-2 pb-16 sm:px-3 lg:px-4"
       >
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[432px_minmax(0,1fr)] xl:grid-cols-[456px_minmax(0,1fr)]">
           <ParameterSidebar />
 
           <div className="space-y-6">

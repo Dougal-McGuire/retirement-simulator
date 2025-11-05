@@ -21,8 +21,12 @@ const sanitizeOneTimeIncomes = (incomes: unknown): OneTimeIncome[] => {
       if (!entry) return null
       const rawAge = Number((entry as { age?: unknown }).age)
       const rawAmount = Number((entry as { amount?: unknown }).amount)
+      const rawName = typeof (entry as { name?: unknown }).name === 'string'
+        ? (entry as { name: string }).name
+        : ''
       if (!Number.isFinite(rawAge) || !Number.isFinite(rawAmount)) return null
       return {
+        name: rawName,
         age: rawAge,
         amount: Math.max(0, rawAmount),
       }

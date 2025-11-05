@@ -1,0 +1,1 @@
+ you are lying! none of this regarding the simluation page is true. review with chrome-devtools and come up with three different ideas how to fix this problem

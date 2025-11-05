@@ -81,6 +81,24 @@
     letter-spacing: 0.01em;
     line-height: 1.7;
   }
+  /* Enhanced focus indicators for accessibility - WCAG 2.1 Level AA */
+  *:focus-visible {
+    outline: 3px solid #0e67f6;
+    outline-offset: 2px;
+    transition: outline 0.15s ease;
+  }
+  /* Ensure interactive elements have visible focus */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [role="button"]:focus-visible,
+  [role="tab"]:focus-visible,
+  [tabindex="0"]:focus-visible {
+    outline: 3px solid #0e67f6;
+    outline-offset: 2px;
+  }
   /* Neo-brutalist geometric background */
   body::before {
     content: '';
@@ -548,4 +566,40 @@
 
 .scrollbar-invisible::-webkit-scrollbar {
   display: none;
+}
+
+/* Custom scrollbar styles for parameter sidebar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(5, 8, 15, 0.2) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(5, 8, 15, 0.2);
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+.scrollbar-thin:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(5, 8, 15, 0.4);
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thumb-neo-black\/20::-webkit-scrollbar-thumb {
+  background-color: rgba(5, 8, 15, 0.2);
+}
+
+.hover\:scrollbar-thumb-neo-black\/40:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(5, 8, 15, 0.4);
 }

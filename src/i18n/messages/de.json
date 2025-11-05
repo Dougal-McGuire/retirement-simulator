@@ -25,7 +25,8 @@
     "progress": {
       "step": "Schritt {current} von {total}",
       "percentComplete": "{percent}% abgeschlossen",
-      "autosave": "Fortschritt wird lokal automatisch gespeichert"
+      "autosave": "Fortschritt wird lokal automatisch gespeichert",
+      "timeRemaining": "Verbleibende Zeit"
     },
     "buttons": {
       "back": "Zurück",
@@ -41,13 +42,9 @@
         "title": "Vermögen & Einkommen",
         "description": "Aktuelle Anlagen und Sparplan"
       },
-      "monthly": {
-        "title": "Monatliche Ausgaben",
-        "description": "Regelmäßige laufende Kosten"
-      },
-      "annual": {
-        "title": "Jährliche Ausgaben",
-        "description": "Einmalige oder saisonale Ausgaben"
+      "expenses": {
+        "title": "Ausgaben",
+        "description": "Ihr Ausgabenplan für den Ruhestand"
       },
       "market": {
         "title": "Marktannahmen",
@@ -99,10 +96,16 @@
         "help": "Fügen Sie erwartete Einmalzahlungen wie Versicherungen oder Erbschaften hinzu.",
         "add": "Einnahme hinzufügen",
         "empty": "Noch keine Einmalzahlungen erfasst",
+        "nameLabel": "Name",
+        "namePlaceholder": "z.B. Erbschaft, Immobilienverkauf",
         "ageLabel": "Auszahlungsalter",
         "amountLabel": "Betrag (€)",
         "remove": "Einnahme entfernen",
+        "edit": "Einnahme bearbeiten",
+        "save": "Änderungen speichern",
+        "cancel": "Bearbeitung abbrechen",
         "table": {
+          "name": "Name",
           "age": "Alter",
           "amount": "Betrag (€)",
           "actions": "Aktionen"
@@ -110,25 +113,29 @@
         "summary": "Geplante Gesamtsumme"
       }
     },
-    "monthly": {
-      "intro": "Geben Sie Ihre erwarteten monatlichen Ausgaben im Ruhestand an:",
-      "total": "Monatlich gesamt:",
-      "annualEquivalent": "Jährlich: {value}",
-      "labels": {
-        "health": "Gesundheit & Versicherungen",
-        "food": "Lebensmittel & Gastronomie",
-        "entertainment": "Freizeit & Unterhaltung",
-        "shopping": "Einkäufe & Sonstiges",
-        "utilities": "Nebenkosten & Wohnen"
-      }
-    },
-    "annual": {
-      "intro": "Geben Sie Ihre erwarteten jährlichen Ausgaben im Ruhestand an:",
-      "total": "Jährlich gesamt:",
-      "labels": {
-        "vacations": "Urlaub & Reisen",
-        "repairs": "Hausreparaturen",
-        "carMaintenance": "Fahrzeugunterhalt"
+    "expenses": {
+      "intro": "Definieren Sie Ihre erwarteten Ausgaben im Ruhestand. Fügen Sie so viele Posten hinzu, wie Sie benötigen:",
+      "add": "Ausgabe hinzufügen",
+      "empty": "Noch keine Ausgaben erfasst. Klicken Sie auf eine Vorlage unten oder fügen Sie eigene hinzu.",
+      "nameLabel": "Ausgabenname",
+      "namePlaceholder": "z.B. Lebensmittel, Nebenkosten, Urlaub",
+      "amountLabel": "Betrag (€)",
+      "intervalLabel": "Häufigkeit",
+      "intervalMonthly": "Monatlich",
+      "intervalAnnual": "Jährlich",
+      "remove": "Ausgabe entfernen",
+      "edit": "Ausgabe bearbeiten",
+      "save": "Änderungen speichern",
+      "cancel": "Bearbeitung abbrechen",
+      "summary": "Jährliche Gesamtkosten",
+      "table": {
+        "name": "Ausgabe",
+        "amount": "Betrag",
+        "interval": "Häufigkeit",
+        "actions": "Aktionen"
+      },
+      "templates": {
+        "label": "Schnellstart-Vorlagen (klicken zum Hinzufügen):"
       }
     },
     "market": {
@@ -174,6 +181,20 @@
     "trigger": "Parameter",
     "title": "Simulationsparameter",
     "description": "Passen Sie Ihre Ruhestandsparameter an und sehen Sie die Ergebnisse in Echtzeit."
+  },
+  "mobileMenu": {
+    "trigger": "Menü",
+    "title": "Menü",
+    "close": "Menü schließen",
+    "description": "Schnellzugriff auf Einstellungen und Aktionen",
+    "sections": {
+      "language": "Sprache",
+      "actions": "Aktionen"
+    },
+    "actions": {
+      "generateReport": "Bericht erstellen",
+      "goToSetup": "Zum Setup"
+    }
   },
   "parameterControls": {
     "title": "Simulationsparameter",
@@ -303,11 +324,18 @@
         "tooltip": "Erfassen Sie Einmalzuflüsse (Versicherungen, Immobilienverkauf, Erbschaften). Diese werden zu Beginn des Folgejahres investiert.",
         "description": "Verwalten Sie einmalige Cash-Zuflüsse für den Plan.",
         "add": "Einnahme hinzufügen",
-        "empty": "Keine Einmalzahlungen geplant",
+        "empty": "Bereit für Einmalzahlungen?",
+        "emptyHint": "Fügen Sie erwartete Zuflüsse wie Erbschaften, Versicherungen, Immobilienverkäufe oder Bonuszahlungen hinzu",
+        "nameLabel": "Name",
+        "namePlaceholder": "z.B. Erbschaft, Immobilienverkauf",
         "ageLabel": "Alter bei Auszahlung",
         "amountLabel": "Betrag (€)",
         "remove": "Einnahme entfernen",
+        "edit": "Einnahme bearbeiten",
+        "save": "Änderungen speichern",
+        "cancel": "Bearbeitung abbrechen",
         "table": {
+          "name": "Name / Alter",
           "age": "Alter",
           "amount": "Betrag (€)",
           "actions": "Aktionen"
@@ -321,14 +349,33 @@
         "namePlaceholder": "z.B. Lebensmittel, Nebenkosten, Urlaub",
         "amountLabel": "Betrag (€)",
         "intervalLabel": "Intervall",
+        "categoryLabel": "Kategorie",
         "intervalMonthly": "Monatlich",
         "intervalAnnual": "Jährlich",
         "remove": "Ausgabe entfernen",
+        "edit": "Ausgabe bearbeiten",
+        "save": "Änderungen speichern",
+        "cancel": "Bearbeitung abbrechen",
         "summary": "Jährlich gesamt",
+        "viewByList": "Listenansicht",
+        "viewByCategory": "Nach Kategorie",
+        "categories": {
+          "housing": "Wohnen",
+          "food": "Lebensmittel & Einkauf",
+          "healthcare": "Gesundheit",
+          "transportation": "Mobilität",
+          "entertainment": "Unterhaltung",
+          "utilities": "Nebenkosten",
+          "travel": "Reisen & Urlaub",
+          "shopping": "Einkaufen",
+          "insurance": "Versicherungen",
+          "other": "Sonstiges"
+        },
         "table": {
           "name": "Name",
           "amount": "Betrag",
           "interval": "Intervall",
+          "category": "Kategorie",
           "actions": "Aktionen"
         }
       },
@@ -471,6 +518,10 @@
       "retirement": "Ruhestand",
       "pension": "Renteneintritt"
     },
+    "hint": {
+      "dragToZoom": "Ziehen zum Zoomen",
+      "zoomed": "Zoomansicht aktiv"
+    },
     "aria": {
       "description": "Vermögensdiagramm mit drei Szenarien: schlechtester Fall (10. Perzentil) in Rot, Median (50. Perzentil) in Blau und bester Fall (90. Perzentil) in Grün."
     }
@@ -495,6 +546,13 @@
       "p90": "90. Perzentil",
       "withdrawalRate": "Median-Entnahmerate",
       "note": "Beinhaltet monatliche Ausgaben plus auf den Monat umgelegte jährliche Kosten (Urlaub, Reparaturen usw.)."
+    },
+    "markers": {
+      "retirement": "Ruhestand"
+    },
+    "hint": {
+      "dragToZoom": "Ziehen zum Zoomen",
+      "zoomed": "Zoomansicht aktiv"
     },
     "aria": {
       "description": "Balkendiagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge} über verschiedene Perzentile, ergänzt um eine Linie mit der medianen jährlichen Entnahmerate."

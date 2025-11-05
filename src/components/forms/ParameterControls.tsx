@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
+import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts'
 import type { NumberFormatOptions } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -30,6 +31,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
 import { ExpenseList } from '@/components/forms/fields/ExpenseList'
+import { EnhancedSlider } from '@/components/forms/fields/EnhancedSlider'
 import {
   useSimulationParams,
   useUpdateParams,
@@ -209,6 +211,18 @@ export function ParameterControls() {
   const setAutoRunSuspended = useSetAutoRunSuspended()
   const resumeRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Keyboard shortcut: Cmd+S / Ctrl+S to open save dialog
+  useKeyboardShortcuts([
+    {
+      key: 's',
+      cmd: true,
+      handler: () => {
+        setSaveDialogOpen(true)
+      },
+      description: 'Save current setup',
+    },
+  ])
+
   const suspendAndDebounceResume = React.useCallback(() => {
     setAutoRunSuspended(true)
     if (resumeRef.current) clearTimeout(resumeRef.current)
@@ -334,6 +348,13 @@ export function ParameterControls() {
     })
   }
 
+  const handleUpdateExpense = (id: string, expense: Omit<CustomExpense, 'id'>) => {
+    suspendAndDebounceResume()
+    updateParams({
+      customExpenses: customExpenses.map((e) => (e.id === id ? { ...expense, id } : e)),
+    })
+  }
+
   const handleRemoveExpense = (id: string) => {
     suspendAndDebounceResume()
     updateParams({
@@ -348,6 +369,7 @@ export function ParameterControls() {
   const handleAddOneTimeIncome = (income: OneTimeIncome) => {
     suspendAndDebounceResume()
     const nextIncome: OneTimeIncome = {
+      name: income.name,
       age: clampOneTimeIncomeAge(income.age),
       amount: sanitizeIncomeAmount(income.amount),
     }
@@ -362,6 +384,7 @@ export function ParameterControls() {
     const next = oneTimeIncomes.map((existing, existingIndex) =>
       existingIndex === index
         ? {
+            name: income.name,
             age: clampOneTimeIncomeAge(income.age),
             amount: sanitizeIncomeAmount(income.amount),
           }
@@ -435,16 +458,29 @@ export function ParameterControls() {
               {t('presets.investment.title')}
             </h4>
             <Select
-              value={investmentPresetKey ?? undefined}
-              onValueChange={applyInvestmentPreset}
+              value={investmentPresetKey ?? 'custom'}
+              onValueChange={(value) => {
+                if (value !== 'custom') {
+                  applyInvestmentPreset(value as typeof INVESTMENT_PRESETS[number]['key'])
+                }
+              }}
             >
-              <SelectTrigger size="sm" className="h-10 justify-between bg-neo-white">
+              <SelectTrigger size="sm" className="h-auto min-h-10 justify-between bg-neo-white py-2">
                 <SelectValue placeholder={t('presets.investment.placeholder')}>
                   {investmentPresetKey ? (
                     <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em]">
                       {t(`presets.investment.items.${investmentPresetKey}.name`)}
                     </span>
-                  ) : null}
+                  ) : (
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+                        Custom Configuration
+                      </span>
+                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                        {formatPercent(params.averageROI)} ROI · σ {formatPercent(params.roiVolatility)}
+                      </span>
+                    </div>
+                  )}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -473,16 +509,29 @@ export function ParameterControls() {
               {t('presets.inflation.title')}
             </h4>
             <Select
-              value={inflationPresetKey ?? undefined}
-              onValueChange={applyInflationPreset}
+              value={inflationPresetKey ?? 'custom'}
+              onValueChange={(value) => {
+                if (value !== 'custom') {
+                  applyInflationPreset(value as typeof INFLATION_PRESETS[number]['key'])
+                }
+              }}
             >
-              <SelectTrigger size="sm" className="h-10 justify-between bg-neo-white">
+              <SelectTrigger size="sm" className="h-auto min-h-10 justify-between bg-neo-white py-2">
                 <SelectValue placeholder={t('presets.inflation.placeholder')}>
                   {inflationPresetKey ? (
                     <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em]">
                       {t(`presets.inflation.items.${inflationPresetKey}.name`)}
                     </span>
-                  ) : null}
+                  ) : (
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+                        Custom Configuration
+                      </span>
+                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                        {formatPercent(params.averageInflation)} · σ {formatPercent(params.inflationVolatility)}
+                      </span>
+                    </div>
+                  )}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -566,8 +615,43 @@ export function ParameterControls() {
                     min={params.currentAge}
                     max={Math.max(params.currentAge, params.legalRetirementAge, 70)}
                   />
-                  <div className="mt-2 text-center text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    {t('fields.retirementAge.remaining', { count: remainingWorkingYears })}
+
+                  {/* Enhanced working years display */}
+                  <div className="mt-4 border-3 border-neo-black bg-gradient-to-r from-neo-blue/10 to-neo-yellow/10 p-4 shadow-neo-sm">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground mb-1">
+                          Working years remaining
+                        </div>
+                        <div className="text-[1.2rem] font-black uppercase tracking-[0.14em] text-neo-black">
+                          {remainingWorkingYears} {remainingWorkingYears === 1 ? 'year' : 'years'}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1 text-right">
+                        <div className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-neo-blue">
+                          Accumulation Phase
+                        </div>
+                        <div className="text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                          Ages {params.currentAge}–{params.retirementAge}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Visual timeline */}
+                    <div className="mt-3 flex items-center gap-2">
+                      <div
+                        className="h-2 bg-neo-blue border-2 border-neo-black transition-all duration-300"
+                        style={{
+                          width: `${Math.max(10, (remainingWorkingYears / (params.endAge - params.currentAge)) * 100)}%`
+                        }}
+                      />
+                      <div
+                        className="h-2 flex-1 bg-neo-yellow/30 border-2 border-neo-black"
+                      />
+                      <div className="text-[0.58rem] font-bold uppercase tracking-[0.1em] text-muted-foreground whitespace-nowrap">
+                        Retirement: {params.endAge - params.retirementAge}y
+                      </div>
+                    </div>
                   </div>
                 </div>
               </ParameterField>
@@ -683,25 +767,16 @@ export function ParameterControls() {
                 label={t('fields.capitalGainsTax.label')}
                 tooltip={t('fields.capitalGainsTax.tooltip')}
               >
-                <div className="px-2 py-1">
-                  <Slider
-                    value={[params.capitalGainsTax]}
-                    onValueChange={([value]) => handleInputChange('capitalGainsTax', value)}
-                    min={0}
-                    max={50}
-                    step={0.25}
-                    className="w-full"
-                  />
-                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    <span>{formatPercent(0, { maximumFractionDigits: 0 })}</span>
-                    <span className="border-2 border-neo-black bg-neo-white px-3 py-1 text-neo-black">
-                      {formatPercent(params.capitalGainsTax / 100, {
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>
-                    <span>{formatPercent(0.5, { maximumFractionDigits: 0 })}</span>
-                  </div>
-                </div>
+                <EnhancedSlider
+                  value={params.capitalGainsTax}
+                  onChange={(value) => handleInputChange('capitalGainsTax', value)}
+                  min={0}
+                  max={50}
+                  step={0.25}
+                  formatValue={(value) =>
+                    formatPercent(value / 100, { maximumFractionDigits: 2 })
+                  }
+                />
               </ParameterField>
             </CollapsibleSection>
 
@@ -718,11 +793,17 @@ export function ParameterControls() {
                 strings={{
                   addButton: t('fields.oneTimeIncomes.add'),
                   empty: t('fields.oneTimeIncomes.empty'),
+                  nameLabel: t('fields.oneTimeIncomes.nameLabel'),
+                  namePlaceholder: t('fields.oneTimeIncomes.namePlaceholder'),
                   ageLabel: t('fields.oneTimeIncomes.ageLabel'),
                   amountLabel: t('fields.oneTimeIncomes.amountLabel'),
                   remove: t('fields.oneTimeIncomes.remove'),
+                  edit: t('fields.oneTimeIncomes.edit'),
+                  save: t('fields.oneTimeIncomes.save'),
+                  cancel: t('fields.oneTimeIncomes.cancel'),
                   summaryLabel: t('fields.oneTimeIncomes.summary'),
                   tableHeaders: {
+                    name: t('fields.oneTimeIncomes.table.name'),
                     age: t('fields.oneTimeIncomes.table.age'),
                     amount: t('fields.oneTimeIncomes.table.amount'),
                     actions: t('fields.oneTimeIncomes.table.actions'),
@@ -751,18 +832,38 @@ export function ParameterControls() {
                   namePlaceholder: t('fields.expenses.namePlaceholder'),
                   amountLabel: t('fields.expenses.amountLabel'),
                   intervalLabel: t('fields.expenses.intervalLabel'),
+                  categoryLabel: t('fields.expenses.categoryLabel'),
                   intervalMonthly: t('fields.expenses.intervalMonthly'),
                   intervalAnnual: t('fields.expenses.intervalAnnual'),
                   remove: t('fields.expenses.remove'),
+                  edit: t('fields.expenses.edit'),
+                  save: t('fields.expenses.save'),
+                  cancel: t('fields.expenses.cancel'),
                   summaryLabel: t('fields.expenses.summary'),
+                  viewByList: t('fields.expenses.viewByList'),
+                  viewByCategory: t('fields.expenses.viewByCategory'),
+                  categoryLabels: {
+                    housing: t('fields.expenses.categories.housing'),
+                    food: t('fields.expenses.categories.food'),
+                    healthcare: t('fields.expenses.categories.healthcare'),
+                    transportation: t('fields.expenses.categories.transportation'),
+                    entertainment: t('fields.expenses.categories.entertainment'),
+                    utilities: t('fields.expenses.categories.utilities'),
+                    travel: t('fields.expenses.categories.travel'),
+                    shopping: t('fields.expenses.categories.shopping'),
+                    insurance: t('fields.expenses.categories.insurance'),
+                    other: t('fields.expenses.categories.other'),
+                  },
                   tableHeaders: {
                     name: t('fields.expenses.table.name'),
                     amount: t('fields.expenses.table.amount'),
                     interval: t('fields.expenses.table.interval'),
+                    category: t('fields.expenses.table.category'),
                     actions: t('fields.expenses.table.actions'),
                   },
                 }}
                 onAdd={handleAddExpense}
+                onUpdate={handleUpdateExpense}
                 onRemove={handleRemoveExpense}
                 formatCurrency={(value) => formatCurrency(value)}
               />
@@ -780,46 +881,31 @@ export function ParameterControls() {
                 label={t('fields.averageROI.label')}
                 tooltip={t('fields.averageROI.tooltip')}
               >
-                <div className="px-2 py-1">
-                  <Slider
-                    value={[params.averageROI * 100]}
-                    onValueChange={([value]) => handleInputChange('averageROI', value / 100)}
-                    min={3}
-                    max={12}
-                    step={0.5}
-                    className="w-full"
-                  />
-                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    <span>{formatPercent(0.03, { maximumFractionDigits: 0 })}</span>
-                    <span className="border-2 border-neo-black bg-neo-white px-3 py-1 text-neo-black">
-                      {formatPercent(params.averageROI)}
-                    </span>
-                    <span>{formatPercent(0.12, { maximumFractionDigits: 0 })}</span>
-                  </div>
-                </div>
+                <EnhancedSlider
+                  value={params.averageROI * 100}
+                  onChange={(value) => handleInputChange('averageROI', value / 100)}
+                  min={3}
+                  max={12}
+                  step={0.5}
+                  formatValue={(value) => formatPercent(value / 100)}
+                />
               </ParameterField>
 
               <ParameterField
                 label={t('fields.roiVolatility.label')}
                 tooltip={t('fields.roiVolatility.tooltip')}
               >
-                <div className="px-2 py-1">
-                  <Slider
-                    value={[params.roiVolatility * 100]}
-                    onValueChange={([value]) => handleInputChange('roiVolatility', value / 100)}
+                <div className="space-y-2">
+                  <EnhancedSlider
+                    value={params.roiVolatility * 100}
+                    onChange={(value) => handleInputChange('roiVolatility', value / 100)}
                     min={2}
                     max={25}
                     step={0.5}
-                    className="w-full"
+                    formatValue={(value) => formatPercent(value / 100)}
+                    hint={`σ = ${formatPercent(params.roiVolatility)}`}
                   />
-                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    <span>{formatPercent(0.02, { maximumFractionDigits: 0 })}</span>
-                    <span className="border-2 border-neo-black bg-neo-white px-3 py-1 text-neo-black">
-                      {formatPercent(params.roiVolatility)}
-                    </span>
-                    <span>{formatPercent(0.25, { maximumFractionDigits: 0 })}</span>
-                  </div>
-                  <div className="mt-2 text-center text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <div className="text-center text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground border-2 border-neo-black bg-neo-blue/5 px-3 py-2">
                     {t('fields.roiVolatility.range', {
                       range: '68%',
                       lower: formatPercent(params.averageROI - params.roiVolatility),
@@ -839,48 +925,28 @@ export function ParameterControls() {
                 label={t('fields.averageInflation.label')}
                 tooltip={t('fields.averageInflation.tooltip')}
               >
-                <div className="px-2 py-1">
-                  <Slider
-                    value={[params.averageInflation * 100]}
-                    onValueChange={([value]) => handleInputChange('averageInflation', value / 100)}
-                    min={1}
-                    max={6}
-                    step={0.1}
-                    className="w-full"
-                  />
-                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    <span>{formatPercent(0.01, { maximumFractionDigits: 0 })}</span>
-                    <span className="border-2 border-neo-black bg-neo-white px-3 py-1 text-neo-black">
-                      {formatPercent(params.averageInflation)}
-                    </span>
-                    <span>{formatPercent(0.06, { maximumFractionDigits: 0 })}</span>
-                  </div>
-                </div>
+                <EnhancedSlider
+                  value={params.averageInflation * 100}
+                  onChange={(value) => handleInputChange('averageInflation', value / 100)}
+                  min={1}
+                  max={6}
+                  step={0.1}
+                  formatValue={(value) => formatPercent(value / 100)}
+                />
               </ParameterField>
 
               <ParameterField
                 label={t('fields.inflationVolatility.label')}
                 tooltip={t('fields.inflationVolatility.tooltip')}
               >
-                <div className="px-2 py-1">
-                  <Slider
-                    value={[params.inflationVolatility * 100]}
-                    onValueChange={([value]) =>
-                      handleInputChange('inflationVolatility', value / 100)
-                    }
-                    min={0.1}
-                    max={3}
-                    step={0.1}
-                    className="w-full"
-                  />
-                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    <span>{formatPercent(0.001, { maximumFractionDigits: 1 })}</span>
-                    <span className="border-2 border-neo-black bg-neo-white px-3 py-1 text-neo-black">
-                      {formatPercent(params.inflationVolatility)}
-                    </span>
-                    <span>{formatPercent(0.03, { maximumFractionDigits: 0 })}</span>
-                  </div>
-                </div>
+                <EnhancedSlider
+                  value={params.inflationVolatility * 100}
+                  onChange={(value) => handleInputChange('inflationVolatility', value / 100)}
+                  min={0.1}
+                  max={3}
+                  step={0.1}
+                  formatValue={(value) => formatPercent(value / 100)}
+                />
               </ParameterField>
             </CollapsibleSection>
 
@@ -893,31 +959,24 @@ export function ParameterControls() {
                 label={t('fields.simulationRuns.label')}
                 tooltip={t('fields.simulationRuns.tooltip')}
               >
-                <div className="px-2 py-1">
-                  <Slider
-                    value={[params.simulationRuns]}
-                    onValueChange={([value]) => handleInputChange('simulationRuns', value)}
+                <div className="space-y-2">
+                  <EnhancedSlider
+                    value={params.simulationRuns}
+                    onChange={(value) => handleInputChange('simulationRuns', value)}
                     min={100}
                     max={10000}
                     step={100}
-                    className="w-full"
+                    formatValue={(value) => formatNumber(value)}
                   />
-                  <div className="mt-2 flex justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    <span>{formatNumber(100)}</span>
-                    <span className="border-2 border-neo-black bg-neo-white px-3 py-1 text-neo-black">
-                      {formatNumber(params.simulationRuns)}
-                    </span>
-                    <span>{formatNumber(10000)}</span>
-                  </div>
-                  <div className="mt-2 text-center text-[0.6rem] font-semibold uppercase tracking-[0.12em]">
+                  <div className="text-center border-2 border-neo-black px-3 py-2">
                     <span
-                      className={
+                      className={`text-[0.68rem] font-extrabold uppercase tracking-[0.12em] ${
                         params.simulationRuns >= 1000
                           ? 'text-green-600'
                           : params.simulationRuns >= 500
                             ? 'text-yellow-600'
                             : 'text-red-600'
-                      }
+                      }`}
                     >
                       {params.simulationRuns >= 1000
                         ? t('sections.simulation.quality.level.high')
@@ -988,31 +1047,94 @@ export function ParameterControls() {
                     handleLoadSetup(value)
                   }}
                 >
-                  <SelectTrigger size="sm" className="flex-1">
+                  <SelectTrigger size="sm" className="flex-1 h-auto min-h-11 py-2">
                     <SelectValue
                       placeholder={
-                        savedSetups.length === 0
-                          ? t('saved.empty')
-                          : t('saved.actions.loadPlaceholder')
+                        savedSetups.length === 0 ? (
+                          <div className="flex items-center gap-2 py-1">
+                            <div className="rounded-full border-2 border-neo-black bg-neo-blue/10 p-1.5">
+                              <svg
+                                className="h-3.5 w-3.5 text-muted-foreground"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                                />
+                              </svg>
+                            </div>
+                            <div className="flex flex-col items-start">
+                              <span className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                                No Saved Setups
+                              </span>
+                              <span className="text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+                                Save your current parameters above
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          t('saved.actions.loadPlaceholder')
+                        )
                       }
                     />
                   </SelectTrigger>
                   <SelectContent>
                     {savedSetups.length === 0 ? (
                       <SelectItem value="__placeholder" disabled>
-                        {t('saved.empty')}
+                        <div className="py-2 text-center">
+                          <div className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                            No saved setups yet
+                          </div>
+                          <div className="mt-1 text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+                            Use &quot;Save As&quot; to store configurations
+                          </div>
+                        </div>
                       </SelectItem>
                     ) : (
                       savedSetups.map((setup) => (
                         <SelectItem key={setup.id} value={setup.id}>
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex flex-col text-left">
-                              <span className="text-[0.68rem] font-semibold uppercase tracking-[0.12em]">
-                                {setup.name}
-                              </span>
-                              <span className="text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                                {new Date(setup.timestamp).toLocaleDateString()}
-                              </span>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <div className="rounded border-2 border-neo-black bg-neo-blue/10 p-1">
+                                <svg
+                                  className="h-3 w-3 text-neo-blue"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2.5}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                                  />
+                                </svg>
+                              </div>
+                              <div className="flex flex-col text-left">
+                                <span className="text-[0.68rem] font-semibold uppercase tracking-[0.12em]">
+                                  {setup.name}
+                                </span>
+                                <div className="flex items-center gap-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                                  <svg
+                                    className="h-2.5 w-2.5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2.5}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    />
+                                  </svg>
+                                  {new Date(setup.timestamp).toLocaleDateString()}
+                                </div>
+                              </div>
                             </div>
                             <Button
                               type="button"

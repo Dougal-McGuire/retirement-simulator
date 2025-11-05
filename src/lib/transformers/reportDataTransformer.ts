@@ -21,8 +21,10 @@ export function transformToReportData(
   const recommendations = generateRecommendations(params, results)
 
   // Derived figures
-  const totalMonthlyExpenses = Object.values(params.monthlyExpenses).reduce((a, b) => a + b, 0)
-  const totalAnnualExpenses = Object.values(params.annualExpenses).reduce((a, b) => a + b, 0)
+  const monthlyExpenses = params.customExpenses.filter((e) => e.interval === 'monthly')
+  const annualExpenses = params.customExpenses.filter((e) => e.interval === 'annual')
+  const totalMonthlyExpenses = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0)
+  const totalAnnualExpenses = annualExpenses.reduce((sum, e) => sum + e.amount, 0)
   const totalYearlyExpenses = totalMonthlyExpenses * 12 + totalAnnualExpenses
 
   // Bridge years (gap between retirement and pension start)
@@ -146,16 +148,16 @@ export function transformToReportData(
     },
     spending: {
       monthly: {
-        health: params.monthlyExpenses.health,
-        food: params.monthlyExpenses.food,
-        entertainment: params.monthlyExpenses.entertainment,
-        shopping: params.monthlyExpenses.shopping,
-        utilities: params.monthlyExpenses.utilities,
+        health: monthlyExpenses.find((e) => e.name.toLowerCase().includes('health'))?.amount ?? 0,
+        food: monthlyExpenses.find((e) => e.name.toLowerCase().includes('food') || e.name.toLowerCase().includes('grocer'))?.amount ?? 0,
+        entertainment: monthlyExpenses.find((e) => e.name.toLowerCase().includes('entertain'))?.amount ?? 0,
+        shopping: monthlyExpenses.find((e) => e.name.toLowerCase().includes('shop'))?.amount ?? 0,
+        utilities: monthlyExpenses.find((e) => e.name.toLowerCase().includes('utilit'))?.amount ?? 0,
       },
       annual: {
-        vacations: params.annualExpenses.vacations,
-        homeRepairs: params.annualExpenses.repairs,
-        car: params.annualExpenses.carMaintenance,
+        vacations: annualExpenses.find((e) => e.name.toLowerCase().includes('vacation'))?.amount ?? 0,
+        homeRepairs: annualExpenses.find((e) => e.name.toLowerCase().includes('repair'))?.amount ?? 0,
+        car: annualExpenses.find((e) => e.name.toLowerCase().includes('car') || e.name.toLowerCase().includes('vehicle'))?.amount ?? 0,
       },
     },
     assumptions: {
@@ -246,8 +248,10 @@ function generateRecommendations(
   }
 
   // Expense-based recommendations
-  const totalMonthlyExpenses = Object.values(params.monthlyExpenses).reduce((a, b) => a + b, 0)
-  const totalAnnualExpenses = Object.values(params.annualExpenses).reduce((a, b) => a + b, 0)
+  const monthlyExpensesList = params.customExpenses.filter((e) => e.interval === 'monthly')
+  const annualExpensesList = params.customExpenses.filter((e) => e.interval === 'annual')
+  const totalMonthlyExpenses = monthlyExpensesList.reduce((sum, e) => sum + e.amount, 0)
+  const totalAnnualExpenses = annualExpensesList.reduce((sum, e) => sum + e.amount, 0)
   const totalYearlyExpenses = totalMonthlyExpenses * 12 + totalAnnualExpenses
 
   if (totalYearlyExpenses > params.annualSavings * 3) {

@@ -15,6 +15,7 @@ interface GenerateReportButtonProps {
   size?: 'sm' | 'default' | 'lg'
   buttonClassName?: string
   wrapperClassName?: string
+  children?: React.ReactNode
 }
 
 export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
@@ -25,6 +26,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
   size = 'default',
   buttonClassName,
   wrapperClassName,
+  children,
 }) => {
   const t = useTranslations('report')
   const locale = useLocale()
@@ -88,8 +90,12 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
   if (!canGenerate) {
     return (
       <Button variant={variant} size={size} disabled className={cn(buttonClassName)}>
-        <FileText className="mr-2 h-4 w-4" />
-        {!results ? t('disabled.noData') : t('disabled.runSimulation')}
+        {children || (
+          <>
+            <FileText className="mr-2 h-4 w-4" />
+            {!results ? t('disabled.noData') : t('disabled.runSimulation')}
+          </>
+        )}
       </Button>
     )
   }
@@ -103,12 +109,16 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
         disabled={isGenerating}
         className={cn(buttonClassName)}
       >
-        {isGenerating ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <Download className="mr-2 h-4 w-4" />
+        {children || (
+          <>
+            {isGenerating ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            {isGenerating ? t('actions.generating') : t('actions.generate')}
+          </>
         )}
-        {isGenerating ? t('actions.generating') : t('actions.generate')}
       </Button>
 
       {error && (

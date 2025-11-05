@@ -25,7 +25,8 @@
     "progress": {
       "step": "Step {current} of {total}",
       "percentComplete": "{percent}% complete",
-      "autosave": "Progress auto-saves locally"
+      "autosave": "Progress auto-saves locally",
+      "timeRemaining": "Time remaining"
     },
     "buttons": {
       "back": "Back",
@@ -41,13 +42,9 @@
         "title": "Assets & Income",
         "description": "Current assets and savings plan"
       },
-      "monthly": {
-        "title": "Monthly Expenses",
-        "description": "Regular monthly costs"
-      },
-      "annual": {
-        "title": "Annual Expenses",
-        "description": "Yearly expenses like vacations"
+      "expenses": {
+        "title": "Expenses",
+        "description": "Your retirement spending plan"
       },
       "market": {
         "title": "Market Assumptions",
@@ -99,10 +96,16 @@
         "help": "Add expected lump-sum inflows like insurance payouts or inheritances.",
         "add": "Add income",
         "empty": "No one-time incomes yet",
+        "nameLabel": "Name",
+        "namePlaceholder": "e.g., Inheritance, Property Sale",
         "ageLabel": "Age paid out",
         "amountLabel": "Amount (€)",
         "remove": "Remove income",
+        "edit": "Edit income",
+        "save": "Save changes",
+        "cancel": "Cancel edit",
         "table": {
+          "name": "Name",
           "age": "Age",
           "amount": "Amount (€)",
           "actions": "Actions"
@@ -110,25 +113,29 @@
         "summary": "Total scheduled"
       }
     },
-    "monthly": {
-      "intro": "Enter your expected monthly expenses during retirement:",
-      "total": "Total Monthly:",
-      "annualEquivalent": "Annual: {value}",
-      "labels": {
-        "health": "Health & Insurance",
-        "food": "Food & Dining",
-        "entertainment": "Entertainment & Leisure",
-        "shopping": "Shopping & Miscellaneous",
-        "utilities": "Utilities & Housing"
-      }
-    },
-    "annual": {
-      "intro": "Enter your expected annual expenses during retirement:",
-      "total": "Total Annual:",
-      "labels": {
-        "vacations": "Vacations & Travel",
-        "repairs": "Home Repairs",
-        "carMaintenance": "Car Maintenance"
+    "expenses": {
+      "intro": "Define your expected expenses during retirement. Add as many items as you need:",
+      "add": "Add Expense",
+      "empty": "No expenses added yet. Start by clicking a template below or add your own.",
+      "nameLabel": "Expense Name",
+      "namePlaceholder": "e.g. Groceries, Utilities, Vacation",
+      "amountLabel": "Amount (€)",
+      "intervalLabel": "Frequency",
+      "intervalMonthly": "Monthly",
+      "intervalAnnual": "Annual",
+      "remove": "Remove expense",
+      "edit": "Edit expense",
+      "save": "Save changes",
+      "cancel": "Cancel edit",
+      "summary": "Total Annual Cost",
+      "table": {
+        "name": "Expense",
+        "amount": "Amount",
+        "interval": "Frequency",
+        "actions": "Actions"
+      },
+      "templates": {
+        "label": "Quick Start Templates (click to add):"
       }
     },
     "market": {
@@ -174,6 +181,20 @@
     "trigger": "Parameters",
     "title": "Simulation Parameters",
     "description": "Adjust your retirement planning parameters and see results update in real time."
+  },
+  "mobileMenu": {
+    "trigger": "Menu",
+    "title": "Menu",
+    "close": "Close menu",
+    "description": "Quick access to settings and actions",
+    "sections": {
+      "language": "Language",
+      "actions": "Actions"
+    },
+    "actions": {
+      "generateReport": "Generate Report",
+      "goToSetup": "Go to Setup"
+    }
   },
   "parameterControls": {
     "title": "Simulation Parameters",
@@ -303,11 +324,18 @@
         "tooltip": "Add lump-sum inflows such as insurance payouts, home sales, or inheritances. These are invested at the start of the year following the age you choose.",
         "description": "Set expected one-off cash boosts to add to the plan.",
         "add": "Add income",
-        "empty": "No one-time incomes scheduled",
+        "empty": "Ready to add one-time income?",
+        "emptyHint": "Add expected windfalls like inheritances, insurance payouts, property sales, or bonus payments",
+        "nameLabel": "Name",
+        "namePlaceholder": "e.g., Inheritance, Property Sale",
         "ageLabel": "Age received",
         "amountLabel": "Amount (€)",
         "remove": "Remove income",
+        "edit": "Edit income",
+        "save": "Save changes",
+        "cancel": "Cancel edit",
         "table": {
+          "name": "Name / Age",
           "age": "Age",
           "amount": "Amount (€)",
           "actions": "Actions"
@@ -321,14 +349,33 @@
         "namePlaceholder": "e.g. Groceries, Utilities, Vacation",
         "amountLabel": "Amount (€)",
         "intervalLabel": "Interval",
+        "categoryLabel": "Category",
         "intervalMonthly": "Monthly",
         "intervalAnnual": "Annual",
         "remove": "Remove expense",
+        "edit": "Edit expense",
+        "save": "Save changes",
+        "cancel": "Cancel edit",
         "summary": "Total Annual",
+        "viewByList": "List View",
+        "viewByCategory": "By Category",
+        "categories": {
+          "housing": "Housing",
+          "food": "Food & Groceries",
+          "healthcare": "Healthcare",
+          "transportation": "Transportation",
+          "entertainment": "Entertainment",
+          "utilities": "Utilities",
+          "travel": "Travel & Vacation",
+          "shopping": "Shopping",
+          "insurance": "Insurance",
+          "other": "Other"
+        },
         "table": {
           "name": "Name",
           "amount": "Amount",
           "interval": "Interval",
+          "category": "Category",
           "actions": "Actions"
         }
       },
@@ -471,8 +518,13 @@
       "retirement": "Retirement",
       "pension": "Pension Starts"
     },
+    "hint": {
+      "dragToZoom": "Drag to zoom",
+      "zoomed": "Zoomed view active"
+    },
     "aria": {
-      "description": "Asset projection chart showing three scenarios: worst case (10th percentile) in red, median (50th percentile) in blue, and best case (90th percentile) in green."
+      "description": "Asset projection chart showing three scenarios: worst case (10th percentile) in red, median (50th percentile) in blue, and best case (90th percentile) in green.",
+      "controls": "Use arrow keys to navigate chart data points. Press R to reset zoom. Drag across the chart to zoom into a time range."
     }
   },
   "spendingChart": {
@@ -496,8 +548,16 @@
       "withdrawalRate": "Median withdrawal rate",
       "note": "Includes monthly expenses plus annualized annual expenses (vacations, repairs, etc.)."
     },
+    "markers": {
+      "retirement": "Retirement"
+    },
+    "hint": {
+      "dragToZoom": "Drag to zoom",
+      "zoomed": "Zoomed view active"
+    },
     "aria": {
-      "description": "Monthly spending bar chart showing spending patterns from retirement age {retirementAge} onwards across percentiles, with a line for the median annual withdrawal rate."
+      "description": "Monthly spending bar chart showing spending patterns from retirement age {retirementAge} onwards across percentiles, with a line for the median annual withdrawal rate.",
+      "controls": "Use arrow keys to navigate spending data. Press R to reset zoom. Drag across the chart to zoom into a time range."
     }
   },
   "pdf": {

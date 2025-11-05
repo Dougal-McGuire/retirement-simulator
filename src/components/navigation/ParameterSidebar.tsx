@@ -28,9 +28,39 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
       <div className={`hidden lg:block lg:col-span-1 ${className}`}>
         <div className="sticky top-6">
           <div className="relative">
-            <div className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-invisible">
+            {/* Scroll indicator - top shadow */}
+            <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 h-8 bg-gradient-to-b from-background to-transparent opacity-0 transition-opacity duration-200" id="scroll-indicator-top" />
+
+            <div
+              className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neo-black/20 hover:scrollbar-thumb-neo-black/40"
+              onScroll={(e) => {
+                const target = e.currentTarget
+                const top = document.getElementById('scroll-indicator-top')
+                const bottom = document.getElementById('scroll-indicator-bottom')
+
+                if (top && bottom) {
+                  // Show top indicator when scrolled down
+                  if (target.scrollTop > 20) {
+                    top.style.opacity = '1'
+                  } else {
+                    top.style.opacity = '0'
+                  }
+
+                  // Show bottom indicator when not at bottom
+                  const isAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20
+                  if (isAtBottom) {
+                    bottom.style.opacity = '0'
+                  } else {
+                    bottom.style.opacity = '1'
+                  }
+                }
+              }}
+            >
               <ParameterControls />
             </div>
+
+            {/* Scroll indicator - bottom shadow */}
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-8 bg-gradient-to-t from-background to-transparent opacity-100 transition-opacity duration-200" id="scroll-indicator-bottom" />
           </div>
         </div>
       </div>

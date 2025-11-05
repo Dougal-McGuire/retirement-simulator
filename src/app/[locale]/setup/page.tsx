@@ -10,27 +10,28 @@ import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
 import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
+import { ExpenseList } from '@/components/forms/fields/ExpenseList'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
 import {
   PersonalInfoStep,
   AssetsIncomeStep,
-  MonthlyExpensesStep,
-  AnnualExpensesStep,
+  ExpensesStep,
   MarketAssumptionsStep,
   OneTimeIncome,
+  CustomExpense,
+  ExpenseInterval,
 } from '@/types'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { cn } from '@/lib/utils'
 
-const STEP_KEYS = ['personal', 'assets', 'monthly', 'annual', 'market'] as const
+const STEP_KEYS = ['personal', 'assets', 'expenses', 'market'] as const
 
 type StepKey = (typeof STEP_KEYS)[number]
 
 type FormState = {
   personal: PersonalInfoStep
   assets: AssetsIncomeStep
-  monthly: MonthlyExpensesStep
-  annual: AnnualExpensesStep
+  expenses: ExpensesStep
   market: MarketAssumptionsStep
 }
 
@@ -58,8 +59,9 @@ export default function SetupPage() {
       monthlyPension: params.monthlyPension,
       oneTimeIncomes: params.oneTimeIncomes ?? [],
     },
-    monthly: { ...params.monthlyExpenses },
-    annual: { ...params.annualExpenses },
+    expenses: {
+      customExpenses: params.customExpenses ?? [],
+    },
     market: {
       averageROI: params.averageROI,
       roiVolatility: params.roiVolatility,
@@ -135,8 +137,7 @@ export default function SetupPage() {
               prev.assets.oneTimeIncomes ??
               [],
           },
-          monthly: parsed.formData.monthly ?? prev.monthly,
-          annual: parsed.formData.annual ?? prev.annual,
+          expenses: parsed.formData.expenses ?? prev.expenses,
           market: parsed.formData.market ?? prev.market,
         }))
       }
@@ -154,8 +155,7 @@ export default function SetupPage() {
     updateParams({
       ...formData.personal,
       ...formData.assets,
-      monthlyExpenses: formData.monthly,
-      annualExpenses: formData.annual,
+      ...formData.expenses,
       ...formData.market,
     })
 
@@ -211,6 +211,7 @@ export default function SetupPage() {
             {
               age: nextAge,
               amount: nextAmount,
+              ...(income.name && { name: income.name })
             },
           ],
         },
@@ -225,6 +226,7 @@ export default function SetupPage() {
           ? {
               age: clampIncomeAge(income.age, prev),
               amount: Math.max(0, Math.round(income.amount)),
+              ...(income.name && { name: income.name })
             }
           : existing
       )
@@ -359,10 +361,16 @@ export default function SetupPage() {
                 strings={{
                   addButton: t('assets.oneTimeIncomes.add'),
                   empty: t('assets.oneTimeIncomes.empty'),
+                  nameLabel: t('assets.oneTimeIncomes.nameLabel'),
+                  namePlaceholder: t('assets.oneTimeIncomes.namePlaceholder'),
                   ageLabel: t('assets.oneTimeIncomes.ageLabel'),
                   amountLabel: t('assets.oneTimeIncomes.amountLabel'),
                   remove: t('assets.oneTimeIncomes.remove'),
+                  edit: t('assets.oneTimeIncomes.edit'),
+                  save: t('assets.oneTimeIncomes.save'),
+                  cancel: t('assets.oneTimeIncomes.cancel'),
                   tableHeaders: {
+                    name: t('assets.oneTimeIncomes.table.name'),
                     age: t('assets.oneTimeIncomes.table.age'),
                     amount: t('assets.oneTimeIncomes.table.amount'),
                     actions: t('assets.oneTimeIncomes.table.actions'),
@@ -385,65 +393,116 @@ export default function SetupPage() {
           </div>
         )
 
-      case 'monthly': {
-        const monthlyKeys = Object.keys(formData.monthly) as (keyof MonthlyExpensesStep)[]
-        const totalMonthly = monthlyKeys.reduce((sum, key) => sum + formData.monthly[key], 0)
+      case 'expenses': {
+        const expenseTemplates = [
+          { name: 'Health Insurance', amount: 1300, interval: 'monthly' as ExpenseInterval },
+          { name: 'Groceries', amount: 1200, interval: 'monthly' as ExpenseInterval },
+          { name: 'Utilities', amount: 400, interval: 'monthly' as ExpenseInterval },
+          { name: 'Entertainment', amount: 300, interval: 'monthly' as ExpenseInterval },
+          { name: 'Vacations', amount: 12000, interval: 'annual' as ExpenseInterval },
+          { name: 'Home Repairs', amount: 5000, interval: 'annual' as ExpenseInterval },
+        ]
+
+        const handleAddExpense = (expense: Omit<CustomExpense, 'id'>) => {
+          setFormData((prev) => ({
+            ...prev,
+            expenses: {
+              customExpenses: [
+                ...prev.expenses.customExpenses,
+                {
+                  ...expense,
+                  id: `expense-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                },
+              ],
+            },
+          }))
+        }
+
+        const handleUpdateExpense = (id: string, expense: Omit<CustomExpense, 'id'>) => {
+          setFormData((prev) => ({
+            ...prev,
+            expenses: {
+              customExpenses: prev.expenses.customExpenses.map((e) =>
+                e.id === id ? { ...expense, id } : e
+              ),
+            },
+          }))
+        }
+
+        const handleRemoveExpense = (id: string) => {
+          setFormData((prev) => ({
+            ...prev,
+            expenses: {
+              customExpenses: prev.expenses.customExpenses.filter((e) => e.id !== id),
+            },
+          }))
+        }
 
         return (
           <div className="space-y-5">
-            <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              {t('monthly.intro')}
-            </p>
-            {monthlyKeys.map((key) => (
-              <LabeledNumberInput
-                key={key}
-                id={key}
-                label={t(`monthly.labels.${key}`)}
-                value={formData.monthly[key]}
-                onChange={(value) => updateFormData('monthly', key, value)}
-                className={inputClassName}
-              />
-            ))}
-            <div className="mt-6 border-3 border-neo-black bg-neo-white px-5 py-4 shadow-neo-sm">
-              <div className="flex items-center justify-between text-[0.8rem] font-bold uppercase tracking-[0.16em] text-neo-black">
-                <span>{t('monthly.total')}</span>
-                <span className="text-neo-blue">{formatCurrency(totalMonthly)}</span>
-              </div>
-              <div className="mt-2 text-[0.65rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                {t('monthly.annualEquivalent', {
-                  value: formatCurrency(totalMonthly * 12),
-                })}
-              </div>
+            <div>
+              <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                {t('expenses.intro')}
+              </p>
+              {formData.expenses.customExpenses.length === 0 && (
+                <div className="mt-4 space-y-3">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    {t('expenses.templates.label')}
+                  </p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {expenseTemplates.map((template, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleAddExpense(template)}
+                        className="border-2 border-dashed border-neo-black bg-neo-white/50 px-3 py-2 text-left text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-neo-black transition-neo hover:-translate-y-[1px] hover:-translate-x-[1px] hover:bg-neo-yellow/20 hover:shadow-neo-sm"
+                      >
+                        <span className="block">{template.name}</span>
+                        <span className="mt-1 block text-[0.62rem] text-muted-foreground">
+                          {formatCurrency(template.amount)} / {template.interval === 'monthly' ? t('expenses.intervalMonthly') : t('expenses.intervalAnnual')}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )
-      }
 
-      case 'annual': {
-        const annualKeys = Object.keys(formData.annual) as (keyof AnnualExpensesStep)[]
-        const totalAnnual = annualKeys.reduce((sum, key) => sum + formData.annual[key], 0)
-
-        return (
-          <div className="space-y-5">
-            <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              {t('annual.intro')}
-            </p>
-            {annualKeys.map((key) => (
-              <LabeledNumberInput
-                key={key}
-                id={key}
-                label={t(`annual.labels.${key}`)}
-                value={formData.annual[key]}
-                onChange={(value) => updateFormData('annual', key, value)}
-                className={inputClassName}
-              />
-            ))}
-            <div className="mt-6 border-3 border-neo-black bg-neo-white px-5 py-4 shadow-neo-sm">
-              <div className="flex items-center justify-between text-[0.8rem] font-bold uppercase tracking-[0.16em] text-neo-black">
-                <span>{t('annual.total')}</span>
-                <span className="text-neo-blue">{formatCurrency(totalAnnual)}</span>
-              </div>
-            </div>
+            <ExpenseList
+              expenses={formData.expenses.customExpenses}
+              strings={{
+                addButton: t('expenses.add'),
+                empty: t('expenses.empty'),
+                nameLabel: t('expenses.nameLabel'),
+                namePlaceholder: t('expenses.namePlaceholder'),
+                amountLabel: t('expenses.amountLabel'),
+                intervalLabel: t('expenses.intervalLabel'),
+                intervalMonthly: t('expenses.intervalMonthly'),
+                intervalAnnual: t('expenses.intervalAnnual'),
+                remove: t('expenses.remove'),
+                edit: t('expenses.edit'),
+                save: t('expenses.save'),
+                cancel: t('expenses.cancel'),
+                summaryLabel: t('expenses.summary'),
+                tableHeaders: {
+                  name: t('expenses.table.name'),
+                  amount: t('expenses.table.amount'),
+                  interval: t('expenses.table.interval'),
+                  actions: t('expenses.table.actions'),
+                },
+              }}
+              onAdd={handleAddExpense}
+              onUpdate={handleUpdateExpense}
+              onRemove={handleRemoveExpense}
+              formatCurrency={(value) =>
+                format.number(value, {
+                  style: 'currency',
+                  currency: 'EUR',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })
+              }
+            />
           </div>
         )
       }
@@ -602,15 +661,27 @@ export default function SetupPage() {
                   <span className="border-3 border-neo-black bg-neo-white px-4 py-1 shadow-neo-sm">
                     {progressLabel}
                   </span>
-                  <span>{percentLabel}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-neo-black">{percentLabel}</span>
+                    {progressPercent === 100 && (
+                      <Check className="h-4 w-4 text-green-600" />
+                    )}
+                  </span>
                   <span className="text-[0.6rem] text-muted-foreground">
                     {t('progress.autosave')}
                   </span>
                 </div>
-                <div className="relative h-5 w-full border-3 border-neo-black bg-neo-white shadow-neo sm:max-w-sm">
+                <div className="relative h-5 w-full overflow-hidden border-3 border-neo-black bg-neo-white shadow-neo sm:max-w-sm">
                   <div
-                    className="h-full bg-neo-blue transition-all"
+                    className="h-full bg-neo-blue transition-all duration-300 ease-out"
                     style={{ width: `${progressPercent}%` }}
+                  />
+                  {/* Animated stripe pattern */}
+                  <div
+                    className="absolute inset-0 opacity-20"
+                    style={{
+                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px)',
+                    }}
                   />
                 </div>
               </div>
@@ -622,9 +693,22 @@ export default function SetupPage() {
       <main className="relative z-10 mx-auto mt-2 max-w-[80rem] px-2 pb-16 sm:px-3 lg:px-4">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[300px_minmax(0,1fr)]">
           <aside className={cn(glassCardClass, 'space-y-6 p-6')}>
-            <div className="flex items-center justify-between text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              <span>{progressLabel}</span>
-              <span className="text-neo-black">{progressPercent}%</span>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                <span>{progressLabel}</span>
+                <span className="text-neo-black">{progressPercent}%</span>
+              </div>
+              {/* Time estimate */}
+              <div className="border-2 border-dashed border-neo-black bg-neo-blue/5 px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    {t('progress.timeRemaining')}
+                  </span>
+                  <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-neo-black">
+                    ~{Math.max(1, Math.ceil((steps.length - currentStep - 1) * 1.25))} min
+                  </span>
+                </div>
+              </div>
             </div>
             <div className="space-y-6">
               {steps.map((step, index) => {
@@ -647,17 +731,22 @@ export default function SetupPage() {
                       type="button"
                       onClick={() => handleStepClick(index)}
                       disabled={!canNavigate}
+                      aria-label={`${step.title} - ${isCompleted ? 'Completed' : isActive ? 'Current step' : 'Not started'}`}
                       className={cn(
                         'absolute left-0 top-0 flex h-10 w-10 items-center justify-center border-3 border-neo-black bg-neo-white font-extrabold text-neo-black shadow-neo-sm transition-neo',
                         isCompleted && 'bg-neo-yellow',
-                        isActive && !isCompleted && 'bg-neo-white',
+                        isActive && !isCompleted && 'bg-neo-white ring-3 ring-neo-blue ring-offset-2',
                         !isCompleted && !isActive && 'bg-muted text-muted-foreground',
                         canNavigate
-                          ? 'cursor-pointer hover:-translate-y-[1px] hover:-translate-x-[1px]'
+                          ? 'cursor-pointer hover:-translate-y-[1px] hover:-translate-x-[1px] hover:shadow-neo'
                           : 'cursor-default'
                       )}
                     >
-                      <span className="text-sm">{index + 1}</span>
+                      {isCompleted ? (
+                        <Check className="h-5 w-5 text-neo-black" />
+                      ) : (
+                        <span className="text-sm">{index + 1}</span>
+                      )}
                     </button>
 
                     <div>
