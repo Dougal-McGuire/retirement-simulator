@@ -110,18 +110,6 @@ export interface OneTimeIncome {
 
 export type ExpenseInterval = 'monthly' | 'annual'
 
-export type ExpenseCategory =
-  | 'housing'
-  | 'food'
-  | 'healthcare'
-  | 'transportation'
-  | 'entertainment'
-  | 'utilities'
-  | 'travel'
-  | 'shopping'
-  | 'insurance'
-  | 'other'
-
 export interface CustomExpense {
   id: string
   name: string
@@ -167,14 +155,14 @@ export const DEFAULT_PARAMS: SimulationParams = {
   inflationVolatility: 0.01,
   capitalGainsTax: 26.25,
   customExpenses: [
-    { id: 'health', name: 'Health Insurance', amount: 1300, interval: 'monthly', category: 'healthcare' },
-    { id: 'food', name: 'Groceries', amount: 1200, interval: 'monthly', category: 'food' },
-    { id: 'entertainment', name: 'Entertainment', amount: 300, interval: 'monthly', category: 'entertainment' },
-    { id: 'shopping', name: 'Shopping', amount: 500, interval: 'monthly', category: 'shopping' },
-    { id: 'utilities', name: 'Utilities', amount: 400, interval: 'monthly', category: 'utilities' },
-    { id: 'vacations', name: 'Vacations', amount: 12000, interval: 'annual', category: 'travel' },
-    { id: 'repairs', name: 'Home Repairs', amount: 5000, interval: 'annual', category: 'housing' },
-    { id: 'carMaintenance', name: 'Car Maintenance', amount: 1500, interval: 'annual', category: 'transportation' },
+    { id: 'health', name: 'Health Insurance', amount: 1300, interval: 'monthly' },
+    { id: 'food', name: 'Groceries', amount: 1200, interval: 'monthly' },
+    { id: 'entertainment', name: 'Entertainment', amount: 300, interval: 'monthly' },
+    { id: 'shopping', name: 'Shopping', amount: 500, interval: 'monthly' },
+    { id: 'utilities', name: 'Utilities', amount: 400, interval: 'monthly' },
+    { id: 'vacations', name: 'Vacations', amount: 12000, interval: 'annual' },
+    { id: 'repairs', name: 'Home Repairs', amount: 5000, interval: 'annual' },
+    { id: 'carMaintenance', name: 'Car Maintenance', amount: 1500, interval: 'annual' },
   ],
   simulationRuns: 500,
 }
