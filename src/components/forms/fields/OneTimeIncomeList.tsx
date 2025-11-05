@@ -13,6 +13,7 @@ interface OneTimeIncomeListStrings {
   nameLabel: string
   namePlaceholder: string
   ageLabel: string
+  agePrefix: string
   amountLabel: string
   remove: string
   edit: string
@@ -205,10 +206,10 @@ export function OneTimeIncomeList({
         <td className="px-4 py-3 text-left">
           <div className="flex flex-col gap-0.5">
             <span className="text-[0.74rem] font-bold uppercase tracking-[0.12em]">
-              {income.name || `Age ${income.age}`}
+              {income.name || `${strings.agePrefix} ${income.age}`}
             </span>
             <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-              Age {income.age}
+              {strings.agePrefix} {income.age}
             </span>
           </div>
         </td>

@@ -18,14 +18,6 @@
     "current": "Current step",
     "notStarted": "Not started"
   },
-  "expenseTemplates": {
-    "healthInsurance": "Health Insurance",
-    "groceries": "Groceries",
-    "utilities": "Utilities",
-    "entertainment": "Entertainment",
-    "vacations": "Vacations",
-    "homeRepairs": "Home Repairs"
-  },
   "localeSwitcher": {
     "label": "Language",
     "options": {
@@ -172,6 +164,14 @@
         "label": "Simulation Runs",
         "help": "More runs = more accurate results but slower computation"
       }
+    },
+    "expenseTemplates": {
+      "healthInsurance": "Health Insurance",
+      "groceries": "Groceries",
+      "utilities": "Utilities",
+      "entertainment": "Entertainment",
+      "vacations": "Vacations",
+      "homeRepairs": "Home Repairs"
     }
   },
   "simulation": {

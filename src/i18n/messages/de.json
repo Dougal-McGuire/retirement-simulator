@@ -18,14 +18,6 @@
     "current": "Aktueller Schritt",
     "notStarted": "Nicht begonnen"
   },
-  "expenseTemplates": {
-    "healthInsurance": "Krankenversicherung",
-    "groceries": "Lebensmittel",
-    "utilities": "Nebenkosten",
-    "entertainment": "Unterhaltung",
-    "vacations": "Urlaub",
-    "homeRepairs": "Hausreparaturen"
-  },
   "localeSwitcher": {
     "label": "Sprache",
     "options": {
@@ -172,6 +164,14 @@
         "label": "Simulationsläufe",
         "help": "Mehr Läufe erzeugen genauere Ergebnisse, benötigen aber mehr Zeit"
       }
+    },
+    "expenseTemplates": {
+      "healthInsurance": "Krankenversicherung",
+      "groceries": "Lebensmittel",
+      "utilities": "Nebenkosten",
+      "entertainment": "Unterhaltung",
+      "vacations": "Urlaub",
+      "homeRepairs": "Hausreparaturen"
     }
   },
   "simulation": {
@@ -555,7 +555,8 @@
       "zoomed": "Zoomansicht aktiv"
     },
     "aria": {
-      "description": "Vermögensdiagramm mit drei Szenarien: schlechtester Fall (10. Perzentil) in Rot, Median (50. Perzentil) in Blau und bester Fall (90. Perzentil) in Grün."
+      "description": "Vermögensdiagramm mit drei Szenarien: schlechtester Fall (10. Perzentil) in Rot, Median (50. Perzentil) in Blau und bester Fall (90. Perzentil) in Grün.",
+      "controls": "Verwenden Sie die Pfeiltasten, um durch die Diagrammdaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen."
     }
   },
   "spendingChart": {
@@ -587,7 +588,8 @@
       "zoomed": "Zoomansicht aktiv"
     },
     "aria": {
-      "description": "Balkendiagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge} über verschiedene Perzentile, ergänzt um eine Linie mit der medianen jährlichen Entnahmerate."
+      "description": "Balkendiagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge} über verschiedene Perzentile, ergänzt um eine Linie mit der medianen jährlichen Entnahmerate.",
+      "controls": "Verwenden Sie die Pfeiltasten, um durch die Ausgabendaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen."
     }
   },
   "pdf": {

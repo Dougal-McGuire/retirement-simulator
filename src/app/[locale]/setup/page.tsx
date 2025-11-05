@@ -27,6 +27,7 @@ const STORAGE_KEY = 'retirement-setup-progress'
 export default function SetupPage() {
   const router = useRouter()
   const t = useTranslations('setup')
+  const tStatus = useTranslations('stepStatus')
   const format = useFormatter()
 
   const params = useSimulationStore((state) => state.params)
@@ -267,6 +268,7 @@ export default function SetupPage() {
                   nameLabel: t('assets.oneTimeIncomes.nameLabel'),
                   namePlaceholder: t('assets.oneTimeIncomes.namePlaceholder'),
                   ageLabel: t('assets.oneTimeIncomes.ageLabel'),
+                  agePrefix: t('ui.age'),
                   amountLabel: t('assets.oneTimeIncomes.amountLabel'),
                   remove: t('assets.oneTimeIncomes.remove'),
                   edit: t('assets.oneTimeIncomes.edit'),
@@ -298,12 +300,12 @@ export default function SetupPage() {
 
       case 'expenses': {
         const expenseTemplates = [
-          { name: 'Health Insurance', amount: 1300, interval: 'monthly' as ExpenseInterval },
-          { name: 'Groceries', amount: 1200, interval: 'monthly' as ExpenseInterval },
-          { name: 'Utilities', amount: 400, interval: 'monthly' as ExpenseInterval },
-          { name: 'Entertainment', amount: 300, interval: 'monthly' as ExpenseInterval },
-          { name: 'Vacations', amount: 12000, interval: 'annual' as ExpenseInterval },
-          { name: 'Home Repairs', amount: 5000, interval: 'annual' as ExpenseInterval },
+          { name: t('expenseTemplates.healthInsurance'), amount: 1300, interval: 'monthly' as ExpenseInterval },
+          { name: t('expenseTemplates.groceries'), amount: 1200, interval: 'monthly' as ExpenseInterval },
+          { name: t('expenseTemplates.utilities'), amount: 400, interval: 'monthly' as ExpenseInterval },
+          { name: t('expenseTemplates.entertainment'), amount: 300, interval: 'monthly' as ExpenseInterval },
+          { name: t('expenseTemplates.vacations'), amount: 12000, interval: 'annual' as ExpenseInterval },
+          { name: t('expenseTemplates.homeRepairs'), amount: 5000, interval: 'annual' as ExpenseInterval },
         ]
 
         const handleAddExpense = (expense: Omit<CustomExpense, 'id'>) => {
@@ -601,7 +603,7 @@ export default function SetupPage() {
                     <button
                       type="button"
                       onClick={() => handleStepClick(index)}
-                      aria-label={`${step.title} - ${isCompleted ? 'Completed' : isActive ? 'Current step' : 'Not started'}`}
+                      aria-label={`${step.title} - ${isCompleted ? tStatus('completed') : isActive ? tStatus('current') : tStatus('notStarted')}`}
                       className={cn(
                         'absolute left-0 top-0 flex h-10 w-10 items-center justify-center border-3 border-neo-black bg-neo-white font-extrabold text-neo-black shadow-neo-sm transition-neo',
                         isCompleted && 'bg-neo-yellow',
