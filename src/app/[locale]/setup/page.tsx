@@ -170,9 +170,7 @@ export default function SetupPage() {
   }
 
   const handleStepClick = (stepIndex: number) => {
-    if (stepIndex <= currentStep) {
-      setCurrentStep(stepIndex)
-    }
+    setCurrentStep(stepIndex)
   }
 
   const updateFormData = <K extends StepKey, Field extends keyof FormState[K]>(
@@ -617,7 +615,7 @@ export default function SetupPage() {
     <div className="relative min-h-screen pb-16">
 
       <header id="navigation" className="relative z-10 pt-12 pb-10">
-        <div className="mx-auto max-w-[80rem] px-2 sm:px-3 lg:px-4">
+        <div className="mx-auto max-w-[90rem] px-2 sm:px-3 lg:px-4">
           <div className={cn(glassCardClass, 'relative overflow-hidden px-8 py-10')}>
             <div className="absolute right-8 top-8 hidden h-12 w-12 rotate-6 border-3 border-neo-black bg-neo-yellow/40 md:block" />
             <div className="absolute -left-6 bottom-10 hidden h-16 w-16 -rotate-3 border-3 border-neo-black bg-neo-blue/20 md:block" />
@@ -690,8 +688,8 @@ export default function SetupPage() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto mt-2 max-w-[80rem] px-2 pb-16 sm:px-3 lg:px-4">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <main className="relative z-10 mx-auto mt-2 max-w-[90rem] px-2 pb-16 sm:px-3 lg:px-4">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
           <aside className={cn(glassCardClass, 'space-y-6 p-6')}>
             <div className="space-y-3">
               <div className="flex items-center justify-between text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -714,7 +712,6 @@ export default function SetupPage() {
               {steps.map((step, index) => {
                 const isCompleted = index < currentStep
                 const isActive = index === currentStep
-                const canNavigate = index <= currentStep
 
                 return (
                   <div key={step.id} className="relative pl-12">
@@ -730,16 +727,13 @@ export default function SetupPage() {
                     <button
                       type="button"
                       onClick={() => handleStepClick(index)}
-                      disabled={!canNavigate}
                       aria-label={`${step.title} - ${isCompleted ? 'Completed' : isActive ? 'Current step' : 'Not started'}`}
                       className={cn(
                         'absolute left-0 top-0 flex h-10 w-10 items-center justify-center border-3 border-neo-black bg-neo-white font-extrabold text-neo-black shadow-neo-sm transition-neo',
                         isCompleted && 'bg-neo-yellow',
                         isActive && !isCompleted && 'bg-neo-white ring-3 ring-neo-blue ring-offset-2',
                         !isCompleted && !isActive && 'bg-muted text-muted-foreground',
-                        canNavigate
-                          ? 'cursor-pointer hover:-translate-y-[1px] hover:-translate-x-[1px] hover:shadow-neo'
-                          : 'cursor-default'
+                        'cursor-pointer hover:-translate-y-[1px] hover:-translate-x-[1px] hover:shadow-neo'
                       )}
                     >
                       {isCompleted ? (
