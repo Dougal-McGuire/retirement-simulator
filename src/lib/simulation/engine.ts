@@ -138,15 +138,14 @@ function runSingleSimulation(params: SimulationParams): {
     }
   }
 
-  // Calculate total monthly and annual expenses
-  const totalMonthlyExpense = Object.values(params.monthlyExpenses).reduce(
-    (sum, expense) => sum + expense,
-    0
-  )
-  const totalAnnualExpense = Object.values(params.annualExpenses).reduce(
-    (sum, expense) => sum + expense,
-    0
-  )
+  // Calculate total monthly and annual expenses from custom expenses
+  const customExpenses = params.customExpenses ?? []
+  const totalMonthlyExpense = customExpenses
+    .filter((e) => e.interval === 'monthly')
+    .reduce((sum, expense) => sum + expense.amount, 0)
+  const totalAnnualExpense = customExpenses
+    .filter((e) => e.interval === 'annual')
+    .reduce((sum, expense) => sum + expense.amount, 0)
 
   let currentMonthlyExpense = totalMonthlyExpense
   let currentAnnualExpense = totalAnnualExpense
@@ -350,17 +349,18 @@ export function formatPercentage(value: number): string {
 }
 
 /**
- * Calculate combined monthly and annual expense totals
- * @param monthlyExpenses - Object containing monthly expense categories
- * @param annualExpenses - Object containing annual expense categories
+ * Calculate combined monthly and annual expense totals from custom expenses
+ * @param customExpenses - Array containing custom expense items
  * @returns Object with combined totals
  */
-export function calculateCombinedExpenses(
-  monthlyExpenses: Record<string, number>,
-  annualExpenses: Record<string, number>
-) {
-  const totalMonthly = Object.values(monthlyExpenses).reduce((sum, expense) => sum + expense, 0)
-  const totalAnnual = Object.values(annualExpenses).reduce((sum, expense) => sum + expense, 0)
+export function calculateCombinedExpenses(customExpenses?: { interval: 'monthly' | 'annual'; amount: number }[]) {
+  const expenses = customExpenses ?? []
+  const totalMonthly = expenses
+    .filter((e) => e.interval === 'monthly')
+    .reduce((sum, expense) => sum + expense.amount, 0)
+  const totalAnnual = expenses
+    .filter((e) => e.interval === 'annual')
+    .reduce((sum, expense) => sum + expense.amount, 0)
 
   return {
     totalMonthly,

@@ -242,17 +242,9 @@
           "title": "One-time incomes",
           "description": "Schedule lump-sum inflows like insurance payouts or inheritances"
         },
-        "monthly": {
-          "title": "Monthly Expenses",
-          "description": "Total monthly expenses: {value}",
-          "combined": "Combined Monthly",
-          "tooltip": "Includes monthly expenses plus one-twelfth of annual expenses."
-        },
-        "annual": {
-          "title": "Annual Expenses",
-          "description": "Total annual expenses: {value}",
-          "combined": "Combined Annual",
-          "tooltip": "Includes monthly expenses × 12 plus annual expenses."
+        "expenses": {
+          "title": "Expenses",
+          "description": "Total annual cost: {value}"
         }
       },
       "simulation": {
@@ -322,6 +314,24 @@
         },
         "summary": "Total scheduled"
       },
+      "expenses": {
+        "add": "Add Expense",
+        "empty": "No expenses defined yet",
+        "nameLabel": "Name",
+        "namePlaceholder": "e.g. Groceries, Utilities, Vacation",
+        "amountLabel": "Amount (€)",
+        "intervalLabel": "Interval",
+        "intervalMonthly": "Monthly",
+        "intervalAnnual": "Annual",
+        "remove": "Remove expense",
+        "summary": "Total Annual",
+        "table": {
+          "name": "Name",
+          "amount": "Amount",
+          "interval": "Interval",
+          "actions": "Actions"
+        }
+      },
       "capitalGainsTax": {
         "label": "Capital Gains Tax",
         "tooltip": "Tax rate on investment gains when selling to cover expenses. German rate: 26.375%. This affects your net withdrawal rates."
@@ -346,20 +356,6 @@
       "simulationRuns": {
         "label": "Number of Runs",
         "tooltip": "Monte Carlo simulations to run. More runs = higher accuracy but slower computation. 1000+ recommended for reliable results."
-      }
-    },
-    "expenses": {
-      "monthly": {
-        "health": "Health",
-        "food": "Food",
-        "entertainment": "Entertainment",
-        "shopping": "Shopping",
-        "utilities": "Utilities"
-      },
-      "annual": {
-        "vacations": "Vacations",
-        "repairs": "Repairs",
-        "carMaintenance": "Car Maintenance"
       }
     },
     "saved": {

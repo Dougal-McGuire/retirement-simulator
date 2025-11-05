@@ -7,6 +7,7 @@ import {
   SavedSetup,
   DEFAULT_PARAMS,
   OneTimeIncome,
+  CustomExpense,
 } from '@/types'
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 
@@ -27,6 +28,53 @@ const sanitizeOneTimeIncomes = (incomes: unknown): OneTimeIncome[] => {
       }
     })
     .filter((income): income is OneTimeIncome => income !== null)
+}
+
+// Migration helper: convert old monthlyExpenses/annualExpenses to customExpenses
+const migrateToCustomExpenses = (params: any): CustomExpense[] => {
+  const expenses: CustomExpense[] = []
+
+  // Migrate monthly expenses
+  if (params.monthlyExpenses && typeof params.monthlyExpenses === 'object') {
+    const monthlyLabels: Record<string, string> = {
+      health: 'Health Insurance',
+      food: 'Groceries',
+      entertainment: 'Entertainment',
+      shopping: 'Shopping',
+      utilities: 'Utilities',
+    }
+    Object.entries(params.monthlyExpenses).forEach(([key, value]) => {
+      if (typeof value === 'number' && value > 0) {
+        expenses.push({
+          id: `migrated-monthly-${key}`,
+          name: monthlyLabels[key] || key,
+          amount: value,
+          interval: 'monthly',
+        })
+      }
+    })
+  }
+
+  // Migrate annual expenses
+  if (params.annualExpenses && typeof params.annualExpenses === 'object') {
+    const annualLabels: Record<string, string> = {
+      vacations: 'Vacations',
+      repairs: 'Home Repairs',
+      carMaintenance: 'Car Maintenance',
+    }
+    Object.entries(params.annualExpenses).forEach(([key, value]) => {
+      if (typeof value === 'number' && value > 0) {
+        expenses.push({
+          id: `migrated-annual-${key}`,
+          name: annualLabels[key] || key,
+          amount: value,
+          interval: 'annual',
+        })
+      }
+    })
+  }
+
+  return expenses
 }
 
 export const useSimulationStore = create<SimulationStore>()(
@@ -130,11 +178,18 @@ export const useSimulationStore = create<SimulationStore>()(
         try {
           const stored = localStorage.getItem(STORAGE_KEY)
           if (stored) {
-            const params = JSON.parse(stored) as SimulationParams
+            const params = JSON.parse(stored) as any
+
+            // Migrate old data structure if needed
+            const customExpenses = params.customExpenses
+              ? (Array.isArray(params.customExpenses) ? params.customExpenses : [])
+              : migrateToCustomExpenses(params)
+
             set({
               params: {
                 ...params,
                 oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
+                customExpenses,
               },
               error: null,
             })
@@ -174,10 +229,18 @@ export const useSimulationStore = create<SimulationStore>()(
         const { savedSetups } = get()
         const setup = savedSetups.find((s) => s.id === id)
         if (setup) {
+          const params = setup.params as any
+
+          // Migrate old data structure if needed
+          const customExpenses = params.customExpenses
+            ? (Array.isArray(params.customExpenses) ? params.customExpenses : [])
+            : migrateToCustomExpenses(params)
+
           set({
             params: {
-              ...setup.params,
-              oneTimeIncomes: sanitizeOneTimeIncomes(setup.params.oneTimeIncomes),
+              ...params,
+              oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
+              customExpenses,
             },
             error: null,
           })

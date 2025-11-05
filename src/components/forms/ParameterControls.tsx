@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
+import { ExpenseList } from '@/components/forms/fields/ExpenseList'
 import {
   useSimulationParams,
   useUpdateParams,
@@ -39,7 +40,7 @@ import {
   useSetAutoRunSuspended,
 } from '@/lib/stores/simulationStore'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
-import { DEFAULT_PARAMS, SimulationParams, type OneTimeIncome } from '@/types'
+import { DEFAULT_PARAMS, SimulationParams, type OneTimeIncome, type CustomExpense } from '@/types'
 
 type FormatterNumberOptions = Parameters<ReturnType<typeof useFormatter>['number']>[1]
 
@@ -220,17 +221,10 @@ export function ParameterControls() {
   const deleteSetup = useDeleteSetup()
   const savedSetups = useSavedSetups()
   const remainingWorkingYears = Math.max(0, params.retirementAge - params.currentAge)
-  const totalMonthlyExpenses = React.useMemo(
-    () => Object.values(params.monthlyExpenses).reduce((sum, value) => sum + value, 0),
-    [params.monthlyExpenses]
-  )
-  const totalAnnualExpenses = React.useMemo(
-    () => Object.values(params.annualExpenses).reduce((sum, value) => sum + value, 0),
-    [params.annualExpenses]
-  )
+  const customExpenses = params.customExpenses ?? []
   const combinedExpenses = React.useMemo(
-    () => calculateCombinedExpenses(params.monthlyExpenses, params.annualExpenses),
-    [params.annualExpenses, params.monthlyExpenses]
+    () => calculateCombinedExpenses(params.customExpenses),
+    [params.customExpenses]
   )
   const oneTimeIncomes = params.oneTimeIncomes ?? []
   const defaultOneTimeIncomeAge = React.useMemo(
@@ -329,29 +323,21 @@ export function ParameterControls() {
     updateParams({ [field]: value })
   }
 
-  const handleExpenseChange = (
-    category: keyof SimulationParams['monthlyExpenses'],
-    value: number
-  ) => {
+  const handleAddExpense = (expense: Omit<CustomExpense, 'id'>) => {
     suspendAndDebounceResume()
+    const newExpense: CustomExpense = {
+      ...expense,
+      id: `expense-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    }
     updateParams({
-      monthlyExpenses: {
-        ...params.monthlyExpenses,
-        [category]: value,
-      },
+      customExpenses: [...customExpenses, newExpense],
     })
   }
 
-  const handleAnnualExpenseChange = (
-    category: keyof SimulationParams['annualExpenses'],
-    value: number
-  ) => {
+  const handleRemoveExpense = (id: string) => {
     suspendAndDebounceResume()
     updateParams({
-      annualExpenses: {
-        ...params.annualExpenses,
-        [category]: value,
-      },
+      customExpenses: customExpenses.filter((e) => e.id !== id),
     })
   }
 
@@ -750,115 +736,36 @@ export function ParameterControls() {
             </CollapsibleSection>
 
             <CollapsibleSection
-              title={t('sections.financial.monthly.title')}
-              description={t('sections.financial.monthly.description', {
-                value: formatCurrency(totalMonthlyExpenses),
+              title={t('sections.financial.expenses.title')}
+              description={t('sections.financial.expenses.description', {
+                value: formatCurrency(combinedExpenses.combinedAnnual),
               })}
               defaultOpen={false}
             >
-              <div className="space-y-2">
-                {Object.entries(params.monthlyExpenses).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <Label className="text-[0.62rem] font-semibold uppercase tracking-[0.12em]">
-                      {t(`expenses.monthly.${key}`)}
-                    </Label>
-                    <Input
-                      type="number"
-                      value={value}
-                      onChange={(e) =>
-                        handleExpenseChange(
-                          key as keyof typeof params.monthlyExpenses,
-                          sanitizeNumberInput(
-                            e.target.value,
-                            params.monthlyExpenses[key as keyof typeof params.monthlyExpenses]
-                          )
-                        )
-                      }
-                      className={COMPACT_INPUT_CLASS}
-                      min={0}
-                    />
-                  </div>
-                ))}
-                <div className="pt-2 border-t space-y-1">
-                  <div className="flex justify-between text-sm font-semibold text-blue-600">
-                    <div className="flex items-center gap-1">
-                      <span>{t('sections.financial.monthly.combined')}</span>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <HelpCircle className="h-3 w-3 cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="top"
-                            className="max-w-xs border-3 border-neo-black bg-neo-white px-3 py-2 text-neo-black shadow-neo-sm"
-                          >
-                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]">
-                              {t('sections.financial.monthly.tooltip')}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <span>{formatCurrency(combinedExpenses.combinedMonthly)}</span>
-                  </div>
-                </div>
-              </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              title={t('sections.financial.annual.title')}
-              description={t('sections.financial.annual.description', {
-                value: formatCurrency(totalAnnualExpenses),
-              })}
-              defaultOpen={false}
-            >
-              <div className="space-y-2">
-                {Object.entries(params.annualExpenses).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <Label className="text-[0.62rem] font-semibold uppercase tracking-[0.12em]">
-                      {t(`expenses.annual.${key}`)}
-                    </Label>
-                    <Input
-                      type="number"
-                      value={value}
-                      onChange={(e) =>
-                        handleAnnualExpenseChange(
-                          key as keyof typeof params.annualExpenses,
-                          sanitizeNumberInput(
-                            e.target.value,
-                            params.annualExpenses[key as keyof typeof params.annualExpenses]
-                          )
-                        )
-                      }
-                      className={COMPACT_INPUT_CLASS}
-                      min={0}
-                    />
-                  </div>
-                ))}
-                <div className="pt-2 border-t space-y-1">
-                  <div className="flex justify-between text-sm font-semibold text-blue-600">
-                    <div className="flex items-center gap-1">
-                      <span>{t('sections.financial.annual.combined')}</span>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <HelpCircle className="h-3 w-3 cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="top"
-                            className="max-w-xs border-3 border-neo-black bg-neo-white px-3 py-2 text-neo-black shadow-neo-sm"
-                          >
-                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]">
-                              {t('sections.financial.annual.tooltip')}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <span>{formatCurrency(combinedExpenses.combinedAnnual)}</span>
-                  </div>
-                </div>
-              </div>
+              <ExpenseList
+                expenses={customExpenses}
+                strings={{
+                  addButton: t('fields.expenses.add'),
+                  empty: t('fields.expenses.empty'),
+                  nameLabel: t('fields.expenses.nameLabel'),
+                  namePlaceholder: t('fields.expenses.namePlaceholder'),
+                  amountLabel: t('fields.expenses.amountLabel'),
+                  intervalLabel: t('fields.expenses.intervalLabel'),
+                  intervalMonthly: t('fields.expenses.intervalMonthly'),
+                  intervalAnnual: t('fields.expenses.intervalAnnual'),
+                  remove: t('fields.expenses.remove'),
+                  summaryLabel: t('fields.expenses.summary'),
+                  tableHeaders: {
+                    name: t('fields.expenses.table.name'),
+                    amount: t('fields.expenses.table.amount'),
+                    interval: t('fields.expenses.table.interval'),
+                    actions: t('fields.expenses.table.actions'),
+                  },
+                }}
+                onAdd={handleAddExpense}
+                onRemove={handleRemoveExpense}
+                formatCurrency={(value) => formatCurrency(value)}
+              />
             </CollapsibleSection>
           </TabsContent>
 

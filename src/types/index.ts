@@ -19,21 +19,8 @@ export interface SimulationParams {
   inflationVolatility: number
   capitalGainsTax: number
 
-  // Expenses (monthly)
-  monthlyExpenses: {
-    health: number
-    food: number
-    entertainment: number
-    shopping: number
-    utilities: number
-  }
-
-  // Expenses (annual)
-  annualExpenses: {
-    vacations: number
-    repairs: number
-    carMaintenance: number
-  }
+  // Expenses
+  customExpenses: CustomExpense[]
 
   // Simulation settings
   simulationRuns: number
@@ -71,18 +58,8 @@ export interface AssetsIncomeStep {
   oneTimeIncomes: OneTimeIncome[]
 }
 
-export interface MonthlyExpensesStep {
-  health: number
-  food: number
-  entertainment: number
-  shopping: number
-  utilities: number
-}
-
-export interface AnnualExpensesStep {
-  vacations: number
-  repairs: number
-  carMaintenance: number
+export interface ExpensesStep {
+  customExpenses: CustomExpense[]
 }
 
 export interface MarketAssumptionsStep {
@@ -130,6 +107,15 @@ export interface OneTimeIncome {
   amount: number
 }
 
+export type ExpenseInterval = 'monthly' | 'annual'
+
+export interface CustomExpense {
+  id: string
+  name: string
+  amount: number
+  interval: ExpenseInterval
+}
+
 // Chart data interfaces
 export interface ChartDataPoint {
   age: number
@@ -167,17 +153,15 @@ export const DEFAULT_PARAMS: SimulationParams = {
   averageInflation: 0.025,
   inflationVolatility: 0.01,
   capitalGainsTax: 26.25,
-  monthlyExpenses: {
-    health: 1300,
-    food: 1200,
-    entertainment: 300,
-    shopping: 500,
-    utilities: 400,
-  },
-  annualExpenses: {
-    vacations: 12000,
-    repairs: 5000,
-    carMaintenance: 1500,
-  },
+  customExpenses: [
+    { id: 'health', name: 'Health Insurance', amount: 1300, interval: 'monthly' },
+    { id: 'food', name: 'Groceries', amount: 1200, interval: 'monthly' },
+    { id: 'entertainment', name: 'Entertainment', amount: 300, interval: 'monthly' },
+    { id: 'shopping', name: 'Shopping', amount: 500, interval: 'monthly' },
+    { id: 'utilities', name: 'Utilities', amount: 400, interval: 'monthly' },
+    { id: 'vacations', name: 'Vacations', amount: 12000, interval: 'annual' },
+    { id: 'repairs', name: 'Home Repairs', amount: 5000, interval: 'annual' },
+    { id: 'carMaintenance', name: 'Car Maintenance', amount: 1500, interval: 'annual' },
+  ],
   simulationRuns: 500,
 }

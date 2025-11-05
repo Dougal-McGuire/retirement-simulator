@@ -242,17 +242,9 @@
           "title": "Einmalige Einnahmen",
           "description": "Planen Sie Einmalzuflüsse wie Versicherungsleistungen oder Erbschaften"
         },
-        "monthly": {
-          "title": "Monatliche Ausgaben",
-          "description": "Monatliche Ausgaben gesamt: {value}",
-          "combined": "Monatlich kombiniert",
-          "tooltip": "Beinhaltet monatliche Ausgaben plus ein Zwölftel der jährlichen Ausgaben."
-        },
-        "annual": {
-          "title": "Jährliche Ausgaben",
-          "description": "Jährliche Ausgaben gesamt: {value}",
-          "combined": "Jährlich kombiniert",
-          "tooltip": "Beinhaltet monatliche Ausgaben × 12 plus jährliche Ausgaben."
+        "expenses": {
+          "title": "Ausgaben",
+          "description": "Jährliche Gesamtkosten: {value}"
         }
       },
       "simulation": {
@@ -322,6 +314,24 @@
         },
         "summary": "Geplante Gesamtsumme"
       },
+      "expenses": {
+        "add": "Ausgabe hinzufügen",
+        "empty": "Noch keine Ausgaben definiert",
+        "nameLabel": "Name",
+        "namePlaceholder": "z.B. Lebensmittel, Nebenkosten, Urlaub",
+        "amountLabel": "Betrag (€)",
+        "intervalLabel": "Intervall",
+        "intervalMonthly": "Monatlich",
+        "intervalAnnual": "Jährlich",
+        "remove": "Ausgabe entfernen",
+        "summary": "Jährlich gesamt",
+        "table": {
+          "name": "Name",
+          "amount": "Betrag",
+          "interval": "Intervall",
+          "actions": "Aktionen"
+        }
+      },
       "capitalGainsTax": {
         "label": "Kapitalertragsteuer",
         "tooltip": "Steuersatz auf Veräußerungsgewinne beim Verkauf von Anlagen. In Deutschland ca. 26,375%."
@@ -346,20 +356,6 @@
       "simulationRuns": {
         "label": "Anzahl der Läufe",
         "tooltip": "Monte-Carlo-Simulationen. Mehr Läufe bedeuten höhere Genauigkeit, benötigen aber mehr Rechenzeit."
-      }
-    },
-    "expenses": {
-      "monthly": {
-        "health": "Gesundheit",
-        "food": "Lebensmittel",
-        "entertainment": "Unterhaltung",
-        "shopping": "Einkäufe",
-        "utilities": "Nebenkosten"
-      },
-      "annual": {
-        "vacations": "Urlaub",
-        "repairs": "Reparaturen",
-        "carMaintenance": "Fahrzeugunterhalt"
       }
     },
     "saved": {
