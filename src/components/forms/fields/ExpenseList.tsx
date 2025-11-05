@@ -28,6 +28,7 @@ interface ExpenseListStrings {
   save: string
   cancel: string
   summaryLabel: string
+  templatesLabel?: string
   tableHeaders: {
     name: string
     amount: string
@@ -36,9 +37,16 @@ interface ExpenseListStrings {
   }
 }
 
+interface ExpenseTemplate {
+  name: string
+  amount: number
+  interval: ExpenseInterval
+}
+
 interface ExpenseListProps {
   expenses: CustomExpense[]
   strings: ExpenseListStrings
+  templates?: ExpenseTemplate[]
   onAdd: (expense: Omit<CustomExpense, 'id'>) => void
   onUpdate?: (id: string, expense: Omit<CustomExpense, 'id'>) => void
   onRemove: (id: string) => void
@@ -48,6 +56,7 @@ interface ExpenseListProps {
 export function ExpenseList({
   expenses,
   strings,
+  templates,
   onAdd,
   onUpdate,
   onRemove,
@@ -61,10 +70,13 @@ export function ExpenseList({
   const [editAmount, setEditAmount] = useState<number>(0)
   const [editInterval, setEditInterval] = useState<ExpenseInterval>('monthly')
 
-  const totalMonthly = expenses
+  // Defensive check: ensure expenses is always an array
+  const safeExpenses = Array.isArray(expenses) ? expenses : []
+
+  const totalMonthly = safeExpenses
     .filter((e) => e.interval === 'monthly')
     .reduce((sum, e) => sum + e.amount, 0)
-  const totalAnnual = expenses
+  const totalAnnual = safeExpenses
     .filter((e) => e.interval === 'annual')
     .reduce((sum, e) => sum + e.amount, 0)
   const totalCombined = totalMonthly * 12 + totalAnnual
@@ -227,7 +239,7 @@ export function ExpenseList({
 
   return (
     <div className="space-y-4">
-      {expenses.length === 0 ? (
+      {safeExpenses.length === 0 ? (
         <div className="rounded-none border-3 border-neo-black bg-gradient-to-br from-neo-blue/5 to-neo-yellow/5 p-6 shadow-neo-sm">
           <div className="flex flex-col items-center gap-3 text-center">
             <div className="rounded-full border-3 border-neo-black bg-neo-yellow p-3 shadow-neo">
@@ -270,9 +282,34 @@ export function ExpenseList({
               </tr>
             </thead>
             <tbody className="divide-y-3 divide-neo-black">
-              {expenses.map(renderExpenseRow)}
+              {safeExpenses.map(renderExpenseRow)}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {templates && templates.length > 0 && (
+        <div className="space-y-3">
+          {strings.templatesLabel && (
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {strings.templatesLabel}
+            </p>
+          )}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {templates.map((template, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => onAdd(template)}
+                className="border-2 border-dashed border-neo-black bg-neo-white/50 px-3 py-2 text-left text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-neo-black transition-neo hover:-translate-y-[1px] hover:-translate-x-[1px] hover:bg-neo-yellow/20 hover:shadow-neo-sm"
+              >
+                <span className="block">{template.name}</span>
+                <span className="mt-1 block text-[0.62rem] text-muted-foreground">
+                  {formatCurrency(template.amount)} / {template.interval === 'monthly' ? strings.intervalMonthly : strings.intervalAnnual}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

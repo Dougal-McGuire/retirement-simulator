@@ -116,7 +116,7 @@
     "expenses": {
       "intro": "Define your expected expenses during retirement. Add as many items as you need:",
       "add": "Add Expense",
-      "empty": "No expenses added yet. Start by clicking a template below or add your own.",
+      "empty": "No expenses added yet. Click a template below to get started or add your own.",
       "nameLabel": "Expense Name",
       "namePlaceholder": "e.g. Groceries, Utilities, Vacation",
       "amountLabel": "Amount (€)",
@@ -135,7 +135,7 @@
         "actions": "Actions"
       },
       "templates": {
-        "label": "Quick Start Templates (click to add):"
+        "label": "Quick Start Templates (click any to add):"
       }
     },
     "market": {

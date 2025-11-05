@@ -16,10 +16,15 @@ describe('Simulation Engine - edges', () => {
   })
 
   it('calculateCombinedExpenses returns consistent totals', () => {
-    const monthly = { a: 100, b: 200, c: 300 }
-    const annual = { x: 1200, y: 600 }
+    const customExpenses = [
+      { id: 'a', name: 'A', amount: 100, interval: 'monthly' as const },
+      { id: 'b', name: 'B', amount: 200, interval: 'monthly' as const },
+      { id: 'c', name: 'C', amount: 300, interval: 'monthly' as const },
+      { id: 'x', name: 'X', amount: 1200, interval: 'annual' as const },
+      { id: 'y', name: 'Y', amount: 600, interval: 'annual' as const },
+    ]
     const { totalMonthly, totalAnnual, combinedMonthly, combinedAnnual } =
-      calculateCombinedExpenses(monthly, annual)
+      calculateCombinedExpenses(customExpenses)
     expect(totalMonthly).toBe(600)
     expect(totalAnnual).toBe(1800)
     expect(combinedMonthly).toBe(600 + 1800 / 12)

@@ -116,7 +116,7 @@
     "expenses": {
       "intro": "Definieren Sie Ihre erwarteten Ausgaben im Ruhestand. Fügen Sie so viele Posten hinzu, wie Sie benötigen:",
       "add": "Ausgabe hinzufügen",
-      "empty": "Noch keine Ausgaben erfasst. Klicken Sie auf eine Vorlage unten oder fügen Sie eigene hinzu.",
+      "empty": "Noch keine Ausgaben erfasst. Klicken Sie auf eine Vorlage unten, um loszulegen, oder fügen Sie eigene hinzu.",
       "nameLabel": "Ausgabenname",
       "namePlaceholder": "z.B. Lebensmittel, Nebenkosten, Urlaub",
       "amountLabel": "Betrag (€)",
@@ -135,7 +135,7 @@
         "actions": "Aktionen"
       },
       "templates": {
-        "label": "Schnellstart-Vorlagen (klicken zum Hinzufügen):"
+        "label": "Schnellstart-Vorlagen (beliebige zum Hinzufügen klicken):"
       }
     },
     "market": {

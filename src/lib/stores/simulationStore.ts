@@ -34,6 +34,29 @@ const sanitizeOneTimeIncomes = (incomes: unknown): OneTimeIncome[] => {
     .filter((income): income is OneTimeIncome => income !== null)
 }
 
+const sanitizeCustomExpenses = (expenses: unknown): CustomExpense[] => {
+  if (!Array.isArray(expenses)) return []
+  return expenses
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null
+      const expense = entry as { id?: unknown; name?: unknown; amount?: unknown; interval?: unknown }
+      const rawId = typeof expense.id === 'string' ? expense.id : ''
+      const rawName = typeof expense.name === 'string' ? expense.name : ''
+      const rawAmount = Number(expense.amount)
+      const rawInterval = expense.interval === 'monthly' || expense.interval === 'annual' ? expense.interval : 'monthly'
+
+      if (!rawId || !rawName || !Number.isFinite(rawAmount) || rawAmount <= 0) return null
+
+      return {
+        id: rawId,
+        name: rawName,
+        amount: Math.max(0, rawAmount),
+        interval: rawInterval,
+      }
+    })
+    .filter((expense): expense is CustomExpense => expense !== null)
+}
+
 // Migration helper: convert old monthlyExpenses/annualExpenses to customExpenses
 const migrateToCustomExpenses = (params: any): CustomExpense[] => {
   const expenses: CustomExpense[] = []
@@ -184,10 +207,13 @@ export const useSimulationStore = create<SimulationStore>()(
           if (stored) {
             const params = JSON.parse(stored) as any
 
-            // Migrate old data structure if needed
-            const customExpenses = params.customExpenses
-              ? (Array.isArray(params.customExpenses) ? params.customExpenses : [])
-              : migrateToCustomExpenses(params)
+            // Migrate old data structure if needed or sanitize existing data
+            let customExpenses: CustomExpense[]
+            if (params.customExpenses && Array.isArray(params.customExpenses) && params.customExpenses.length > 0) {
+              customExpenses = sanitizeCustomExpenses(params.customExpenses)
+            } else {
+              customExpenses = migrateToCustomExpenses(params)
+            }
 
             set({
               params: {
@@ -235,10 +261,13 @@ export const useSimulationStore = create<SimulationStore>()(
         if (setup) {
           const params = setup.params as any
 
-          // Migrate old data structure if needed
-          const customExpenses = params.customExpenses
-            ? (Array.isArray(params.customExpenses) ? params.customExpenses : [])
-            : migrateToCustomExpenses(params)
+          // Migrate old data structure if needed or sanitize existing data
+          let customExpenses: CustomExpense[]
+          if (params.customExpenses && Array.isArray(params.customExpenses) && params.customExpenses.length > 0) {
+            customExpenses = sanitizeCustomExpenses(params.customExpenses)
+          } else {
+            customExpenses = migrateToCustomExpenses(params)
+          }
 
           set({
             params: {
@@ -296,6 +325,7 @@ export const useSimulationStore = create<SimulationStore>()(
                   params: {
                     ...setup.params,
                     oneTimeIncomes: sanitizeOneTimeIncomes(setup.params.oneTimeIncomes),
+                    customExpenses: sanitizeCustomExpenses(setup.params.customExpenses),
                   },
                 }))
               }
@@ -304,6 +334,8 @@ export const useSimulationStore = create<SimulationStore>()(
             }
             if (state.params) {
               state.params.oneTimeIncomes = sanitizeOneTimeIncomes(state.params.oneTimeIncomes)
+              // Ensure customExpenses is always an array
+              state.params.customExpenses = sanitizeCustomExpenses(state.params.customExpenses)
             }
           }
         }

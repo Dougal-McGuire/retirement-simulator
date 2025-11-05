@@ -354,7 +354,8 @@ export function formatPercentage(value: number): string {
  * @returns Object with combined totals
  */
 export function calculateCombinedExpenses(customExpenses?: { interval: 'monthly' | 'annual'; amount: number }[]) {
-  const expenses = customExpenses ?? []
+  // Defensive check: ensure expenses is always an array
+  const expenses = Array.isArray(customExpenses) ? customExpenses : []
   const totalMonthly = expenses
     .filter((e) => e.interval === 'monthly')
     .reduce((sum, expense) => sum + expense.amount, 0)

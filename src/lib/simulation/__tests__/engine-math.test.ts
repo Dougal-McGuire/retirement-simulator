@@ -61,18 +61,7 @@ describe('Engine math correctness', () => {
       roiVolatility: 0,
       averageInflation: 0,
       inflationVolatility: 0,
-      monthlyExpenses: {
-        health: 0,
-        food: 0,
-        entertainment: 0,
-        shopping: 0,
-        utilities: 0,
-      },
-      annualExpenses: {
-        vacations: 0,
-        repairs: 0,
-        carMaintenance: 0,
-      },
+      customExpenses: [],
       simulationRuns: 1,
     }
     const results = runMonteCarloSimulation(params)
@@ -95,18 +84,9 @@ describe('Engine math correctness', () => {
       averageInflation: 0,
       inflationVolatility: 0,
       capitalGainsTax: 25,
-      monthlyExpenses: {
-        health: 100 / 12, // total annual = 100
-        food: 0,
-        entertainment: 0,
-        shopping: 0,
-        utilities: 0,
-      },
-      annualExpenses: {
-        vacations: 0,
-        repairs: 0,
-        carMaintenance: 0,
-      },
+      customExpenses: [
+        { id: 'health', name: 'Health', amount: 100 / 12, interval: 'monthly' }, // total annual = 100
+      ],
       simulationRuns: 1,
     }
     const results = runMonteCarloSimulation(params)
@@ -136,18 +116,9 @@ describe('Engine math correctness', () => {
       averageInflation: inflationMean,
       inflationVolatility: 0,
       capitalGainsTax: 0,
-      monthlyExpenses: {
-        health: baseMonthlyExpense,
-        food: 0,
-        entertainment: 0,
-        shopping: 0,
-        utilities: 0,
-      },
-      annualExpenses: {
-        vacations: 0,
-        repairs: 0,
-        carMaintenance: 0,
-      },
+      customExpenses: [
+        { id: 'health', name: 'Health', amount: baseMonthlyExpense, interval: 'monthly' },
+      ],
       simulationRuns: 1,
     }
 

@@ -338,32 +338,11 @@ export default function SetupPage() {
               <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 {t('expenses.intro')}
               </p>
-              {params.customExpenses.length === 0 && (
-                <div className="mt-4 space-y-3">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    {t('expenses.templates.label')}
-                  </p>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {expenseTemplates.map((template, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => handleAddExpense(template)}
-                        className="border-2 border-dashed border-neo-black bg-neo-white/50 px-3 py-2 text-left text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-neo-black transition-neo hover:-translate-y-[1px] hover:-translate-x-[1px] hover:bg-neo-yellow/20 hover:shadow-neo-sm"
-                      >
-                        <span className="block">{template.name}</span>
-                        <span className="mt-1 block text-[0.62rem] text-muted-foreground">
-                          {formatCurrency(template.amount)} / {template.interval === 'monthly' ? t('expenses.intervalMonthly') : t('expenses.intervalAnnual')}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             <ExpenseList
               expenses={params.customExpenses}
+              templates={expenseTemplates}
               strings={{
                 addButton: t('expenses.add'),
                 empty: t('expenses.empty'),
@@ -378,6 +357,7 @@ export default function SetupPage() {
                 save: t('expenses.save'),
                 cancel: t('expenses.cancel'),
                 summaryLabel: t('expenses.summary'),
+                templatesLabel: t('expenses.templates.label'),
                 tableHeaders: {
                   name: t('expenses.table.name'),
                   amount: t('expenses.table.amount'),
