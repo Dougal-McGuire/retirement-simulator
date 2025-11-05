@@ -482,7 +482,7 @@ export function ParameterControls() {
                   ) : (
                     <div className="flex flex-col items-start gap-1">
                       <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
-                        Custom Configuration
+                        {t('customConfiguration')}
                       </span>
                       <span className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                         {formatPercent(params.averageROI)} ROI · σ {formatPercent(params.roiVolatility)}
@@ -533,7 +533,7 @@ export function ParameterControls() {
                   ) : (
                     <div className="flex flex-col items-start gap-1">
                       <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
-                        Custom Configuration
+                        {t('customConfiguration')}
                       </span>
                       <span className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                         {formatPercent(params.averageInflation)} · σ {formatPercent(params.inflationVolatility)}

@@ -51,12 +51,14 @@ export default function SimulationPage() {
 
   const successMessage = successTone ? t(`header.confidence.${successTone}`) : null
 
-  // Run initial simulation
+  // Run initial simulation if no results exist
+  // This happens on first visit or when params have changed and results were invalidated
   useEffect(() => {
-    if (!results) {
+    if (!results && !isLoading) {
+      console.log('No results found, running initial simulation')
       runSimulation()
     }
-  }, [results, runSimulation])
+  }, [])  // Empty deps - only run once on mount
 
   return (
     <div className="relative min-h-screen pb-16">

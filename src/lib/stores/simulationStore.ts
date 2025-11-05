@@ -310,6 +310,7 @@ export const useSimulationStore = create<SimulationStore>()(
       name: 'retirement-simulator-store',
       partialize: (state) => ({
         params: state.params,
+        results: state.results,  // Persist results to avoid re-running simulation on every page load
         savedSetups: state.savedSetups,
       }),
       onRehydrateStorage: () => {
@@ -336,6 +337,36 @@ export const useSimulationStore = create<SimulationStore>()(
               state.params.oneTimeIncomes = sanitizeOneTimeIncomes(state.params.oneTimeIncomes)
               // Ensure customExpenses is always an array
               state.params.customExpenses = sanitizeCustomExpenses(state.params.customExpenses)
+            }
+
+            // Validate that persisted results match current params
+            // If params have changed since results were generated, clear stale results
+            if (state.results && state.results.params) {
+              const resultParams = state.results.params
+              const currentParams = state.params
+
+              // Check if key parameters have changed that would invalidate results
+              const paramsMatch =
+                resultParams.currentAge === currentParams.currentAge &&
+                resultParams.retirementAge === currentParams.retirementAge &&
+                resultParams.legalRetirementAge === currentParams.legalRetirementAge &&
+                resultParams.endAge === currentParams.endAge &&
+                resultParams.currentAssets === currentParams.currentAssets &&
+                resultParams.annualSavings === currentParams.annualSavings &&
+                resultParams.monthlyPension === currentParams.monthlyPension &&
+                resultParams.averageROI === currentParams.averageROI &&
+                resultParams.roiVolatility === currentParams.roiVolatility &&
+                resultParams.averageInflation === currentParams.averageInflation &&
+                resultParams.inflationVolatility === currentParams.inflationVolatility &&
+                resultParams.capitalGainsTax === currentParams.capitalGainsTax &&
+                resultParams.simulationRuns === currentParams.simulationRuns &&
+                JSON.stringify(resultParams.customExpenses) === JSON.stringify(currentParams.customExpenses) &&
+                JSON.stringify(resultParams.oneTimeIncomes) === JSON.stringify(currentParams.oneTimeIncomes)
+
+              if (!paramsMatch) {
+                console.log('Parameters have changed since last simulation, clearing stale results')
+                state.results = null
+              }
             }
           }
         }

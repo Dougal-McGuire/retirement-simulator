@@ -5,6 +5,27 @@
       "navigation": "Zur Navigation springen"
     }
   },
+  "ui": {
+    "close": "Schließen",
+    "closeDialog": "Dialog schließen",
+    "increaseValue": "Wert erhöhen",
+    "decreaseValue": "Wert verringern",
+    "age": "Alter",
+    "ageLabel": "Alter {age}"
+  },
+  "stepStatus": {
+    "completed": "Abgeschlossen",
+    "current": "Aktueller Schritt",
+    "notStarted": "Nicht begonnen"
+  },
+  "expenseTemplates": {
+    "healthInsurance": "Krankenversicherung",
+    "groceries": "Lebensmittel",
+    "utilities": "Nebenkosten",
+    "entertainment": "Unterhaltung",
+    "vacations": "Urlaub",
+    "homeRepairs": "Hausreparaturen"
+  },
   "localeSwitcher": {
     "label": "Sprache",
     "options": {
@@ -198,6 +219,17 @@
   },
   "parameterControls": {
     "title": "Simulationsparameter",
+    "customConfiguration": "Benutzerdefinierte Konfiguration",
+    "workingYearsRemaining": "Verbleibende Arbeitsjahre",
+    "workingYears": "{count, plural, one {# Jahr} other {# Jahre}}",
+    "accumulationPhase": "Ansparphase",
+    "agesRange": "Alter {start}–{end}",
+    "retirementYears": "Ruhestand: {years}J",
+    "currentlyLoaded": "Aktuell geladen",
+    "noSavedSetups": "Keine gespeicherten Setups",
+    "saveParametersHint": "Speichern Sie Ihre Parameter oben",
+    "noSetupsYet": "Noch keine Setups gespeichert",
+    "saveAsHint": "Verwenden Sie \"Speichern unter\", um Konfigurationen zu sichern",
     "presets": {
   "investment": {
     "title": "Anlageperformance",

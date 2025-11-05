@@ -5,6 +5,27 @@
       "navigation": "Skip to navigation"
     }
   },
+  "ui": {
+    "close": "Close",
+    "closeDialog": "Close dialog",
+    "increaseValue": "Increase value",
+    "decreaseValue": "Decrease value",
+    "age": "Age",
+    "ageLabel": "Age {age}"
+  },
+  "stepStatus": {
+    "completed": "Completed",
+    "current": "Current step",
+    "notStarted": "Not started"
+  },
+  "expenseTemplates": {
+    "healthInsurance": "Health Insurance",
+    "groceries": "Groceries",
+    "utilities": "Utilities",
+    "entertainment": "Entertainment",
+    "vacations": "Vacations",
+    "homeRepairs": "Home Repairs"
+  },
   "localeSwitcher": {
     "label": "Language",
     "options": {
@@ -198,6 +219,17 @@
   },
   "parameterControls": {
     "title": "Simulation Parameters",
+    "customConfiguration": "Custom Configuration",
+    "workingYearsRemaining": "Working years remaining",
+    "workingYears": "{count, plural, one {# year} other {# years}}",
+    "accumulationPhase": "Accumulation Phase",
+    "agesRange": "Ages {start}–{end}",
+    "retirementYears": "Retirement: {years}y",
+    "currentlyLoaded": "Currently Loaded",
+    "noSavedSetups": "No Saved Setups",
+    "saveParametersHint": "Save your current parameters above",
+    "noSetupsYet": "No saved setups yet",
+    "saveAsHint": "Use \"Save As\" to store configurations",
     "presets": {
       "investment": {
         "title": "Investment Performance",
