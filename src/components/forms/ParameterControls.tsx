@@ -1055,122 +1055,106 @@ export function ParameterControls() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex-1">
-                        <Select
-                          value={selectedSetupId}
-                          onValueChange={(value) => {
-                            if (value === '__placeholder') return
-                            setSelectedSetupId(value)
-                            handleLoadSetup(value)
-                          }}
-                          disabled={savedSetups.length === 0}
-                        >
-                          <SelectTrigger size="sm" className="flex-1 h-10 w-full">
-                            <SelectValue
-                              placeholder={
-                                savedSetups.length === 0 ? (
-                                  t('noSavedSetups')
-                                ) : (
-                                  t('saved.actions.loadPlaceholder')
-                                )
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {savedSetups.length === 0 ? (
-                              <SelectItem value="__placeholder" disabled>
-                                <div className="py-2 text-center">
-                                  <div className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                                    {t('noSetupsYet')}
-                                  </div>
-                                  <div className="mt-1 text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
-                                    {t('saveAsHint')}
+                <div className="flex-1">
+                  <Select
+                    value={selectedSetupId}
+                    onValueChange={(value) => {
+                      if (value === '__placeholder') return
+                      setSelectedSetupId(value)
+                      handleLoadSetup(value)
+                    }}
+                    disabled={savedSetups.length === 0}
+                  >
+                    <SelectTrigger size="sm" className="flex-1 h-10 w-full">
+                      <SelectValue
+                        placeholder={
+                          savedSetups.length === 0 ? (
+                            t('noSavedSetups')
+                          ) : (
+                            t('saved.actions.loadPlaceholder')
+                          )
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {savedSetups.length === 0 ? (
+                        <SelectItem value="__placeholder" disabled>
+                          <div className="py-2 text-center">
+                            <div className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                              {t('noSetupsYet')}
+                            </div>
+                            <div className="mt-1 text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+                              {t('saveAsHint')}
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ) : (
+                        savedSetups.map((setup) => (
+                          <SelectItem
+                            key={setup.id}
+                            value={setup.id}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div
+                                className="flex items-center gap-2 flex-1"
+                                onClick={() => handleLoadSetup(setup.id)}
+                              >
+                                <div className="rounded border-2 border-neo-black bg-neo-blue/10 p-1">
+                                  <svg
+                                    className="h-3 w-3 text-neo-blue"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2.5}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                                    />
+                                  </svg>
+                                </div>
+                                <div className="flex flex-col text-left">
+                                  <span className="text-[0.68rem] font-semibold uppercase tracking-[0.12em]">
+                                    {setup.name}
+                                  </span>
+                                  <div className="flex items-center gap-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                                    <svg
+                                      className="h-2.5 w-2.5"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                      strokeWidth={2.5}
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                      />
+                                    </svg>
+                                    {new Date(setup.timestamp).toLocaleDateString()}
                                   </div>
                                 </div>
-                              </SelectItem>
-                            ) : (
-                              savedSetups.map((setup) => (
-                                <SelectItem
-                                  key={setup.id}
-                                  value={setup.id}
-                                >
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div
-                                      className="flex items-center gap-2 flex-1"
-                                      onClick={() => handleLoadSetup(setup.id)}
-                                    >
-                                      <div className="rounded border-2 border-neo-black bg-neo-blue/10 p-1">
-                                        <svg
-                                          className="h-3 w-3 text-neo-blue"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
-                                          stroke="currentColor"
-                                          strokeWidth={2.5}
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                                          />
-                                        </svg>
-                                      </div>
-                                      <div className="flex flex-col text-left">
-                                        <span className="text-[0.68rem] font-semibold uppercase tracking-[0.12em]">
-                                          {setup.name}
-                                        </span>
-                                        <div className="flex items-center gap-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                                          <svg
-                                            className="h-2.5 w-2.5"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                            strokeWidth={2.5}
-                                          >
-                                            <path
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                            />
-                                          </svg>
-                                          {new Date(setup.timestamp).toLocaleDateString()}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      className="h-8 w-8 inline-flex items-center justify-center rounded-md bg-neo-white text-muted-foreground shadow-neo-sm hover:bg-neo-red hover:text-neo-white transition-colors"
-                                      onMouseDown={(event) => {
-                                        event.preventDefault()
-                                        event.stopPropagation()
-                                        handleDeleteSetup(setup.id)
-                                      }}
-                                      aria-label={t('saved.actions.delete', { name: setup.name })}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </TooltipTrigger>
-                    {savedSetups.length === 0 && (
-                      <TooltipContent
-                        side="top"
-                        className="max-w-xs border-4 border-neo-black bg-neo-white px-3 py-2 text-neo-black shadow-neo"
-                      >
-                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] leading-relaxed">
-                          {t('noSetupsYet')} — {t('saveParametersHint')}
-                        </p>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                </TooltipProvider>
+                              </div>
+                              <button
+                                type="button"
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-md bg-neo-white text-muted-foreground shadow-neo-sm hover:bg-neo-red hover:text-neo-white transition-colors"
+                                onMouseDown={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  handleDeleteSetup(setup.id)
+                                }}
+                                aria-label={t('saved.actions.delete', { name: setup.name })}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 

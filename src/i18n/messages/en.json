@@ -459,7 +459,8 @@
   "report": {
     "errors": {
       "requestFailed": "PDF generation failed: {status}",
-      "generic": "Failed to generate PDF"
+      "generic": "Failed to generate PDF",
+      "timeout": "PDF generation timed out. Please try again."
     },
     "disabled": {
       "noData": "No data",

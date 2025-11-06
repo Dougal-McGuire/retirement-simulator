@@ -36,39 +36,54 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
   const canGenerate = results && !disabled
 
   const generatePDF = async () => {
-    const response = await fetch('/api/generate-pdf', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        params: params || results?.params,
-        results,
-        locale,
-      }),
-    })
+    // Create abort controller for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error('PDF generation error response:', errorData)
-      throw new Error(
-        errorData.details || errorData.error ||
-          t('errors.requestFailed', { status: response.statusText })
-      )
+    try {
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          params: params || results?.params,
+          results,
+          locale,
+        }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('PDF generation error response:', errorData)
+        throw new Error(
+          errorData.details || errorData.error ||
+            t('errors.requestFailed', { status: response.statusText })
+        )
+      }
+
+      const blob = await response.blob()
+      const filename = `retirement-report-${new Date().toISOString().split('T')[0]}.pdf`
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      clearTimeout(timeoutId)
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(t('errors.timeout'))
+      }
+      throw error
     }
-
-    const blob = await response.blob()
-    const filename = `retirement-report-${new Date().toISOString().split('T')[0]}.pdf`
-
-    // Create download link
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
   }
 
   const handleGenerate = async () => {

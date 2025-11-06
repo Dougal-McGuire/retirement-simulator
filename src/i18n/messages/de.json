@@ -226,7 +226,7 @@
     "agesRange": "Alter {start}–{end}",
     "retirementYears": "Ruhestand: {years}J",
     "currentlyLoaded": "Aktuell geladen",
-    "noSavedSetups": "Keine gespeicherten Setups",
+    "noSavedSetups": "Keine Setups",
     "saveParametersHint": "Speichern Sie Ihre Parameter oben",
     "noSetupsYet": "Noch keine Setups gespeichert",
     "saveAsHint": "Verwenden Sie \"Speichern unter\", um Konfigurationen zu sichern",
@@ -459,7 +459,8 @@
   "report": {
     "errors": {
       "requestFailed": "PDF-Erstellung fehlgeschlagen: {status}",
-      "generic": "PDF konnte nicht erstellt werden"
+      "generic": "PDF konnte nicht erstellt werden",
+      "timeout": "PDF-Erstellung hat zu lange gedauert. Bitte versuchen Sie es erneut."
     },
     "disabled": {
       "noData": "Keine Daten",

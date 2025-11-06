@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
       }
     })
     await page.setCacheEnabled(false)
-    await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 0 })
+    await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 30000 })
     await page.emulateMediaType('print')
     await page.evaluate(() => {
       const doc = document as Document & { fonts?: FontFaceSet }
