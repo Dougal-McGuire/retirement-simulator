@@ -44,16 +44,6 @@ import {
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { DEFAULT_PARAMS, SimulationParams, type OneTimeIncome, type CustomExpense } from '@/types'
 
-type FormatterNumberOptions = Parameters<ReturnType<typeof useFormatter>['number']>[1]
-
-const composeNumberOptions = (
-  base: NumberFormatOptions,
-  override?: FormatterNumberOptions,
-): FormatterNumberOptions => {
-  if (!override) return base
-  if (typeof override === 'string') return override
-  return { ...base, ...override }
-}
 
 // Preset configurations
 const INVESTMENT_PRESETS = [
@@ -317,20 +307,26 @@ export function ParameterControls() {
   }, [params.averageInflation, params.inflationVolatility])
 
   const formatCurrency = React.useCallback(
-    (value: number, options?: FormatterNumberOptions) =>
-      format.number(value, composeNumberOptions(baseCurrencyFormat, options)),
+    (value: number, options?: NumberFormatOptions) => {
+      const finalOptions = options ? { ...baseCurrencyFormat, ...options } : baseCurrencyFormat
+      return format.number(value, finalOptions)
+    },
     [baseCurrencyFormat, format]
   )
 
   const formatPercent = React.useCallback(
-    (value: number, options?: FormatterNumberOptions) =>
-      format.number(value, composeNumberOptions(basePercentFormat, options)),
+    (value: number, options?: NumberFormatOptions) => {
+      const finalOptions = options ? { ...basePercentFormat, ...options } : basePercentFormat
+      return format.number(value, finalOptions)
+    },
     [basePercentFormat, format]
   )
 
   const formatNumber = React.useCallback(
-    (value: number, options?: FormatterNumberOptions) =>
-      format.number(value, composeNumberOptions(baseNumberFormat, options)),
+    (value: number, options?: NumberFormatOptions) => {
+      const finalOptions = options ? { ...baseNumberFormat, ...options } : baseNumberFormat
+      return format.number(value, finalOptions)
+    },
     [baseNumberFormat, format]
   )
 

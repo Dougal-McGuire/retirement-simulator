@@ -1,0 +1,102 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - link "Skip to navigation" [ref=e3] [cursor=pointer]:
+    - /url: "#navigation"
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - generic [ref=e12]:
+            - generic [ref=e13]:
+              - generic [ref=e14]: Guided setup
+              - generic [ref=e15]: ≈5 min
+            - generic [ref=e16]:
+              - heading "Setup" [level=1] [ref=e17]
+              - paragraph [ref=e18]: Craft your baseline assumptions before running the retirement engine.
+          - generic [ref=e19]:
+            - combobox "Language" [ref=e20]:
+              - generic: English
+              - img
+            - link "Go to Simulation" [ref=e21] [cursor=pointer]:
+              - /url: /en/simulation
+        - generic [ref=e23]:
+          - generic [ref=e24]: Step 1 of 4
+          - generic [ref=e26]: 25% complete
+          - generic [ref=e27]: Progress auto-saves locally
+    - main [ref=e31]:
+      - generic [ref=e32]:
+        - complementary [ref=e33]:
+          - generic [ref=e34]:
+            - generic [ref=e35]:
+              - generic [ref=e36]: Step 1 of 4
+              - generic [ref=e37]: 25%
+            - generic [ref=e39]:
+              - generic [ref=e40]: Time remaining
+              - generic [ref=e41]: ~4 min
+          - generic [ref=e42]:
+            - generic [ref=e43]:
+              - button "Personal Information - Current step" [ref=e44] [cursor=pointer]:
+                - generic [ref=e45]: "1"
+              - generic [ref=e46]:
+                - paragraph [ref=e47]: Personal Information
+                - paragraph [ref=e48]: Your age and retirement timeline
+            - generic [ref=e49]:
+              - button "Assets & Income - Not started" [ref=e50] [cursor=pointer]:
+                - generic [ref=e51]: "2"
+              - generic [ref=e52]:
+                - paragraph [ref=e53]: Assets & Income
+                - paragraph [ref=e54]: Current assets and savings plan
+            - generic [ref=e55]:
+              - button "Expenses - Not started" [ref=e56] [cursor=pointer]:
+                - generic [ref=e57]: "3"
+              - generic [ref=e58]:
+                - paragraph [ref=e59]: Expenses
+                - paragraph [ref=e60]: Your retirement spending plan
+            - generic [ref=e61]:
+              - button "Market Assumptions - Not started" [ref=e62] [cursor=pointer]:
+                - generic [ref=e63]: "4"
+              - generic [ref=e64]:
+                - paragraph [ref=e65]: Market Assumptions
+                - paragraph [ref=e66]: Investment returns and inflation
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - generic [ref=e69]:
+              - heading "Personal Information" [level=3] [ref=e70]
+              - paragraph [ref=e71]: Your age and retirement timeline
+            - generic [ref=e73]:
+              - generic [ref=e74]:
+                - generic [ref=e76]: Current Age
+                - spinbutton "Current Age" [ref=e78]: "55"
+                - paragraph [ref=e79]: How old are you now?
+              - generic [ref=e80]:
+                - text: Intended Retirement Age
+                - generic [ref=e81]:
+                  - slider [ref=e86]
+                  - generic [ref=e87]:
+                    - generic [ref=e88]: "50"
+                    - generic [ref=e89]: "60"
+                    - generic [ref=e90]: "70"
+                - paragraph [ref=e91]: When you plan to stop working. The simulator uses this to calculate remaining working years.
+              - generic [ref=e92]:
+                - generic [ref=e94]: Legal Retirement Age
+                - spinbutton "Legal Retirement Age" [ref=e96]: "67"
+                - paragraph [ref=e97]: Determines when statutory pension income starts in the plan.
+              - generic [ref=e98]:
+                - generic [ref=e100]: Planning Horizon (End Age)
+                - spinbutton "Planning Horizon (End Age)" [ref=e102]: "90"
+                - paragraph [ref=e103]: How long your retirement plan should run. Use life expectancy plus a safety margin.
+          - generic [ref=e104]:
+            - button "Back" [disabled]:
+              - img
+              - text: Back
+            - button "Next" [ref=e105]:
+              - text: Next
+              - img [ref=e106]
+  - button "Open Next.js Dev Tools" [ref=e113] [cursor=pointer]:
+    - img [ref=e114]
+  - alert [ref=e117]
+```
