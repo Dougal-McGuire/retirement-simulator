@@ -16,6 +16,7 @@ import { SuccessRateCard } from '@/components/charts/SuccessRateCard'
 import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { MobileMenu } from '@/components/navigation/MobileMenu'
+import { VersionInfo } from '@/components/navigation/VersionInfo'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
 import { ChartSkeleton, SuccessRateCardSkeleton } from '@/components/ui/skeleton'
 
@@ -87,6 +88,7 @@ export default function SimulationPage() {
                     <span className="neo-chip bg-neo-white text-muted-foreground shadow-neo-sm">
                       {t('header.badges.runs', { count: formattedRuns })}
                     </span>
+                    <VersionInfo />
                   </div>
                   <div>
                     <h1 className="text-3xl font-black tracking-[0.14em] sm:text-4xl">

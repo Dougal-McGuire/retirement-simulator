@@ -7,9 +7,10 @@
     "pnpm": ">=10"
   },
   "scripts": {
-    "dev": "next dev --turbopack",
-    "dev:clean": "lsof -ti:3000 | xargs kill -9 2>/dev/null || true && next dev --turbopack",
-    "dev:port": "next dev --turbopack --port 3000",
+    "prebuild": "node scripts/generate-build-info.js",
+    "dev": "node scripts/generate-build-info.js && next dev --turbopack",
+    "dev:clean": "lsof -ti:3000 | xargs kill -9 2>/dev/null || true && node scripts/generate-build-info.js && next dev --turbopack",
+    "dev:port": "node scripts/generate-build-info.js && next dev --turbopack --port 3000",
     "build": "next build --turbopack",
     "start": "next start",
     "stop": "lsof -ti:3000 | xargs kill -9 2>/dev/null || echo 'Port 3000 is already free'",
