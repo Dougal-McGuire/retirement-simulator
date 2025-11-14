@@ -1,6 +1,3 @@
- 1. Tag the current git stage as stable-release
- 2. Make a plan to procced with the aggressive approach
- 3. Test
- 4. Fix any issues
- 5. Fix any depreciation warnings
- 6. make sure everyting works (use chrome-devtools mcp)
+I want you to adress a small usability issue.
+In several input fields constraint on the possible value make it sometime difficult to change numbers.
+Suggest three differetn approaches to fix this!

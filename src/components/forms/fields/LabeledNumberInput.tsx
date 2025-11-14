@@ -92,6 +92,20 @@ export function LabeledNumberInput({
 
   const handleBlur = () => {
     setTouched(true)
+
+    // Clamp value to min/max constraints on blur
+    let clampedValue = value
+    if (min !== undefined && clampedValue < min) {
+      clampedValue = min
+    }
+    if (max !== undefined && clampedValue > max) {
+      clampedValue = max
+    }
+
+    // Only update if value changed
+    if (clampedValue !== value) {
+      onChange(clampedValue)
+    }
   }
 
   const getValidationIcon = () => {
@@ -166,8 +180,6 @@ export function LabeledNumberInput({
             onChange(nextValue)
           }}
           onBlur={handleBlur}
-          min={min}
-          max={max}
           className={cn(
             'h-11 border-2 font-semibold uppercase tracking-[0.12em] pr-10',
             getInputBorderClass(),

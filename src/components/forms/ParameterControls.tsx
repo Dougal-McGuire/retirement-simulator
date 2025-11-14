@@ -97,10 +97,11 @@ const INFLATION_PRESETS = [
   },
 ] as const
 
-const sanitizeNumberInput = (rawValue: string, fallback: number): number => {
-  if (rawValue === '') return fallback
+const sanitizeNumberInput = (rawValue: string): number => {
+  // Allow empty input during editing - will be clamped on blur
+  if (rawValue === '' || rawValue === '-') return 0
   const next = Number(rawValue)
-  return Number.isFinite(next) ? next : fallback
+  return Number.isFinite(next) ? next : 0
 }
 
 const isClose = (a: number, b: number, epsilon = 0.0005) => Math.abs(a - b) <= epsilon
@@ -333,6 +334,30 @@ export function ParameterControls() {
   const handleInputChange = (field: keyof SimulationParams, value: number) => {
     suspendAndDebounceResume()
     updateParams({ [field]: value })
+  }
+
+  // Helper to create onBlur handler that clamps values to constraints
+  const createClampingBlurHandler = (
+    field: keyof SimulationParams,
+    min?: number,
+    max?: number
+  ) => {
+    return () => {
+      const currentValue = params[field] as number
+      let clampedValue = currentValue
+
+      if (min !== undefined && clampedValue < min) {
+        clampedValue = min
+      }
+      if (max !== undefined && clampedValue > max) {
+        clampedValue = max
+      }
+
+      if (clampedValue !== currentValue) {
+        suspendAndDebounceResume()
+        updateParams({ [field]: clampedValue })
+      }
+    }
   }
 
   const handleAddExpense = (expense: Omit<CustomExpense, 'id'>) => {
@@ -593,12 +618,11 @@ export function ParameterControls() {
                   onChange={(e) =>
                     handleInputChange(
                       'currentAge',
-                      sanitizeNumberInput(e.target.value, params.currentAge)
+                      sanitizeNumberInput(e.target.value)
                     )
                   }
+                  onBlur={createClampingBlurHandler('currentAge', 18, 80)}
                   className={FIELD_INPUT_CLASS}
-                  min={18}
-                  max={80}
                 />
               </ParameterField>
 
@@ -613,12 +637,15 @@ export function ParameterControls() {
                     onChange={(e) =>
                       handleInputChange(
                         'retirementAge',
-                        sanitizeNumberInput(e.target.value, params.retirementAge)
+                        sanitizeNumberInput(e.target.value)
                       )
                     }
+                    onBlur={createClampingBlurHandler(
+                      'retirementAge',
+                      params.currentAge,
+                      Math.max(params.currentAge, params.legalRetirementAge, 70)
+                    )}
                     className={FIELD_INPUT_CLASS}
-                    min={params.currentAge}
-                    max={Math.max(params.currentAge, params.legalRetirementAge, 70)}
                   />
 
                   {/* Enhanced working years display */}
@@ -671,12 +698,11 @@ export function ParameterControls() {
                   onChange={(e) =>
                     handleInputChange(
                       'legalRetirementAge',
-                      sanitizeNumberInput(e.target.value, params.legalRetirementAge)
+                      sanitizeNumberInput(e.target.value)
                     )
                   }
+                  onBlur={createClampingBlurHandler('legalRetirementAge', 60, 70)}
                   className={FIELD_INPUT_CLASS}
-                  min={60}
-                  max={70}
                 />
               </ParameterField>
 
@@ -690,12 +716,11 @@ export function ParameterControls() {
                   onChange={(e) =>
                     handleInputChange(
                       'endAge',
-                      sanitizeNumberInput(e.target.value, params.endAge)
+                      sanitizeNumberInput(e.target.value)
                     )
                   }
+                  onBlur={createClampingBlurHandler('endAge', 70, 100)}
                   className={FIELD_INPUT_CLASS}
-                  min={70}
-                  max={100}
                 />
               </ParameterField>
             </CollapsibleSection>
@@ -718,11 +743,11 @@ export function ParameterControls() {
                   onChange={(e) =>
                     handleInputChange(
                       'currentAssets',
-                      sanitizeNumberInput(e.target.value, params.currentAssets)
+                      sanitizeNumberInput(e.target.value)
                     )
                   }
+                  onBlur={createClampingBlurHandler('currentAssets', 0)}
                   className={FIELD_INPUT_CLASS}
-                  min={0}
                 />
               </ParameterField>
 
@@ -736,11 +761,11 @@ export function ParameterControls() {
                   onChange={(e) =>
                     handleInputChange(
                       'annualSavings',
-                      sanitizeNumberInput(e.target.value, params.annualSavings)
+                      sanitizeNumberInput(e.target.value)
                     )
                   }
+                  onBlur={createClampingBlurHandler('annualSavings', 0)}
                   className={FIELD_INPUT_CLASS}
-                  min={0}
                 />
               </ParameterField>
             </CollapsibleSection>
@@ -760,11 +785,11 @@ export function ParameterControls() {
                   onChange={(e) =>
                     handleInputChange(
                       'monthlyPension',
-                      sanitizeNumberInput(e.target.value, params.monthlyPension)
+                      sanitizeNumberInput(e.target.value)
                     )
                   }
+                  onBlur={createClampingBlurHandler('monthlyPension', 0)}
                   className={FIELD_INPUT_CLASS}
-                  min={0}
                 />
               </ParameterField>
 

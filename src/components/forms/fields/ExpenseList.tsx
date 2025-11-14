@@ -160,7 +160,14 @@ export function ExpenseList({
             <Input
               type="number"
               value={editAmount}
-              onChange={(e) => setEditAmount(Number(e.target.value))}
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value)
+                setEditAmount(val)
+              }}
+              onBlur={() => {
+                const clamped = Math.max(0, Math.round(editAmount))
+                if (clamped !== editAmount) setEditAmount(clamped)
+              }}
               className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase text-right"
             />
           </td>
@@ -344,8 +351,14 @@ export function ExpenseList({
                 id="expense-amount"
                 type="number"
                 value={draftAmount}
-                min={0}
-                onChange={(event) => setDraftAmount(Number(event.target.value))}
+                onChange={(event) => {
+                  const val = event.target.value === '' ? 0 : Number(event.target.value)
+                  setDraftAmount(val)
+                }}
+                onBlur={() => {
+                  const clamped = Math.max(0, Math.round(draftAmount))
+                  if (clamped !== draftAmount) setDraftAmount(clamped)
+                }}
                 className="h-11 w-full border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
               />
             </div>
