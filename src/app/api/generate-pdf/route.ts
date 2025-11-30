@@ -115,20 +115,29 @@ export async function POST(req: NextRequest) {
     // Encode the report data as a URL-safe base64 payload
     // This avoids serverless cache issues where different instances don't share memory
     const payload = encodePayload(validated)
-    const targetUrl = `${protocol}://${host}/reports/${reportId}/print?payload=${payload}`
+
+    // Build target URL with optional bypass secret as query param (fallback for when headers are stripped)
+    const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    const bypassParam = bypassSecret ? `&x-vercel-protection-bypass=${encodeURIComponent(bypassSecret)}` : ''
+    const targetUrl = `${protocol}://${host}/reports/${reportId}/print?payload=${payload}${bypassParam}`
 
     browser = await launchBrowser()
     const page = await browser.newPage()
 
     // Bypass Vercel deployment protection for preview deployments
     // See: https://vercel.com/docs/security/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation
-    const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
     if (bypassSecret) {
+      console.log('[pdf-debug] Using Vercel automation bypass secret')
       await page.setExtraHTTPHeaders({
         'x-vercel-protection-bypass': bypassSecret,
         'x-vercel-set-bypass-cookie': 'samesitenone',
       })
+    } else if (process.env.VERCEL) {
+      console.warn('[pdf-debug] Running on Vercel but VERCEL_AUTOMATION_BYPASS_SECRET is not set - deployment protection may block PDF generation')
     }
+
+    // Log sanitized URL (hide payload and bypass secret)
+    console.log('[pdf-debug] Target URL:', targetUrl.replace(/payload=[^&]+/, 'payload=<hidden>').replace(/x-vercel-protection-bypass=[^&]+/, 'x-vercel-protection-bypass=<hidden>'))
 
     page.on('console', (message) => {
       try {
@@ -138,7 +147,29 @@ export async function POST(req: NextRequest) {
       }
     })
     await page.setCacheEnabled(false)
-    await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 30000 })
+    const response = await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 30000 })
+
+    // Check for Vercel deployment protection (returns 401/403)
+    const status = response?.status()
+    if (status && status >= 400) {
+      console.error(`[pdf-debug] Page returned status ${status} - likely blocked by Vercel deployment protection`)
+    }
+
+    // Detect if we landed on Vercel's protection page instead of the report
+    const isProtectionPage = await page.evaluate(() => {
+      const bodyText = document.body?.textContent || ''
+      return bodyText.includes('vercel.com/oss') || bodyText.includes('Vercel Protection')
+    })
+
+    if (isProtectionPage) {
+      console.error('[pdf-debug] Detected Vercel deployment protection page instead of report')
+      throw new Error(
+        'PDF generation blocked by Vercel deployment protection. ' +
+        'Please configure VERCEL_AUTOMATION_BYPASS_SECRET in your Vercel project settings ' +
+        'and add it as an environment variable.'
+      )
+    }
+
     await page.emulateMediaType('print')
     await page.evaluate(() => {
       const doc = document as Document & { fonts?: FontFaceSet }
