@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import puppeteer from 'puppeteer-core'
 import type { Browser, Viewport } from 'puppeteer-core'
-import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { transformToReportData } from '@/lib/transformers/reportDataTransformer'
 import { ReportDataSchema, type ReportData } from '@/lib/pdf-generator/schema/reportData'
-import { getReportCache } from '@/lib/pdf-generator/reportCache'
 
 type ChromiumModule = (
   typeof import('@sparticuz/chromium') & {
@@ -80,9 +78,15 @@ function resolveExecutablePath(): string | undefined {
   return found
 }
 
+function encodePayload(data: ReportData): string {
+  const json = JSON.stringify(data)
+  // Use URL-safe base64 encoding
+  const base64 = Buffer.from(json, 'utf-8').toString('base64')
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
 export async function POST(req: NextRequest) {
   let browser: Browser | null = null
-  let cacheKey: string | null = null
 
   try {
     const body = await req.json()
@@ -107,11 +111,11 @@ export async function POST(req: NextRequest) {
     }
 
     const protocol = req.headers.get('x-forwarded-proto') ?? (process.env.NODE_ENV === 'production' ? 'https' : 'http')
-    const cache = getReportCache()
-    cacheKey = randomUUID()
-    cache.set(cacheKey, validated)
 
-    const targetUrl = `${protocol}://${host}/reports/${reportId}/print?token=${cacheKey}`
+    // Encode the report data as a URL-safe base64 payload
+    // This avoids serverless cache issues where different instances don't share memory
+    const payload = encodePayload(validated)
+    const targetUrl = `${protocol}://${host}/reports/${reportId}/print?payload=${payload}`
 
     browser = await launchBrowser()
     const page = await browser.newPage()
@@ -190,10 +194,6 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     )
   } finally {
-    if (cacheKey) {
-      const cache = getReportCache()
-      cache.delete(cacheKey)
-    }
     if (browser) {
       try {
         await browser.close()
