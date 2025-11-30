@@ -119,6 +119,17 @@ export async function POST(req: NextRequest) {
 
     browser = await launchBrowser()
     const page = await browser.newPage()
+
+    // Bypass Vercel deployment protection for preview deployments
+    // See: https://vercel.com/docs/security/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation
+    const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    if (bypassSecret) {
+      await page.setExtraHTTPHeaders({
+        'x-vercel-protection-bypass': bypassSecret,
+        'x-vercel-set-bypass-cookie': 'samesitenone',
+      })
+    }
+
     page.on('console', (message) => {
       try {
         console.log('[pdf-console]', message.type(), message.text())
