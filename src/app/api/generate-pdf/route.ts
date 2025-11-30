@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import puppeteer from 'puppeteer-core'
 import type { Browser, Viewport } from 'puppeteer-core'
-import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { transformToReportData } from '@/lib/transformers/reportDataTransformer'
-import { ReportDataSchema, type ReportData } from '@/lib/pdf-generator/schema/reportData'
-import { getReportCache } from '@/lib/pdf-generator/reportCache'
+import { ReportDataSchema } from '@/lib/pdf-generator/schema/reportData'
+import { prepareReport } from '@/lib/pdf-generator/reportRenderer'
+import { renderReportHtml } from '@/lib/pdf-generator/renderReportHtml'
 
 type ChromiumModule = (
   typeof import('@sparticuz/chromium') & {
@@ -82,14 +82,13 @@ function resolveExecutablePath(): string | undefined {
 
 export async function POST(req: NextRequest) {
   let browser: Browser | null = null
-  let cacheKey: string | null = null
 
   try {
     const body = await req.json()
     const { params, results, reportData } = body
     const requestedLocale = typeof body.locale === 'string' ? body.locale : 'de'
 
-    let validated: ReportData
+    let validated
     if (reportData) {
       validated = ReportDataSchema.parse({ ...reportData, locale: requestedLocale })
     } else if (params && results) {
@@ -101,17 +100,21 @@ export async function POST(req: NextRequest) {
 
     const reportId = encodeURIComponent(validated.metadata?.reportId ?? `report-${Date.now()}`)
 
+    // Get base URL for font loading
     const host = req.headers.get('host')
-    if (!host) {
-      return NextResponse.json({ error: 'Host-Header fehlt' }, { status: 400 })
-    }
-
     const protocol = req.headers.get('x-forwarded-proto') ?? (process.env.NODE_ENV === 'production' ? 'https' : 'http')
-    const cache = getReportCache()
-    cacheKey = randomUUID()
-    cache.set(cacheKey, validated)
+    const baseUrl = host ? `${protocol}://${host}` : ''
 
-    const targetUrl = `${protocol}://${host}/reports/${reportId}/print?token=${cacheKey}`
+    // Prepare report data (render charts server-side)
+    const prepared = await prepareReport(validated)
+
+    // Render HTML server-side (eliminates need for separate HTTP request)
+    const html = renderReportHtml({
+      content: prepared.content,
+      projectionSvg: prepared.projectionSvg,
+      breakdownSvg: prepared.breakdownSvg,
+      baseUrl,
+    })
 
     browser = await launchBrowser()
     const page = await browser.newPage()
@@ -122,9 +125,12 @@ export async function POST(req: NextRequest) {
         console.error('Failed to read console message from PDF page', err)
       }
     })
-    await page.setCacheEnabled(false)
-    await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 30000 })
+
+    // Use setContent instead of goto - eliminates serverless cache issues
+    await page.setContent(html, { waitUntil: 'networkidle2', timeout: 20000 })
     await page.emulateMediaType('print')
+
+    // Wait for fonts to load
     await page.evaluate(() => {
       const doc = document as Document & { fonts?: FontFaceSet }
       if (doc.fonts) {
@@ -132,8 +138,24 @@ export async function POST(req: NextRequest) {
       }
       return true
     })
-    await page.waitForFunction('window.__REPORT_READY__ === true', { timeout: 15000 })
-    await page.waitForFunction(() => Array.from(document.querySelectorAll('[data-toc-page]')).every((el) => el.getAttribute('data-page-number')), { timeout: 5000 }).catch(() => null)
+
+    // Wait for report initialization script
+    await page.waitForFunction('window.__REPORT_READY__ === true', { timeout: 10000 })
+
+    // Wait for TOC page numbers (non-blocking)
+    await page
+      .waitForFunction(
+        () =>
+          Array.from(document.querySelectorAll('[data-toc-page]')).every((el) =>
+            el.getAttribute('data-page-number')
+          ),
+        { timeout: 3000 }
+      )
+      .catch(() => {
+        console.log('TOC page numbers not fully populated within timeout')
+      })
+
+    // Apply TOC values
     await page.evaluate(() => {
       const spans = Array.from(document.querySelectorAll('[data-toc-page]'))
       spans.forEach((span) => {
@@ -190,10 +212,6 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     )
   } finally {
-    if (cacheKey) {
-      const cache = getReportCache()
-      cache.delete(cacheKey)
-    }
     if (browser) {
       try {
         await browser.close()
