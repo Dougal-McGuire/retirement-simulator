@@ -105,7 +105,7 @@ export function RetirementReport({ content }: RetirementReportProps) {
                 <View style={{ borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4] }}>
                   <Text style={styles.label}>{isGerman ? 'Erfolgswahrscheinlichkeit' : 'Success Probability'}</Text>
                   <Text style={[styles.kpiValue, { color: profile.success.successRate >= 0.8 ? tokens.colors.success[600] : tokens.colors.warning[600] }]}>
-                    {fmtNumber(profile.success.successRate * 100, { locale: intlLocale, decimals: 1 })}%
+                    {fmtNumber(profile.success.successRate * 100, { locale: intlLocale, maximumFractionDigits: 1 })}%
                   </Text>
                 </View>
               </View>

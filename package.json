@@ -60,6 +60,7 @@
   "devDependencies": {
     "@next/eslint-plugin-next": "^16.0.1",
     "@playwright/test": "^1.56.1",
+    "@react-pdf/types": "^2.9.1",
     "@tailwindcss/postcss": "^4.1.16",
     "@types/jest": "^30.0.0",
     "@types/node": "^22",

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { styles, tokens, page as pageConfig } from './styles'
 import type { Style } from '@react-pdf/types'
+import { styles, tokens, page as pageConfig } from './styles'
 import './fonts'
 
 // ============================================================================
@@ -62,9 +62,12 @@ export function ReportPage({
   const basePageStyle = pageStyle === 'cover' ? styles.pageCover : styles.page
   const showHeader = pageStyle !== 'cover' && header
   const showFooter = pageStyle !== 'cover' && footer
+  
+  // Combine styles only if additional style is provided
+  const pageStyles = style ? [basePageStyle, style].flat() : basePageStyle
 
   return (
-    <Page size="A4" style={[basePageStyle, style]}>
+    <Page size="A4" style={pageStyles}>
       {showHeader && (
         <View style={styles.header} fixed>
           <Text>{header?.left || ''}</Text>

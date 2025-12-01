@@ -161,9 +161,7 @@ export function ProjectionChart({
               key={`y-${i}`}
               x={-8}
               y={yScale(tick) + 3}
-              fontSize={7}
-              fill={tokens.colors.ink[500]}
-              textAnchor="end"
+              style={{ fontSize: 7, fill: tokens.colors.ink[500], textAnchor: 'end' }}
             >
               {formatCurrency(tick, locale)}
             </SvgText>
@@ -178,9 +176,7 @@ export function ProjectionChart({
               key={`x-${i}`}
               x={xScale(tick)}
               y={chartHeight + 15}
-              fontSize={8}
-              fill={tokens.colors.ink[500]}
-              textAnchor="middle"
+              style={{ fontSize: 8, fill: tokens.colors.ink[500], textAnchor: 'middle' }}
             >
               {tick}
             </SvgText>
@@ -190,9 +186,7 @@ export function ProjectionChart({
           <SvgText
             x={chartWidth / 2}
             y={chartHeight + 26}
-            fontSize={8}
-            fill={tokens.colors.ink[600]}
-            textAnchor="middle"
+            style={{ fontSize: 8, fill: tokens.colors.ink[600], textAnchor: 'middle' }}
           >
             {locale === 'de' ? 'Alter' : 'Age'}
           </SvgText>
@@ -201,9 +195,9 @@ export function ProjectionChart({
         {/* Legend */}
         <G transform={`translate(${margin.left + 10}, ${margin.top - 10})`}>
           <Rect x={0} y={0} width={10} height={10} fill={tokens.colors.ink[300]} fillOpacity={0.3} />
-          <SvgText x={14} y={8} fontSize={7} fill={tokens.colors.ink[600]}>P10-P90</SvgText>
+          <SvgText x={14} y={8} style={{ fontSize: 7, fill: tokens.colors.ink[600] }}>P10-P90</SvgText>
           <Line x1={50} y1={5} x2={60} y2={5} stroke={tokens.colors.ink[800]} strokeWidth={2} />
-          <SvgText x={64} y={8} fontSize={7} fill={tokens.colors.ink[600]}>P50 (Median)</SvgText>
+          <SvgText x={64} y={8} style={{ fontSize: 7, fill: tokens.colors.ink[600] }}>P50 (Median)</SvgText>
         </G>
       </Svg>
     </View>
@@ -278,9 +272,7 @@ export function SpendingChart({
                 <SvgText
                   x={-8}
                   y={y + barHeight / 2 + 3}
-                  fontSize={8}
-                  fill={tokens.colors.ink[700]}
-                  textAnchor="end"
+                  style={{ fontSize: 8, fill: tokens.colors.ink[700], textAnchor: 'end' }}
                 >
                   {cat.label.length > 18 ? cat.label.substring(0, 16) + '...' : cat.label}
                 </SvgText>
@@ -298,8 +290,7 @@ export function SpendingChart({
                 <SvgText
                   x={barWidth + 8}
                   y={y + barHeight / 2 + 3}
-                  fontSize={8}
-                  fill={tokens.colors.ink[600]}
+                  style={{ fontSize: 8, fill: tokens.colors.ink[600] }}
                 >
                   {formatCurrency(cat.annualAmount, locale)}
                 </SvgText>

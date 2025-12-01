@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
+import type { DocumentProps } from '@react-pdf/renderer'
 import { transformToReportData } from '@/lib/transformers/reportDataTransformer'
 import { ReportDataSchema, type ReportData } from '@/lib/pdf-generator/schema/reportData'
 import { mapReportDataToContent } from '@/lib/pdf-generator/reportTypes'
@@ -36,20 +37,23 @@ export async function POST(req: NextRequest) {
     const startTime = Date.now()
 
     // Generate PDF using react-pdf (much faster than Puppeteer!)
+    // Type assertion needed because RetirementReport wraps Document component
+    // but TypeScript can't infer this through the component boundary
     const pdfBuffer = await renderToBuffer(
-      React.createElement(RetirementReport, { content })
+      React.createElement(RetirementReport, { content }) as React.ReactElement<DocumentProps>
     )
 
     const duration = Date.now() - startTime
     console.log(`[pdf-debug] PDF generated in ${duration}ms (${pdfBuffer.byteLength} bytes)`)
 
-    // Return the PDF
-    return new NextResponse(pdfBuffer, {
+    // Return the PDF - Convert Buffer to Uint8Array for NextResponse compatibility
+    const uint8Array = new Uint8Array(pdfBuffer)
+    return new NextResponse(uint8Array, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="rentenplan-${reportId}.pdf"`,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Content-Length': pdfBuffer.byteLength.toString(),
+        'Content-Length': uint8Array.byteLength.toString(),
       },
     })
   } catch (error) {
