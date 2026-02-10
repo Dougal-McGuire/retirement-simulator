@@ -80,16 +80,18 @@ export function ExpenseList({
     .filter((e) => e.interval === 'annual')
     .reduce((sum, e) => sum + e.amount, 0)
   const totalCombined = totalMonthly * 12 + totalAnnual
+  const trimmedDraftName = draftName.trim()
+  const sanitizedDraftAmount = Number.isFinite(draftAmount)
+    ? Math.max(0, Math.round(draftAmount))
+    : 0
+  const canAddDraft = trimmedDraftName.length > 0 && sanitizedDraftAmount > 0
 
   const handleAdd = () => {
-    const trimmedName = draftName.trim()
-    if (!trimmedName) return
-    const sanitizedAmount = Math.max(0, Math.round(draftAmount))
-    if (sanitizedAmount === 0) return
+    if (!canAddDraft) return
 
     onAdd({
-      name: trimmedName,
-      amount: sanitizedAmount,
+      name: trimmedDraftName,
+      amount: sanitizedDraftAmount,
       interval: draftInterval,
     })
 
@@ -109,7 +111,7 @@ export function ExpenseList({
     if (!editingId || !onUpdate) return
     const trimmedName = editName.trim()
     if (!trimmedName) return
-    const sanitizedAmount = Math.max(0, Math.round(editAmount))
+    const sanitizedAmount = Number.isFinite(editAmount) ? Math.max(0, Math.round(editAmount)) : 0
     if (sanitizedAmount === 0) return
 
     onUpdate(editingId, {
@@ -353,10 +355,12 @@ export function ExpenseList({
                 value={draftAmount}
                 onChange={(event) => {
                   const val = event.target.value === '' ? 0 : Number(event.target.value)
-                  setDraftAmount(val)
+                  setDraftAmount(Number.isFinite(val) ? val : 0)
                 }}
                 onBlur={() => {
-                  const clamped = Math.max(0, Math.round(draftAmount))
+                  const clamped = Number.isFinite(draftAmount)
+                    ? Math.max(0, Math.round(draftAmount))
+                    : 0
                   if (clamped !== draftAmount) setDraftAmount(clamped)
                 }}
                 className="h-11 w-full border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
@@ -383,7 +387,13 @@ export function ExpenseList({
           </div>
 
           <div className="flex items-center justify-start">
-            <Button type="submit" variant="secondary" size="sm" className="h-11 w-full px-6">
+            <Button
+              type="submit"
+              variant="secondary"
+              size="sm"
+              className="h-11 w-full px-6"
+              disabled={!canAddDraft}
+            >
               {strings.addButton}
             </Button>
           </div>

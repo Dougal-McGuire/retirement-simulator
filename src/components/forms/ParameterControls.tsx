@@ -361,9 +361,14 @@ export function ParameterControls() {
   }
 
   const handleAddExpense = (expense: Omit<CustomExpense, 'id'>) => {
+    const sanitizedAmount = Number.isFinite(expense.amount) ? Math.max(0, Math.round(expense.amount)) : 0
+    const trimmedName = expense.name.trim()
+    if (!trimmedName || sanitizedAmount === 0) return
     suspendAndDebounceResume()
     const newExpense: CustomExpense = {
       ...expense,
+      name: trimmedName,
+      amount: sanitizedAmount,
       id: `expense-${Date.now()}-${Math.random().toString(36).substring(7)}`,
     }
     updateParams({
@@ -766,6 +771,20 @@ export function ParameterControls() {
                   }
                   onBlur={createClampingBlurHandler('annualSavings', 0)}
                   className={FIELD_INPUT_CLASS}
+                />
+              </ParameterField>
+
+              <ParameterField
+                label={t('fields.annualSavingsGrowthRate.label')}
+                tooltip={t('fields.annualSavingsGrowthRate.tooltip')}
+              >
+                <EnhancedSlider
+                  value={params.annualSavingsGrowthRate * 100}
+                  onChange={(value) => handleInputChange('annualSavingsGrowthRate', value / 100)}
+                  min={-5}
+                  max={12}
+                  step={0.25}
+                  formatValue={(value) => formatPercent(value / 100, { maximumFractionDigits: 2 })}
                 />
               </ParameterField>
             </CollapsibleSection>

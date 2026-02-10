@@ -98,6 +98,80 @@ export function calculatePercentiles(data: number[][]): PercentileData {
   return result
 }
 
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+
+const sanitizeFiniteNumber = (value: unknown, fallback: number): number => {
+  const next = Number(value)
+  return Number.isFinite(next) ? next : fallback
+}
+
+function normalizeSimulationParams(params: SimulationParams): SimulationParams {
+  const currentAge = Math.round(clamp(sanitizeFiniteNumber(params.currentAge, 55), 18, 100))
+  const legalRetirementAge = Math.round(
+    clamp(sanitizeFiniteNumber(params.legalRetirementAge, 67), currentAge, 100)
+  )
+  const retirementAge = Math.round(
+    clamp(sanitizeFiniteNumber(params.retirementAge, 60), currentAge, 100)
+  )
+  const endAge = Math.round(
+    clamp(
+      sanitizeFiniteNumber(params.endAge, 90),
+      Math.max(currentAge, retirementAge, legalRetirementAge),
+      120
+    )
+  )
+
+  const customExpenses = Array.isArray(params.customExpenses)
+    ? params.customExpenses
+      .filter((expense) => {
+        if (!expense) return false
+        if (expense.interval !== 'monthly' && expense.interval !== 'annual') return false
+        return Number.isFinite(expense.amount) && expense.amount >= 0
+      })
+      .map((expense) => ({
+        ...expense,
+        amount: Math.max(0, expense.amount),
+      }))
+    : []
+
+  const oneTimeIncomes = Array.isArray(params.oneTimeIncomes)
+    ? params.oneTimeIncomes
+      .filter((income) => {
+        if (!income) return false
+        return Number.isFinite(income.age) && Number.isFinite(income.amount) && income.amount >= 0
+      })
+      .map((income) => ({
+        ...income,
+        age: Math.round(clamp(income.age, currentAge, endAge)),
+        amount: Math.max(0, income.amount),
+      }))
+    : []
+
+  return {
+    ...params,
+    currentAge,
+    retirementAge,
+    legalRetirementAge,
+    endAge,
+    currentAssets: Math.max(0, sanitizeFiniteNumber(params.currentAssets, 0)),
+    annualSavings: Math.max(0, sanitizeFiniteNumber(params.annualSavings, 0)),
+    annualSavingsGrowthRate: clamp(
+      sanitizeFiniteNumber(params.annualSavingsGrowthRate, 0),
+      -0.5,
+      0.5
+    ),
+    monthlyPension: Math.max(0, sanitizeFiniteNumber(params.monthlyPension, 0)),
+    oneTimeIncomes,
+    averageROI: clamp(sanitizeFiniteNumber(params.averageROI, 0.07), -0.99, 0.3),
+    roiVolatility: clamp(sanitizeFiniteNumber(params.roiVolatility, 0.15), 0, 1),
+    averageInflation: clamp(sanitizeFiniteNumber(params.averageInflation, 0.025), -0.1, 0.3),
+    inflationVolatility: clamp(sanitizeFiniteNumber(params.inflationVolatility, 0.01), 0, 0.3),
+    capitalGainsTax: clamp(sanitizeFiniteNumber(params.capitalGainsTax, 26.25), 0, 100),
+    customExpenses,
+    simulationRuns: Math.max(1, Math.round(sanitizeFiniteNumber(params.simulationRuns, 1))),
+  }
+}
+
 /**
  * Run a single Monte Carlo simulation
  *
@@ -120,6 +194,7 @@ function runSingleSimulation(params: SimulationParams): {
   const spendingHistory: number[] = []
   let currentAssets = params.currentAssets
   let costBasis = params.currentAssets // Track original investment amount
+  let currentAnnualSavings = params.annualSavings
 
   const oneTimeIncomeSchedule = new Map<number, number>()
   if (Array.isArray(params.oneTimeIncomes)) {
@@ -169,8 +244,8 @@ function runSingleSimulation(params: SimulationParams): {
       )
 
       // During accumulation, assume reinvestment without realizing gains
-      currentAssets = currentAssets * roiFactor + params.annualSavings
-      costBasis += params.annualSavings // Track additional investments
+      currentAssets = currentAssets * roiFactor + currentAnnualSavings
+      costBasis += currentAnnualSavings // Track additional investments
       spendingHistory.push(0) // No spending during accumulation for visualization
 
       // Inflate expenses so that retirement starts with age-adjusted spending
@@ -180,6 +255,9 @@ function runSingleSimulation(params: SimulationParams): {
       )
       currentMonthlyExpense *= inflationFactor
       currentAnnualExpense *= inflationFactor
+
+      const savingsGrowthFactor = 1 + params.annualSavingsGrowthRate
+      currentAnnualSavings = Math.max(0, currentAnnualSavings * savingsGrowthFactor)
     } else {
       // Distribution phase (retirement years)
       const totalAnnualExpenseThisYear = currentMonthlyExpense * 12 + currentAnnualExpense
@@ -259,19 +337,20 @@ function runSingleSimulation(params: SimulationParams): {
  * @returns Complete simulation results including percentiles and success rate
  */
 export function runMonteCarloSimulation(params: SimulationParams): SimulationResults {
+  const normalizedParams = normalizeSimulationParams(params)
   const ages: number[] = []
   const assetRuns: number[][] = []
   const spendingRuns: number[][] = []
   let successfulRuns = 0
 
   // Initialize age array
-  for (let age = params.currentAge; age <= params.endAge; age++) {
+  for (let age = normalizedParams.currentAge; age <= normalizedParams.endAge; age++) {
     ages.push(age)
   }
 
   // Run all simulations
-  for (let run = 0; run < params.simulationRuns; run++) {
-    const result = runSingleSimulation(params)
+  for (let run = 0; run < normalizedParams.simulationRuns; run++) {
+    const result = runSingleSimulation(normalizedParams)
 
     if (!result.failed) {
       successfulRuns++
@@ -286,14 +365,14 @@ export function runMonteCarloSimulation(params: SimulationParams): SimulationRes
   const spendingPercentiles = calculatePercentiles(spendingRuns)
 
   // Calculate success rate
-  const successRate = (successfulRuns / params.simulationRuns) * 100
+  const successRate = (successfulRuns / normalizedParams.simulationRuns) * 100
 
   return {
     ages,
     assetPercentiles,
     spendingPercentiles,
     successRate,
-    params,
+    params: normalizedParams,
   }
 }
 

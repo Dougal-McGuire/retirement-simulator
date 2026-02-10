@@ -47,7 +47,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          params: params || results?.params,
+          params: results?.params || params,
           results,
           locale,
         }),

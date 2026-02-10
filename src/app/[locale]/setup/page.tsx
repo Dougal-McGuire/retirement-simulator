@@ -240,6 +240,17 @@ export default function SetupPage() {
             />
 
             <LabeledNumberInput
+              id="annualSavingsGrowthRate"
+              label={t('assets.fields.annualSavingsGrowthRate.label')}
+              value={params.annualSavingsGrowthRate * 100}
+              onChange={(value) => updateParams({ annualSavingsGrowthRate: value / 100 })}
+              helpText={t('assets.fields.annualSavingsGrowthRate.help')}
+              className={inputClassName}
+              min={-10}
+              max={20}
+            />
+
+            <LabeledNumberInput
               id="monthlyPension"
               label={t('assets.fields.monthlyPension.label')}
               value={params.monthlyPension}
@@ -309,11 +320,16 @@ export default function SetupPage() {
         ]
 
         const handleAddExpense = (expense: Omit<CustomExpense, 'id'>) => {
+          const sanitizedAmount = Number.isFinite(expense.amount) ? Math.max(0, Math.round(expense.amount)) : 0
+          const trimmedName = expense.name.trim()
+          if (!trimmedName || sanitizedAmount === 0) return
           updateParams({
             customExpenses: [
               ...params.customExpenses,
               {
                 ...expense,
+                name: trimmedName,
+                amount: sanitizedAmount,
                 id: `expense-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
               },
             ],

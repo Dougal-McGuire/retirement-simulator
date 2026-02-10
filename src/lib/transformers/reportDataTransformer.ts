@@ -148,17 +148,23 @@ export function transformToReportData(
     },
     spending: {
       monthly: {
-        health: monthlyExpenses.find((e) => e.name.toLowerCase().includes('health'))?.amount ?? 0,
-        food: monthlyExpenses.find((e) => e.name.toLowerCase().includes('food') || e.name.toLowerCase().includes('grocer'))?.amount ?? 0,
-        entertainment: monthlyExpenses.find((e) => e.name.toLowerCase().includes('entertain'))?.amount ?? 0,
-        shopping: monthlyExpenses.find((e) => e.name.toLowerCase().includes('shop'))?.amount ?? 0,
-        utilities: monthlyExpenses.find((e) => e.name.toLowerCase().includes('utilit'))?.amount ?? 0,
+        health: monthlyExpenses.find((e) => e.id.toLowerCase().includes('health') || e.name.toLowerCase().includes('health'))?.amount ?? 0,
+        food: monthlyExpenses.find((e) => e.id.toLowerCase().includes('food') || e.name.toLowerCase().includes('food') || e.name.toLowerCase().includes('grocer'))?.amount ?? 0,
+        entertainment: monthlyExpenses.find((e) => e.id.toLowerCase().includes('entertain') || e.name.toLowerCase().includes('entertain'))?.amount ?? 0,
+        shopping: monthlyExpenses.find((e) => e.id.toLowerCase().includes('shop') || e.name.toLowerCase().includes('shop'))?.amount ?? 0,
+        utilities: monthlyExpenses.find((e) => e.id.toLowerCase().includes('utilit') || e.name.toLowerCase().includes('utilit'))?.amount ?? 0,
       },
       annual: {
-        vacations: annualExpenses.find((e) => e.name.toLowerCase().includes('vacation'))?.amount ?? 0,
-        homeRepairs: annualExpenses.find((e) => e.name.toLowerCase().includes('repair'))?.amount ?? 0,
-        car: annualExpenses.find((e) => e.name.toLowerCase().includes('car') || e.name.toLowerCase().includes('vehicle'))?.amount ?? 0,
+        vacations: annualExpenses.find((e) => e.id.toLowerCase().includes('vacation') || e.name.toLowerCase().includes('vacation'))?.amount ?? 0,
+        homeRepairs: annualExpenses.find((e) => e.id.toLowerCase().includes('repair') || e.name.toLowerCase().includes('repair'))?.amount ?? 0,
+        car: annualExpenses.find((e) => e.id.toLowerCase().includes('car') || e.name.toLowerCase().includes('car') || e.name.toLowerCase().includes('vehicle'))?.amount ?? 0,
       },
+      custom: params.customExpenses.map((expense) => ({
+        id: expense.id,
+        name: expense.name,
+        amount: expense.amount,
+        interval: expense.interval,
+      })),
     },
     assumptions: {
       roiMean: params.averageROI,

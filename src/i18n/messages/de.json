@@ -99,6 +99,10 @@
           "label": "Jährliche Sparrate (€)",
           "help": "Wie viel können Sie bis zum Ruhestand pro Jahr zurücklegen?"
         },
+        "annualSavingsGrowthRate": {
+          "label": "Sparratenwachstum (%/Jahr)",
+          "help": "Erwartete jährliche Steigerung Ihrer Sparrate mit wachsendem Einkommen."
+        },
         "monthlyPension": {
           "label": "Monatliche Rente (€)",
           "help": "Erwartete gesetzliche Rente ab dem gesetzlichen Rentenalter"
@@ -347,6 +351,10 @@
         "label": "Jährliche Sparrate (€)",
         "tooltip": "Betrag, den Sie bis zum Ruhestand jährlich sparen und investieren können."
       },
+      "annualSavingsGrowthRate": {
+        "label": "Wachstum der Sparrate",
+        "tooltip": "Erwartete jährliche Steigerung Ihrer Sparrate vor dem Ruhestand, z. B. durch Einkommenszuwachs."
+      },
       "monthlyPension": {
         "label": "Monatliche Rente (€)",
         "tooltip": "Erwartete gesetzliche Rente ab dem gesetzlichen Rentenalter – reduziert den privaten Bedarf."
@@ -533,7 +541,8 @@
     "description": "Diagramm der prognostizierten Vermögenswerte auf Basis einer Monte-Carlo-Simulation. Die Linien zeigen optimistisches (90. Perzentil), medianes (50. Perzentil) und pessimistisches (10. Perzentil) Szenario.",
     "axis": {
       "age": "Alter",
-      "assets": "Vermögen (€)"
+      "assets": "Vermögen (€)",
+      "monthlySavings": "Monatliche Sparrate (€)"
     },
     "legend": {
       "band": "P20–P80 Band",
@@ -542,7 +551,8 @@
       "p20": "20. Perzentil",
       "p50": "50. Perzentil (Median)",
       "p80": "80. Perzentil",
-      "p90": "90. Perzentil (optimistisch)"
+      "p90": "90. Perzentil (optimistisch)",
+      "monthlySavings": "Monatliche Sparrate"
     },
     "tooltip": {
       "label": "Alter: {age}"
