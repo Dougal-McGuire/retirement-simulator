@@ -219,7 +219,10 @@ export function AssetsChart({
               isAnimationActive={false}
             />
             <Tooltip
-              formatter={(value: number, name: string) => [formatCurrency(value), name]}
+              formatter={(value: number | string | undefined, name: string | undefined) => {
+                const numeric = typeof value === 'number' ? value : Number(value ?? 0)
+                return [formatCurrency(numeric), name ?? '']
+              }}
               labelFormatter={(age) => t('tooltip.label', { age })}
               contentStyle={{
                 backgroundColor: '#ffffff',

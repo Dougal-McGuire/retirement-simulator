@@ -13,7 +13,6 @@ import {
   Brush,
   ReferenceLine,
 } from 'recharts'
-import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 import { useTranslations } from 'next-intl'
 import type { ChartDataPoint } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -197,12 +196,12 @@ export function SpendingChart({
               />
             )}
             <Tooltip
-              formatter={(value: ValueType, name: NameType, item) => {
+              formatter={(value: number | string | readonly (number | string)[] | undefined, name: string | number | undefined, item) => {
                 const numericValue = typeof value === 'number' ? value : Number(value ?? NaN)
                 if (item?.dataKey === 'withdrawal_rate_p50') {
-                  return [formatPercentage(Number.isFinite(numericValue) ? numericValue : null), name]
+                  return [formatPercentage(Number.isFinite(numericValue) ? numericValue : null), String(name ?? '')]
                 }
-                return [formatCurrency(Number.isFinite(numericValue) ? numericValue : 0), name]
+                return [formatCurrency(Number.isFinite(numericValue) ? numericValue : 0), String(name ?? '')]
               }}
               labelFormatter={(age) => t('tooltip.label', { age })}
               contentStyle={{
