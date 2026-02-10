@@ -9,6 +9,7 @@ export interface SimulationParams {
   // Assets & Income
   currentAssets: number
   annualSavings: number
+  annualSavingsGrowthRate: number
   monthlyPension: number
   oneTimeIncomes: OneTimeIncome[]
 
@@ -54,6 +55,7 @@ export interface PersonalInfoStep {
 export interface AssetsIncomeStep {
   currentAssets: number
   annualSavings: number
+  annualSavingsGrowthRate: number
   monthlyPension: number
   oneTimeIncomes: OneTimeIncome[]
 }
@@ -131,6 +133,7 @@ export interface ChartDataPoint {
   spending_p80: number
   spending_p90: number
   withdrawal_rate_p50: number | null
+  monthly_savings_p50: number | null
 }
 
 declare global {
@@ -147,6 +150,7 @@ export const DEFAULT_PARAMS: SimulationParams = {
   endAge: 90,
   currentAssets: 630000,
   annualSavings: 48000,
+  annualSavingsGrowthRate: 0.02,
   monthlyPension: 5000,
   oneTimeIncomes: [],
   averageROI: 0.07,

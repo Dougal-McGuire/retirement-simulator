@@ -3,134 +3,120 @@ import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
 import { H2, H4, Table, TableRow, TableCell } from '../primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
-import { fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
+import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
 
 interface InputsProps {
   content: ReportContent
 }
 
 export function Inputs({ content }: InputsProps) {
-  const { profile, assumptions } = content
-  const locale = content.locale ?? 'de'
-  const intlLocale = locale === 'de' ? 'de-DE' : 'en-US'
-  const isGerman = locale === 'de'
+  const { profile, assumptions, expenses, finances } = content
+  const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
+  const isGerman = content.locale !== 'en'
 
-  const personData = [
-    { label: isGerman ? 'Aktuelles Alter' : 'Current Age', value: `${profile.person.currentAge} ${isGerman ? 'Jahre' : 'years'}` },
-    { label: isGerman ? 'Ruhestand' : 'Retirement', value: `${profile.person.retireAge} ${isGerman ? 'Jahre' : 'years'}` },
-    { label: isGerman ? 'Rentenbeginn' : 'Pension Start', value: `${profile.person.pensionAge} ${isGerman ? 'Jahre' : 'years'}` },
-    { label: isGerman ? 'Horizont' : 'Horizon', value: `${profile.person.horizonAge} ${isGerman ? 'Jahre' : 'years'}` },
+  const baseSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
+
+  const timelineRows = [
+    { label: isGerman ? 'Aktuelles Alter' : 'Current Age', value: profile.person.currentAge },
+    { label: isGerman ? 'Ruhestand geplant' : 'Retirement Age', value: profile.person.retireAge },
+    { label: isGerman ? 'Gesetzliche Rente' : 'Pension Age', value: profile.person.pensionAge },
+    { label: isGerman ? 'Planungsende' : 'Horizon Age', value: profile.person.horizonAge },
   ]
-
-  const marketData = [
-    { label: isGerman ? 'Rendite' : 'Return', value: fmtPercent(assumptions.expectedReturn, 1, intlLocale), sub: `σ ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}` },
-    { label: isGerman ? 'Inflation' : 'Inflation', value: fmtPercent(assumptions.inflation, 1, intlLocale), sub: `σ ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)}` },
-    { label: isGerman ? 'Kapitalertragssteuer' : 'Capital Gains Tax', value: fmtPercent(assumptions.capitalGainsTax / 100, 1, intlLocale), sub: '' },
-    { label: isGerman ? 'Simulationen' : 'Simulations', value: fmtNumber(assumptions.simulationRuns, { locale: intlLocale }), sub: '' },
-  ]
-
-  // Timeline percentages
-  const totalYears = profile.person.horizonAge - profile.person.currentAge
-  const workingYears = profile.person.retireAge - profile.person.currentAge
-  const bridgeYears = profile.person.pensionAge - profile.person.retireAge
-  const retirementYears = profile.person.horizonAge - profile.person.pensionAge
 
   return (
     <View>
-      {/* Section Header */}
-      <View style={{ marginBottom: tokens.spacing[6] }}>
-        <H2>{isGerman ? 'Eingaben und Annahmen' : 'Inputs and Assumptions'}</H2>
+      <View style={{ marginBottom: 14 }}>
+        <H2>{isGerman ? 'Planungsannahmen' : 'Planning Assumptions'}</H2>
         <Text style={styles.sectionLead}>
           {isGerman
-            ? 'Übersicht der Planungsparameter und Marktannahmen.'
-            : 'Overview of planning parameters and market assumptions.'}
+            ? 'Parameter des aktuellen Szenarios, die direkt aus der App-Konfiguration übernommen wurden.'
+            : 'Scenario parameters directly derived from the current app configuration.'}
         </Text>
       </View>
 
-      {/* Two-column layout using percentage widths */}
-      <View style={{ flexDirection: 'row', marginBottom: tokens.spacing[6] }}>
-        {/* Timeline */}
-        <View style={{ width: '50%', paddingRight: tokens.spacing[2] }}>
-          <View style={{ borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4] }}>
-            <H4 style={{ marginBottom: tokens.spacing[4] }}>{isGerman ? 'Zeitplanung' : 'Timeline'}</H4>
+      <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+        <View style={{ width: '52%', marginRight: '2%' }}>
+          <View style={styles.card}>
+            <H4 style={{ marginBottom: 8 }}>{isGerman ? 'Zeithorizont' : 'Timeline'}</H4>
             <Table>
-              {personData.map((item) => (
-                <TableRow key={item.label}>
-                  <TableCell width="60%">{item.label}</TableCell>
-                  <TableCell width="40%" align="right">
-                    <Text style={{ fontFamily: 'Helvetica-Bold' }}>{item.value}</Text>
+              {timelineRows.map((row) => (
+                <TableRow key={row.label}>
+                  <TableCell width="64%">{row.label}</TableCell>
+                  <TableCell width="36%" align="right">
+                    <Text style={{ fontFamily: 'Helvetica-Bold' }}>{fmtNumber(row.value, { locale })}</Text>
                   </TableCell>
                 </TableRow>
               ))}
             </Table>
 
-            {/* Timeline bar */}
-            <View style={{ marginTop: tokens.spacing[4] }}>
-              <View style={{ flexDirection: 'row', height: 16 }}>
-                <View style={{ 
-                  width: `${(workingYears / totalYears) * 100}%`, 
-                  backgroundColor: tokens.colors.accent[600],
-                  justifyContent: 'center',
-                  paddingLeft: 2,
-                }}>
-                  <Text style={{ fontSize: 6, color: tokens.colors.white }}>{isGerman ? 'Arbeit' : 'Work'}</Text>
-                </View>
-                {bridgeYears > 0 && (
-                  <View style={{ 
-                    width: `${(bridgeYears / totalYears) * 100}%`, 
-                    backgroundColor: tokens.colors.warning[600],
-                    justifyContent: 'center',
-                    paddingLeft: 2,
-                  }}>
-                    <Text style={{ fontSize: 6, color: tokens.colors.white }}>{isGerman ? 'Brücke' : 'Bridge'}</Text>
-                  </View>
-                )}
-                <View style={{ 
-                  width: `${(retirementYears / totalYears) * 100}%`, 
-                  backgroundColor: tokens.colors.success[600],
-                  justifyContent: 'center',
-                  paddingLeft: 2,
-                }}>
-                  <Text style={{ fontSize: 6, color: tokens.colors.white }}>{isGerman ? 'Ruhestand' : 'Retire'}</Text>
-                </View>
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
-                <Text style={{ fontSize: 7, color: tokens.colors.ink[500] }}>{profile.person.currentAge}</Text>
-                <Text style={{ fontSize: 7, color: tokens.colors.ink[500] }}>{profile.person.retireAge}</Text>
-                <Text style={{ fontSize: 7, color: tokens.colors.ink[500] }}>{profile.person.horizonAge}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Market Assumptions */}
-        <View style={{ width: '50%', paddingLeft: tokens.spacing[2] }}>
-          <View style={{ borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4] }}>
-            <H4 style={{ marginBottom: tokens.spacing[4] }}>{isGerman ? 'Marktannahmen' : 'Market Assumptions'}</H4>
-            <Table>
-              {marketData.map((item) => (
-                <TableRow key={item.label}>
-                  <TableCell width="45%">{item.label}</TableCell>
-                  <TableCell width="30%" align="right">
-                    <Text style={{ fontFamily: 'Helvetica-Bold' }}>{item.value}</Text>
-                  </TableCell>
-                  <TableCell width="25%" align="right">
-                    <Text style={{ fontSize: 8, color: tokens.colors.ink[500] }}>{item.sub}</Text>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </Table>
-
-            {/* Note */}
-            <View style={{ marginTop: tokens.spacing[4], padding: tokens.spacing[2], borderWidth: 1, borderColor: tokens.colors.ink[200] }}>
-              <Text style={{ fontSize: 7, color: tokens.colors.ink[600], lineHeight: 1.4 }}>
-                {isGerman
-                  ? 'Box-Muller-Transformation für Zufallszahlen.'
-                  : 'Box-Muller transformation for random numbers.'}
+            <View style={{ marginTop: 8 }}>
+              <Text style={styles.label}>{isGerman ? 'Planungsdauer' : 'Planning Duration'}</Text>
+              <Text style={{ fontSize: 12, fontFamily: 'Helvetica-Bold', color: tokens.colors.ink[800] }}>
+                {fmtNumber(expenses.horizonYears, { locale })} {isGerman ? 'Jahre' : 'years'}
               </Text>
             </View>
           </View>
         </View>
+
+        <View style={{ width: '46%' }}>
+          <View style={styles.card}>
+            <H4 style={{ marginBottom: 8 }}>{isGerman ? 'Marktannahmen' : 'Market Inputs'}</H4>
+            <Table>
+              <TableRow>
+                <TableCell width="55%">{isGerman ? 'Ø Rendite' : 'Expected Return'}</TableCell>
+                <TableCell width="45%" align="right">{fmtPercent(assumptions.expectedReturn, 1, locale)}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell width="55%">{isGerman ? 'Volatilität' : 'Volatility'}</TableCell>
+                <TableCell width="45%" align="right">{fmtPercent(assumptions.returnVolatility, 1, locale)}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell width="55%">{isGerman ? 'Inflation' : 'Inflation'}</TableCell>
+                <TableCell width="45%" align="right">{fmtPercent(assumptions.inflation, 1, locale)}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell width="55%">{isGerman ? 'Inflationsvolatilität' : 'Inflation Volatility'}</TableCell>
+                <TableCell width="45%" align="right">{fmtPercent(assumptions.inflationVolatility, 1, locale)}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell width="55%">{isGerman ? 'Kapitalertragssteuer' : 'Capital Gains Tax'}</TableCell>
+                <TableCell width="45%" align="right">{fmtPercent(assumptions.capitalGainsTax / 100, 1, locale)}</TableCell>
+              </TableRow>
+            </Table>
+          </View>
+        </View>
+      </View>
+
+      <View style={{ flexDirection: 'row' }}>
+        <View style={{ width: '32%', marginRight: '2%' }}>
+          <View style={styles.card} wrap={false}>
+            <Text style={styles.kpiLabel}>{isGerman ? 'Jährliche Sparleistung' : 'Annual Savings'}</Text>
+            <Text style={styles.kpiValue}>{fmtCurrency(finances.annualSavings, locale)}</Text>
+            <Text style={styles.kpiDescription}>{isGerman ? 'Direkt aus Setup übernommen' : 'Derived from setup'}</Text>
+          </View>
+        </View>
+        <View style={{ width: '32%', marginRight: '2%' }}>
+          <View style={styles.card} wrap={false}>
+            <Text style={styles.kpiLabel}>{isGerman ? 'Aktuelles Vermögen' : 'Current Assets'}</Text>
+            <Text style={styles.kpiValue}>{fmtCurrency(finances.currentAssets, locale)}</Text>
+            <Text style={styles.kpiDescription}>{isGerman ? 'Wert laut aktueller Eingabe' : 'Value from current input'}</Text>
+          </View>
+        </View>
+        <View style={{ width: '34%' }}>
+          <View style={styles.card} wrap={false}>
+            <Text style={styles.kpiLabel}>{isGerman ? 'Jährlicher Bedarf' : 'Annual Spending Need'}</Text>
+            <Text style={styles.kpiValue}>{fmtCurrency(baseSpend, locale)}</Text>
+            <Text style={styles.kpiDescription}>{isGerman ? 'Monatlich + jährlich' : 'Monthly + annual expenses'}</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={[styles.card, { marginTop: 10, borderLeftWidth: 3, borderLeftColor: tokens.colors.accent[600] }]}>
+        <Text style={{ fontSize: 9, color: tokens.colors.ink[600], lineHeight: 1.5 }}>
+          {isGerman
+            ? `Simulation basiert auf ${fmtNumber(assumptions.simulationRuns, { locale })} Monte-Carlo-Läufen und verwendet die aktuell in der App hinterlegten Ausgabenkategorien.`
+            : `Simulation is based on ${fmtNumber(assumptions.simulationRuns, { locale })} Monte Carlo runs and uses the current app expense categories.`}
+        </Text>
       </View>
     </View>
   )

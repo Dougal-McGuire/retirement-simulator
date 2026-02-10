@@ -27,6 +27,16 @@ export const SpendingSchema = z.object({
     homeRepairs: z.number().min(0).max(100_000),
     car: z.number().min(0).max(100_000),
   }),
+  custom: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        amount: z.number().min(0).max(1_000_000),
+        interval: z.enum(['monthly', 'annual']),
+      })
+    )
+    .default([]),
 })
 
 export const AssumptionsSchema = z.object({

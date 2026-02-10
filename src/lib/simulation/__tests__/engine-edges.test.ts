@@ -30,4 +30,26 @@ describe('Simulation Engine - edges', () => {
     expect(combinedMonthly).toBe(600 + 1800 / 12)
     expect(combinedAnnual).toBe(600 * 12 + 1800)
   })
+
+  it('normalizes temporary invalid inputs so simulation still returns finite outputs', () => {
+    const params = {
+      ...DEFAULT_PARAMS,
+      currentAge: 30,
+      retirementAge: 20,
+      legalRetirementAge: 10,
+      endAge: 25,
+      averageROI: -1.5,
+      simulationRuns: 0,
+    }
+
+    const results = runMonteCarloSimulation(params)
+
+    expect(results.ages.length).toBeGreaterThan(0)
+    expect(Number.isFinite(results.successRate)).toBe(true)
+    expect(results.successRate).toBeGreaterThanOrEqual(0)
+    expect(results.successRate).toBeLessThanOrEqual(100)
+    expect(results.params.simulationRuns).toBe(1)
+    expect(results.params.endAge).toBeGreaterThanOrEqual(results.params.retirementAge)
+    expect(results.params.retirementAge).toBeGreaterThanOrEqual(results.params.currentAge)
+  })
 })

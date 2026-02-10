@@ -166,6 +166,7 @@ export function AssetsChart({
               }
             />
             <YAxis
+              yAxisId="assets"
               tick={{ fontSize: isMobile ? 10 : 11, fill: '#000000' }}
               tickLine={{ stroke: '#000000' }}
               axisLine={{ stroke: '#000000' }}
@@ -178,9 +179,26 @@ export function AssetsChart({
                       angle: -90,
                       position: 'insideLeft',
                       style: { textAnchor: 'middle', fontSize: '12px', fill: '#000000' },
-                    }
+                  }
               }
             />
+            {!isMobile && (
+              <YAxis
+                yAxisId="rate"
+                orientation="right"
+                tick={{ fontSize: 11, fill: '#000000' }}
+                tickLine={{ stroke: '#000000' }}
+                axisLine={{ stroke: '#000000' }}
+                tickFormatter={formatCurrencyShort}
+                label={{
+                  value: t('axis.monthlySavings'),
+                  angle: 90,
+                  position: 'insideRight',
+                  style: { textAnchor: 'middle', fontSize: '12px', fill: '#000000' },
+                }}
+                domain={[0, 'auto']}
+              />
+            )}
             {/* Shaded uncertainty band between P20 and P80 */}
             <Area
               type="monotone"
@@ -256,6 +274,7 @@ export function AssetsChart({
               animationBegin={0}
               animationDuration={2000}
               hide={false}
+              yAxisId="assets"
             />
             {/* Hide P20 on mobile */}
             {!isMobile && (
@@ -270,6 +289,7 @@ export function AssetsChart({
                 strokeDasharray="4 4"
                 animationBegin={100}
                 animationDuration={2100}
+                yAxisId="assets"
               />
             )}
             <Line
@@ -283,6 +303,7 @@ export function AssetsChart({
               strokeDasharray="0"
               animationBegin={200}
               animationDuration={2200}
+              yAxisId="assets"
             />
             {/* Hide P80 on mobile */}
             {!isMobile && (
@@ -297,6 +318,7 @@ export function AssetsChart({
                 strokeDasharray="4 4"
                 animationBegin={300}
                 animationDuration={2300}
+                yAxisId="assets"
               />
             )}
             <Line
@@ -310,6 +332,17 @@ export function AssetsChart({
               strokeDasharray="0"
               animationBegin={400}
               animationDuration={2400}
+              yAxisId="assets"
+            />
+            <Line
+              type="monotone"
+              dataKey="monthly_savings_p50"
+              stroke="#05080f"
+              strokeWidth={isMobile ? 1.5 : 2}
+              dot={false}
+              name={t('legend.monthlySavings')}
+              yAxisId={isMobile ? 'assets' : 'rate'}
+              hide={isMobile}
             />
             <Brush
               dataKey="age"

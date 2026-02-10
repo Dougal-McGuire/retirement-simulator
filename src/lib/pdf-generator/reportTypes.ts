@@ -80,6 +80,40 @@ const ANNUAL_CATEGORY_LABELS: Record<ReportLocale, string[]> = {
   en: ['Travel & vacations', 'Home maintenance', 'Mobility & vehicle'],
 }
 
+function fallbackExpenseCategories(
+  locale: ReportLocale,
+  monthlyTotals: ReportData['spending']['monthly'],
+  annualTotals: ReportData['spending']['annual'],
+  yearlyTotal: number
+): { monthlyCategories: ReportExpensesCategory[]; annualCategories: ReportExpensesCategory[] } {
+  const expensesShare = (value: number, total: number) => (total > 0 ? value / total : 0)
+  const monthlyTotal =
+    monthlyTotals.health +
+    monthlyTotals.food +
+    monthlyTotals.entertainment +
+    monthlyTotals.shopping +
+    monthlyTotals.utilities
+  const annualTotal = annualTotals.vacations + annualTotals.homeRepairs + annualTotals.car
+  const monthlyLabels = MONTHLY_CATEGORY_LABELS[locale]
+  const annualLabels = ANNUAL_CATEGORY_LABELS[locale]
+
+  const monthlyCategories: ReportExpensesCategory[] = [
+    { label: monthlyLabels[0], annualAmount: monthlyTotals.health * 12, share: expensesShare(monthlyTotals.health * 12, yearlyTotal) },
+    { label: monthlyLabels[1], annualAmount: monthlyTotals.food * 12, share: expensesShare(monthlyTotals.food * 12, yearlyTotal) },
+    { label: monthlyLabels[2], annualAmount: monthlyTotals.entertainment * 12, share: expensesShare(monthlyTotals.entertainment * 12, yearlyTotal) },
+    { label: monthlyLabels[3], annualAmount: monthlyTotals.shopping * 12, share: expensesShare(monthlyTotals.shopping * 12, yearlyTotal) },
+    { label: monthlyLabels[4], annualAmount: monthlyTotals.utilities * 12, share: expensesShare(monthlyTotals.utilities * 12, yearlyTotal) },
+  ].filter((item) => item.annualAmount > 0 || monthlyTotal === 0)
+
+  const annualCategories: ReportExpensesCategory[] = [
+    { label: annualLabels[0], annualAmount: annualTotals.vacations, share: expensesShare(annualTotals.vacations, yearlyTotal) },
+    { label: annualLabels[1], annualAmount: annualTotals.homeRepairs, share: expensesShare(annualTotals.homeRepairs, yearlyTotal) },
+    { label: annualLabels[2], annualAmount: annualTotals.car, share: expensesShare(annualTotals.car, yearlyTotal) },
+  ].filter((item) => item.annualAmount > 0 || annualTotal === 0)
+
+  return { monthlyCategories, annualCategories }
+}
+
 const DEFAULT_REASON: Record<ReportLocale, string> = {
   de: 'Ausgewogene Annahmen',
   en: 'Balanced assumptions',
@@ -131,13 +165,22 @@ export interface ReportAssumptions {
   simulationRuns: number
 }
 
+export interface ReportFinances {
+  currentAssets: number
+  annualSavings: number
+  monthlyPension: number
+}
+
 export interface ReportProjections {
   milestones: Array<Pick<Milestone, 'age' | 'p10' | 'p50' | 'p90'>>
   exhaustionAge?: number
 }
 
 export interface ReportExpensesCategory {
+  id?: string
   label: string
+  interval?: 'monthly' | 'annual'
+  originalAmount?: number
   annualAmount: number
   share: number
 }
@@ -149,6 +192,7 @@ export interface ReportExpenses {
   monthlyTotal: number
   monthlyCategories: ReportExpensesCategory[]
   annualCategories: ReportExpensesCategory[]
+  allCategories: ReportExpensesCategory[]
 }
 
 export interface ReportScenario {
@@ -165,6 +209,7 @@ export interface ReportRecommendations {
 export interface ReportContent {
   metadata: ReportMetadata
   profile: ReportProfile
+  finances: ReportFinances
   assumptions: ReportAssumptions
   projections: ReportProjections
   expenses: ReportExpenses
@@ -190,13 +235,22 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
 
   const monthlyTotals = data.spending.monthly
   const annualTotals = data.spending.annual
-  const monthlyTotal =
+  const customExpenses = data.spending.custom ?? []
+  const monthlyTotalFromCustom = customExpenses
+    .filter((item) => item.interval === 'monthly')
+    .reduce((sum, item) => sum + item.amount, 0)
+  const annualTotalFromCustom = customExpenses
+    .filter((item) => item.interval === 'annual')
+    .reduce((sum, item) => sum + item.amount, 0)
+  const monthlyTotalFallback =
     monthlyTotals.health +
     monthlyTotals.food +
     monthlyTotals.entertainment +
     monthlyTotals.shopping +
     monthlyTotals.utilities
-  const annualTotal = annualTotals.vacations + annualTotals.homeRepairs + annualTotals.car
+  const annualTotalFallback = annualTotals.vacations + annualTotals.homeRepairs + annualTotals.car
+  const monthlyTotal = customExpenses.length > 0 ? monthlyTotalFromCustom : monthlyTotalFallback
+  const annualTotal = customExpenses.length > 0 ? annualTotalFromCustom : annualTotalFallback
   const yearlyTotal = monthlyTotal * 12 + annualTotal
   const horizonYears = Math.max(0, data.person.horizonAge - data.person.currentAge)
   const totalHorizonAmount = yearlyTotal * horizonYears
@@ -234,22 +288,40 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
     : []
 
   const expensesShare = (value: number, total: number) => (total > 0 ? value / total : 0)
-  const monthlyLabels = MONTHLY_CATEGORY_LABELS[locale]
-  const annualLabels = ANNUAL_CATEGORY_LABELS[locale]
+  let monthlyCategories: ReportExpensesCategory[]
+  let annualCategories: ReportExpensesCategory[]
 
-  const monthlyCategories: ReportExpensesCategory[] = [
-    { label: monthlyLabels[0], annualAmount: monthlyTotals.health * 12, share: expensesShare(monthlyTotals.health, monthlyTotal) },
-    { label: monthlyLabels[1], annualAmount: monthlyTotals.food * 12, share: expensesShare(monthlyTotals.food, monthlyTotal) },
-    { label: monthlyLabels[2], annualAmount: monthlyTotals.entertainment * 12, share: expensesShare(monthlyTotals.entertainment, monthlyTotal) },
-    { label: monthlyLabels[3], annualAmount: monthlyTotals.shopping * 12, share: expensesShare(monthlyTotals.shopping, monthlyTotal) },
-    { label: monthlyLabels[4], annualAmount: monthlyTotals.utilities * 12, share: expensesShare(monthlyTotals.utilities, monthlyTotal) },
-  ]
+  if (customExpenses.length > 0) {
+    monthlyCategories = customExpenses
+      .filter((item) => item.interval === 'monthly')
+      .map((item) => ({
+        id: item.id,
+        label: item.name,
+        interval: 'monthly' as const,
+        originalAmount: item.amount,
+        annualAmount: item.amount * 12,
+        share: expensesShare(item.amount * 12, yearlyTotal),
+      }))
+      .sort((a, b) => b.annualAmount - a.annualAmount)
 
-  const annualCategories: ReportExpensesCategory[] = [
-    { label: annualLabels[0], annualAmount: annualTotals.vacations, share: expensesShare(annualTotals.vacations, annualTotal) },
-    { label: annualLabels[1], annualAmount: annualTotals.homeRepairs, share: expensesShare(annualTotals.homeRepairs, annualTotal) },
-    { label: annualLabels[2], annualAmount: annualTotals.car, share: expensesShare(annualTotals.car, annualTotal) },
-  ]
+    annualCategories = customExpenses
+      .filter((item) => item.interval === 'annual')
+      .map((item) => ({
+        id: item.id,
+        label: item.name,
+        interval: 'annual' as const,
+        originalAmount: item.amount,
+        annualAmount: item.amount,
+        share: expensesShare(item.amount, yearlyTotal),
+      }))
+      .sort((a, b) => b.annualAmount - a.annualAmount)
+  } else {
+    const fallback = fallbackExpenseCategories(locale, monthlyTotals, annualTotals, yearlyTotal)
+    monthlyCategories = fallback.monthlyCategories
+    annualCategories = fallback.annualCategories
+  }
+
+  const allCategories = [...monthlyCategories, ...annualCategories].sort((a, b) => b.annualAmount - a.annualAmount)
 
   const scenarios: ReportScenario[] = []
   if (summary?.bridge) {
@@ -286,6 +358,11 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       bridge: summary?.bridge,
       highlights,
     },
+    finances: {
+      currentAssets: data.finances.currentAssetsEUR,
+      annualSavings: data.finances.annualSavingsEUR,
+      monthlyPension: data.finances.expectedMonthlyPensionEUR,
+    },
     assumptions: {
       expectedReturn: data.assumptions.roiMean,
       returnVolatility: data.assumptions.roiStdev,
@@ -305,6 +382,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       monthlyTotal,
       monthlyCategories,
       annualCategories,
+      allCategories,
     },
     scenarios,
     recommendations: {

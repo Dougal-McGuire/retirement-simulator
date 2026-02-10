@@ -19,11 +19,15 @@ export async function POST(req: NextRequest) {
 
     // Validate input data
     let validated: ReportData
-    if (reportData) {
-      validated = ReportDataSchema.parse({ ...reportData, locale: requestedLocale })
-    } else if (params && results) {
-      const generated = transformToReportData(params, results)
+    if (results) {
+      const freshParams = results.params ?? params
+      if (!freshParams) {
+        return NextResponse.json({ error: 'Parameter fehlen' }, { status: 400 })
+      }
+      const generated = transformToReportData(freshParams, results)
       validated = ReportDataSchema.parse({ ...generated, locale: requestedLocale })
+    } else if (reportData) {
+      validated = ReportDataSchema.parse({ ...reportData, locale: requestedLocale })
     } else {
       return NextResponse.json({ error: 'Parameter fehlen' }, { status: 400 })
     }

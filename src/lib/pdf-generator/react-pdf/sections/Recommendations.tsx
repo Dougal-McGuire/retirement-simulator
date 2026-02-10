@@ -1,156 +1,79 @@
 import React from 'react'
 import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
-import { H2, H4, Body, Caption } from '../primitives'
+import { H2, H4 } from '../primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
 
 interface RecommendationsProps {
   content: ReportContent
 }
 
+function impactVisual(impact: string) {
+  if (impact === 'High' || impact === 'hoch') {
+    return { color: tokens.colors.danger[600], label: 'H1' }
+  }
+  if (impact === 'Medium' || impact === 'mittel') {
+    return { color: tokens.colors.warning[600], label: 'H2' }
+  }
+  return { color: tokens.colors.success[600], label: 'H3' }
+}
+
 export function Recommendations({ content }: RecommendationsProps) {
   const { recommendations } = content
-  const locale = content.locale ?? 'de'
-  const isGerman = locale === 'de'
+  const isGerman = content.locale !== 'en'
 
-  const impactColors: Record<string, string> = {
-    High: tokens.colors.success[600],
-    hoch: tokens.colors.success[600],
-    Medium: tokens.colors.warning[600],
-    mittel: tokens.colors.warning[600],
-    Low: tokens.colors.ink[500],
-    niedrig: tokens.colors.ink[500],
-  }
-
-  const impactLabels: Record<string, string> = {
-    High: isGerman ? 'Hoch' : 'High',
-    hoch: 'Hoch',
-    Medium: isGerman ? 'Mittel' : 'Medium',
-    mittel: 'Mittel',
-    Low: isGerman ? 'Niedrig' : 'Low',
-    niedrig: 'Niedrig',
-  }
-
-  // Group by impact
-  const highImpact = recommendations.primary.filter((r) => r.impact === 'High')
-  const mediumImpact = recommendations.primary.filter((r) => r.impact === 'Medium')
-  const lowImpact = recommendations.primary.filter((r) => r.impact === 'Low')
-
-  const renderRecommendation = (rec: (typeof recommendations.primary)[0], index: number) => {
-    const impactLabel = rec.impactLabel || impactLabels[rec.impact] || rec.impact
-    const impactColor = impactColors[rec.impact] || impactColors[impactLabel] || tokens.colors.ink[500]
-
-    return (
-      <View
-        key={index}
-        style={{
-          marginBottom: tokens.spacing[3],
-          borderWidth: 1,
-          borderColor: tokens.colors.ink[200],
-          borderLeftWidth: 4,
-          borderLeftColor: impactColor,
-          padding: tokens.spacing[4],
-        }}
-      >
-        <View style={{ flexDirection: 'row' }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 8, color: tokens.colors.ink[500], marginBottom: 2 }}>{rec.category}</Text>
-            <H4 style={{ marginBottom: tokens.spacing[2] }}>{rec.title}</H4>
-            <Body style={{ marginBottom: 0 }}>{rec.body}</Body>
-          </View>
-          <View style={{ marginLeft: tokens.spacing[3] }}>
-            <View style={{ backgroundColor: impactColor, paddingVertical: 2, paddingHorizontal: 6 }}>
-              <Text style={{ fontSize: 8, color: tokens.colors.white, fontFamily: 'Helvetica-Bold' }}>
-                {impactLabel}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    )
-  }
+  const list = [...recommendations.primary]
 
   return (
     <View>
-      {/* Section Header */}
-      <View style={{ marginBottom: tokens.spacing[6] }}>
-        <H2>{isGerman ? 'Empfohlene Maßnahmen' : 'Recommended Actions'}</H2>
+      <View style={{ marginBottom: 12 }}>
+        <H2>{isGerman ? 'Handlungsempfehlungen' : 'Recommended Actions'}</H2>
         <Text style={styles.sectionLead}>
           {isGerman
-            ? 'Priorisierte Handlungsempfehlungen zur Optimierung Ihres Ruhestandsplans.'
-            : 'Prioritised recommendations to optimise your retirement plan.'}
+            ? 'Priorisierte Maßnahmen zur Verbesserung der Robustheit Ihres Plans.'
+            : 'Prioritised measures to improve plan robustness.'}
         </Text>
       </View>
 
-      {/* Priority legend - Fixed width columns */}
-      <View style={{ flexDirection: 'row', marginBottom: tokens.spacing[6] }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', width: '33%' }}>
-          <View style={{ width: 12, height: 12, backgroundColor: tokens.colors.success[600], marginRight: 4 }} />
-          <Caption>{isGerman ? 'Hohe Priorität' : 'High Priority'}</Caption>
+      {list.length === 0 ? (
+        <View style={styles.card}>
+          <Text style={{ fontSize: 10, color: tokens.colors.ink[600] }}>
+            {isGerman
+              ? 'Es wurden keine spezifischen Empfehlungen erzeugt.'
+              : 'No specific recommendations were generated.'}
+          </Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', width: '33%' }}>
-          <View style={{ width: 12, height: 12, backgroundColor: tokens.colors.warning[600], marginRight: 4 }} />
-          <Caption>{isGerman ? 'Mittlere Priorität' : 'Medium Priority'}</Caption>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', width: '34%' }}>
-          <View style={{ width: 12, height: 12, backgroundColor: tokens.colors.ink[500], marginRight: 4 }} />
-          <Caption>{isGerman ? 'Niedrige Priorität' : 'Low Priority'}</Caption>
-        </View>
-      </View>
-
-      {/* High Impact */}
-      {highImpact.length > 0 && (
-        <View style={{ marginBottom: tokens.spacing[4] }}>
-          <Text style={[styles.label, { marginBottom: tokens.spacing[2] }]}>{isGerman ? 'Höchste Priorität' : 'Highest Priority'}</Text>
-          {highImpact.map((rec, i) => renderRecommendation(rec, i))}
-        </View>
-      )}
-
-      {/* Medium Impact */}
-      {mediumImpact.length > 0 && (
-        <View style={{ marginBottom: tokens.spacing[4] }}>
-          <Text style={[styles.label, { marginBottom: tokens.spacing[2] }]}>{isGerman ? 'Mittlere Priorität' : 'Medium Priority'}</Text>
-          {mediumImpact.map((rec, i) => renderRecommendation(rec, i))}
-        </View>
-      )}
-
-      {/* Low Impact */}
-      {lowImpact.length > 0 && (
-        <View style={{ marginBottom: tokens.spacing[4] }}>
-          <Text style={[styles.label, { marginBottom: tokens.spacing[2] }]}>{isGerman ? 'Zur Überlegung' : 'For Consideration'}</Text>
-          {lowImpact.map((rec, i) => renderRecommendation(rec, i))}
-        </View>
-      )}
-
-      {/* Next Steps */}
-      <View style={{ marginTop: tokens.spacing[4], borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4] }}>
-        <H4 style={{ marginBottom: tokens.spacing[3] }}>
-          {isGerman ? 'Nächste Schritte (30/90 Tage)' : 'Next Steps (30/90 Days)'}
-        </H4>
-        <View>
-          {highImpact.slice(0, 2).map((rec, i) => (
-            <View key={`high-${i}`} style={{ flexDirection: 'row', marginBottom: tokens.spacing[2] }}>
-              <Text style={{ width: 20, fontSize: 10, color: tokens.colors.accent[600] }}>[ ]</Text>
-              <Text style={{ flex: 1, fontSize: 10 }}>{rec.title}</Text>
-              <View style={{ backgroundColor: tokens.colors.ink[800], paddingVertical: 1, paddingHorizontal: 4 }}>
-                <Text style={{ fontSize: 7, color: tokens.colors.white, fontFamily: 'Helvetica-Bold' }}>
-                  {isGerman ? '30 Tage' : '30 days'}
-                </Text>
+      ) : (
+        list.slice(0, 6).map((rec, index) => {
+          const tag = impactVisual(rec.impactLabel ?? rec.impact)
+          return (
+            <View key={`${rec.title}-${index}`} style={[styles.card, { borderLeftWidth: 4, borderLeftColor: tag.color }]} wrap={false}>
+              <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 8, color: tokens.colors.ink[500], marginBottom: 2 }}>
+                    {rec.category}
+                  </Text>
+                  <H4 style={{ marginBottom: 4 }}>{rec.title}</H4>
+                </View>
+                <View style={{ alignSelf: 'flex-start', backgroundColor: tag.color, paddingHorizontal: 6, paddingVertical: 2 }}>
+                  <Text style={{ fontSize: 7, color: tokens.colors.white, fontFamily: 'Helvetica-Bold' }}>
+                    {tag.label}
+                  </Text>
+                </View>
               </View>
+              <Text style={{ fontSize: 9.5, lineHeight: 1.5, color: tokens.colors.ink[700] }}>{rec.body}</Text>
             </View>
-          ))}
-          {mediumImpact.slice(0, 2).map((rec, i) => (
-            <View key={`med-${i}`} style={{ flexDirection: 'row', marginBottom: tokens.spacing[2] }}>
-              <Text style={{ width: 20, fontSize: 10, color: tokens.colors.ink[400] }}>[ ]</Text>
-              <Text style={{ flex: 1, fontSize: 10 }}>{rec.title}</Text>
-              <View style={{ backgroundColor: tokens.colors.ink[400], paddingVertical: 1, paddingHorizontal: 4 }}>
-                <Text style={{ fontSize: 7, color: tokens.colors.white, fontFamily: 'Helvetica-Bold' }}>
-                  {isGerman ? '90 Tage' : '90 days'}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
+          )
+        })
+      )}
+
+      <View style={[styles.card, { marginTop: 6, borderLeftWidth: 3, borderLeftColor: tokens.colors.accent[600] }]}>
+        <H4 style={{ marginBottom: 6 }}>{isGerman ? 'Umsetzungsrahmen' : 'Implementation Frame'}</H4>
+        <Text style={{ fontSize: 9.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
+          {isGerman
+            ? 'Empfehlung: Fokus auf 1–2 H1/H2-Maßnahmen in den nächsten 90 Tagen und anschließend erneute Simulation.'
+            : 'Recommendation: focus on 1-2 H1/H2 actions over the next 90 days, then rerun simulation.'}
+        </Text>
       </View>
     </View>
   )

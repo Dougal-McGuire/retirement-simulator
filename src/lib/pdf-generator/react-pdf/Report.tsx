@@ -1,128 +1,190 @@
 import React from 'react'
-import { View, Text } from '@react-pdf/renderer'
+import { View, Text, Link } from '@react-pdf/renderer'
 import { ReportDocument, ReportPage, CoverPage } from './Document'
 import { ExecutiveSummary, Inputs, Results, Spending, Recommendations } from './sections'
+import { H2, Table, TableRow, TableCell } from './primitives'
 import { styles, tokens } from './styles'
-import { H2, H3, Body, Table, TableRow, TableCell } from './primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
-import { fmtDate, fmtCurrency, fmtNumber, nnbsp } from '@/lib/pdf-generator/formatters'
+import { fmtCurrency, fmtDate, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
 import './fonts'
 
 interface RetirementReportProps {
   content: ReportContent
 }
 
+interface ReportSection {
+  id: string
+  title: string
+  render: () => React.ReactNode
+}
+
+function AppendixSection({ content, isGerman, intlLocale }: { content: ReportContent; isGerman: boolean; intlLocale: string }) {
+  const { assumptions } = content
+
+  return (
+    <View id="section-appendix">
+      <H2>{isGerman ? 'Anhang' : 'Appendix'}</H2>
+
+      <View style={styles.card}>
+        <Text style={styles.label}>{isGerman ? 'Methodik' : 'Methodology'}</Text>
+        <Text style={{ marginTop: 5, fontSize: 9.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
+          {isGerman
+            ? `Monte-Carlo-Simulation mit ${fmtNumber(assumptions.simulationRuns, { locale: intlLocale })} Läufen. Zufallsrenditen basieren auf Erwartungswert ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} und Volatilität ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}.`
+            : `Monte Carlo simulation with ${fmtNumber(assumptions.simulationRuns, { locale: intlLocale })} runs. Random returns use an expected value of ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} and volatility of ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}.`}
+        </Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.label}>{isGerman ? 'Interpretationshilfe' : 'Interpretation Guide'}</Text>
+        <Table>
+          <TableRow>
+            <TableCell width="20%">P10</TableCell>
+            <TableCell width="80%">
+              {isGerman ? 'Konservatives Stressszenario (10 % der Läufe schlechter).' : 'Conservative stress scenario (10% of runs are worse).'}
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell width="20%">P50</TableCell>
+            <TableCell width="80%">{isGerman ? 'Medianpfad (typischer Verlauf).' : 'Median path (typical trajectory).'}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell width="20%">P90</TableCell>
+            <TableCell width="80%">{isGerman ? 'Positives Szenario (10 % der Läufe besser).' : 'Upside scenario (10% of runs are better).'}</TableCell>
+          </TableRow>
+        </Table>
+      </View>
+
+      <View style={[styles.card, { borderLeftWidth: 3, borderLeftColor: tokens.colors.ink[400] }]}>
+        <Text style={{ fontSize: 8.5, color: tokens.colors.ink[600], lineHeight: 1.5 }}>
+          {isGerman
+            ? 'Hinweis: Dieser Bericht stellt keine Anlageberatung dar und ersetzt keine individuelle steuerliche oder rechtliche Beratung.'
+            : 'Note: This report is not investment advice and does not replace personalized tax or legal advice.'}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
 export function RetirementReport({ content }: RetirementReportProps) {
-  const { metadata, profile, expenses } = content
-  const locale = content.locale ?? 'de'
-  const intlLocale = locale === 'de' ? 'de-DE' : 'en-US'
-  const isGerman = locale === 'de'
+  const { metadata, profile, expenses, assumptions } = content
+  const intlLocale = content.locale === 'en' ? 'en-US' : 'de-DE'
+  const isGerman = content.locale !== 'en'
 
-  const horizonLabel = `${profile.person.currentAge}–${profile.person.horizonAge}`
-  const averageAnnualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
-
-  // Cover metadata
-  const coverMetadata = [
-    { label: isGerman ? 'Berichts-ID' : 'Report ID', value: metadata.id },
-    { label: isGerman ? 'Erstellt am' : 'Generated on', value: fmtDate(metadata.generatedAt, intlLocale) },
-    { label: isGerman ? 'Planungshorizont' : 'Planning Horizon', value: `${horizonLabel}${nnbsp}${isGerman ? 'Jahre' : 'years'}` },
-    { label: isGerman ? 'Ø Jahresbudget' : 'Avg. Annual Budget', value: fmtCurrency(averageAnnualSpend, intlLocale) },
-  ]
-
-  // Badge text
-  const badgeText = profile.success.score !== null
-    ? `${isGerman ? 'Planungs-Score' : 'Planning Score'}: ${fmtNumber(profile.success.score, { locale: intlLocale })}`
-    : undefined
-
-  // Header/footer for content pages
+  const reportTitle = isGerman ? 'Ruhestandsbericht' : 'Retirement Report'
   const headerConfig = {
-    left: isGerman ? 'Rentenplan' : 'Retirement Plan',
+    left: reportTitle,
     right: fmtDate(metadata.generatedAt, intlLocale),
   }
   const footerConfig = {
     left: metadata.id,
     showPageNumber: true,
+    pageLabel: isGerman ? 'Seite' : 'Page',
   }
 
-  // Table of Contents entries
-  const tocEntries = [
-    { num: '1', title: isGerman ? 'Zusammenfassung' : 'Executive Summary', page: '2' },
-    { num: '2', title: isGerman ? 'Eingaben und Annahmen' : 'Inputs and Assumptions', page: '3' },
-    { num: '3', title: isGerman ? 'Simulationsergebnisse' : 'Simulation Results', page: '4' },
-    { num: '4', title: isGerman ? 'Ausgabenstruktur' : 'Spending Structure', page: '5' },
-    { num: '5', title: isGerman ? 'Empfehlungen' : 'Recommended Actions', page: '6' },
-    { num: '6', title: isGerman ? 'Anhang' : 'Appendix', page: '7' },
+  const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
+
+  const sections: ReportSection[] = [
+    {
+      id: 'section-summary',
+      title: isGerman ? 'Management Summary' : 'Management Summary',
+      render: () => <ExecutiveSummary content={content} />,
+    },
+    {
+      id: 'section-inputs',
+      title: isGerman ? 'Planungsannahmen' : 'Planning Assumptions',
+      render: () => <Inputs content={content} />,
+    },
+    {
+      id: 'section-results',
+      title: isGerman ? 'Simulationsergebnis' : 'Simulation Outcome',
+      render: () => <Results content={content} />,
+    },
+    {
+      id: 'section-spending',
+      title: isGerman ? 'Ausgabenanalyse' : 'Spending Analysis',
+      render: () => <Spending content={content} />,
+    },
+    {
+      id: 'section-recommendations',
+      title: isGerman ? 'Handlungsempfehlungen' : 'Recommended Actions',
+      render: () => <Recommendations content={content} />,
+    },
+    {
+      id: 'section-appendix',
+      title: isGerman ? 'Anhang' : 'Appendix',
+      render: () => <AppendixSection content={content} isGerman={isGerman} intlLocale={intlLocale} />,
+    },
   ]
+
+  const frontMatterPages = 2 // cover + TOC page
+  const toc = sections.map((section, index) => ({
+    id: section.id,
+    title: section.title,
+    page: frontMatterPages + index + 1,
+  }))
 
   return (
     <ReportDocument
-      title={isGerman ? 'Rentenplan' : 'Retirement Plan'}
-      subject={isGerman ? 'Monte-Carlo Ruhestandsanalyse' : 'Monte Carlo Retirement Analysis'}
+      title={reportTitle}
+      subject={isGerman ? 'Monte-Carlo Analyse Ruhestandsplanung' : 'Monte Carlo retirement planning analysis'}
     >
-      {/* Cover Page */}
       <CoverPage
-        title={isGerman ? 'Rentenplan' : 'Retirement Plan'}
+        title={reportTitle}
         subtitle={
           isGerman
-            ? `Individuelle Monte-Carlo-Analyse für ${profile.householdName ?? 'Ihre Haushaltsplanung'} mit Fokus auf nachhaltigem Ruhestandseinkommen.`
-            : `Personalised Monte Carlo analysis for ${profile.householdName ?? 'your household plan'} with a focus on sustainable retirement income.`
+            ? 'Professionelle Auswertung Ihrer aktuellen Simulationsdaten mit Fokus auf Tragfähigkeit und Handlungsbedarf.'
+            : 'Professional evaluation of your current simulation data focused on sustainability and concrete actions.'
         }
-        metadata={coverMetadata}
-        badge={badgeText}
+        badge={`${isGerman ? 'Erfolgsquote' : 'Success Rate'} ${fmtPercent(profile.success.successRate, 1, intlLocale)}`}
+        metadata={[
+          { label: isGerman ? 'Berichts-ID' : 'Report ID', value: metadata.id },
+          { label: isGerman ? 'Erstellt am' : 'Generated on', value: fmtDate(metadata.generatedAt, intlLocale) },
+          {
+            label: isGerman ? 'Planungshorizont' : 'Planning Horizon',
+            value: `${profile.person.currentAge}-${profile.person.horizonAge}`,
+          },
+          { label: isGerman ? 'Jahresbudget' : 'Annual Budget', value: fmtCurrency(annualSpend, intlLocale) },
+        ]}
       />
 
-      {/* Table of Contents */}
       <ReportPage header={headerConfig} footer={footerConfig}>
-        <View style={{ marginBottom: tokens.spacing[8] }}>
-          <H2 style={{ marginBottom: tokens.spacing[6] }}>
-            {isGerman ? 'Inhaltsverzeichnis' : 'Table of Contents'}
-          </H2>
-          
-          {/* TOC entries using table for reliable alignment */}
+        <View>
+          <H2>{isGerman ? 'Inhaltsverzeichnis' : 'Table of Contents'}</H2>
           <Table>
-            {tocEntries.map((entry) => (
-              <TableRow key={entry.num}>
-                <TableCell width="8%">
-                  <Text style={{ fontSize: 11, color: tokens.colors.ink[500] }}>{entry.num}.</Text>
-                </TableCell>
+            {toc.map((entry, index) => (
+              <TableRow key={entry.id}>
+                <TableCell width="8%">{index + 1}.</TableCell>
                 <TableCell width="82%">
-                  <Text style={{ fontSize: 11, color: tokens.colors.ink[800] }}>{entry.title}</Text>
+                  <Link src={`#${entry.id}`} style={{ color: tokens.colors.accent[700], textDecoration: 'none' }}>
+                    {entry.title}
+                  </Link>
                 </TableCell>
-                <TableCell width="10%" align="right">
-                  <Text style={{ fontSize: 11, color: tokens.colors.ink[500] }}>{entry.page}</Text>
-                </TableCell>
+                <TableCell width="10%" align="right">{entry.page}</TableCell>
               </TableRow>
             ))}
           </Table>
 
-          {/* At a Glance - Using fixed width columns */}
-          <View style={{ marginTop: tokens.spacing[10] }}>
-            <H3 style={{ marginBottom: tokens.spacing[4] }}>
-              {isGerman ? 'Auf einen Blick' : 'At a Glance'}
-            </H3>
-            <View style={{ flexDirection: 'row' }}>
-              <View style={{ width: '33%', paddingRight: tokens.spacing[2] }}>
-                <View style={{ borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4] }}>
-                  <Text style={styles.label}>{isGerman ? 'Erfolgswahrscheinlichkeit' : 'Success Probability'}</Text>
-                  <Text style={[styles.kpiValue, { color: profile.success.successRate >= 0.8 ? tokens.colors.success[600] : tokens.colors.warning[600] }]}>
-                    {fmtNumber(profile.success.successRate * 100, { locale: intlLocale, maximumFractionDigits: 1 })}%
+          <View style={{ marginTop: 16 }}>
+            <Text style={styles.label}>{isGerman ? 'Kurzüberblick' : 'At a glance'}</Text>
+            <View style={{ flexDirection: 'row', marginTop: 8 }}>
+              <View style={{ width: '33%', paddingRight: 6 }}>
+                <View style={styles.card} wrap={false}>
+                  <Text style={styles.kpiLabel}>{isGerman ? 'Erfolgsquote' : 'Success Rate'}</Text>
+                  <Text style={styles.kpiValue}>{fmtPercent(profile.success.successRate, 1, intlLocale)}</Text>
+                </View>
+              </View>
+              <View style={{ width: '33%', paddingHorizontal: 3 }}>
+                <View style={styles.card} wrap={false}>
+                  <Text style={styles.kpiLabel}>{isGerman ? 'Planungs-Score' : 'Plan Score'}</Text>
+                  <Text style={styles.kpiValue}>
+                    {profile.success.score !== null ? fmtNumber(profile.success.score, { locale: intlLocale }) : '-'}
                   </Text>
                 </View>
               </View>
-              <View style={{ width: '33%', paddingHorizontal: tokens.spacing[1] }}>
-                <View style={{ borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4] }}>
-                  <Text style={styles.label}>{isGerman ? 'Planungs-Score' : 'Planning Score'}</Text>
-                  <Text style={styles.kpiValue}>
-                    {profile.success.score !== null ? fmtNumber(profile.success.score, { locale: intlLocale }) : '-'} / 100
-                  </Text>
-                </View>
-              </View>
-              <View style={{ width: '34%', paddingLeft: tokens.spacing[2] }}>
-                <View style={{ borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4] }}>
-                  <Text style={styles.label}>{isGerman ? 'Planungshorizont' : 'Horizon'}</Text>
-                  <Text style={styles.kpiValue}>
-                    {profile.person.horizonAge - profile.person.currentAge} {isGerman ? 'Jahre' : 'years'}
-                  </Text>
+              <View style={{ width: '34%', paddingLeft: 6 }}>
+                <View style={styles.card} wrap={false}>
+                  <Text style={styles.kpiLabel}>{isGerman ? 'Simulationen' : 'Simulations'}</Text>
+                  <Text style={styles.kpiValue}>{fmtNumber(assumptions.simulationRuns, { locale: intlLocale })}</Text>
                 </View>
               </View>
             </View>
@@ -130,109 +192,11 @@ export function RetirementReport({ content }: RetirementReportProps) {
         </View>
       </ReportPage>
 
-      {/* Executive Summary */}
-      <ReportPage header={headerConfig} footer={footerConfig}>
-        <ExecutiveSummary content={content} />
-      </ReportPage>
-
-      {/* Inputs & Assumptions */}
-      <ReportPage header={headerConfig} footer={footerConfig}>
-        <Inputs content={content} />
-      </ReportPage>
-
-      {/* Simulation Results */}
-      <ReportPage header={headerConfig} footer={footerConfig}>
-        <Results content={content} />
-      </ReportPage>
-
-      {/* Spending Structure */}
-      <ReportPage header={headerConfig} footer={footerConfig}>
-        <Spending content={content} />
-      </ReportPage>
-
-      {/* Recommendations */}
-      <ReportPage header={headerConfig} footer={footerConfig}>
-        <Recommendations content={content} />
-      </ReportPage>
-
-      {/* Appendix */}
-      <ReportPage header={headerConfig} footer={footerConfig}>
-        <View>
-          <View style={{ marginBottom: tokens.spacing[6] }}>
-            <H2>{isGerman ? 'Anhang' : 'Appendix'}</H2>
-            <Text style={styles.sectionLead}>
-              {isGerman
-                ? 'Methodische Grundlagen und Definitionen.'
-                : 'Methodological foundations and definitions.'}
-            </Text>
-          </View>
-
-          {/* Methodology */}
-          <View style={{ marginBottom: tokens.spacing[6], borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4] }}>
-            <Text style={[styles.h4, { marginBottom: tokens.spacing[3] }]}>
-              {isGerman ? 'Methodologie' : 'Methodology'}
-            </Text>
-            <Body style={{ marginBottom: tokens.spacing[3] }}>
-              {isGerman
-                ? `Monte-Carlo-Simulation mit ${fmtNumber(content.assumptions.simulationRuns, { locale: intlLocale })} unabhängigen Läufen.`
-                : `Monte Carlo simulation with ${fmtNumber(content.assumptions.simulationRuns, { locale: intlLocale })} independent runs.`}
-            </Body>
-            <Body>
-              {isGerman
-                ? 'Rendite- und Inflationsschwankungen werden durch normalverteilte Zufallszahlen (Box-Muller) modelliert.'
-                : 'Return and inflation fluctuations are modeled using normally distributed random numbers (Box-Muller).'}
-            </Body>
-          </View>
-
-          {/* Glossary */}
-          <View style={{ marginBottom: tokens.spacing[6], borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4] }}>
-            <Text style={[styles.h4, { marginBottom: tokens.spacing[3] }]}>
-              {isGerman ? 'Glossar' : 'Glossary'}
-            </Text>
-            <Table>
-              <TableRow>
-                <TableCell width="25%">
-                  <Text style={{ fontFamily: 'Helvetica-Bold' }}>P10 / P50 / P90</Text>
-                </TableCell>
-                <TableCell width="75%">
-                  {isGerman
-                    ? 'Perzentile. P10 = 10% schlechter (Stress), P50 = Median, P90 = 10% besser (Optimal).'
-                    : 'Percentiles. P10 = 10% worse (stress), P50 = median, P90 = 10% better (optimal).'}
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell width="25%">
-                  <Text style={{ fontFamily: 'Helvetica-Bold' }}>{isGerman ? 'Brückenphase' : 'Bridge Phase'}</Text>
-                </TableCell>
-                <TableCell width="75%">
-                  {isGerman
-                    ? 'Zeitraum zwischen Ruhestandsbeginn und Rentenbeginn.'
-                    : 'Period between retirement start and pension start.'}
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell width="25%">
-                  <Text style={{ fontFamily: 'Helvetica-Bold' }}>{isGerman ? 'Score' : 'Score'}</Text>
-                </TableCell>
-                <TableCell width="75%">
-                  {isGerman
-                    ? '≥80 = Stark, 60-79 = Ausgewogen, <60 = Überarbeiten.'
-                    : '≥80 = Strong, 60-79 = Moderate, <60 = Needs Attention.'}
-                </TableCell>
-              </TableRow>
-            </Table>
-          </View>
-
-          {/* Disclaimer */}
-          <View style={{ borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4] }}>
-            <Text style={{ fontSize: 8, color: tokens.colors.ink[500], lineHeight: 1.5 }}>
-              {isGerman
-                ? 'Haftungsausschluss: Diese Analyse dient ausschließlich Informationszwecken und stellt keine Anlageberatung dar. Konsultieren Sie einen qualifizierten Finanzberater.'
-                : 'Disclaimer: This analysis is for informational purposes only and does not constitute investment advice. Consult a qualified financial advisor.'}
-            </Text>
-          </View>
-        </View>
-      </ReportPage>
+      {sections.map((section) => (
+        <ReportPage key={section.id} header={headerConfig} footer={footerConfig}>
+          <View id={section.id}>{section.render()}</View>
+        </ReportPage>
+      ))}
     </ReportDocument>
   )
 }

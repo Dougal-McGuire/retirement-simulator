@@ -2,40 +2,21 @@ import React from 'react'
 import { View, Svg, Path, Line, Text as SvgText, G, Rect } from '@react-pdf/renderer'
 import { tokens } from './styles'
 
-// ============================================================================
-// Chart utilities
-// ============================================================================
-
-interface Point {
-  x: number
-  y: number
-}
-
 function scaleLinear(domain: [number, number], range: [number, number]) {
   const [d0, d1] = domain
   const [r0, r1] = range
-  const scale = (value: number) => {
-    const t = (value - d0) / (d1 - d0)
+  const span = d1 - d0 || 1
+  return (value: number) => {
+    const t = (value - d0) / span
     return r0 + t * (r1 - r0)
   }
-  scale.domain = domain
-  scale.range = range
-  return scale
 }
 
-function formatCurrency(value: number, locale: string): string {
-  if (value >= 1000000) {
-    return `€${(value / 1000000).toFixed(1)}M`
-  }
-  if (value >= 1000) {
-    return `€${(value / 1000).toFixed(0)}k`
-  }
-  return `€${value.toFixed(0)}`
+function compactEur(value: number): string {
+  if (Math.abs(value) >= 1000000) return `€${(value / 1000000).toFixed(1)}m`
+  if (Math.abs(value) >= 1000) return `€${Math.round(value / 1000)}k`
+  return `€${Math.round(value)}`
 }
-
-// ============================================================================
-// Asset Projection Chart
-// ============================================================================
 
 interface ProjectionChartProps {
   data: Array<{ age: number; p10: number; p50: number; p90: number }>
@@ -49,164 +30,150 @@ interface ProjectionChartProps {
 export function ProjectionChart({
   data,
   width = 480,
-  height = 200,
-  locale = 'en',
+  height = 220,
+  locale = 'de',
   retireAge,
   pensionAge,
 }: ProjectionChartProps) {
   if (!data || data.length < 2) {
     return (
       <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
-        <SvgText style={{ fontSize: 10, color: tokens.colors.ink[500] }}>No data available</SvgText>
+        <SvgText style={{ fontSize: 10, color: tokens.colors.ink[500] }}>
+          {locale === 'de' ? 'Keine Daten verfügbar' : 'No data available'}
+        </SvgText>
       </View>
     )
   }
 
-  // Chart dimensions
-  const margin = { top: 20, right: 20, bottom: 30, left: 60 }
+  const margin = { top: 20, right: 14, bottom: 28, left: 54 }
   const chartWidth = width - margin.left - margin.right
   const chartHeight = height - margin.top - margin.bottom
 
-  // Calculate scales
   const ages = data.map((d) => d.age)
-  const allValues = data.flatMap((d) => [d.p10, d.p50, d.p90])
+  const allValues = data.flatMap((d) => [d.p10, d.p50, d.p90, 0])
   const minAge = Math.min(...ages)
   const maxAge = Math.max(...ages)
-  const maxValue = Math.max(...allValues) * 1.1 // Add 10% padding
+  const maxValue = Math.max(...allValues) * 1.08
+  const minValue = Math.min(0, Math.min(...allValues) * 1.08)
 
-  const xScale = scaleLinear([minAge, maxAge], [0, chartWidth])
-  const yScale = scaleLinear([0, maxValue], [chartHeight, 0])
+  const x = scaleLinear([minAge, maxAge], [0, chartWidth])
+  const y = scaleLinear([minValue, maxValue], [chartHeight, 0])
 
-  // Generate paths
-  const createPath = (values: number[], type: 'line' | 'area' = 'line', areaBase?: number[]) => {
-    const points = data.map((d, i) => ({
-      x: xScale(d.age),
-      y: yScale(values[i]),
-    }))
+  const toPath = (values: number[]) =>
+    data
+      .map((point, i) => `${i === 0 ? 'M' : 'L'} ${x(point.age).toFixed(1)} ${y(values[i]).toFixed(1)}`)
+      .join(' ')
 
-    if (type === 'area' && areaBase) {
-      const basePoints = data.map((d, i) => ({
-        x: xScale(d.age),
-        y: yScale(areaBase[i]),
-      })).reverse()
-      
-      const allPoints = [...points, ...basePoints]
-      return allPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ') + ' Z'
-    }
+  const p10 = data.map((d) => d.p10)
+  const p50 = data.map((d) => d.p50)
+  const p90 = data.map((d) => d.p90)
+  const p10Path = toPath(p10)
+  const p50Path = toPath(p50)
+  const p90Path = toPath(p90)
 
-    return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
-  }
+  const areaPath = [
+    ...data.map((point, i) => `L ${x(point.age).toFixed(1)} ${y(p90[i]).toFixed(1)}`),
+    ...[...data].reverse().map((point, i) => {
+      const idx = data.length - i - 1
+      return `L ${x(point.age).toFixed(1)} ${y(p10[idx]).toFixed(1)}`
+    }),
+  ]
+  areaPath[0] = areaPath[0].replace(/^L/, 'M')
 
-  const p10Values = data.map((d) => d.p10)
-  const p50Values = data.map((d) => d.p50)
-  const p90Values = data.map((d) => d.p90)
+  const yTicks = 4
+  const yTickValues = Array.from({ length: yTicks + 1 }, (_, i) => minValue + ((maxValue - minValue) * i) / yTicks)
 
-  // Area path (P10 to P90)
-  const areaPath = createPath(p90Values, 'area', p10Values)
-  
-  // Line paths
-  const p50Path = createPath(p50Values)
-
-  // Y-axis ticks
-  const yTicks = [0, maxValue * 0.25, maxValue * 0.5, maxValue * 0.75, maxValue]
-
-  // X-axis ticks (every 5 years)
   const xTicks: number[] = []
-  for (let age = Math.ceil(minAge / 5) * 5; age <= maxAge; age += 5) {
-    if (age >= minAge) xTicks.push(age)
+  const ageStep = maxAge - minAge > 20 ? 5 : 2
+  for (let a = minAge; a <= maxAge; a += ageStep) {
+    xTicks.push(a)
   }
 
   return (
     <View style={{ width, height }}>
       <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-        <G transform={`translate(${margin.left}, ${margin.top})`}>
-          {/* Grid lines */}
-          {yTicks.map((tick, i) => (
+        <G transform={`translate(${margin.left},${margin.top})`}>
+          {yTickValues.map((tick) => (
             <Line
-              key={`grid-${i}`}
+              key={`gy-${tick}`}
               x1={0}
-              y1={yScale(tick)}
+              y1={y(tick)}
               x2={chartWidth}
-              y2={yScale(tick)}
+              y2={y(tick)}
               stroke={tokens.colors.ink[200]}
               strokeWidth={0.5}
             />
           ))}
 
-          {/* Retirement marker */}
           {retireAge && retireAge >= minAge && retireAge <= maxAge && (
             <Line
-              x1={xScale(retireAge)}
+              x1={x(retireAge)}
               y1={0}
-              x2={xScale(retireAge)}
+              x2={x(retireAge)}
               y2={chartHeight}
               stroke={tokens.colors.accent[600]}
               strokeWidth={1}
-              strokeDasharray="3,3"
+              strokeDasharray="2,2"
             />
           )}
 
-          {/* Area (P10-P90 band) */}
-          <Path d={areaPath} fill={tokens.colors.ink[300]} fillOpacity={0.3} />
+          {pensionAge && pensionAge >= minAge && pensionAge <= maxAge && (
+            <Line
+              x1={x(pensionAge)}
+              y1={0}
+              x2={x(pensionAge)}
+              y2={chartHeight}
+              stroke={tokens.colors.success[600]}
+              strokeWidth={1}
+              strokeDasharray="2,2"
+            />
+          )}
 
-          {/* P50 line (median) */}
-          <Path d={p50Path} stroke={tokens.colors.ink[800]} strokeWidth={2} fill="none" />
+          <Path d={`${areaPath.join(' ')} Z`} fill={tokens.colors.accent[100]} />
+          <Path d={p10Path} stroke={tokens.colors.warning[600]} strokeWidth={1} fill="none" />
+          <Path d={p90Path} stroke={tokens.colors.success[600]} strokeWidth={1} fill="none" />
+          <Path d={p50Path} stroke={tokens.colors.ink[900]} strokeWidth={1.8} fill="none" />
 
-          {/* Y-axis */}
-          <Line x1={0} y1={0} x2={0} y2={chartHeight} stroke={tokens.colors.ink[300]} strokeWidth={1} />
-          
-          {/* Y-axis labels */}
-          {yTicks.map((tick, i) => (
+          <Line x1={0} y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke={tokens.colors.ink[400]} strokeWidth={0.8} />
+          <Line x1={0} y1={0} x2={0} y2={chartHeight} stroke={tokens.colors.ink[400]} strokeWidth={0.8} />
+
+          {yTickValues.map((tick) => (
             <SvgText
-              key={`y-${i}`}
-              x={-8}
-              y={yScale(tick) + 3}
+              key={`ly-${tick}`}
+              x={-6}
+              y={y(tick) + 3}
               style={{ fontSize: 7, fill: tokens.colors.ink[500], textAnchor: 'end' }}
             >
-              {formatCurrency(tick, locale)}
+              {compactEur(tick)}
             </SvgText>
           ))}
 
-          {/* X-axis */}
-          <Line x1={0} y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke={tokens.colors.ink[300]} strokeWidth={1} />
-          
-          {/* X-axis labels */}
-          {xTicks.map((tick, i) => (
+          {xTicks.map((tick) => (
             <SvgText
-              key={`x-${i}`}
-              x={xScale(tick)}
-              y={chartHeight + 15}
-              style={{ fontSize: 8, fill: tokens.colors.ink[500], textAnchor: 'middle' }}
+              key={`lx-${tick}`}
+              x={x(tick)}
+              y={chartHeight + 12}
+              style={{ fontSize: 7, fill: tokens.colors.ink[500], textAnchor: 'middle' }}
             >
               {tick}
             </SvgText>
           ))}
-
-          {/* Axis titles */}
-          <SvgText
-            x={chartWidth / 2}
-            y={chartHeight + 26}
-            style={{ fontSize: 8, fill: tokens.colors.ink[600], textAnchor: 'middle' }}
-          >
-            {locale === 'de' ? 'Alter' : 'Age'}
-          </SvgText>
         </G>
 
-        {/* Legend */}
-        <G transform={`translate(${margin.left + 10}, ${margin.top - 10})`}>
-          <Rect x={0} y={0} width={10} height={10} fill={tokens.colors.ink[300]} fillOpacity={0.3} />
-          <SvgText x={14} y={8} style={{ fontSize: 7, fill: tokens.colors.ink[600] }}>P10-P90</SvgText>
-          <Line x1={50} y1={5} x2={60} y2={5} stroke={tokens.colors.ink[800]} strokeWidth={2} />
-          <SvgText x={64} y={8} style={{ fontSize: 7, fill: tokens.colors.ink[600] }}>P50 (Median)</SvgText>
+        <G transform={`translate(${margin.left + 4}, 6)`}>
+          <Rect x={0} y={0} width={8} height={8} fill={tokens.colors.accent[100]} />
+          <SvgText x={11} y={7} style={{ fontSize: 7, fill: tokens.colors.ink[600] }}>P10-P90</SvgText>
+          <Line x1={54} y1={4} x2={66} y2={4} stroke={tokens.colors.ink[900]} strokeWidth={1.8} />
+          <SvgText x={69} y={7} style={{ fontSize: 7, fill: tokens.colors.ink[600] }}>P50</SvgText>
+          <Line x1={90} y1={4} x2={102} y2={4} stroke={tokens.colors.warning[600]} strokeWidth={1} />
+          <SvgText x={105} y={7} style={{ fontSize: 7, fill: tokens.colors.ink[600] }}>P10</SvgText>
+          <Line x1={124} y1={4} x2={136} y2={4} stroke={tokens.colors.success[600]} strokeWidth={1} />
+          <SvgText x={139} y={7} style={{ fontSize: 7, fill: tokens.colors.ink[600] }}>P90</SvgText>
         </G>
       </Svg>
     </View>
   )
 }
-
-// ============================================================================
-// Spending Breakdown Chart (Horizontal Bar)
-// ============================================================================
 
 interface SpendingChartProps {
   monthlyCategories: Array<{ label: string; annualAmount: number; share: number }>
@@ -221,85 +188,66 @@ export function SpendingChart({
   annualCategories,
   width = 480,
   height = 180,
-  locale = 'en',
+  locale = 'de',
 }: SpendingChartProps) {
-  const allCategories = [...monthlyCategories, ...annualCategories].filter(c => c.annualAmount > 0)
-  
-  if (allCategories.length === 0) {
+  const rows = [...monthlyCategories, ...annualCategories]
+    .filter((entry) => entry.annualAmount > 0)
+    .sort((a, b) => b.annualAmount - a.annualAmount)
+    .slice(0, 8)
+
+  if (!rows.length) {
     return (
       <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
         <SvgText style={{ fontSize: 10, color: tokens.colors.ink[500] }}>
-          {locale === 'de' ? 'Keine Ausgaben definiert' : 'No expenses defined'}
+          {locale === 'de' ? 'Keine Ausgaben vorhanden' : 'No expenses available'}
         </SvgText>
       </View>
     )
   }
 
-  // Sort by amount descending
-  const sorted = [...allCategories].sort((a, b) => b.annualAmount - a.annualAmount)
-  const maxAmount = Math.max(...sorted.map(c => c.annualAmount))
-
-  const margin = { top: 10, right: 80, bottom: 20, left: 120 }
+  const margin = { top: 8, right: 72, bottom: 16, left: 142 }
   const chartWidth = width - margin.left - margin.right
-  const barHeight = 16
-  const barGap = 6
-  const chartHeight = sorted.length * (barHeight + barGap)
-
-  const xScale = scaleLinear([0, maxAmount], [0, chartWidth])
-
-  // Colors for bars
-  const colors = [
-    tokens.colors.accent[600],
-    tokens.colors.accent[500],
-    tokens.colors.ink[600],
-    tokens.colors.ink[500],
-    tokens.colors.ink[400],
-    tokens.colors.ink[300],
-  ]
+  const barHeight = 14
+  const gap = 8
+  const chartHeight = rows.length * (barHeight + gap)
+  const maxValue = Math.max(...rows.map((row) => row.annualAmount), 1)
+  const x = scaleLinear([0, maxValue], [0, chartWidth])
 
   return (
     <View style={{ width, height: Math.max(height, chartHeight + margin.top + margin.bottom) }}>
-      <Svg width={width} height={chartHeight + margin.top + margin.bottom} viewBox={`0 0 ${width} ${chartHeight + margin.top + margin.bottom}`}>
+      <Svg
+        width={width}
+        height={chartHeight + margin.top + margin.bottom}
+        viewBox={`0 0 ${width} ${chartHeight + margin.top + margin.bottom}`}
+      >
         <G transform={`translate(${margin.left}, ${margin.top})`}>
-          {sorted.map((cat, i) => {
-            const y = i * (barHeight + barGap)
-            const barWidth = xScale(cat.annualAmount)
-            const color = colors[i % colors.length]
-
+          {rows.map((row, index) => {
+            const y = index * (barHeight + gap)
+            const barWidth = x(row.annualAmount)
             return (
-              <G key={cat.label}>
-                {/* Label */}
+              <G key={`${row.label}-${index}`}>
                 <SvgText
                   x={-8}
                   y={y + barHeight / 2 + 3}
-                  style={{ fontSize: 8, fill: tokens.colors.ink[700], textAnchor: 'end' }}
+                  style={{ fontSize: 7, fill: tokens.colors.ink[700], textAnchor: 'end' }}
                 >
-                  {cat.label.length > 18 ? cat.label.substring(0, 16) + '...' : cat.label}
+                  {row.label.length > 24 ? `${row.label.slice(0, 22)}..` : row.label}
                 </SvgText>
 
-                {/* Bar */}
-                <Rect
-                  x={0}
-                  y={y}
-                  width={Math.max(barWidth, 2)}
-                  height={barHeight}
-                  fill={color}
-                />
+                <Rect x={0} y={y} width={Math.max(barWidth, 1)} height={barHeight} fill={tokens.colors.accent[600]} />
 
-                {/* Value */}
                 <SvgText
-                  x={barWidth + 8}
+                  x={barWidth + 6}
                   y={y + barHeight / 2 + 3}
-                  style={{ fontSize: 8, fill: tokens.colors.ink[600] }}
+                  style={{ fontSize: 7, fill: tokens.colors.ink[600] }}
                 >
-                  {formatCurrency(cat.annualAmount, locale)}
+                  {compactEur(row.annualAmount)}
                 </SvgText>
               </G>
             )
           })}
 
-          {/* X-axis */}
-          <Line x1={0} y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke={tokens.colors.ink[300]} strokeWidth={0.5} />
+          <Line x1={0} y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke={tokens.colors.ink[300]} strokeWidth={0.6} />
         </G>
       </Svg>
     </View>

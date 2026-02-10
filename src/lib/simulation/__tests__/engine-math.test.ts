@@ -136,4 +136,36 @@ describe('Engine math correctness', () => {
     const currentAgeIndex = results.ages.indexOf(currentAge)
     expect(results.spendingPercentiles.p50[currentAgeIndex]).toBeCloseTo(0, 6)
   })
+
+  it('grows annual savings during accumulation when savings growth rate is set', () => {
+    const baseParams = {
+      ...DEFAULT_PARAMS,
+      currentAge: 30,
+      retirementAge: 33,
+      legalRetirementAge: 70,
+      endAge: 33,
+      currentAssets: 0,
+      annualSavings: 10000,
+      averageROI: 0,
+      roiVolatility: 0,
+      averageInflation: 0,
+      inflationVolatility: 0,
+      customExpenses: [],
+      simulationRuns: 1,
+    }
+
+    const flatSavings = runMonteCarloSimulation({
+      ...baseParams,
+      annualSavingsGrowthRate: 0,
+    })
+    const growingSavings = runMonteCarloSimulation({
+      ...baseParams,
+      annualSavingsGrowthRate: 0.1,
+    })
+
+    const horizonIndex = flatSavings.ages.length - 1
+    expect(growingSavings.assetPercentiles.p50[horizonIndex]).toBeGreaterThan(
+      flatSavings.assetPercentiles.p50[horizonIndex]
+    )
+  })
 })

@@ -1,9 +1,6 @@
 import { StyleSheet } from '@react-pdf/renderer'
 
-// Design tokens - Optimized for fast PDF rendering
-// IMPORTANT: Avoid opacity, transparency, and complex backgrounds
 export const tokens = {
-  // Typography
   fontFamily: {
     sans: 'Helvetica',
     serif: 'Times-Roman',
@@ -18,56 +15,45 @@ export const tokens = {
     '2xl': 24,
     '3xl': 32,
   },
-  fontWeight: {
-    normal: 'normal' as const,
-    medium: 'normal' as const,
-    semibold: 'bold' as const,
-    bold: 'bold' as const,
-  },
   lineHeight: {
     tight: 1.2,
     normal: 1.4,
-    relaxed: 1.6,
+    relaxed: 1.55,
   },
-
-  // Colors - Solid colors only, no transparency
   colors: {
     ink: {
-      900: '#0f172a',
-      800: '#1e293b',
-      700: '#334155',
-      600: '#475569',
-      500: '#64748b',
-      400: '#94a3b8',
-      300: '#cbd5e1',
-      200: '#e2e8f0',
-      100: '#f1f5f9',
-      50: '#f8fafc',
+      900: '#101828',
+      800: '#1d2939',
+      700: '#344054',
+      600: '#475467',
+      500: '#667085',
+      400: '#98a2b3',
+      300: '#d0d5dd',
+      200: '#eaecf0',
+      100: '#f2f4f7',
+      50: '#f9fafb',
     },
     accent: {
-      700: '#1d4ed8',
-      600: '#2563eb',
-      500: '#3b82f6',
-      100: '#dbeafe',
-      50: '#eff6ff',
+      700: '#0b4f6c',
+      600: '#126782',
+      500: '#1b7f9c',
+      100: '#d8edf4',
+      50: '#eef8fb',
     },
     success: {
-      600: '#059669',
-      100: '#d1fae5',
+      600: '#067647',
+      100: '#d1fadf',
     },
     warning: {
-      600: '#d97706',
-      100: '#fef3c7',
+      600: '#b54708',
+      100: '#fef0c7',
     },
     danger: {
-      600: '#dc2626',
-      100: '#fee2e2',
+      600: '#b42318',
+      100: '#fee4e2',
     },
     white: '#ffffff',
-    black: '#000000',
   },
-
-  // Spacing (in points)
   spacing: {
     0: 0,
     1: 2,
@@ -81,32 +67,24 @@ export const tokens = {
     12: 24,
     16: 32,
     20: 40,
-    24: 48,
   },
 } as const
 
-// Page dimensions (A4 in points)
 export const page = {
   width: 595.28,
   height: 841.89,
   margin: {
-    top: 56,
-    right: 50,
-    bottom: 68,
-    left: 50,
+    top: 58,
+    right: 46,
+    bottom: 54,
+    left: 46,
   },
   get contentWidth() {
     return this.width - this.margin.left - this.margin.right
   },
-  get contentHeight() {
-    return this.height - this.margin.top - this.margin.bottom
-  },
 }
 
-// Shared styles - Optimized for vector PDF rendering
-// NO opacity, NO complex backgrounds, NO filters
 export const styles = StyleSheet.create({
-  // Page - Plain white background
   page: {
     fontFamily: tokens.fontFamily.sans,
     fontSize: tokens.fontSize.base,
@@ -121,7 +99,6 @@ export const styles = StyleSheet.create({
   pageCover: {
     fontFamily: tokens.fontFamily.sans,
     fontSize: tokens.fontSize.base,
-    lineHeight: tokens.lineHeight.normal,
     color: tokens.colors.ink[900],
     backgroundColor: tokens.colors.white,
     paddingTop: 0,
@@ -130,32 +107,29 @@ export const styles = StyleSheet.create({
     paddingLeft: 0,
   },
 
-  // Typography
   h1: {
     fontSize: tokens.fontSize['3xl'],
     fontFamily: 'Helvetica-Bold',
     lineHeight: tokens.lineHeight.tight,
     color: tokens.colors.ink[900],
-    marginBottom: tokens.spacing[4],
-  },
-  h2: {
-    fontSize: tokens.fontSize['2xl'],
-    fontFamily: 'Helvetica-Bold',
-    lineHeight: tokens.lineHeight.tight,
-    color: tokens.colors.ink[900],
     marginBottom: tokens.spacing[3],
   },
-  h3: {
+  h2: {
     fontSize: tokens.fontSize.xl,
     fontFamily: 'Helvetica-Bold',
     lineHeight: tokens.lineHeight.tight,
     color: tokens.colors.ink[900],
     marginBottom: tokens.spacing[2],
   },
-  h4: {
+  h3: {
     fontSize: tokens.fontSize.lg,
     fontFamily: 'Helvetica-Bold',
-    lineHeight: tokens.lineHeight.tight,
+    color: tokens.colors.ink[900],
+    marginBottom: tokens.spacing[2],
+  },
+  h4: {
+    fontSize: tokens.fontSize.md,
+    fontFamily: 'Helvetica-Bold',
     color: tokens.colors.ink[900],
     marginBottom: tokens.spacing[2],
   },
@@ -170,250 +144,200 @@ export const styles = StyleSheet.create({
     color: tokens.colors.ink[700],
   },
   caption: {
-    fontSize: tokens.fontSize.sm,
-    lineHeight: tokens.lineHeight.normal,
+    fontSize: tokens.fontSize.xs,
     color: tokens.colors.ink[500],
   },
   label: {
     fontSize: tokens.fontSize.xs,
-    fontFamily: 'Helvetica-Bold',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
     color: tokens.colors.ink[500],
+    fontFamily: 'Helvetica-Bold',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
 
-  // Layout
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  rowCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  col: {
-    flexDirection: 'column',
-  },
-  flex1: {
-    flex: 1,
-  },
+  row: { flexDirection: 'row' },
+  rowCenter: { flexDirection: 'row', alignItems: 'center' },
+  col: { flexDirection: 'column' },
 
-  // Grid layouts
-  grid2: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  grid3: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  gridItem2: {
-    width: '48%',
-    marginRight: '2%',
-    marginBottom: tokens.spacing[4],
-  },
-  gridItem3: {
-    width: '31%',
-    marginRight: '2%',
-    marginBottom: tokens.spacing[4],
-  },
+  grid2: { flexDirection: 'row', flexWrap: 'wrap' },
+  grid3: { flexDirection: 'row', flexWrap: 'wrap' },
+  gridItem2: { width: '48%', marginRight: '2%', marginBottom: tokens.spacing[4] },
+  gridItem3: { width: '31%', marginRight: '2%', marginBottom: tokens.spacing[4] },
 
-  // Cards & surfaces - Simple borders, no complex backgrounds
   card: {
-    backgroundColor: tokens.colors.white,
     borderWidth: 1,
     borderColor: tokens.colors.ink[200],
-    padding: tokens.spacing[6],
-    marginBottom: tokens.spacing[4],
+    backgroundColor: tokens.colors.white,
+    padding: tokens.spacing[4],
+    marginBottom: tokens.spacing[3],
   },
   cardBordered: {
-    backgroundColor: tokens.colors.white,
     borderWidth: 1,
     borderColor: tokens.colors.ink[200],
-    padding: tokens.spacing[6],
-    marginBottom: tokens.spacing[4],
+    backgroundColor: tokens.colors.white,
+    padding: tokens.spacing[4],
+    marginBottom: tokens.spacing[3],
   },
   surface: {
-    backgroundColor: tokens.colors.white,
     borderWidth: 1,
     borderColor: tokens.colors.ink[200],
-    padding: tokens.spacing[6],
+    backgroundColor: tokens.colors.white,
+    padding: tokens.spacing[4],
   },
 
-  // KPI display
   kpiValue: {
-    fontSize: tokens.fontSize['2xl'],
+    fontSize: 20,
     fontFamily: 'Helvetica-Bold',
     color: tokens.colors.ink[900],
+    marginTop: tokens.spacing[1],
     marginBottom: tokens.spacing[1],
   },
   kpiLabel: {
-    fontSize: tokens.fontSize.sm,
-    color: tokens.colors.ink[600],
-    marginBottom: tokens.spacing[1],
+    fontSize: tokens.fontSize.xs,
+    color: tokens.colors.ink[500],
+    fontFamily: 'Helvetica-Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   kpiDescription: {
     fontSize: tokens.fontSize.xs,
     color: tokens.colors.ink[500],
-    lineHeight: tokens.lineHeight.normal,
   },
 
-  // Badges - Solid colors only
   badge: {
+    backgroundColor: tokens.colors.ink[900],
     paddingVertical: tokens.spacing[1],
     paddingHorizontal: tokens.spacing[3],
-    backgroundColor: tokens.colors.ink[900],
+    alignSelf: 'flex-start',
   },
   badgeText: {
     fontSize: tokens.fontSize.xs,
-    fontFamily: 'Helvetica-Bold',
     color: tokens.colors.white,
+    fontFamily: 'Helvetica-Bold',
   },
-  badgeSuccess: {
-    backgroundColor: tokens.colors.success[600],
-  },
-  badgeWarning: {
-    backgroundColor: tokens.colors.warning[600],
-  },
-  badgeDanger: {
-    backgroundColor: tokens.colors.danger[600],
-  },
+  badgeSuccess: { backgroundColor: tokens.colors.success[600] },
+  badgeWarning: { backgroundColor: tokens.colors.warning[600] },
+  badgeDanger: { backgroundColor: tokens.colors.danger[600] },
 
-  // Tables - Simple lines only
-  table: {
-    marginVertical: tokens.spacing[4],
-  },
+  table: { marginVertical: tokens.spacing[2] },
   tableHeader: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: tokens.colors.ink[300],
+    paddingBottom: 2,
+    marginBottom: 2,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 0.5,
     borderBottomColor: tokens.colors.ink[200],
-    minHeight: 24,
+    minHeight: 20,
     alignItems: 'center',
   },
-  tableRowAlt: {
-    // No background - keeps PDF simple and fast
-  },
+  tableRowAlt: {},
   tableCell: {
     paddingVertical: tokens.spacing[2],
-    paddingHorizontal: tokens.spacing[3],
+    paddingHorizontal: tokens.spacing[2],
     fontSize: tokens.fontSize.sm,
+    color: tokens.colors.ink[700],
   },
   tableCellHeader: {
-    paddingVertical: tokens.spacing[3],
-    paddingHorizontal: tokens.spacing[3],
+    paddingVertical: tokens.spacing[2],
+    paddingHorizontal: tokens.spacing[2],
     fontSize: tokens.fontSize.xs,
+    color: tokens.colors.ink[600],
     fontFamily: 'Helvetica-Bold',
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
-    color: tokens.colors.ink[600],
+    letterSpacing: 0.4,
   },
 
-  // Callouts - Simple left border, no background
   callout: {
     borderLeftWidth: 3,
     borderLeftColor: tokens.colors.accent[600],
-    paddingLeft: tokens.spacing[4],
-    paddingVertical: tokens.spacing[3],
-    marginVertical: tokens.spacing[4],
+    paddingLeft: tokens.spacing[3],
+    paddingVertical: tokens.spacing[2],
   },
-  calloutWarning: {
-    borderLeftColor: tokens.colors.warning[600],
-  },
-  calloutDanger: {
-    borderLeftColor: tokens.colors.danger[600],
-  },
-  calloutSuccess: {
-    borderLeftColor: tokens.colors.success[600],
-  },
+  calloutWarning: { borderLeftColor: tokens.colors.warning[600] },
+  calloutDanger: { borderLeftColor: tokens.colors.danger[600] },
+  calloutSuccess: { borderLeftColor: tokens.colors.success[600] },
 
-  // Lists
   listItem: {
     flexDirection: 'row',
     marginBottom: tokens.spacing[2],
-    paddingLeft: tokens.spacing[2],
   },
   listBullet: {
-    width: 16,
+    width: 14,
     fontSize: tokens.fontSize.sm,
     color: tokens.colors.accent[600],
   },
   listContent: {
     flex: 1,
     fontSize: tokens.fontSize.sm,
-    lineHeight: tokens.lineHeight.relaxed,
     color: tokens.colors.ink[700],
-  },
-
-  // Section
-  section: {
-    marginBottom: tokens.spacing[12],
-  },
-  sectionHeader: {
-    marginBottom: tokens.spacing[6],
-  },
-  sectionLead: {
-    fontSize: tokens.fontSize.md,
     lineHeight: tokens.lineHeight.relaxed,
-    color: tokens.colors.ink[600],
-    marginTop: tokens.spacing[2],
   },
 
-  // Dividers - Simple vector lines
+  section: { marginBottom: tokens.spacing[8] },
+  sectionHeader: { marginBottom: tokens.spacing[4] },
+  sectionLead: {
+    fontSize: tokens.fontSize.sm,
+    color: tokens.colors.ink[600],
+    lineHeight: tokens.lineHeight.relaxed,
+  },
+
   divider: {
     borderBottomWidth: 1,
     borderBottomColor: tokens.colors.ink[200],
-    marginVertical: tokens.spacing[6],
+    marginVertical: tokens.spacing[4],
   },
   dividerThick: {
     borderBottomWidth: 2,
     borderBottomColor: tokens.colors.ink[300],
-    marginVertical: tokens.spacing[8],
+    marginVertical: tokens.spacing[4],
   },
 
-  // Figures
   figure: {
-    marginVertical: tokens.spacing[6],
+    marginVertical: tokens.spacing[2],
+    borderWidth: 1,
+    borderColor: tokens.colors.ink[200],
+    padding: tokens.spacing[3],
   },
   figcaption: {
-    marginTop: tokens.spacing[3],
-    fontSize: tokens.fontSize.sm,
+    marginTop: tokens.spacing[2],
+    fontSize: tokens.fontSize.xs,
     color: tokens.colors.ink[500],
     textAlign: 'center',
   },
 
-  // Header/Footer
   header: {
     position: 'absolute',
-    top: tokens.spacing[8],
+    top: 22,
     left: page.margin.left,
     right: page.margin.right,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    fontSize: tokens.fontSize.xs,
-    color: tokens.colors.ink[400],
-  },
-  footer: {
-    position: 'absolute',
-    bottom: tokens.spacing[8],
-    left: page.margin.left,
-    right: page.margin.right,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    fontSize: tokens.fontSize.xs,
-    color: tokens.colors.ink[400],
-  },
-  pageNumber: {
     fontSize: tokens.fontSize.xs,
     color: tokens.colors.ink[500],
   },
+  footer: {
+    position: 'absolute',
+    bottom: 20,
+    left: page.margin.left,
+    right: page.margin.right,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    fontSize: tokens.fontSize.xs,
+    color: tokens.colors.ink[500],
+  },
+  pageNumber: {
+    position: 'absolute',
+    bottom: 20,
+    right: page.margin.right,
+    fontSize: tokens.fontSize.xs,
+    color: tokens.colors.ink[500],
+    textAlign: 'right',
+  },
 
-  // Spacing utilities
   mb1: { marginBottom: tokens.spacing[1] },
   mb2: { marginBottom: tokens.spacing[2] },
   mb3: { marginBottom: tokens.spacing[3] },
@@ -423,11 +347,9 @@ export const styles = StyleSheet.create({
   mt2: { marginTop: tokens.spacing[2] },
   mt4: { marginTop: tokens.spacing[4] },
   mt6: { marginTop: tokens.spacing[6] },
-  gap2: { gap: tokens.spacing[2] },
-  gap4: { gap: tokens.spacing[4] },
-  gap6: { gap: tokens.spacing[6] },
-
-  // Text utilities
+  gap2: {},
+  gap4: {},
+  gap6: {},
   textCenter: { textAlign: 'center' },
   textRight: { textAlign: 'right' },
   fontSemibold: { fontFamily: 'Helvetica-Bold' },

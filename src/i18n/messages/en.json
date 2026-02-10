@@ -99,6 +99,10 @@
           "label": "Annual Savings (€)",
           "help": "How much do you save per year until retirement?"
         },
+        "annualSavingsGrowthRate": {
+          "label": "Savings Growth Rate (%/year)",
+          "help": "Expected yearly increase in annual savings as income grows."
+        },
         "monthlyPension": {
           "label": "Monthly Pension (€)",
           "help": "Expected monthly pension from legal retirement age"
@@ -347,6 +351,10 @@
         "label": "Annual Savings (€)",
         "tooltip": "How much you can save and invest each year until retirement. Higher savings rates lead to earlier retirement possibilities."
       },
+      "annualSavingsGrowthRate": {
+        "label": "Savings Growth Rate",
+        "tooltip": "Expected yearly increase in your annual savings before retirement, reflecting income growth."
+      },
       "monthlyPension": {
         "label": "Monthly Pension (€)",
         "tooltip": "Expected monthly pension from the government system, starting at legal retirement age. This reduces your required private savings."
@@ -533,7 +541,8 @@
     "description": "This chart shows projected asset values over time using Monte Carlo simulation. The three lines represent optimistic (90th percentile), median (50th percentile), and pessimistic (10th percentile) scenarios.",
     "axis": {
       "age": "Age",
-      "assets": "Assets (€)"
+      "assets": "Assets (€)",
+      "monthlySavings": "Monthly Savings (€)"
     },
     "legend": {
       "band": "P20–P80 Band",
@@ -542,7 +551,8 @@
       "p20": "20th Percentile",
       "p50": "50th Percentile (Median)",
       "p80": "80th Percentile",
-      "p90": "90th Percentile (Optimistic)"
+      "p90": "90th Percentile (Optimistic)",
+      "monthlySavings": "Monthly savings"
     },
     "tooltip": {
       "label": "Age: {age}"

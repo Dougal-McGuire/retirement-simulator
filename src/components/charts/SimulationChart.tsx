@@ -63,24 +63,35 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
   // Transform data for charts
   const chartData: ChartDataPoint[] = useMemo(
     () =>
-      results.ages.map((age, index) => ({
-        age,
-        assets_p10: Math.round(results.assetPercentiles.p10[index]),
-        assets_p20: Math.round(results.assetPercentiles.p20[index]),
-        assets_p50: Math.round(results.assetPercentiles.p50[index]),
-        assets_p80: Math.round(results.assetPercentiles.p80[index]),
-        assets_p90: Math.round(results.assetPercentiles.p90[index]),
-        spending_p10: Math.round(results.spendingPercentiles.p10[index]),
-        spending_p20: Math.round(results.spendingPercentiles.p20[index]),
-        spending_p50: Math.round(results.spendingPercentiles.p50[index]),
-        spending_p80: Math.round(results.spendingPercentiles.p80[index]),
-        spending_p90: Math.round(results.spendingPercentiles.p90[index]),
-        withdrawal_rate_p50:
-          results.assetPercentiles.p50[index] > 0
-            ? (results.spendingPercentiles.p50[index] * 12) /
-              results.assetPercentiles.p50[index]
-            : null,
-      })),
+      results.ages.map((age, index) => {
+        const yearsFromStart = age - results.params.currentAge
+        const annualSavingsAtAge =
+          age < results.params.retirementAge
+            ? results.params.annualSavings *
+              Math.pow(1 + results.params.annualSavingsGrowthRate, Math.max(0, yearsFromStart))
+            : 0
+        const monthlySavings = age < results.params.retirementAge ? annualSavingsAtAge / 12 : null
+
+        return {
+          age,
+          assets_p10: Math.round(results.assetPercentiles.p10[index]),
+          assets_p20: Math.round(results.assetPercentiles.p20[index]),
+          assets_p50: Math.round(results.assetPercentiles.p50[index]),
+          assets_p80: Math.round(results.assetPercentiles.p80[index]),
+          assets_p90: Math.round(results.assetPercentiles.p90[index]),
+          spending_p10: Math.round(results.spendingPercentiles.p10[index]),
+          spending_p20: Math.round(results.spendingPercentiles.p20[index]),
+          spending_p50: Math.round(results.spendingPercentiles.p50[index]),
+          spending_p80: Math.round(results.spendingPercentiles.p80[index]),
+          spending_p90: Math.round(results.spendingPercentiles.p90[index]),
+          withdrawal_rate_p50:
+            results.assetPercentiles.p50[index] > 0
+              ? (results.spendingPercentiles.p50[index] * 12) /
+                results.assetPercentiles.p50[index]
+              : null,
+          monthly_savings_p50: monthlySavings,
+        }
+      }),
     [results]
   )
 

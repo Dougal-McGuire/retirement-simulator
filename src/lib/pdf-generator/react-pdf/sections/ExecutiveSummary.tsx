@@ -1,161 +1,148 @@
 import React from 'react'
 import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
-import { H2, H4, Body, Label, ListItem } from '../primitives'
+import { H2, H4 } from '../primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
-import { fmtCurrency, fmtNumber, fmtPercent, nnbsp } from '@/lib/pdf-generator/formatters'
+import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
 
 interface ExecutiveSummaryProps {
   content: ReportContent
 }
 
+function scoreColor(score: number | null) {
+  if (score === null) return tokens.colors.ink[700]
+  if (score >= 80) return tokens.colors.success[600]
+  if (score >= 60) return tokens.colors.warning[600]
+  return tokens.colors.danger[600]
+}
+
 export function ExecutiveSummary({ content }: ExecutiveSummaryProps) {
-  const { profile, expenses } = content
-  const locale = content.locale ?? 'de'
-  const intlLocale = locale === 'de' ? 'de-DE' : 'en-US'
-  const isGerman = locale === 'de'
-  const success = profile.success
-  const bridge = profile.bridge
-  const horizonYears = expenses.horizonYears
-  const totalSpend = expenses.totalHorizonAmount
+  const { profile, expenses, assumptions, finances } = content
+  const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
+  const isGerman = content.locale !== 'en'
 
-  const highlights = profile.highlights.length
-    ? profile.highlights
-    : [isGerman ? 'Plan durch Risiko- und Liquiditätsanalyse abgesichert' : 'Plan secured by risk and liquidity review']
-
-  // Determine score status
-  const scoreLabel = (() => {
-    if (success.score === null) return null
-    if (success.score >= 80) return { text: isGerman ? 'Stark' : 'Strong', color: tokens.colors.success[600] }
-    if (success.score >= 60) return { text: isGerman ? 'Ausgewogen' : 'Moderate', color: tokens.colors.warning[600] }
-    return { text: isGerman ? 'Überarbeiten' : 'Needs Attention', color: tokens.colors.danger[600] }
-  })()
+  const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
+  const annualNetGap = Math.max(0, annualSpend - finances.monthlyPension * 12)
+  const confidence = profile.success.successRate
 
   return (
     <View>
-      {/* Section Header */}
-      <View style={{ marginBottom: tokens.spacing[6] }}>
-        <H2>{isGerman ? 'Zusammenfassung' : 'Executive Summary'}</H2>
+      <View style={{ marginBottom: 16 }}>
+        <H2>{isGerman ? 'Management Summary' : 'Management Summary'}</H2>
         <Text style={styles.sectionLead}>
           {isGerman
-            ? 'Ergebnisse der Monte-Carlo-Simulation mit Fokus auf Erfolgswahrscheinlichkeit, Liquiditätsbedarf und priorisierte Maßnahmen.'
-            : 'Results of the Monte Carlo simulation, focusing on success probability, liquidity needs, and prioritised actions.'}
+            ? 'Kompakte Beurteilung Ihrer Ruhestandsstrategie auf Basis der aktuellen Simulationsdaten.'
+            : 'Compact assessment of your retirement strategy based on the current simulation data.'}
         </Text>
       </View>
 
-      {/* KPI Grid - Using table-like structure for reliable alignment */}
-      <View style={{ flexDirection: 'row', marginBottom: tokens.spacing[6] }}>
-        {/* Success Probability */}
-        <View style={{ width: '33%', paddingRight: tokens.spacing[2] }}>
-          <View style={{ borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4], minHeight: 100 }}>
-            <Text style={styles.label}>{isGerman ? 'Erfolgswahrscheinlichkeit' : 'Success Probability'}</Text>
-            <Text style={styles.kpiValue}>
-              {fmtPercent(success.successRate, 1, intlLocale)}
+      <View style={{ flexDirection: 'row', marginBottom: 14 }}>
+        <View style={{ width: '32%', marginRight: '2%' }}>
+          <View style={styles.card} wrap={false}>
+            <Text style={styles.kpiLabel}>{isGerman ? 'Erfolgsquote' : 'Success Rate'}</Text>
+            <Text style={[styles.kpiValue, { color: confidence >= 0.8 ? tokens.colors.success[600] : tokens.colors.warning[600] }]}>
+              {fmtPercent(confidence, 1, locale)}
             </Text>
             <Text style={styles.kpiDescription}>
-              {fmtNumber(success.successCount, { locale: intlLocale })} / {fmtNumber(success.trials, { locale: intlLocale })}
-              {' '}{isGerman ? 'Simulationen' : 'simulations'}
+              {fmtNumber(profile.success.successCount, { locale })} / {fmtNumber(profile.success.trials, { locale })}
+              {isGerman ? ' Läufe erfolgreich' : ' successful runs'}
             </Text>
           </View>
         </View>
 
-        {/* Plan Score */}
-        <View style={{ width: '33%', paddingHorizontal: tokens.spacing[1] }}>
-          <View style={{ borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4], minHeight: 100 }}>
-            <Text style={styles.label}>{isGerman ? 'Planungs-Score' : 'Planning Score'}</Text>
-            {success.score !== null ? (
-              <View>
-                <Text style={[styles.kpiValue, { color: scoreLabel?.color || tokens.colors.ink[900] }]}>
-                  {fmtNumber(success.score, { locale: intlLocale })} / 100
-                </Text>
-                {scoreLabel && (
-                  <View style={{ marginTop: tokens.spacing[2] }}>
-                    <Text style={{ fontSize: 9, color: scoreLabel.color, fontFamily: 'Helvetica-Bold' }}>
-                      {scoreLabel.text}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ) : (
-              <Text style={[styles.kpiValue, { color: tokens.colors.ink[400] }]}>-</Text>
-            )}
+        <View style={{ width: '32%', marginRight: '2%' }}>
+          <View style={styles.card} wrap={false}>
+            <Text style={styles.kpiLabel}>{isGerman ? 'Planungs-Score' : 'Plan Score'}</Text>
+            <Text style={[styles.kpiValue, { color: scoreColor(profile.success.score) }]}>
+              {profile.success.score !== null ? fmtNumber(profile.success.score, { locale }) : '-'}
+            </Text>
+            <Text style={styles.kpiDescription}>{profile.success.label ?? (isGerman ? 'Nicht verfügbar' : 'Not available')}</Text>
           </View>
         </View>
 
-        {/* Total Spending */}
-        <View style={{ width: '34%', paddingLeft: tokens.spacing[2] }}>
-          <View style={{ borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4], minHeight: 100 }}>
-            <Text style={styles.label}>
-              {isGerman ? 'Ausgaben' : 'Spending'} ({fmtNumber(horizonYears, { locale: intlLocale })}{nnbsp}{isGerman ? 'J.' : 'yrs'})
-            </Text>
-            <Text style={styles.kpiValue}>{fmtCurrency(totalSpend, intlLocale)}</Text>
+        <View style={{ width: '34%' }}>
+          <View style={styles.card} wrap={false}>
+            <Text style={styles.kpiLabel}>{isGerman ? 'Jahresbudget' : 'Annual Budget'}</Text>
+            <Text style={styles.kpiValue}>{fmtCurrency(annualSpend, locale)}</Text>
             <Text style={styles.kpiDescription}>
-              {isGerman ? 'Lebenshaltungskosten' : 'Living costs'}
+              {fmtNumber(expenses.horizonYears, { locale })} {isGerman ? 'Jahre Planungshorizont' : 'years planning horizon'}
             </Text>
           </View>
         </View>
       </View>
 
-      {/* Two-column layout */}
-      <View style={{ flexDirection: 'row' }}>
-        {/* Prioritised Insights */}
-        <View style={{ width: '50%', paddingRight: tokens.spacing[2] }}>
-          <View style={{ borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4], minHeight: 140 }}>
-            <H4 style={{ marginBottom: tokens.spacing[3] }}>{isGerman ? 'Priorisierte Erkenntnisse' : 'Prioritised Insights'}</H4>
-            <View>
-              {highlights.map((item, index) => (
-                <ListItem key={index} bullet="•">{item}</ListItem>
-              ))}
-            </View>
-            {success.reasons.length > 0 && (
-              <View style={{ marginTop: tokens.spacing[3] }}>
-                <Text style={{ fontSize: 8, color: tokens.colors.ink[400] }}>
-                  {success.reasons.join(' · ')}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Liquidity Needs */}
-        <View style={{ width: '50%', paddingLeft: tokens.spacing[2] }}>
-          <View style={{ borderWidth: 1, borderColor: tokens.colors.ink[200], padding: tokens.spacing[4], minHeight: 140 }}>
-            <H4 style={{ marginBottom: tokens.spacing[3] }}>
-              {isGerman ? 'Liquiditätsbedarf' : 'Liquidity Needs'}
-            </H4>
-            {bridge ? (
-              <View>
-                <Body>
-                  {isGerman
-                    ? `Zwischen Ruhestand (${profile.person.retireAge}) und Rente (${profile.person.pensionAge}): `
-                    : `Between retirement (${profile.person.retireAge}) and pension (${profile.person.pensionAge}): `}
-                  <Text style={{ fontFamily: 'Helvetica-Bold' }}>{fmtCurrency(bridge.cashNeedEUR, intlLocale)}</Text>
-                </Body>
-                <View style={{ flexDirection: 'row', marginTop: tokens.spacing[3] }}>
-                  <View style={{ width: '50%' }}>
-                    <Text style={styles.label}>{isGerman ? 'Cash' : 'Cash'}</Text>
-                    <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold' }}>
-                      {fmtPercent((bridge.cashBucketSharePct ?? 0) / 100, 0, intlLocale)}
-                    </Text>
-                  </View>
-                  <View style={{ width: '50%' }}>
-                    <Text style={styles.label}>{isGerman ? 'Portfolio' : 'Portfolio'}</Text>
-                    <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold' }}>
-                      {fmtPercent((bridge.portfolioSharePct ?? 0) / 100, 0, intlLocale)}
-                    </Text>
-                  </View>
+      <View style={{ flexDirection: 'row', marginBottom: 14 }}>
+        <View style={{ width: '56%', marginRight: '2%' }}>
+          <View style={styles.card}>
+            <H4 style={{ marginBottom: 8 }}>{isGerman ? 'Kernbefunde' : 'Key Findings'}</H4>
+            {profile.highlights.length > 0 ? (
+              profile.highlights.slice(0, 4).map((item, index) => (
+                <View key={index} style={{ flexDirection: 'row', marginBottom: 4 }}>
+                  <Text style={{ width: 12, color: tokens.colors.accent[600], fontSize: 9 }}>•</Text>
+                  <Text style={{ flex: 1, fontSize: 9.5, color: tokens.colors.ink[700], lineHeight: 1.45 }}>{item}</Text>
                 </View>
-              </View>
+              ))
             ) : (
-              <Body>
-                {isGerman
-                  ? 'Kein zusätzlicher Liquiditätsbedarf identifiziert.'
-                  : 'No additional liquidity requirement identified.'}
-              </Body>
+              <Text style={{ fontSize: 9.5, color: tokens.colors.ink[600] }}>
+                {isGerman ? 'Keine zusätzlichen Highlights verfügbar.' : 'No additional highlights available.'}
+              </Text>
+            )}
+
+            {profile.success.reasons.length > 0 && (
+              <Text style={{ marginTop: 8, fontSize: 8.5, color: tokens.colors.ink[500] }}>
+                {profile.success.reasons.join(' · ')}
+              </Text>
             )}
           </View>
         </View>
+
+        <View style={{ width: '42%' }}>
+          <View style={styles.card}>
+            <H4 style={{ marginBottom: 8 }}>{isGerman ? 'Planungsdaten' : 'Planning Data'}</H4>
+            <View style={{ marginBottom: 6 }}>
+              <Text style={styles.label}>{isGerman ? 'Renditeerwartung' : 'Expected Return'}</Text>
+              <Text style={{ fontSize: 11, color: tokens.colors.ink[800], fontFamily: 'Helvetica-Bold' }}>
+                {fmtPercent(assumptions.expectedReturn, 1, locale)}
+              </Text>
+            </View>
+            <View style={{ marginBottom: 6 }}>
+              <Text style={styles.label}>{isGerman ? 'Inflation' : 'Inflation'}</Text>
+              <Text style={{ fontSize: 11, color: tokens.colors.ink[800], fontFamily: 'Helvetica-Bold' }}>
+                {fmtPercent(assumptions.inflation, 1, locale)}
+              </Text>
+            </View>
+            <View style={{ marginBottom: 6 }}>
+              <Text style={styles.label}>{isGerman ? 'Simulationen' : 'Simulations'}</Text>
+              <Text style={{ fontSize: 11, color: tokens.colors.ink[800], fontFamily: 'Helvetica-Bold' }}>
+                {fmtNumber(assumptions.simulationRuns, { locale })}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.label}>{isGerman ? 'Netto-Ausgabenlücke' : 'Annual Net Gap'}</Text>
+              <Text style={{ fontSize: 11, color: tokens.colors.ink[800], fontFamily: 'Helvetica-Bold' }}>
+                {fmtCurrency(annualNetGap, locale)}
+              </Text>
+            </View>
+            <View style={{ marginTop: 6 }}>
+              <Text style={styles.label}>{isGerman ? 'Monatliche Rente' : 'Monthly Pension'}</Text>
+              <Text style={{ fontSize: 11, color: tokens.colors.ink[800], fontFamily: 'Helvetica-Bold' }}>
+                {fmtCurrency(finances.monthlyPension, locale)}
+              </Text>
+            </View>
+          </View>
+        </View>
       </View>
+
+      {profile.bridge && (
+        <View style={[styles.card, { borderLeftWidth: 3, borderLeftColor: tokens.colors.accent[600] }]}>
+          <H4 style={{ marginBottom: 6 }}>{isGerman ? 'Überbrückungsphase' : 'Bridge Phase'}</H4>
+          <Text style={{ fontSize: 10, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
+            {isGerman
+              ? `Zwischen Alter ${profile.bridge.startAge} und ${profile.bridge.endAge} entsteht ein Liquiditätsbedarf von ${fmtCurrency(profile.bridge.cashNeedEUR, locale)}.`
+              : `Between age ${profile.bridge.startAge} and ${profile.bridge.endAge}, expected bridge liquidity needs are ${fmtCurrency(profile.bridge.cashNeedEUR, locale)}.`}
+          </Text>
+        </View>
+      )}
     </View>
   )
 }

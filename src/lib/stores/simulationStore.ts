@@ -217,6 +217,7 @@ export const useSimulationStore = create<SimulationStore>()(
 
             set({
               params: {
+                ...DEFAULT_PARAMS,
                 ...params,
                 oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
                 customExpenses,
@@ -240,6 +241,7 @@ export const useSimulationStore = create<SimulationStore>()(
             name,
             timestamp: Date.now(),
             params: {
+              ...DEFAULT_PARAMS,
               ...params,
               oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
             },
@@ -271,6 +273,7 @@ export const useSimulationStore = create<SimulationStore>()(
 
           set({
             params: {
+              ...DEFAULT_PARAMS,
               ...params,
               oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
               customExpenses,
@@ -324,6 +327,7 @@ export const useSimulationStore = create<SimulationStore>()(
                 state.savedSetups = savedSetups.map((setup) => ({
                   ...setup,
                   params: {
+                    ...DEFAULT_PARAMS,
                     ...setup.params,
                     oneTimeIncomes: sanitizeOneTimeIncomes(setup.params.oneTimeIncomes),
                     customExpenses: sanitizeCustomExpenses(setup.params.customExpenses),
@@ -334,6 +338,10 @@ export const useSimulationStore = create<SimulationStore>()(
               console.error('Failed to load saved setups:', error)
             }
             if (state.params) {
+              state.params = {
+                ...DEFAULT_PARAMS,
+                ...state.params,
+              }
               state.params.oneTimeIncomes = sanitizeOneTimeIncomes(state.params.oneTimeIncomes)
               // Ensure customExpenses is always an array
               state.params.customExpenses = sanitizeCustomExpenses(state.params.customExpenses)
@@ -353,6 +361,7 @@ export const useSimulationStore = create<SimulationStore>()(
                 resultParams.endAge === currentParams.endAge &&
                 resultParams.currentAssets === currentParams.currentAssets &&
                 resultParams.annualSavings === currentParams.annualSavings &&
+                resultParams.annualSavingsGrowthRate === currentParams.annualSavingsGrowthRate &&
                 resultParams.monthlyPension === currentParams.monthlyPension &&
                 resultParams.averageROI === currentParams.averageROI &&
                 resultParams.roiVolatility === currentParams.roiVolatility &&
