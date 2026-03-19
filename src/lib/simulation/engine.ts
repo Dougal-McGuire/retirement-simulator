@@ -58,6 +58,10 @@ export function sampleLognormalFactorFromArithmetic(mean: number, stdev: number)
  */
 export function calculatePercentile(arr: number[], percentile: number): number {
   const sorted = arr.slice().sort((a, b) => a - b)
+  return calculatePercentileFromSortedArray(sorted, percentile)
+}
+
+function calculatePercentileFromSortedArray(sorted: number[], percentile: number): number {
   const index = (percentile / 100) * (sorted.length - 1)
   const lower = Math.floor(index)
   const upper = Math.ceil(index)
@@ -86,13 +90,15 @@ export function calculatePercentiles(data: number[][]): PercentileData {
   }
 
   for (let ageIndex = 0; ageIndex < ageCount; ageIndex++) {
-    const valuesAtAge = data.map((run) => run[ageIndex])
+    const sortedValuesAtAge = data
+      .map((run) => run[ageIndex])
+      .sort((a, b) => a - b)
 
-    result.p10.push(calculatePercentile(valuesAtAge, 10))
-    result.p20.push(calculatePercentile(valuesAtAge, 20))
-    result.p50.push(calculatePercentile(valuesAtAge, 50))
-    result.p80.push(calculatePercentile(valuesAtAge, 80))
-    result.p90.push(calculatePercentile(valuesAtAge, 90))
+    result.p10.push(calculatePercentileFromSortedArray(sortedValuesAtAge, 10))
+    result.p20.push(calculatePercentileFromSortedArray(sortedValuesAtAge, 20))
+    result.p50.push(calculatePercentileFromSortedArray(sortedValuesAtAge, 50))
+    result.p80.push(calculatePercentileFromSortedArray(sortedValuesAtAge, 80))
+    result.p90.push(calculatePercentileFromSortedArray(sortedValuesAtAge, 90))
   }
 
   return result

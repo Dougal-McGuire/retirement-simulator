@@ -17,6 +17,7 @@ import type { CustomExpense, ExpenseInterval } from '@/types'
 interface ExpenseListStrings {
   addButton: string
   empty: string
+  emptyHint?: string
   nameLabel: string
   namePlaceholder: string
   amountLabel: string
@@ -63,11 +64,11 @@ export function ExpenseList({
   formatCurrency,
 }: ExpenseListProps) {
   const [draftName, setDraftName] = useState<string>('')
-  const [draftAmount, setDraftAmount] = useState<number>(0)
+  const [draftAmount, setDraftAmount] = useState<string>('')
   const [draftInterval, setDraftInterval] = useState<ExpenseInterval>('monthly')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState<string>('')
-  const [editAmount, setEditAmount] = useState<number>(0)
+  const [editAmount, setEditAmount] = useState<string>('')
   const [editInterval, setEditInterval] = useState<ExpenseInterval>('monthly')
 
   // Defensive check: ensure expenses is always an array
@@ -81,8 +82,9 @@ export function ExpenseList({
     .reduce((sum, e) => sum + e.amount, 0)
   const totalCombined = totalMonthly * 12 + totalAnnual
   const trimmedDraftName = draftName.trim()
-  const sanitizedDraftAmount = Number.isFinite(draftAmount)
-    ? Math.max(0, Math.round(draftAmount))
+  const parsedDraftAmount = Number(draftAmount)
+  const sanitizedDraftAmount = Number.isFinite(parsedDraftAmount)
+    ? Math.max(0, Math.round(parsedDraftAmount))
     : 0
   const canAddDraft = trimmedDraftName.length > 0 && sanitizedDraftAmount > 0
 
@@ -96,14 +98,14 @@ export function ExpenseList({
     })
 
     setDraftName('')
-    setDraftAmount(0)
+    setDraftAmount('')
     setDraftInterval('monthly')
   }
 
   const handleStartEdit = (expense: CustomExpense) => {
     setEditingId(expense.id)
     setEditName(expense.name)
-    setEditAmount(expense.amount)
+    setEditAmount(String(expense.amount))
     setEditInterval(expense.interval)
   }
 
@@ -111,7 +113,8 @@ export function ExpenseList({
     if (!editingId || !onUpdate) return
     const trimmedName = editName.trim()
     if (!trimmedName) return
-    const sanitizedAmount = Number.isFinite(editAmount) ? Math.max(0, Math.round(editAmount)) : 0
+    const parsedAmount = Number(editAmount)
+    const sanitizedAmount = Number.isFinite(parsedAmount) ? Math.max(0, Math.round(parsedAmount)) : 0
     if (sanitizedAmount === 0) return
 
     onUpdate(editingId, {
@@ -144,7 +147,7 @@ export function ExpenseList({
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="Name"
+                placeholder={strings.namePlaceholder}
                 className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase"
               />
               <Select value={editInterval} onValueChange={(v) => setEditInterval(v as ExpenseInterval)}>
@@ -163,12 +166,14 @@ export function ExpenseList({
               type="number"
               value={editAmount}
               onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value)
-                setEditAmount(val)
+                setEditAmount(e.target.value)
               }}
               onBlur={() => {
-                const clamped = Math.max(0, Math.round(editAmount))
-                if (clamped !== editAmount) setEditAmount(clamped)
+                if (!editAmount.trim()) return
+                const clamped = Math.max(0, Math.round(Number(editAmount)))
+                if (Number.isFinite(clamped)) {
+                  setEditAmount(String(clamped))
+                }
               }}
               className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase text-right"
             />
@@ -270,7 +275,7 @@ export function ExpenseList({
               {strings.empty}
             </p>
             <p className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground max-w-md">
-              Add recurring and one-time expenses like insurance, groceries, vacations, or home repairs
+              {strings.emptyHint ?? 'Add recurring and one-time expenses like insurance, groceries, vacations, or home repairs'}
             </p>
           </div>
         </div>
@@ -354,14 +359,14 @@ export function ExpenseList({
                 type="number"
                 value={draftAmount}
                 onChange={(event) => {
-                  const val = event.target.value === '' ? 0 : Number(event.target.value)
-                  setDraftAmount(Number.isFinite(val) ? val : 0)
+                  setDraftAmount(event.target.value)
                 }}
                 onBlur={() => {
-                  const clamped = Number.isFinite(draftAmount)
-                    ? Math.max(0, Math.round(draftAmount))
-                    : 0
-                  if (clamped !== draftAmount) setDraftAmount(clamped)
+                  if (!draftAmount.trim()) return
+                  const clamped = Math.max(0, Math.round(Number(draftAmount)))
+                  if (Number.isFinite(clamped)) {
+                    setDraftAmount(String(clamped))
+                  }
                 }}
                 className="h-11 w-full border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
               />

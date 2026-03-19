@@ -9,14 +9,15 @@
 - Tests are colocated as `src/**/__tests__/*.test.ts` or `src/**/*.test.ts`.
 
 ## Build, Test, and Development Commands
-- `npm run dev`: Start local dev server on port `3000` with Turbopack.
-- `npm run dev:clean`: Kill anything on `:3000`, then start dev.
-- `npm run build`: Create a production build.
-- `npm start`: Serve the production build.
-- `npm test`: Run Jest tests once.
-- `npm run test:watch`: Run tests in watch mode.
-- `npm run lint`: Run ESLint for `.ts`/`.tsx` files.
-- `npm run format`: Format the repo with Prettier.
+- `pnpm dev`: Start local dev server on port `3000` with Turbopack.
+- `pnpm dev:clean`: Kill anything on `:3000`, then start dev.
+- `pnpm build`: Create a production build.
+- `pnpm start`: Serve the production build.
+- `pnpm test`: Run Jest tests once.
+- `pnpm test:watch`: Run tests in watch mode.
+- `pnpm test:e2e`: Run Playwright tests; the config starts the local app automatically.
+- `pnpm lint`: Run ESLint for `.ts`/`.tsx` files.
+- `pnpm format`: Format the repo with Prettier.
 
 ## Coding Style & Naming Conventions
 - TypeScript with `strict` mode; use alias imports via `@/*` for `src/*`.
@@ -41,5 +42,5 @@
 
 ## Security & Configuration Tips
 - Do not commit secrets or local credentials.
-- For local PDF generation, install Chromium or set `CHROME_PATH` (for example `/usr/bin/chromium-browser`).
+- The active PDF path uses React PDF via `/api/generate-pdf`; treat the HTML print route as legacy unless you are intentionally working on that fallback.
 - Confirm `vercel.json` settings and API route runtime (`nodejs`) before deployment changes.

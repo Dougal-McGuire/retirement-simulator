@@ -1,4 +1,9 @@
-import { boxMullerTransform, calculatePercentile, runMonteCarloSimulation } from '../engine'
+import {
+  boxMullerTransform,
+  calculatePercentile,
+  calculatePercentiles,
+  runMonteCarloSimulation,
+} from '../engine'
 import { DEFAULT_PARAMS } from '@/types'
 
 describe('Simulation Engine', () => {
@@ -26,6 +31,22 @@ describe('Simulation Engine', () => {
       expect(calculatePercentile(data, 0)).toBe(1) // minimum
       expect(calculatePercentile(data, 100)).toBe(10) // maximum
       expect(calculatePercentile(data, 25)).toBe(3.25) // first quartile
+    })
+  })
+
+  describe('calculatePercentiles', () => {
+    it('sorts each age slice only once', () => {
+      const sortSpy = jest.spyOn(Array.prototype, 'sort')
+
+      calculatePercentiles([
+        [10, 100],
+        [20, 200],
+        [30, 300],
+        [40, 400],
+      ])
+
+      expect(sortSpy).toHaveBeenCalledTimes(2)
+      sortSpy.mockRestore()
     })
   })
 

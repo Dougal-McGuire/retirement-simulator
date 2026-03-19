@@ -51,6 +51,29 @@ export default function SimulationPage() {
   }, [successRate])
 
   const successMessage = successTone ? t(`header.confidence.${successTone}`) : null
+  const actionSummaryItems = useMemo(() => {
+    if (successTone === 'high') {
+      return [
+        t('actionSummary.items.high.review'),
+        t('actionSummary.items.high.contributions'),
+        t('actionSummary.items.high.report'),
+      ]
+    }
+
+    if (successTone === 'medium') {
+      return [
+        t('actionSummary.items.medium.spending'),
+        t('actionSummary.items.medium.compare'),
+        t('actionSummary.items.medium.report'),
+      ]
+    }
+
+    return [
+      t('actionSummary.items.low.savings'),
+      t('actionSummary.items.low.expenses'),
+      t('actionSummary.items.low.assumptions'),
+    ]
+  }, [successTone, t])
 
   // Run initial simulation if no results exist
   // This happens on first visit or when params have changed and results were invalidated
@@ -169,6 +192,32 @@ export default function SimulationPage() {
                 simulationRuns={params.simulationRuns}
               />
             )}
+
+            <Card>
+              <CardHeader className="border-b-3 border-neo-black bg-neo-white">
+                <CardTitle className="text-xl font-extrabold tracking-[0.16em]">
+                  {t('actionSummary.title')}
+                </CardTitle>
+                <CardDescription className="mt-1 text-sm font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  {t('actionSummary.description')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
+                <p className="text-sm font-medium text-foreground/80">
+                  {successMessage ?? t('actionSummary.fallback')}
+                </p>
+                <ul className="space-y-3">
+                  {actionSummaryItems.map((item) => (
+                    <li
+                      key={item}
+                      className="border-2 border-neo-black bg-neo-white px-4 py-3 text-[0.72rem] font-semibold uppercase tracking-[0.12em]"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader className="border-b-3 border-neo-black bg-neo-white">

@@ -27,7 +27,11 @@ export function Spending({ content, breakdownSvg }: SpendingProps) {
       }
       breakBefore="page"
     >
-      <figure aria-label="Ausgaben nach Kategorien" className={styles.surface} role="group">
+      <figure
+        aria-label={isGerman ? 'Ausgaben nach Kategorien' : 'Spending by category'}
+        className={styles.surface}
+        role="group"
+      >
         <div aria-hidden dangerouslySetInnerHTML={{ __html: breakdownSvg }} />
         <figcaption>
           <span className={styles.captionStrong}>{isGerman ? 'Jahresbudget:' : 'Annual budget:'}</span>{' '}
@@ -45,7 +49,7 @@ export function Spending({ content, breakdownSvg }: SpendingProps) {
         data-expense-annual={totalAnnual}
       >
         <h3>{isGerman ? 'Kategorienübersicht' : 'Category overview'}</h3>
-        <table aria-label="Ausgabenübersicht">
+        <table aria-label={isGerman ? 'Ausgabenübersicht' : 'Spending overview'}>
           <thead>
             <tr>
               <th scope="col">{isGerman ? 'Kategorie' : 'Category'}</th>

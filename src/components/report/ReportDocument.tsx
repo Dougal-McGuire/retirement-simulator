@@ -9,6 +9,8 @@ interface ReportDocumentProps {
 }
 
 export function ReportDocument({ content, projectionSvg, breakdownSvg }: ReportDocumentProps) {
+  const locale = content.locale === 'en' ? 'en' : 'de'
+  const title = locale === 'en' ? 'Retirement Plan' : 'Rentenplan'
   const fontCss = `
     @font-face {
       font-family: 'Inter';
@@ -27,11 +29,11 @@ export function ReportDocument({ content, projectionSvg, breakdownSvg }: ReportD
   `
 
   return (
-    <html lang="de">
+    <html lang={locale}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Rentenplan</title>
+        <title>{title}</title>
         <link rel="preload" as="font" href="/fonts/Inter-Regular.woff2" type="font/woff2" crossOrigin="anonymous" />
         <link rel="preload" as="font" href="/fonts/Inter-SemiBold.woff2" type="font/woff2" crossOrigin="anonymous" />
         <style dangerouslySetInnerHTML={{ __html: fontCss }} />

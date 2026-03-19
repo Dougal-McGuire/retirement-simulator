@@ -48,6 +48,14 @@ export function LabeledNumberInput({
   const [validationState, setValidationState] = useState<ValidationState>('neutral')
   const [validationMessage, setValidationMessage] = useState<string>('')
   const [touched, setTouched] = useState(false)
+  const [draftValue, setDraftValue] = useState(() => String(value))
+  const [isEditing, setIsEditing] = useState(false)
+
+  useEffect(() => {
+    if (!isEditing) {
+      setDraftValue(String(value))
+    }
+  }, [isEditing, value])
 
   // Validate value
   useEffect(() => {
@@ -92,9 +100,22 @@ export function LabeledNumberInput({
 
   const handleBlur = () => {
     setTouched(true)
+    setIsEditing(false)
+
+    const trimmedValue = draftValue.trim()
+    if (!trimmedValue) {
+      setDraftValue(String(value))
+      return
+    }
+
+    const parsedValue = Number(trimmedValue)
+    if (!Number.isFinite(parsedValue)) {
+      setDraftValue(String(value))
+      return
+    }
 
     // Clamp value to min/max constraints on blur
-    let clampedValue = value
+    let clampedValue = parsedValue
     if (min !== undefined && clampedValue < min) {
       clampedValue = min
     }
@@ -106,6 +127,7 @@ export function LabeledNumberInput({
     if (clampedValue !== value) {
       onChange(clampedValue)
     }
+    setDraftValue(String(clampedValue))
   }
 
   const getValidationIcon = () => {
@@ -172,10 +194,14 @@ export function LabeledNumberInput({
         <Input
           id={id}
           type="number"
-          value={value}
+          value={draftValue}
+          onFocus={() => setIsEditing(true)}
           onChange={(e) => {
             const raw = e.target.value
-            const nextValue = raw === '' ? 0 : Number(raw)
+            setDraftValue(raw)
+            if (raw.trim() === '' || raw === '-' || raw === '.' || raw === '-.') return
+
+            const nextValue = Number(raw)
             if (!Number.isFinite(nextValue)) return
             onChange(nextValue)
           }}

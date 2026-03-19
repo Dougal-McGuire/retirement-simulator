@@ -3,8 +3,8 @@ import { expect, test } from '@playwright/test'
 test.describe('i18n routing', () => {
   test('redirects root to default locale', async ({ page }) => {
     await page.goto('/')
-    await page.waitForURL((url) => url.pathname === '/en/simulation', { timeout: 5000 })
-    await expect(page.getByRole('heading', { level: 1, name: 'Retirement Simulation' })).toBeVisible()
+    await page.waitForURL((url) => url.pathname === '/en/setup', { timeout: 5000 })
+    await expect(page.getByRole('heading', { level: 1, name: 'Setup' })).toBeVisible()
   })
 
   test('renders German translations on simulation page', async ({ page }) => {
@@ -17,7 +17,7 @@ test.describe('i18n routing', () => {
   test('renders English translations on setup page', async ({ page }) => {
     await page.goto('/en/setup')
     await expect(page.getByRole('heading', { level: 1, name: 'Setup' })).toBeVisible()
-    await expect(page.getByText('Total Monthly:')).toBeVisible()
     await expect(page.getByLabel('Current Age')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeVisible()
   })
 })

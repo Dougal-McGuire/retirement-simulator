@@ -842,6 +842,7 @@ export function ParameterControls() {
                 strings={{
                   addButton: t('fields.oneTimeIncomes.add'),
                   empty: t('fields.oneTimeIncomes.empty'),
+                  emptyHint: t('fields.oneTimeIncomes.emptyHint'),
                   nameLabel: t('fields.oneTimeIncomes.nameLabel'),
                   namePlaceholder: t('fields.oneTimeIncomes.namePlaceholder'),
                   ageLabel: t('fields.oneTimeIncomes.ageLabel'),
@@ -878,6 +879,7 @@ export function ParameterControls() {
                 strings={{
                   addButton: t('fields.expenses.add'),
                   empty: t('fields.expenses.empty'),
+                  emptyHint: t('fields.expenses.emptyHint'),
                   nameLabel: t('fields.expenses.nameLabel'),
                   namePlaceholder: t('fields.expenses.namePlaceholder'),
                   amountLabel: t('fields.expenses.amountLabel'),

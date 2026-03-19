@@ -1,6 +1,5 @@
 import type { SimulationParams, SimulationResults } from '@/types'
 import type { ReportData, Recommendation } from '@/lib/pdf-generator/schema/reportData'
-import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 import { defaultPdfConfig } from '@/lib/pdf-generator/utils/config'
 
 export function transformToReportData(
@@ -72,66 +71,12 @@ export function transformToReportData(
   const planHealthWhyBits = whyBits.length ? [...whyBits] : ['balanced assumptions']
   const planHealthWhy = planHealthWhyBits.join(' + ')
 
-  const topRecs = generateRecommendations(params, results)
+  const topRecs = recommendations
   const topActions = topRecs.slice(0, 2).map((r) => r.title)
-
-  // Sensitivity-based uplift estimates (lightweight)
-  function withModifiedParams(mod: Partial<SimulationParams>): SimulationResults {
-    const p: SimulationParams = { ...params, ...mod }
-    // Use fewer runs for speed in sensitivity (cap at 300)
-    p.simulationRuns = Math.min(300, Math.max(200, Math.floor(params.simulationRuns / 2)))
-    return runMonteCarloSimulation(p)
-  }
-
-  function deltaScoreFrom(resultsBase: SimulationResults, resultsAlt: SimulationResults): number {
-    const baseSuccess = resultsBase.successRate
-    const altSuccess = resultsAlt.successRate
-    const baseSpendingScore = spendingScore
-    // Spending score might change for savings tweaks at retirement; we keep it constant for simplicity
-    const altSpendingScore = baseSpendingScore
-    const delta =
-      weights.success_pct * (altSuccess - baseSuccess) +
-      weights.spend_rate * (altSpendingScore - baseSpendingScore)
-    return Math.round(delta)
-  }
-
-  const uplifts: { title: string; upliftMin: number; upliftMax: number }[] = []
-
-  // Map recommendations to concrete parameter tweaks
-  const baseResults = results
-  for (const rec of topRecs.slice(0, 2)) {
-    if (/Increase Savings/i.test(rec.title)) {
-      const altLow = withModifiedParams({ annualSavings: params.annualSavings + 7200 })
-      const altHigh = withModifiedParams({ annualSavings: params.annualSavings + 9600 })
-      uplifts.push({
-        title: rec.title,
-        upliftMin: deltaScoreFrom(baseResults, altLow),
-        upliftMax: deltaScoreFrom(baseResults, altHigh),
-      })
-    } else if (/Optimize Investment Mix|Asset Allocation|Investment/i.test(rec.title)) {
-      const altLow = withModifiedParams({
-        averageROI: params.averageROI + 0.0075,
-        roiVolatility: params.roiVolatility + 0.01,
-      })
-      const altHigh = withModifiedParams({
-        averageROI: params.averageROI + 0.0125,
-        roiVolatility: params.roiVolatility + 0.02,
-      })
-      uplifts.push({
-        title: rec.title,
-        upliftMin: deltaScoreFrom(baseResults, altLow),
-        upliftMax: deltaScoreFrom(baseResults, altHigh),
-      })
-    } else if (/Delay Retirement/i.test(rec.title)) {
-      const altLow = withModifiedParams({ retirementAge: params.retirementAge + 1 })
-      const altHigh = withModifiedParams({ retirementAge: params.retirementAge + 2 })
-      uplifts.push({
-        title: rec.title,
-        upliftMin: deltaScoreFrom(baseResults, altLow),
-        upliftMax: deltaScoreFrom(baseResults, altHigh),
-      })
-    }
-  }
+  const uplifts = topRecs
+    .slice(0, 2)
+    .map((rec) => estimateRecommendationUplift(rec, params, results))
+    .filter((uplift): uplift is { title: string; upliftMin: number; upliftMax: number } => uplift !== null)
 
   // Transform the data to match PDF generator schema
   return {
@@ -219,6 +164,58 @@ export function transformToReportData(
       version: '1.0.0',
     },
   }
+}
+
+function estimateRecommendationUplift(
+  recommendation: Recommendation,
+  params: SimulationParams,
+  results: SimulationResults
+): { title: string; upliftMin: number; upliftMax: number } | null {
+  const successGap = Math.max(0, 85 - results.successRate)
+  const clampUplift = (value: number) => Math.max(1, Math.min(20, Math.round(value)))
+
+  if (/Increase Savings/i.test(recommendation.title)) {
+    const yearlySavingsMonths = params.annualSavings / 12
+    const min = clampUplift(successGap * 0.35 + Math.min(4, yearlySavingsMonths / 1000))
+    return {
+      title: recommendation.title,
+      upliftMin: min,
+      upliftMax: clampUplift(min + 4),
+    }
+  }
+
+  if (/Optimize Investment Mix|Asset Allocation|Investment/i.test(recommendation.title)) {
+    const min = clampUplift(successGap * 0.2 + params.roiVolatility * 12)
+    return {
+      title: recommendation.title,
+      upliftMin: min,
+      upliftMax: clampUplift(min + 3),
+    }
+  }
+
+  if (/Delay Retirement/i.test(recommendation.title)) {
+    const bridgeYears = Math.max(0, params.legalRetirementAge - params.retirementAge)
+    const min = clampUplift(successGap * 0.28 + bridgeYears * 1.5)
+    return {
+      title: recommendation.title,
+      upliftMin: min,
+      upliftMax: clampUplift(min + 5),
+    }
+  }
+
+  if (/Review Spending Plan/i.test(recommendation.title)) {
+    const monthlyExpenseLoad = params.customExpenses.reduce((sum, expense) => {
+      return sum + (expense.interval === 'monthly' ? expense.amount : expense.amount / 12)
+    }, 0)
+    const min = clampUplift(successGap * 0.18 + monthlyExpenseLoad / 3000)
+    return {
+      title: recommendation.title,
+      upliftMin: min,
+      upliftMax: clampUplift(min + 3),
+    }
+  }
+
+  return null
 }
 
 function generateRecommendations(

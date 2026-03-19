@@ -10,6 +10,7 @@ import type { OneTimeIncome } from '@/types'
 interface OneTimeIncomeListStrings {
   addButton: string
   empty: string
+  emptyHint?: string
   nameLabel: string
   namePlaceholder: string
   ageLabel: string
@@ -54,15 +55,15 @@ export function OneTimeIncomeList({
   formatCurrency,
 }: OneTimeIncomeListProps) {
   const [draftName, setDraftName] = useState<string>('')
-  const [draftAge, setDraftAge] = useState<number>(defaultAge)
-  const [draftAmount, setDraftAmount] = useState<number>(0)
+  const [draftAge, setDraftAge] = useState<string>(String(defaultAge))
+  const [draftAmount, setDraftAmount] = useState<string>('')
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editName, setEditName] = useState<string>('')
-  const [editAge, setEditAge] = useState<number>(defaultAge)
-  const [editAmount, setEditAmount] = useState<number>(0)
+  const [editAge, setEditAge] = useState<string>(String(defaultAge))
+  const [editAmount, setEditAmount] = useState<string>('')
 
   useEffect(() => {
-    setDraftAge(defaultAge)
+    setDraftAge(String(defaultAge))
   }, [defaultAge])
 
   const orderedIncomes = useMemo(
@@ -89,8 +90,10 @@ export function OneTimeIncomeList({
     const trimmedName = draftName.trim()
     if (!trimmedName) return // Name is required
 
-    const nextAge = clamp(Math.round(draftAge), minAge, maxAge)
-    const nextAmount = Math.max(0, Math.round(draftAmount))
+    const parsedAge = Number(draftAge)
+    const parsedAmount = Number(draftAmount)
+    const nextAge = clamp(Math.round(parsedAge), minAge, maxAge)
+    const nextAmount = Math.max(0, Math.round(parsedAmount))
     if (!Number.isFinite(nextAge) || !Number.isFinite(nextAmount)) return
     if (nextAmount === 0) return
 
@@ -100,15 +103,15 @@ export function OneTimeIncomeList({
       amount: nextAmount,
     })
     setDraftName('')
-    setDraftAge(defaultAge)
-    setDraftAmount(0)
+    setDraftAge(String(defaultAge))
+    setDraftAmount('')
   }
 
   const handleStartEdit = (income: OneTimeIncome & { index: number }) => {
     setEditingIndex(income.index)
     setEditName(income.name)
-    setEditAge(income.age)
-    setEditAmount(income.amount)
+    setEditAge(String(income.age))
+    setEditAmount(String(income.amount))
   }
 
   const handleSaveEdit = () => {
@@ -116,8 +119,10 @@ export function OneTimeIncomeList({
     const trimmedName = editName.trim()
     if (!trimmedName) return // Name is required
 
-    const nextAge = clamp(Math.round(editAge), minAge, maxAge)
-    const nextAmount = Math.max(0, Math.round(editAmount))
+    const parsedAge = Number(editAge)
+    const parsedAmount = Number(editAmount)
+    const nextAge = clamp(Math.round(parsedAge), minAge, maxAge)
+    const nextAmount = Math.max(0, Math.round(parsedAmount))
     if (!Number.isFinite(nextAge) || !Number.isFinite(nextAmount)) return
     if (nextAmount === 0) return
 
@@ -151,19 +156,21 @@ export function OneTimeIncomeList({
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="Name"
+                placeholder={strings.namePlaceholder}
                 className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase"
               />
               <Input
                 type="number"
                 value={editAge}
                 onChange={(e) => {
-                  const val = e.target.value === '' ? 0 : Number(e.target.value)
-                  setEditAge(val)
+                  setEditAge(e.target.value)
                 }}
                 onBlur={() => {
-                  const clamped = clamp(Math.round(editAge), minAge, maxAge)
-                  if (clamped !== editAge) setEditAge(clamped)
+                  if (!editAge.trim()) return
+                  const clamped = clamp(Math.round(Number(editAge)), minAge, maxAge)
+                  if (Number.isFinite(clamped)) {
+                    setEditAge(String(clamped))
+                  }
                 }}
                 className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase"
               />
@@ -174,12 +181,14 @@ export function OneTimeIncomeList({
               type="number"
               value={editAmount}
               onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value)
-                setEditAmount(val)
+                setEditAmount(e.target.value)
               }}
               onBlur={() => {
-                const clamped = Math.max(0, Math.round(editAmount))
-                if (clamped !== editAmount) setEditAmount(clamped)
+                if (!editAmount.trim()) return
+                const clamped = Math.max(0, Math.round(Number(editAmount)))
+                if (Number.isFinite(clamped)) {
+                  setEditAmount(String(clamped))
+                }
               }}
               className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase text-right"
             />
@@ -281,7 +290,7 @@ export function OneTimeIncomeList({
               {strings.empty}
             </p>
             <p className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground max-w-md">
-              Add expected windfalls like inheritances, insurance payouts, property sales, or bonus payments
+              {strings.emptyHint ?? 'Add expected windfalls like inheritances, insurance payouts, property sales, or bonus payments'}
             </p>
           </div>
         </div>
@@ -344,12 +353,14 @@ export function OneTimeIncomeList({
                 type="number"
                 value={draftAge}
                 onChange={(event) => {
-                  const val = event.target.value === '' ? 0 : Number(event.target.value)
-                  setDraftAge(val)
+                  setDraftAge(event.target.value)
                 }}
                 onBlur={() => {
-                  const clamped = clamp(Math.round(draftAge), minAge, maxAge)
-                  if (clamped !== draftAge) setDraftAge(clamped)
+                  if (!draftAge.trim()) return
+                  const clamped = clamp(Math.round(Number(draftAge)), minAge, maxAge)
+                  if (Number.isFinite(clamped)) {
+                    setDraftAge(String(clamped))
+                  }
                 }}
                 className="h-11 w-full border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
               />
@@ -367,12 +378,14 @@ export function OneTimeIncomeList({
                 type="number"
                 value={draftAmount}
                 onChange={(event) => {
-                  const val = event.target.value === '' ? 0 : Number(event.target.value)
-                  setDraftAmount(val)
+                  setDraftAmount(event.target.value)
                 }}
                 onBlur={() => {
-                  const clamped = Math.max(0, Math.round(draftAmount))
-                  if (clamped !== draftAmount) setDraftAmount(clamped)
+                  if (!draftAmount.trim()) return
+                  const clamped = Math.max(0, Math.round(Number(draftAmount)))
+                  if (Number.isFinite(clamped)) {
+                    setDraftAmount(String(clamped))
+                  }
                 }}
                 className="h-11 w-full border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
               />

@@ -113,6 +113,7 @@
         "help": "Add expected lump-sum inflows like insurance payouts or inheritances.",
         "add": "Add income",
         "empty": "No one-time incomes yet",
+        "emptyHint": "Add expected windfalls like inheritances, insurance payouts, property sales, or bonus payments",
         "nameLabel": "Name",
         "namePlaceholder": "e.g., Inheritance, Property Sale",
         "ageLabel": "Age paid out",
@@ -134,6 +135,7 @@
       "intro": "Define your expected expenses during retirement. Add as many items as you need:",
       "add": "Add Expense",
       "empty": "No expenses added yet. Click a template below to get started or add your own.",
+      "emptyHint": "Add recurring and one-time expenses like insurance, groceries, vacations, or home repairs",
       "nameLabel": "Expense Name",
       "namePlaceholder": "e.g. Groceries, Utilities, Vacation",
       "amountLabel": "Amount (€)",
@@ -194,6 +196,28 @@
         "low": "Confidence is strained. Increase savings, revisit expenses, or adjust risk to improve resilience."
       },
       "confidenceMeta": "Based on {count} stochastic simulations"
+    },
+    "actionSummary": {
+      "title": "Next Actions",
+      "description": "Translate the current simulation into a short action list before changing more inputs.",
+      "fallback": "Run a simulation to get an actionable summary.",
+      "items": {
+        "high": {
+          "review": "Review this baseline once a year or after a major life event.",
+          "contributions": "Keep contributions stable and avoid increasing spending faster than inflation.",
+          "report": "Generate a report now so you can compare future changes against this version."
+        },
+        "medium": {
+          "spending": "Stress-test a slightly lower spending plan to create more buffer.",
+          "compare": "Compare one higher-savings or later-retirement scenario before locking assumptions.",
+          "report": "Regenerate the report after each meaningful change to see which tweak helps most."
+        },
+        "low": {
+          "savings": "Increase savings, delay retirement, or test both changes together first.",
+          "expenses": "Review recurring expenses and remove low-priority items before retirement starts.",
+          "assumptions": "Use setup to revisit return, inflation, and pension assumptions and rerun the plan."
+        }
+      }
     },
     "charts": {
       "asset": {
@@ -385,6 +409,7 @@
       "expenses": {
         "add": "Add Expense",
         "empty": "No expenses defined yet",
+        "emptyHint": "Add recurring and one-time expenses like insurance, groceries, vacations, or home repairs",
         "nameLabel": "Name",
         "namePlaceholder": "e.g. Groceries, Utilities, Vacation",
         "amountLabel": "Amount (€)",

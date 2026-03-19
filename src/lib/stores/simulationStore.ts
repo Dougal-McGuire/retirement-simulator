@@ -104,17 +104,46 @@ const migrateToCustomExpenses = (params: any): CustomExpense[] => {
   return expenses
 }
 
+const normalizeParamsForFingerprint = (params: Partial<SimulationParams>): SimulationParams => ({
+  ...DEFAULT_PARAMS,
+  ...params,
+  oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
+  customExpenses: sanitizeCustomExpenses(params.customExpenses),
+})
+
+const getParamsFingerprint = (params: Partial<SimulationParams>) =>
+  JSON.stringify(normalizeParamsForFingerprint(params))
+
 export const useSimulationStore = create<SimulationStore>()(
   persist(
-    (set, get) => ({
-      params: DEFAULT_PARAMS,
-      results: null,
-      isLoading: false,
-      error: null,
-      savedSetups: [],
-      // Auto-run control
-      autoRunSuspended: false,
-      pendingRun: false,
+    (set, get) => {
+      let scheduledRunTimeout: ReturnType<typeof setTimeout> | null = null
+
+      const clearScheduledRun = () => {
+        if (scheduledRunTimeout) {
+          clearTimeout(scheduledRunTimeout)
+          scheduledRunTimeout = null
+        }
+      }
+
+      const scheduleSimulation = (delay = 100) => {
+        clearScheduledRun()
+        set({ pendingRun: true })
+        scheduledRunTimeout = setTimeout(() => {
+          scheduledRunTimeout = null
+          void get().runSimulation()
+        }, delay)
+      }
+
+      return {
+        params: DEFAULT_PARAMS,
+        results: null,
+        isLoading: false,
+        error: null,
+        savedSetups: [],
+        // Auto-run control
+        autoRunSuspended: false,
+        pendingRun: false,
 
       updateParams: (partial: Partial<SimulationParams>) => {
         const currentParams = get().params
@@ -137,10 +166,7 @@ export const useSimulationStore = create<SimulationStore>()(
 
         // Auto-run simulation after parameter update unless suspended
         if (!get().autoRunSuspended) {
-          // Small delay to debounce rapid updates
-          setTimeout(() => {
-            get().runSimulation()
-          }, 100)
+          scheduleSimulation()
         } else {
           // Mark that a run is pending for when autoRun resumes
           set({ pendingRun: true })
@@ -148,9 +174,16 @@ export const useSimulationStore = create<SimulationStore>()(
       },
 
       runSimulation: async () => {
-        const { params } = get()
+        if (get().isLoading) {
+          set({ pendingRun: true })
+          return
+        }
 
-        set({ isLoading: true, error: null })
+        clearScheduledRun()
+        const { params } = get()
+        const requestFingerprint = getParamsFingerprint(params)
+
+        set({ isLoading: true, error: null, pendingRun: false })
 
         try {
           // Run simulation in a setTimeout to allow UI to update
@@ -164,6 +197,18 @@ export const useSimulationStore = create<SimulationStore>()(
             }, 0)
           })
 
+          const latestFingerprint = getParamsFingerprint(get().params)
+          if (latestFingerprint !== requestFingerprint) {
+            set({ isLoading: false, error: null })
+
+            if (get().autoRunSuspended) {
+              set({ pendingRun: true })
+            } else {
+              scheduleSimulation(0)
+            }
+            return
+          }
+
           set({
             results,
             isLoading: false,
@@ -175,6 +220,10 @@ export const useSimulationStore = create<SimulationStore>()(
             isLoading: false,
             error: error instanceof Error ? error.message : 'Simulation failed',
           })
+        } finally {
+          if (!get().autoRunSuspended && get().pendingRun) {
+            scheduleSimulation(0)
+          }
         }
       },
 
@@ -182,12 +231,12 @@ export const useSimulationStore = create<SimulationStore>()(
       setAutoRunSuspended: (suspended: boolean) => {
         const { pendingRun } = get()
         set({ autoRunSuspended: suspended })
+        if (suspended) {
+          clearScheduledRun()
+          return
+        }
         if (!suspended && pendingRun) {
-          // Trigger a single run to catch up
-          set({ pendingRun: false })
-          setTimeout(() => {
-            get().runSimulation()
-          }, 100)
+          scheduleSimulation()
         }
       },
 
@@ -302,13 +351,14 @@ export const useSimulationStore = create<SimulationStore>()(
         return savedSetups
       },
 
-      clearResults: () => {
-        set({
-          results: null,
-          error: null,
-        })
-      },
-    }),
+        clearResults: () => {
+          set({
+            results: null,
+            error: null,
+          })
+        },
+      }
+    },
     {
       name: 'retirement-simulator-store',
       partialize: (state) => ({
@@ -350,29 +400,10 @@ export const useSimulationStore = create<SimulationStore>()(
             // Validate that persisted results match current params
             // If params have changed since results were generated, clear stale results
             if (state.results && state.results.params) {
-              const resultParams = state.results.params
-              const currentParams = state.params
+              const resultsFingerprint = getParamsFingerprint(state.results.params)
+              const currentFingerprint = getParamsFingerprint(state.params)
 
-              // Check if key parameters have changed that would invalidate results
-              const paramsMatch =
-                resultParams.currentAge === currentParams.currentAge &&
-                resultParams.retirementAge === currentParams.retirementAge &&
-                resultParams.legalRetirementAge === currentParams.legalRetirementAge &&
-                resultParams.endAge === currentParams.endAge &&
-                resultParams.currentAssets === currentParams.currentAssets &&
-                resultParams.annualSavings === currentParams.annualSavings &&
-                resultParams.annualSavingsGrowthRate === currentParams.annualSavingsGrowthRate &&
-                resultParams.monthlyPension === currentParams.monthlyPension &&
-                resultParams.averageROI === currentParams.averageROI &&
-                resultParams.roiVolatility === currentParams.roiVolatility &&
-                resultParams.averageInflation === currentParams.averageInflation &&
-                resultParams.inflationVolatility === currentParams.inflationVolatility &&
-                resultParams.capitalGainsTax === currentParams.capitalGainsTax &&
-                resultParams.simulationRuns === currentParams.simulationRuns &&
-                JSON.stringify(resultParams.customExpenses) === JSON.stringify(currentParams.customExpenses) &&
-                JSON.stringify(resultParams.oneTimeIncomes) === JSON.stringify(currentParams.oneTimeIncomes)
-
-              if (!paramsMatch) {
+              if (resultsFingerprint !== currentFingerprint) {
                 console.log('Parameters have changed since last simulation, clearing stale results')
                 state.results = null
               }

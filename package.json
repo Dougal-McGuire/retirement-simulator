@@ -17,6 +17,7 @@
     "restart": "npm run stop && npm run dev",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:e2e": "playwright test",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
     "lint:fix": "eslint . --ext .ts,.tsx --fix"

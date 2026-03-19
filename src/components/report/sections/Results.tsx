@@ -27,7 +27,11 @@ export function Results({ content, projectionSvg }: ResultsProps) {
       }
       breakBefore="page"
     >
-      <figure aria-label="Vermögensprojektion" className={styles.surface} role="group">
+      <figure
+        aria-label={isGerman ? 'Vermögensprojektion' : 'Asset projection'}
+        className={styles.surface}
+        role="group"
+      >
         <div
           aria-hidden
           dangerouslySetInnerHTML={{ __html: projectionSvg }}

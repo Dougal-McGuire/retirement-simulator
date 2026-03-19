@@ -32,6 +32,7 @@ export default function SetupPage() {
 
   const params = useSimulationStore((state) => state.params)
   const updateParams = useSimulationStore((state) => state.updateParams)
+  const setAutoRunSuspended = useSimulationStore((state) => state.setAutoRunSuspended)
 
   const [currentStep, setCurrentStep] = useState(0)
 
@@ -90,6 +91,13 @@ export default function SetupPage() {
       // ignore invalid cached state
     }
   }, [])
+
+  useEffect(() => {
+    setAutoRunSuspended(true)
+    return () => {
+      setAutoRunSuspended(false)
+    }
+  }, [setAutoRunSuspended])
 
   const handleNext = () => {
     if (currentStep < STEP_KEYS.length - 1) {
@@ -276,6 +284,7 @@ export default function SetupPage() {
                 strings={{
                   addButton: t('assets.oneTimeIncomes.add'),
                   empty: t('assets.oneTimeIncomes.empty'),
+                  emptyHint: t('assets.oneTimeIncomes.emptyHint'),
                   nameLabel: t('assets.oneTimeIncomes.nameLabel'),
                   namePlaceholder: t('assets.oneTimeIncomes.namePlaceholder'),
                   ageLabel: t('assets.oneTimeIncomes.ageLabel'),
@@ -364,6 +373,7 @@ export default function SetupPage() {
               strings={{
                 addButton: t('expenses.add'),
                 empty: t('expenses.empty'),
+                emptyHint: t('expenses.emptyHint'),
                 nameLabel: t('expenses.nameLabel'),
                 namePlaceholder: t('expenses.namePlaceholder'),
                 amountLabel: t('expenses.amountLabel'),
@@ -580,7 +590,10 @@ export default function SetupPage() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto mt-2 max-w-[90rem] px-2 pb-16 sm:px-3 lg:px-4">
+      <main
+        id="main-content"
+        className="relative z-10 mx-auto mt-2 max-w-[90rem] px-2 pb-16 sm:px-3 lg:px-4"
+      >
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
           <aside className={cn(glassCardClass, 'space-y-6 p-6')}>
             <div className="space-y-3">

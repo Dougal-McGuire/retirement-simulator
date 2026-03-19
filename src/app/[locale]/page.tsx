@@ -6,5 +6,5 @@ interface LocaleHomePageProps {
 
 export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
   const { locale } = await params
-  redirect(`/${locale}/simulation`)
+  redirect(`/${locale}/setup`)
 }

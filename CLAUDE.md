@@ -6,7 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Node.js**: >= 22 (< 23)
 - **Package Manager**: pnpm >= 10 (use `corepack enable` to activate)
-- **Chrome/Chromium**: Required for local PDF generation (see PDF Generation section)
 
 ## Commands
 
@@ -29,21 +28,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `pnpm test` - Run Jest unit tests
 - `pnpm test:watch` - Run Jest tests in watch mode
-- `npx playwright test` - Run Playwright E2E tests (config: `playwright.config.ts`, tests in `./tests`)
+- `pnpm test:e2e` - Run Playwright E2E tests (config: `playwright.config.ts`, tests in `./tests`)
 
 ## Architecture
 
-This is a Next.js 15 retirement planning simulator using React 19, TypeScript, and Tailwind CSS v4. The application uses a Monte Carlo simulation approach to model retirement scenarios with market volatility.
+This is a Next.js 16 retirement planning simulator using React 19, TypeScript, and Tailwind CSS v4. The application uses a Monte Carlo simulation approach to model retirement scenarios with market volatility.
 
 ### Tech Stack
 
-- **Framework**: Next.js 15 (App Router) with Turbopack
+- **Framework**: Next.js 16 (App Router) with Turbopack
 - **UI**: React 19, Tailwind CSS 4, shadcn/ui components (Radix UI)
 - **State**: Zustand with localStorage persistence
 - **Forms**: react-hook-form + zod validation
 - **Charts**: Recharts for interactive visualizations
 - **i18n**: next-intl (locales: en, de)
-- **PDF**: Puppeteer-core + @sparticuz/chromium
+- **PDF**: React PDF (`@react-pdf/renderer`)
 - **Testing**: Jest (unit) + Playwright (E2E)
 
 ### Core Architecture
@@ -52,14 +51,15 @@ This is a Next.js 15 retirement planning simulator using React 19, TypeScript, a
 - **Simulation Engine**: Monte Carlo simulation in `src/lib/simulation/engine.ts` using Box-Muller transform for lognormal distributions
 - **Type Safety**: Comprehensive TypeScript interfaces in `src/types/index.ts`
 - **Internationalization**: next-intl with locale routing (`/[locale]/...`), translations in `src/i18n/messages/{en,de}.json`
+- **Reports**: `/api/generate-pdf` validates report data and renders PDFs with React PDF; the legacy `/reports/[id]/print` HTML route remains in the tree but is not the primary generation path
 
 ### Key Routes
 
 - `/[locale]/` - Landing page
 - `/[locale]/setup` - Multi-step wizard for parameter input
 - `/[locale]/simulation` - Results dashboard with interactive charts and parameter controls
-- `/reports/[id]/print` - Print-optimized report layout (for PDF generation)
-- `/api/generate-pdf` - PDF generation endpoint using Puppeteer
+- `/reports/[id]/print` - Legacy print-optimized report layout
+- `/api/generate-pdf` - PDF generation endpoint using React PDF
 
 ### Simulation Flow
 
@@ -84,10 +84,9 @@ This is a Next.js 15 retirement planning simulator using React 19, TypeScript, a
 
 ### PDF Generation
 
-- **Local Development**: Requires Chrome/Chromium installed. Set `CHROME_PATH` env var if not auto-detected (e.g., `export CHROME_PATH=/usr/bin/chromium-browser`)
-- **Production/Vercel**: Uses `@sparticuz/chromium` automatically
-- **Process**: API route renders `/reports/[id]/print` with Puppeteer, waits for `window.__REPORT_READY__`, generates PDF
-- **Cache**: Report data stored temporarily in memory cache with UUID token
+- **Primary Runtime**: `/api/generate-pdf` renders PDFs with React PDF and returns the binary directly
+- **Validation**: Requests are validated with Zod before rendering
+- **Legacy Path**: The HTML print page and related cache flow remain in the repo for reference, but they are not the active PDF pipeline
 
 ### Data Model
 

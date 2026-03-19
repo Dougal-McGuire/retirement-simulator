@@ -6,6 +6,12 @@ export default defineConfig({
   expect: {
     timeout: 7000,
   },
+  webServer: {
+    command: 'pnpm dev:port',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+  },
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
     headless: true,

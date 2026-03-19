@@ -27,7 +27,7 @@ export function Inputs({ content }: InputsProps) {
       <div className={styles.gridTwo}>
         <div className={styles.surface}>
           <h3>{isGerman ? 'Profil' : 'Profile'}</h3>
-          <table aria-label="Profilannahmen">
+          <table aria-label={isGerman ? 'Profilannahmen' : 'Profile assumptions'}>
             <tbody>
               <tr>
                 <th scope="row">{isGerman ? 'Aktuelles Alter' : 'Current age'}</th>
@@ -62,7 +62,7 @@ export function Inputs({ content }: InputsProps) {
         </div>
         <div className={styles.surface}>
           <h3>{isGerman ? 'Marktannahmen' : 'Market assumptions'}</h3>
-          <table aria-label="Marktannahmen">
+          <table aria-label={isGerman ? 'Marktannahmen' : 'Market assumptions'}>
             <tbody>
               <tr>
                 <th scope="row">{isGerman ? 'Erwartete Rendite (p.a.)' : 'Expected return (p.a.)'}</th>

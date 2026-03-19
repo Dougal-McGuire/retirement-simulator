@@ -113,6 +113,7 @@
         "help": "Fügen Sie erwartete Einmalzahlungen wie Versicherungen oder Erbschaften hinzu.",
         "add": "Einnahme hinzufügen",
         "empty": "Noch keine Einmalzahlungen erfasst",
+        "emptyHint": "Fügen Sie erwartete Zuflüsse wie Erbschaften, Versicherungen, Immobilienverkäufe oder Bonuszahlungen hinzu",
         "nameLabel": "Name",
         "namePlaceholder": "z.B. Erbschaft, Immobilienverkauf",
         "ageLabel": "Auszahlungsalter",
@@ -134,6 +135,7 @@
       "intro": "Definieren Sie Ihre erwarteten Ausgaben im Ruhestand. Fügen Sie so viele Posten hinzu, wie Sie benötigen:",
       "add": "Ausgabe hinzufügen",
       "empty": "Noch keine Ausgaben erfasst. Klicken Sie auf eine Vorlage unten, um loszulegen, oder fügen Sie eigene hinzu.",
+      "emptyHint": "Fügen Sie wiederkehrende und einmalige Ausgaben wie Versicherungen, Lebensmittel, Urlaub oder Hausreparaturen hinzu",
       "nameLabel": "Ausgabenname",
       "namePlaceholder": "z.B. Lebensmittel, Nebenkosten, Urlaub",
       "amountLabel": "Betrag (€)",
@@ -194,6 +196,28 @@
         "low": "Aktuell angespannt. Sparrate erhöhen, Ausgaben senken oder Risiko neu ausrichten."
       },
       "confidenceMeta": "Basiert auf {count} stochastischen Simulationen"
+    },
+    "actionSummary": {
+      "title": "Nächste Schritte",
+      "description": "Leiten Sie aus der aktuellen Simulation eine kurze Aktionsliste ab, bevor Sie weitere Parameter ändern.",
+      "fallback": "Führen Sie zuerst eine Simulation aus, um eine umsetzbare Zusammenfassung zu erhalten.",
+      "items": {
+        "high": {
+          "review": "Prüfen Sie diese Basisversion einmal pro Jahr oder nach größeren Lebensereignissen.",
+          "contributions": "Halten Sie Beiträge stabil und lassen Sie Ausgaben nicht schneller als die Inflation wachsen.",
+          "report": "Erstellen Sie jetzt einen Bericht, damit Sie spätere Änderungen damit vergleichen können."
+        },
+        "medium": {
+          "spending": "Testen Sie einen leicht niedrigeren Ausgabenplan, um mehr Puffer aufzubauen.",
+          "compare": "Vergleichen Sie mindestens ein Szenario mit höherer Sparrate oder späterem Ruhestand.",
+          "report": "Erstellen Sie nach jeder relevanten Anpassung einen neuen Bericht, um die beste Stellschraube zu erkennen."
+        },
+        "low": {
+          "savings": "Erhöhen Sie die Sparrate, verschieben Sie den Ruhestand oder testen Sie beide Änderungen gemeinsam.",
+          "expenses": "Prüfen Sie wiederkehrende Ausgaben und streichen Sie Posten mit geringer Priorität vor dem Ruhestand.",
+          "assumptions": "Nutzen Sie das Setup, um Rendite-, Inflations- und Rentenannahmen zu überarbeiten und erneut zu rechnen."
+        }
+      }
     },
     "charts": {
       "asset": {
@@ -385,6 +409,7 @@
       "expenses": {
         "add": "Ausgabe hinzufügen",
         "empty": "Noch keine Ausgaben definiert",
+        "emptyHint": "Fügen Sie wiederkehrende und einmalige Ausgaben wie Versicherungen, Lebensmittel, Urlaub oder Hausreparaturen hinzu",
         "nameLabel": "Name",
         "namePlaceholder": "z.B. Lebensmittel, Nebenkosten, Urlaub",
         "amountLabel": "Betrag (€)",
