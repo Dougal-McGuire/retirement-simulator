@@ -13,6 +13,7 @@ import {
 } from '@/lib/stores/simulationStore'
 import { SimulationChart } from '@/components/charts/SimulationChart'
 import { SuccessRateCard } from '@/components/charts/SuccessRateCard'
+import { PlanDashboard } from '@/components/charts/PlanDashboard'
 import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { MobileMenu } from '@/components/navigation/MobileMenu'
@@ -79,23 +80,16 @@ export default function SimulationPage() {
   // This happens on first visit or when params have changed and results were invalidated
   useEffect(() => {
     if (!results && !isLoading) {
-      console.log('No results found, running initial simulation')
       runSimulation()
     }
-  }, [])  // Empty deps - only run once on mount
+  }, []) // Empty deps - only run once on mount
 
   return (
     <div className="relative min-h-screen pb-16">
       {/* Live region for screen readers to announce simulation results */}
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="sr-only"
-      >
-        {successRate != null && (
-          `Simulation complete. Success rate: ${formattedSuccessRate}. ${successMessage}`
-        )}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {successRate != null &&
+          `Simulation complete. Success rate: ${formattedSuccessRate}. ${successMessage}`}
       </div>
       {/* Header */}
       <header id="navigation" className="relative z-10 pt-12 pb-10">
@@ -139,12 +133,7 @@ export default function SimulationPage() {
                     size="sm"
                     buttonClassName="w-48"
                   />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    asChild
-                    className="w-48"
-                  >
+                  <Button variant="secondary" size="sm" asChild className="w-48">
                     <Link href="/setup">{t('header.setupLink')}</Link>
                   </Button>
                 </div>
@@ -192,6 +181,8 @@ export default function SimulationPage() {
                 simulationRuns={params.simulationRuns}
               />
             )}
+
+            <PlanDashboard params={params} results={results} isLoading={isLoading} />
 
             <Card>
               <CardHeader className="border-b-3 border-neo-black bg-neo-white">

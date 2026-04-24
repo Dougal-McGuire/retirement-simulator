@@ -1,8 +1,7 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import {
-  ResponsiveContainer,
   ComposedChart,
   Bar,
   Line,
@@ -42,6 +41,8 @@ export function SpendingChart({
   const isMobile = useIsMobile()
   const [showHint, setShowHint] = useState(true)
   const [hasInteracted, setHasInteracted] = useState(false)
+  const chartFrameRef = useRef<HTMLDivElement>(null)
+  const [chartSize, setChartSize] = useState({ width: 0, height: 0 })
 
   const percentageFormatter = useMemo(
     () =>
@@ -66,8 +67,28 @@ export function SpendingChart({
     }
   }, [hasInteracted])
 
+  useEffect(() => {
+    const frame = chartFrameRef.current
+    if (!frame) return
+
+    const updateReadyState = () => {
+      setChartSize({
+        width: Math.max(320, Math.floor(frame.clientWidth)),
+        height: Math.max(240, Math.floor(frame.clientHeight)),
+      })
+    }
+
+    updateReadyState()
+
+    const resizeObserver = new ResizeObserver(updateReadyState)
+    resizeObserver.observe(frame)
+
+    return () => resizeObserver.disconnect()
+  }, [])
+
   // Track if zoom is active
   const isZoomed = indexRange.startIndex > 0 || indexRange.endIndex < data.length - 1
+  const canRenderChart = chartSize.width > 0 && chartSize.height > 0
 
   // Handle brush interaction
   const handleBrushChange = (range: { startIndex?: number; endIndex?: number }) => {
@@ -76,7 +97,7 @@ export function SpendingChart({
   }
 
   return (
-    <div className="space-y-6 border-3 border-neo-black bg-neo-white p-4 shadow-neo sm:p-6">
+    <div className="w-full min-w-0 space-y-6 border-3 border-neo-black bg-neo-white p-4 shadow-neo sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h4
@@ -114,14 +135,17 @@ export function SpendingChart({
       )}
 
       <div
-        className="relative h-80"
+        ref={chartFrameRef}
+        className="relative h-80 w-full min-w-0"
         role="img"
         aria-label={t('aria.description', { retirementAge })}
         aria-describedby="spending-chart-description spending-chart-controls"
         tabIndex={0}
       >
-        <ResponsiveContainer width="100%" height="100%">
+        {canRenderChart ? (
           <ComposedChart
+            width={chartSize.width}
+            height={chartSize.height}
             data={data}
             margin={
               isMobile
@@ -196,12 +220,22 @@ export function SpendingChart({
               />
             )}
             <Tooltip
-              formatter={(value: number | string | readonly (number | string)[] | undefined, name: string | number | undefined, item) => {
+              formatter={(
+                value: number | string | readonly (number | string)[] | undefined,
+                name: string | number | undefined,
+                item
+              ) => {
                 const numericValue = typeof value === 'number' ? value : Number(value ?? NaN)
                 if (item?.dataKey === 'withdrawal_rate_p50') {
-                  return [formatPercentage(Number.isFinite(numericValue) ? numericValue : null), String(name ?? '')]
+                  return [
+                    formatPercentage(Number.isFinite(numericValue) ? numericValue : null),
+                    String(name ?? ''),
+                  ]
                 }
-                return [formatCurrency(Number.isFinite(numericValue) ? numericValue : 0), String(name ?? '')]
+                return [
+                  formatCurrency(Number.isFinite(numericValue) ? numericValue : 0),
+                  String(name ?? ''),
+                ]
               }}
               labelFormatter={(age) => t('tooltip.label', { age })}
               contentStyle={{
@@ -277,7 +311,9 @@ export function SpendingChart({
               tickFormatter={(v) => String(v)}
             />
           </ComposedChart>
-        </ResponsiveContainer>
+        ) : (
+          <div className="h-full w-full border-2 border-dashed border-neo-black bg-muted/30" />
+        )}
       </div>
       <div id="spending-chart-description" className="sr-only">
         {t('aria.description', { retirementAge })}

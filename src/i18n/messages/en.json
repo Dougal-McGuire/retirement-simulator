@@ -526,6 +526,61 @@
       "max": "100%"
     }
   },
+  "planDashboard": {
+    "title": "Plan Control Center",
+    "description": "A concise readout of cash flow, bridge risk, and the highest-leverage adjustments.",
+    "notAvailable": "n/a",
+    "health": {
+      "strong": "Strong plan",
+      "watch": "Watch list",
+      "strained": "Needs work"
+    },
+    "metrics": {
+      "retirementAssets": {
+        "label": "Median at retirement",
+        "detail": "P50 projected portfolio value when retirement starts"
+      },
+      "monthlySpend": {
+        "label": "Monthly spending",
+        "detail": "{annual} per year across all expense items"
+      },
+      "withdrawalRate": {
+        "label": "First-year draw",
+        "detail": "{need} must come from the portfolio before pension offsets"
+      },
+      "bridge": {
+        "label": "Pension bridge",
+        "value": "{years, plural, =0 {No gap} one {# year} other {# years}}",
+        "detail": "{pension} yearly pension once benefits begin"
+      }
+    },
+    "cashflow": {
+      "title": "Retirement cash flow",
+      "portfolioNeed": "Portfolio-funded first year",
+      "pensionIncome": "Annual pension income",
+      "realReturn": "Expected real return",
+      "horizonMedian": "Median value at horizon"
+    },
+    "scenarios": {
+      "title": "Stress-test levers",
+      "loading": "Calculating",
+      "preview": "Estimated impact",
+      "items": {
+        "laterRetirement": {
+          "name": "Retire 2 years later",
+          "description": "Adds saving years and shortens the drawdown period."
+        },
+        "moreSavings": {
+          "name": "Save 10% more",
+          "description": "Raises annual contributions before retirement."
+        },
+        "lowerSpending": {
+          "name": "Spend 10% less",
+          "description": "Reduces every recurring retirement expense item."
+        }
+      }
+    }
+  },
   "simulationChart": {
     "loading": {
       "title": "Running Monte Carlo simulation…",
@@ -1380,5 +1435,4 @@
       }
     }
   }
-
 }

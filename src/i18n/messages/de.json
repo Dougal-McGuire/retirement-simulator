@@ -259,11 +259,11 @@
     "noSetupsYet": "Noch keine Setups gespeichert",
     "saveAsHint": "Verwenden Sie \"Speichern unter\", um Konfigurationen zu sichern",
     "presets": {
-  "investment": {
-    "title": "Anlageperformance",
-    "description": "Basierend auf rollierenden 30-Jahres-Durchschnitten diversifizierter Industrieländer-Portfolios.",
-    "placeholder": "Preset auswählen…",
-    "items": {
+      "investment": {
+        "title": "Anlageperformance",
+        "description": "Basierend auf rollierenden 30-Jahres-Durchschnitten diversifizierter Industrieländer-Portfolios.",
+        "placeholder": "Preset auswählen…",
+        "items": {
           "defensive": {
             "name": "Defensiv 60/40",
             "description": "Globales 60/40-Portfolio, 1994–2024 Ø ~5,5% nominal"
@@ -278,10 +278,10 @@
           }
         }
       },
-  "inflation": {
-    "title": "Inflationserwartungen",
-    "description": "An aktuelle Verbraucherpreis-Trends in Industrieländern angelehnt.",
-    "placeholder": "Inflationsszenario wählen…",
+      "inflation": {
+        "title": "Inflationserwartungen",
+        "description": "An aktuelle Verbraucherpreis-Trends in Industrieländern angelehnt.",
+        "placeholder": "Inflationsszenario wählen…",
         "items": {
           "low": {
             "name": "Niedrige Inflation",
@@ -524,6 +524,61 @@
       "min": "0%",
       "label": "Erfolgsquote",
       "max": "100%"
+    }
+  },
+  "planDashboard": {
+    "title": "Plan-Cockpit",
+    "description": "Kompakter Überblick über Cashflow, Brückenrisiko und die wirksamsten Stellschrauben.",
+    "notAvailable": "n/v",
+    "health": {
+      "strong": "Starker Plan",
+      "watch": "Beobachten",
+      "strained": "Handlungsbedarf"
+    },
+    "metrics": {
+      "retirementAssets": {
+        "label": "Median zum Ruhestand",
+        "detail": "Projizierter P50-Portfoliowert zum Rentenstart"
+      },
+      "monthlySpend": {
+        "label": "Monatliche Ausgaben",
+        "detail": "{annual} pro Jahr über alle Ausgabenposten"
+      },
+      "withdrawalRate": {
+        "label": "Entnahme im 1. Jahr",
+        "detail": "{need} müssen vor Rentenbeginn aus dem Portfolio kommen"
+      },
+      "bridge": {
+        "label": "Rentenbrücke",
+        "value": "{years, plural, =0 {Keine Lücke} one {# Jahr} other {# Jahre}}",
+        "detail": "{pension} jährliche Rente ab Leistungsbeginn"
+      }
+    },
+    "cashflow": {
+      "title": "Cashflow im Ruhestand",
+      "portfolioNeed": "Portfoliofinanziertes erstes Jahr",
+      "pensionIncome": "Jährliche Renteneinnahmen",
+      "realReturn": "Erwartete reale Rendite",
+      "horizonMedian": "Medianwert am Planungshorizont"
+    },
+    "scenarios": {
+      "title": "Stellschrauben testen",
+      "loading": "Berechnung läuft",
+      "preview": "Geschätzter Effekt",
+      "items": {
+        "laterRetirement": {
+          "name": "2 Jahre später in Rente",
+          "description": "Mehr Sparjahre und kürzere Entnahmephase."
+        },
+        "moreSavings": {
+          "name": "10% mehr sparen",
+          "description": "Erhöht die jährlichen Einzahlungen vor Rentenbeginn."
+        },
+        "lowerSpending": {
+          "name": "10% weniger ausgeben",
+          "description": "Reduziert alle wiederkehrenden Ausgabenposten im Ruhestand."
+        }
+      }
     }
   },
   "simulationChart": {
@@ -1380,5 +1435,4 @@
       }
     }
   }
-
 }

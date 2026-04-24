@@ -21,9 +21,10 @@ const sanitizeOneTimeIncomes = (incomes: unknown): OneTimeIncome[] => {
       if (!entry) return null
       const rawAge = Number((entry as { age?: unknown }).age)
       const rawAmount = Number((entry as { amount?: unknown }).amount)
-      const rawName = typeof (entry as { name?: unknown }).name === 'string'
-        ? (entry as { name: string }).name
-        : ''
+      const rawName =
+        typeof (entry as { name?: unknown }).name === 'string'
+          ? (entry as { name: string }).name
+          : ''
       if (!Number.isFinite(rawAge) || !Number.isFinite(rawAmount)) return null
       return {
         name: rawName,
@@ -39,11 +40,19 @@ const sanitizeCustomExpenses = (expenses: unknown): CustomExpense[] => {
   return expenses
     .map((entry) => {
       if (!entry || typeof entry !== 'object') return null
-      const expense = entry as { id?: unknown; name?: unknown; amount?: unknown; interval?: unknown }
+      const expense = entry as {
+        id?: unknown
+        name?: unknown
+        amount?: unknown
+        interval?: unknown
+      }
       const rawId = typeof expense.id === 'string' ? expense.id : ''
       const rawName = typeof expense.name === 'string' ? expense.name : ''
       const rawAmount = Number(expense.amount)
-      const rawInterval = expense.interval === 'monthly' || expense.interval === 'annual' ? expense.interval : 'monthly'
+      const rawInterval =
+        expense.interval === 'monthly' || expense.interval === 'annual'
+          ? expense.interval
+          : 'monthly'
 
       if (!rawId || !rawName || !Number.isFinite(rawAmount) || rawAmount <= 0) return null
 
@@ -114,6 +123,19 @@ const normalizeParamsForFingerprint = (params: Partial<SimulationParams>): Simul
 const getParamsFingerprint = (params: Partial<SimulationParams>) =>
   JSON.stringify(normalizeParamsForFingerprint(params))
 
+const runSimulationWithBestAvailableRuntime = async (params: SimulationParams) => {
+  if (
+    typeof window === 'undefined' ||
+    typeof Worker === 'undefined' ||
+    process.env.NODE_ENV === 'test'
+  ) {
+    return runMonteCarloSimulation(params)
+  }
+
+  const { runSimulationInClient } = await import('@/lib/simulation/workerClient')
+  return runSimulationInClient(params)
+}
+
 export const useSimulationStore = create<SimulationStore>()(
   persist(
     (set, get) => {
@@ -145,120 +167,184 @@ export const useSimulationStore = create<SimulationStore>()(
         autoRunSuspended: false,
         pendingRun: false,
 
-      updateParams: (partial: Partial<SimulationParams>) => {
-        const currentParams = get().params
-        const nextOneTimeIncomes =
-          partial.oneTimeIncomes !== undefined
-            ? sanitizeOneTimeIncomes(partial.oneTimeIncomes)
-            : Array.isArray(currentParams.oneTimeIncomes)
-              ? currentParams.oneTimeIncomes
-              : []
-        const newParams = {
-          ...currentParams,
-          ...partial,
-          oneTimeIncomes: nextOneTimeIncomes,
-        }
+        updateParams: (partial: Partial<SimulationParams>) => {
+          const currentParams = get().params
+          const nextOneTimeIncomes =
+            partial.oneTimeIncomes !== undefined
+              ? sanitizeOneTimeIncomes(partial.oneTimeIncomes)
+              : Array.isArray(currentParams.oneTimeIncomes)
+                ? currentParams.oneTimeIncomes
+                : []
+          const newParams = {
+            ...currentParams,
+            ...partial,
+            oneTimeIncomes: nextOneTimeIncomes,
+          }
 
-        set({
-          params: newParams,
-          error: null,
-        })
-
-        // Auto-run simulation after parameter update unless suspended
-        if (!get().autoRunSuspended) {
-          scheduleSimulation()
-        } else {
-          // Mark that a run is pending for when autoRun resumes
-          set({ pendingRun: true })
-        }
-      },
-
-      runSimulation: async () => {
-        if (get().isLoading) {
-          set({ pendingRun: true })
-          return
-        }
-
-        clearScheduledRun()
-        const { params } = get()
-        const requestFingerprint = getParamsFingerprint(params)
-
-        set({ isLoading: true, error: null, pendingRun: false })
-
-        try {
-          // Run simulation in a setTimeout to allow UI to update
-          const results = await new Promise<SimulationResults>((resolve, reject) => {
-            setTimeout(() => {
-              try {
-                resolve(runMonteCarloSimulation(params))
-              } catch (err) {
-                reject(err)
-              }
-            }, 0)
+          set({
+            params: newParams,
+            error: null,
           })
 
-          const latestFingerprint = getParamsFingerprint(get().params)
-          if (latestFingerprint !== requestFingerprint) {
-            set({ isLoading: false, error: null })
+          // Auto-run simulation after parameter update unless suspended
+          if (!get().autoRunSuspended) {
+            scheduleSimulation()
+          } else {
+            // Mark that a run is pending for when autoRun resumes
+            set({ pendingRun: true })
+          }
+        },
 
-            if (get().autoRunSuspended) {
-              set({ pendingRun: true })
-            } else {
-              scheduleSimulation(0)
-            }
+        runSimulation: async () => {
+          if (get().isLoading) {
+            set({ pendingRun: true })
             return
           }
 
-          set({
-            results,
-            isLoading: false,
-            error: null,
-          })
-        } catch (error) {
-          console.error('Simulation error:', error)
-          set({
-            isLoading: false,
-            error: error instanceof Error ? error.message : 'Simulation failed',
-          })
-        } finally {
-          if (!get().autoRunSuspended && get().pendingRun) {
-            scheduleSimulation(0)
-          }
-        }
-      },
-
-      // Control auto-run suspension during interactions (e.g., chart brushing)
-      setAutoRunSuspended: (suspended: boolean) => {
-        const { pendingRun } = get()
-        set({ autoRunSuspended: suspended })
-        if (suspended) {
           clearScheduledRun()
-          return
-        }
-        if (!suspended && pendingRun) {
-          scheduleSimulation()
-        }
-      },
+          const { params } = get()
+          const requestFingerprint = getParamsFingerprint(params)
 
-      saveToStorage: () => {
-        const { params } = get()
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(params))
-        } catch (error) {
-          console.error('Failed to save parameters:', error)
-          set({ error: 'Failed to save parameters' })
-        }
-      },
+          set({ isLoading: true, error: null, pendingRun: false })
 
-      loadFromStorage: () => {
-        try {
-          const stored = localStorage.getItem(STORAGE_KEY)
-          if (stored) {
-            const params = JSON.parse(stored) as any
+          try {
+            // Run simulation in a setTimeout to allow UI to update
+            const results = await new Promise<SimulationResults>((resolve, reject) => {
+              setTimeout(async () => {
+                try {
+                  resolve(await runSimulationWithBestAvailableRuntime(params))
+                } catch (err) {
+                  reject(err)
+                }
+              }, 0)
+            })
+
+            const latestFingerprint = getParamsFingerprint(get().params)
+            if (latestFingerprint !== requestFingerprint) {
+              set({ isLoading: false, error: null })
+
+              if (get().autoRunSuspended) {
+                set({ pendingRun: true })
+              } else {
+                scheduleSimulation(0)
+              }
+              return
+            }
+
+            set({
+              results,
+              isLoading: false,
+              error: null,
+            })
+          } catch (error) {
+            console.error('Simulation error:', error)
+            set({
+              isLoading: false,
+              error: error instanceof Error ? error.message : 'Simulation failed',
+            })
+          } finally {
+            if (!get().autoRunSuspended && get().pendingRun) {
+              scheduleSimulation(0)
+            }
+          }
+        },
+
+        // Control auto-run suspension during interactions (e.g., chart brushing)
+        setAutoRunSuspended: (suspended: boolean) => {
+          const { pendingRun } = get()
+          set({ autoRunSuspended: suspended })
+          if (suspended) {
+            clearScheduledRun()
+            return
+          }
+          if (!suspended && pendingRun) {
+            scheduleSimulation()
+          }
+        },
+
+        saveToStorage: () => {
+          const { params } = get()
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(params))
+          } catch (error) {
+            console.error('Failed to save parameters:', error)
+            set({ error: 'Failed to save parameters' })
+          }
+        },
+
+        loadFromStorage: () => {
+          try {
+            const stored = localStorage.getItem(STORAGE_KEY)
+            if (stored) {
+              const params = JSON.parse(stored) as any
+
+              // Migrate old data structure if needed or sanitize existing data
+              let customExpenses: CustomExpense[]
+              if (
+                params.customExpenses &&
+                Array.isArray(params.customExpenses) &&
+                params.customExpenses.length > 0
+              ) {
+                customExpenses = sanitizeCustomExpenses(params.customExpenses)
+              } else {
+                customExpenses = migrateToCustomExpenses(params)
+              }
+
+              set({
+                params: {
+                  ...DEFAULT_PARAMS,
+                  ...params,
+                  oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
+                  customExpenses,
+                },
+                error: null,
+              })
+              // Run simulation with loaded parameters
+              get().runSimulation()
+            }
+          } catch (error) {
+            console.error('Failed to load parameters:', error)
+            set({ error: 'Failed to load parameters' })
+          }
+        },
+
+        saveSetup: (name: string) => {
+          const { params, savedSetups } = get()
+          try {
+            const newSetup: SavedSetup = {
+              id: Date.now().toString(),
+              name,
+              timestamp: Date.now(),
+              params: {
+                ...DEFAULT_PARAMS,
+                ...params,
+                oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
+              },
+            }
+
+            const updatedSetups = [newSetup, ...savedSetups].slice(0, 10) // Keep only last 10
+
+            set({ savedSetups: updatedSetups })
+            localStorage.setItem(SAVED_SETUPS_KEY, JSON.stringify(updatedSetups))
+          } catch (error) {
+            console.error('Failed to save setup:', error)
+            set({ error: 'Failed to save setup' })
+          }
+        },
+
+        loadSetup: (id: string) => {
+          const { savedSetups } = get()
+          const setup = savedSetups.find((s) => s.id === id)
+          if (setup) {
+            const params = setup.params as any
 
             // Migrate old data structure if needed or sanitize existing data
             let customExpenses: CustomExpense[]
-            if (params.customExpenses && Array.isArray(params.customExpenses) && params.customExpenses.length > 0) {
+            if (
+              params.customExpenses &&
+              Array.isArray(params.customExpenses) &&
+              params.customExpenses.length > 0
+            ) {
               customExpenses = sanitizeCustomExpenses(params.customExpenses)
             } else {
               customExpenses = migrateToCustomExpenses(params)
@@ -276,80 +362,24 @@ export const useSimulationStore = create<SimulationStore>()(
             // Run simulation with loaded parameters
             get().runSimulation()
           }
-        } catch (error) {
-          console.error('Failed to load parameters:', error)
-          set({ error: 'Failed to load parameters' })
-        }
-      },
+        },
 
-      saveSetup: (name: string) => {
-        const { params, savedSetups } = get()
-        try {
-          const newSetup: SavedSetup = {
-            id: Date.now().toString(),
-            name,
-            timestamp: Date.now(),
-            params: {
-              ...DEFAULT_PARAMS,
-              ...params,
-              oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
-            },
+        deleteSetup: (id: string) => {
+          const { savedSetups } = get()
+          try {
+            const updatedSetups = savedSetups.filter((s) => s.id !== id)
+            set({ savedSetups: updatedSetups })
+            localStorage.setItem(SAVED_SETUPS_KEY, JSON.stringify(updatedSetups))
+          } catch (error) {
+            console.error('Failed to delete setup:', error)
+            set({ error: 'Failed to delete setup' })
           }
+        },
 
-          const updatedSetups = [newSetup, ...savedSetups].slice(0, 10) // Keep only last 10
-
-          set({ savedSetups: updatedSetups })
-          localStorage.setItem(SAVED_SETUPS_KEY, JSON.stringify(updatedSetups))
-        } catch (error) {
-          console.error('Failed to save setup:', error)
-          set({ error: 'Failed to save setup' })
-        }
-      },
-
-      loadSetup: (id: string) => {
-        const { savedSetups } = get()
-        const setup = savedSetups.find((s) => s.id === id)
-        if (setup) {
-          const params = setup.params as any
-
-          // Migrate old data structure if needed or sanitize existing data
-          let customExpenses: CustomExpense[]
-          if (params.customExpenses && Array.isArray(params.customExpenses) && params.customExpenses.length > 0) {
-            customExpenses = sanitizeCustomExpenses(params.customExpenses)
-          } else {
-            customExpenses = migrateToCustomExpenses(params)
-          }
-
-          set({
-            params: {
-              ...DEFAULT_PARAMS,
-              ...params,
-              oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
-              customExpenses,
-            },
-            error: null,
-          })
-          // Run simulation with loaded parameters
-          get().runSimulation()
-        }
-      },
-
-      deleteSetup: (id: string) => {
-        const { savedSetups } = get()
-        try {
-          const updatedSetups = savedSetups.filter((s) => s.id !== id)
-          set({ savedSetups: updatedSetups })
-          localStorage.setItem(SAVED_SETUPS_KEY, JSON.stringify(updatedSetups))
-        } catch (error) {
-          console.error('Failed to delete setup:', error)
-          set({ error: 'Failed to delete setup' })
-        }
-      },
-
-      getSavedSetups: () => {
-        const { savedSetups } = get()
-        return savedSetups
-      },
+        getSavedSetups: () => {
+          const { savedSetups } = get()
+          return savedSetups
+        },
 
         clearResults: () => {
           set({
@@ -363,7 +393,7 @@ export const useSimulationStore = create<SimulationStore>()(
       name: 'retirement-simulator-store',
       partialize: (state) => ({
         params: state.params,
-        results: state.results,  // Persist results to avoid re-running simulation on every page load
+        results: state.results, // Persist results to avoid re-running simulation on every page load
         savedSetups: state.savedSetups,
       }),
       onRehydrateStorage: () => {
