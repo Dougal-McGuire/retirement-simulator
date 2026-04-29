@@ -249,7 +249,7 @@ export function LabeledNumberInput({
 
       {/* Help text */}
       {helpText && (
-        <p className="text-[0.65rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        <p className="text-xs font-medium leading-5 tracking-normal text-muted-foreground">
           {helpText}
         </p>
       )}

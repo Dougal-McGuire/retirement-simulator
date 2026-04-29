@@ -3,20 +3,20 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 42 45% 97%;
     --foreground: 223 31% 12%;
-    --card: 0 0% 100%;
+    --card: 48 55% 98%;
     --card-foreground: 223 31% 12%;
-    --popover: 0 0% 100%;
+    --popover: 48 55% 98%;
     --popover-foreground: 223 31% 12%;
-    --primary: 220 92% 54%;
+    --primary: 222 84% 46%;
     --primary-foreground: 0 0% 100%;
     --secondary: 43 97% 54%;
     --secondary-foreground: 223 31% 12%;
-    --muted: 213 23% 92%;
-    --muted-foreground: 221 26% 36%;
-    --accent: 351 100% 64%;
-    --accent-foreground: 0 0% 100%;
+    --muted: 216 29% 91%;
+    --muted-foreground: 220 18% 34%;
+    --accent: 152 80% 42%;
+    --accent-foreground: 223 31% 12%;
     --destructive: 0 82% 55%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 8%;
@@ -29,9 +29,9 @@
     --chart-5: 282 88% 60%;
     --radius: 0px;
     --neo-border-strong: #05080f;
-    --neo-surface: #ffffff;
-    --neo-surface-muted: #f2f4f7;
-    --neo-grid-line: rgba(5, 8, 15, 0.05);
+    --neo-surface: #fffdf6;
+    --neo-surface-muted: #f3f0e6;
+    --neo-grid-line: rgba(5, 8, 15, 0.035);
   }
 
   .dark {
@@ -73,13 +73,13 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: 'IBM Plex Mono', var(--font-plus-jakarta), 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+    font-family: var(--font-plus-jakarta), 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
       'Segoe UI', sans-serif;
     min-height: 100vh;
     position: relative;
     font-weight: 500;
-    letter-spacing: 0.01em;
-    line-height: 1.7;
+    letter-spacing: 0;
+    line-height: 1.65;
   }
   /* Enhanced focus indicators for accessibility - WCAG 2.1 Level AA */
   *:focus-visible {
@@ -106,8 +106,8 @@
     inset: 0;
     z-index: -2;
     pointer-events: none;
-    background: radial-gradient(circle at top left, rgba(6, 17, 38, 0.06), transparent 45%),
-      radial-gradient(circle at bottom right, rgba(6, 17, 38, 0.05), transparent 50%), hsl(var(--background));
+    background: radial-gradient(circle at top left, rgba(14, 103, 246, 0.08), transparent 42%),
+      radial-gradient(circle at bottom right, rgba(42, 213, 118, 0.08), transparent 46%), hsl(var(--background));
   }
   /* Bold geometric shapes */
   body::after {
@@ -129,10 +129,10 @@
   h5,
   h6 {
     font-family: 'Space Grotesk', var(--font-sora), var(--font-plus-jakarta), 'Segoe UI', sans-serif;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     font-weight: 700;
-    line-height: 1.2;
+    line-height: 1.18;
   }
   h1 {
     font-weight: 900;
@@ -152,14 +152,14 @@
 @layer components {
   .neo-surface {
     background-color: var(--neo-surface);
-    border: 3px solid var(--neo-border-strong);
+    border: 2px solid var(--neo-border-strong);
     box-shadow: 6px 6px 0 var(--neo-border-strong);
   }
 
   .neo-surface-muted {
     background-color: var(--neo-surface-muted);
-    border: 3px solid var(--neo-border-strong);
-    box-shadow: 6px 6px 0 rgba(5, 8, 15, 0.28);
+    border: 2px solid var(--neo-border-strong);
+    box-shadow: 4px 4px 0 rgba(5, 8, 15, 0.22);
   }
 
   .neo-chip {
