@@ -12,12 +12,9 @@ import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput
 import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
 import { ExpenseList } from '@/components/forms/fields/ExpenseList'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
-import {
-  OneTimeIncome,
-  CustomExpense,
-  ExpenseInterval,
-} from '@/types'
+import { OneTimeIncome, CustomExpense, ExpenseInterval } from '@/types'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
+import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { cn } from '@/lib/utils'
 
 const STEP_KEYS = ['personal', 'assets', 'expenses', 'market'] as const
@@ -320,16 +317,42 @@ export default function SetupPage() {
 
       case 'expenses': {
         const expenseTemplates = [
-          { name: t('expenseTemplates.healthInsurance'), amount: 1300, interval: 'monthly' as ExpenseInterval },
-          { name: t('expenseTemplates.groceries'), amount: 1200, interval: 'monthly' as ExpenseInterval },
-          { name: t('expenseTemplates.utilities'), amount: 400, interval: 'monthly' as ExpenseInterval },
-          { name: t('expenseTemplates.entertainment'), amount: 300, interval: 'monthly' as ExpenseInterval },
-          { name: t('expenseTemplates.vacations'), amount: 12000, interval: 'annual' as ExpenseInterval },
-          { name: t('expenseTemplates.homeRepairs'), amount: 5000, interval: 'annual' as ExpenseInterval },
+          {
+            name: t('expenseTemplates.healthInsurance'),
+            amount: 1300,
+            interval: 'monthly' as ExpenseInterval,
+          },
+          {
+            name: t('expenseTemplates.groceries'),
+            amount: 1200,
+            interval: 'monthly' as ExpenseInterval,
+          },
+          {
+            name: t('expenseTemplates.utilities'),
+            amount: 400,
+            interval: 'monthly' as ExpenseInterval,
+          },
+          {
+            name: t('expenseTemplates.entertainment'),
+            amount: 300,
+            interval: 'monthly' as ExpenseInterval,
+          },
+          {
+            name: t('expenseTemplates.vacations'),
+            amount: 12000,
+            interval: 'annual' as ExpenseInterval,
+          },
+          {
+            name: t('expenseTemplates.homeRepairs'),
+            amount: 5000,
+            interval: 'annual' as ExpenseInterval,
+          },
         ]
 
         const handleAddExpense = (expense: Omit<CustomExpense, 'id'>) => {
-          const sanitizedAmount = Number.isFinite(expense.amount) ? Math.max(0, Math.round(expense.amount)) : 0
+          const sanitizedAmount = Number.isFinite(expense.amount)
+            ? Math.max(0, Math.round(expense.amount))
+            : 0
           const trimmedName = expense.name.trim()
           if (!trimmedName || sanitizedAmount === 0) return
           updateParams({
@@ -514,18 +537,17 @@ export default function SetupPage() {
   const percentLabel = t('progress.percentComplete', { percent: progressPercent })
 
   return (
-    <div className="relative min-h-screen pb-16">
+    <div className="app-page app-page-setup relative min-h-screen pb-16">
+      <header id="navigation" className="theme-page-header relative z-10 pt-12 pb-10">
+        <div className="theme-container mx-auto max-w-[90rem] px-2 sm:px-3 lg:px-4">
+          <div className={cn(glassCardClass, 'theme-hero relative overflow-hidden px-8 py-10')}>
+            <div className="theme-hero-accent absolute right-8 top-8 hidden h-12 w-12 rotate-6 border-3 border-neo-black bg-neo-yellow/40 md:block" />
+            <div className="theme-hero-mark absolute -left-6 bottom-10 hidden h-16 w-16 -rotate-3 border-3 border-neo-black bg-neo-blue/20 md:block" />
 
-      <header id="navigation" className="relative z-10 pt-12 pb-10">
-        <div className="mx-auto max-w-[90rem] px-2 sm:px-3 lg:px-4">
-          <div className={cn(glassCardClass, 'relative overflow-hidden px-8 py-10')}>
-            <div className="absolute right-8 top-8 hidden h-12 w-12 rotate-6 border-3 border-neo-black bg-neo-yellow/40 md:block" />
-            <div className="absolute -left-6 bottom-10 hidden h-16 w-16 -rotate-3 border-3 border-neo-black bg-neo-blue/20 md:block" />
-
-            <div className="relative flex flex-col gap-10">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="theme-hero-layout relative flex flex-col gap-10">
+              <div className="theme-hero-top flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex flex-col gap-5 text-neo-black">
-                  <div className="flex flex-wrap items-center gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.32em]">
+                  <div className="theme-badge-row flex flex-wrap items-center gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.32em]">
                     <span className="inline-flex items-center gap-2 border-3 border-neo-black bg-neo-yellow px-4 py-1.5 text-neo-black shadow-neo-sm">
                       {t('header.badges.guide')}
                     </span>
@@ -543,35 +565,29 @@ export default function SetupPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="theme-action-strip flex flex-col gap-3 sm:flex-row sm:items-center">
                   <LocaleSwitcher className="w-full sm:w-48" />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    asChild
-                    className="min-w-[11rem]"
-                  >
+                  <ThemeSwitcher className="w-full sm:w-56" />
+                  <Button variant="secondary" size="sm" asChild className="min-w-[11rem]">
                     <Link href="/simulation">{t('header.simulationLink')}</Link>
                   </Button>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 border-t-3 border-neo-black pt-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="theme-progress-block flex flex-col gap-4 border-t-3 border-neo-black pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
                   <span className="border-3 border-neo-black bg-neo-white px-4 py-1 shadow-neo-sm">
                     {progressLabel}
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="text-neo-black">{percentLabel}</span>
-                    {progressPercent === 100 && (
-                      <Check className="h-4 w-4 text-green-600" />
-                    )}
+                    {progressPercent === 100 && <Check className="h-4 w-4 text-green-600" />}
                   </span>
                   <span className="text-[0.6rem] text-muted-foreground">
                     {t('progress.autosave')}
                   </span>
                 </div>
-                <div className="relative h-5 w-full overflow-hidden border-3 border-neo-black bg-neo-white shadow-neo sm:max-w-sm">
+                <div className="theme-progress-bar relative h-5 w-full overflow-hidden border-3 border-neo-black bg-neo-white shadow-neo sm:max-w-sm">
                   <div
                     className="h-full bg-neo-blue transition-all duration-300 ease-out"
                     style={{ width: `${progressPercent}%` }}
@@ -580,7 +596,8 @@ export default function SetupPage() {
                   <div
                     className="absolute inset-0 opacity-20"
                     style={{
-                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px)',
+                      backgroundImage:
+                        'repeating-linear-gradient(45deg, transparent, transparent 10px, rgb(var(--neo-black-rgb) / 0.1) 10px, rgb(var(--neo-black-rgb) / 0.1) 20px)',
                     }}
                   />
                 </div>
@@ -592,17 +609,17 @@ export default function SetupPage() {
 
       <main
         id="main-content"
-        className="relative z-10 mx-auto mt-2 max-w-[90rem] px-2 pb-16 sm:px-3 lg:px-4"
+        className="theme-container relative z-10 mx-auto mt-2 max-w-[90rem] px-2 pb-16 sm:px-3 lg:px-4"
       >
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
-          <aside className={cn(glassCardClass, 'space-y-6 p-6')}>
+        <div className="theme-page-grid theme-setup-grid grid grid-cols-1 gap-8 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
+          <aside className={cn(glassCardClass, 'theme-sidebar theme-stepper space-y-6 p-6')}>
             <div className="space-y-3">
               <div className="flex items-center justify-between text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 <span>{progressLabel}</span>
                 <span className="text-neo-black">{progressPercent}%</span>
               </div>
               {/* Time estimate */}
-              <div className="border-2 border-dashed border-neo-black bg-neo-blue/5 px-3 py-2">
+              <div className="theme-stepper-meta border-2 border-dashed border-neo-black bg-neo-blue/5 px-3 py-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     {t('progress.timeRemaining')}
@@ -613,17 +630,17 @@ export default function SetupPage() {
                 </div>
               </div>
             </div>
-            <div className="space-y-6">
+            <div className="theme-step-list space-y-6">
               {steps.map((step, index) => {
                 const isCompleted = index < currentStep
                 const isActive = index === currentStep
 
                 return (
-                  <div key={step.id} className="relative pl-12">
+                  <div key={step.id} className="theme-step-item relative pl-12">
                     {index < steps.length - 1 && (
                       <span
                         className={cn(
-                          'absolute left-5 top-11 h-[calc(100%-2.75rem)] w-1',
+                          'theme-step-connector absolute left-5 top-11 h-[calc(100%-2.75rem)] w-1',
                           isCompleted ? 'bg-neo-black' : 'bg-muted'
                         )}
                       />
@@ -634,9 +651,11 @@ export default function SetupPage() {
                       onClick={() => handleStepClick(index)}
                       aria-label={`${step.title} - ${isCompleted ? tStatus('completed') : isActive ? tStatus('current') : tStatus('notStarted')}`}
                       className={cn(
-                        'absolute left-0 top-0 flex h-10 w-10 items-center justify-center border-3 border-neo-black bg-neo-white font-extrabold text-neo-black shadow-neo-sm transition-neo',
+                        'theme-step-button absolute left-0 top-0 flex h-10 w-10 items-center justify-center border-3 border-neo-black bg-neo-white font-extrabold text-neo-black shadow-neo-sm transition-neo',
                         isCompleted && 'bg-neo-yellow',
-                        isActive && !isCompleted && 'bg-neo-white ring-3 ring-neo-blue ring-offset-2',
+                        isActive &&
+                          !isCompleted &&
+                          'bg-neo-white ring-3 ring-neo-blue ring-offset-2',
                         !isCompleted && !isActive && 'bg-muted text-muted-foreground',
                         'cursor-pointer hover:-translate-y-[1px] hover:-translate-x-[1px] hover:shadow-neo'
                       )}
@@ -648,7 +667,7 @@ export default function SetupPage() {
                       )}
                     </button>
 
-                    <div>
+                    <div className="theme-step-copy">
                       <p
                         className={cn(
                           'text-[0.78rem] font-bold uppercase tracking-[0.16em]',
@@ -667,8 +686,8 @@ export default function SetupPage() {
             </div>
           </aside>
 
-          <section className="space-y-0">
-            <Card className={cn(glassCardClass)}>
+          <section className="theme-content theme-setup-content space-y-0">
+            <Card className={cn(glassCardClass, 'theme-active-step-card')}>
               <CardHeader className="border-b-3 border-neo-black bg-neo-white">
                 <CardTitle className="text-xl font-extrabold uppercase tracking-[0.2em] text-neo-black">
                   {steps[currentStep].title}
@@ -680,7 +699,7 @@ export default function SetupPage() {
               <CardContent className="space-y-6 pt-6">{renderStepContent()}</CardContent>
             </Card>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="theme-wizard-actions flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Button
                 variant="outline"
                 size="sm"
@@ -692,12 +711,7 @@ export default function SetupPage() {
                 {t('buttons.back')}
               </Button>
 
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleNext}
-                className="sm:min-w-[12rem]"
-              >
+              <Button variant="default" size="sm" onClick={handleNext} className="sm:min-w-[12rem]">
                 {currentStep === steps.length - 1 ? t('buttons.complete') : t('buttons.next')}
                 {currentStep === steps.length - 1 ? (
                   <Check className="ml-2 h-4 w-4" />

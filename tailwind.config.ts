@@ -49,17 +49,17 @@ export default {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
-        // Neo-brutalist color palette
-        'neo-black': '#05080f',
-        'neo-white': '#ffffff',
-        'neo-yellow': '#f6c90e',
-        'neo-blue': '#0e67f6',
-        'neo-red': '#ff3b5c',
-        'neo-green': '#2ad576',
-        'neo-pink': '#ff4f91',
-        'neo-purple': '#7a5bff',
-        'neo-cyan': '#14c2c9',
-        'neo-orange': '#ff6b35',
+        // Theme-aware application palette. Defaults preserve the original neo-brutalist look.
+        'neo-black': 'rgb(var(--neo-black-rgb) / <alpha-value>)',
+        'neo-white': 'rgb(var(--neo-white-rgb) / <alpha-value>)',
+        'neo-yellow': 'rgb(var(--neo-yellow-rgb) / <alpha-value>)',
+        'neo-blue': 'rgb(var(--neo-blue-rgb) / <alpha-value>)',
+        'neo-red': 'rgb(var(--neo-red-rgb) / <alpha-value>)',
+        'neo-green': 'rgb(var(--neo-green-rgb) / <alpha-value>)',
+        'neo-pink': 'rgb(var(--neo-pink-rgb) / <alpha-value>)',
+        'neo-purple': 'rgb(var(--neo-purple-rgb) / <alpha-value>)',
+        'neo-cyan': 'rgb(var(--neo-cyan-rgb) / <alpha-value>)',
+        'neo-orange': 'rgb(var(--neo-orange-rgb) / <alpha-value>)',
         // Enhanced color palette for retirement app
         success: {
           50: '#f0fdf4',
@@ -107,7 +107,7 @@ export default {
         '6': '6px',
       },
       borderRadius: {
-        'neo': '0px',
+        neo: '0px',
         'neo-soft': '4px',
         lg: '0px', // Changed for neo-brutalism
         md: '0px',
@@ -119,19 +119,19 @@ export default {
         '128': '32rem',
       },
       boxShadow: {
-        // Neo-brutalist hard shadows
-        'neo': '4px 4px 0px #05080f',
-        'neo-sm': '2px 2px 0px #05080f',
-        'neo-md': '6px 6px 0px #05080f',
-        'neo-lg': '8px 8px 0px #05080f',
-        'neo-xl': '12px 12px 0px #05080f',
-        // Colored neo-brutalist shadows
-        'neo-yellow': '6px 6px 0px #f6c90e',
-        'neo-blue': '6px 6px 0px #0e67f6',
-        'neo-red': '6px 6px 0px #ff3b5c',
-        'neo-green': '6px 6px 0px #2ad576',
-        'neo-pink': '6px 6px 0px #ff4f91',
-        'neo-purple': '6px 6px 0px #7a5bff',
+        // Theme-aware shadows. Defaults preserve the original hard offsets.
+        'neo-xs': 'var(--shadow-neo-xs)',
+        neo: 'var(--shadow-neo)',
+        'neo-sm': 'var(--shadow-neo-sm)',
+        'neo-md': 'var(--shadow-neo-md)',
+        'neo-lg': 'var(--shadow-neo-lg)',
+        'neo-xl': 'var(--shadow-neo-xl)',
+        'neo-yellow': 'var(--shadow-neo-yellow)',
+        'neo-blue': 'var(--shadow-neo-blue)',
+        'neo-red': 'var(--shadow-neo-red)',
+        'neo-green': 'var(--shadow-neo-green)',
+        'neo-pink': 'var(--shadow-neo-pink)',
+        'neo-purple': 'var(--shadow-neo-purple)',
         // Mobile-friendly shadows (smaller)
         'neo-mobile': '2px 2px 0px #000000',
         'neo-mobile-md': '3px 3px 0px #000000',
@@ -144,7 +144,7 @@ export default {
         warning: '0 0 0 1px rgba(245, 158, 11, 0.15), 0 4px 25px -5px rgba(245, 158, 11, 0.2)',
       },
       transitionDuration: {
-        'neo': '100ms',
+        neo: '100ms',
         'neo-fast': '150ms',
       },
       animation: {

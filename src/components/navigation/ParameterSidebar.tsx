@@ -26,10 +26,13 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
     <>
       {/* Desktop Sidebar */}
       <div className={`hidden lg:block lg:col-span-1 ${className}`}>
-        <div className="sticky top-6">
+        <div className="theme-sidebar theme-parameter-panel sticky top-6">
           <div className="relative">
             {/* Scroll indicator - top shadow */}
-            <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 h-8 bg-gradient-to-b from-background to-transparent opacity-0 transition-opacity duration-200" id="scroll-indicator-top" />
+            <div
+              className="pointer-events-none absolute left-0 right-0 top-0 z-10 h-8 bg-gradient-to-b from-background to-transparent opacity-0 transition-opacity duration-200"
+              id="scroll-indicator-top"
+            />
 
             <div
               className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neo-black/20 hover:scrollbar-thumb-neo-black/40"
@@ -47,7 +50,8 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
                   }
 
                   // Show bottom indicator when not at bottom
-                  const isAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20
+                  const isAtBottom =
+                    target.scrollHeight - target.scrollTop - target.clientHeight < 20
                   if (isAtBottom) {
                     bottom.style.opacity = '0'
                   } else {
@@ -60,7 +64,10 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
             </div>
 
             {/* Scroll indicator - bottom shadow */}
-            <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-8 bg-gradient-to-t from-background to-transparent opacity-100 transition-opacity duration-200" id="scroll-indicator-bottom" />
+            <div
+              className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-8 bg-gradient-to-t from-background to-transparent opacity-100 transition-opacity duration-200"
+              id="scroll-indicator-bottom"
+            />
           </div>
         </div>
       </div>

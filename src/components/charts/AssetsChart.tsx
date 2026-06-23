@@ -168,16 +168,16 @@ export function AssetsChart({
           >
             <defs>
               <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                <stop offset="5%" stopColor="var(--neo-green)" stopOpacity={0.1} />
+                <stop offset="95%" stopColor="var(--neo-green)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="0 0" opacity={0.15} stroke="#000000" />
+            <CartesianGrid strokeDasharray="0 0" opacity={0.15} stroke="var(--chart-axis)" />
             <XAxis
               dataKey="age"
-              tick={{ fontSize: isMobile ? 10 : 11, fill: '#000000' }}
-              tickLine={{ stroke: '#000000' }}
-              axisLine={{ stroke: '#000000' }}
+              tick={{ fontSize: isMobile ? 10 : 11, fill: 'var(--chart-axis)' }}
+              tickLine={{ stroke: 'var(--chart-axis)' }}
+              axisLine={{ stroke: 'var(--chart-axis)' }}
               label={
                 isMobile
                   ? undefined
@@ -185,15 +185,15 @@ export function AssetsChart({
                       value: t('axis.age'),
                       position: 'insideBottom',
                       offset: -10,
-                      style: { textAnchor: 'middle', fontSize: '12px', fill: '#000000' },
+                      style: { textAnchor: 'middle', fontSize: '12px', fill: 'var(--chart-axis)' },
                     }
               }
             />
             <YAxis
               yAxisId="assets"
-              tick={{ fontSize: isMobile ? 10 : 11, fill: '#000000' }}
-              tickLine={{ stroke: '#000000' }}
-              axisLine={{ stroke: '#000000' }}
+              tick={{ fontSize: isMobile ? 10 : 11, fill: 'var(--chart-axis)' }}
+              tickLine={{ stroke: 'var(--chart-axis)' }}
+              axisLine={{ stroke: 'var(--chart-axis)' }}
               tickFormatter={formatCurrencyShort}
               label={
                 isMobile
@@ -202,7 +202,7 @@ export function AssetsChart({
                       value: t('axis.assets'),
                       angle: -90,
                       position: 'insideLeft',
-                      style: { textAnchor: 'middle', fontSize: '12px', fill: '#000000' },
+                      style: { textAnchor: 'middle', fontSize: '12px', fill: 'var(--chart-axis)' },
                     }
               }
             />
@@ -210,15 +210,15 @@ export function AssetsChart({
               <YAxis
                 yAxisId="rate"
                 orientation="right"
-                tick={{ fontSize: 11, fill: '#000000' }}
-                tickLine={{ stroke: '#000000' }}
-                axisLine={{ stroke: '#000000' }}
+                tick={{ fontSize: 11, fill: 'var(--chart-axis)' }}
+                tickLine={{ stroke: 'var(--chart-axis)' }}
+                axisLine={{ stroke: 'var(--chart-axis)' }}
                 tickFormatter={formatCurrencyShort}
                 label={{
                   value: t('axis.monthlySavings'),
                   angle: 90,
                   position: 'insideRight',
-                  style: { textAnchor: 'middle', fontSize: '12px', fill: '#000000' },
+                  style: { textAnchor: 'middle', fontSize: '12px', fill: 'var(--chart-axis)' },
                 }}
                 domain={[0, 'auto']}
               />
@@ -237,7 +237,7 @@ export function AssetsChart({
               dataKey="assets_band_height"
               stackId="band"
               stroke="none"
-              fill="#0e67f6"
+              fill="var(--neo-blue)"
               fillOpacity={0.18}
               name={t('legend.band')}
               isAnimationActive={false}
@@ -249,23 +249,23 @@ export function AssetsChart({
               }}
               labelFormatter={(age) => t('tooltip.label', { age })}
               contentStyle={{
-                backgroundColor: '#ffffff',
-                border: '3px solid #05080f',
+                backgroundColor: 'var(--neo-white)',
+                border: '3px solid var(--neo-black)',
                 borderRadius: '0px',
                 fontSize: '12px',
-                boxShadow: '6px 6px 0 #05080f',
+                boxShadow: 'var(--shadow-neo-md)',
               }}
               labelStyle={{
                 fontWeight: 800,
-                color: '#05080f',
+                color: 'var(--neo-black)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
               }}
-              cursor={{ stroke: '#05080f', strokeWidth: 1.5, strokeDasharray: '4 2' }}
+              cursor={{ stroke: 'var(--neo-black)', strokeWidth: 1.5, strokeDasharray: '4 2' }}
             />
             <ReferenceLine
               x={retirementAge}
-              stroke="#dc2626"
+              stroke="var(--chart-retirement)"
               strokeDasharray="5 5"
               strokeWidth={2}
               label={{
@@ -273,7 +273,7 @@ export function AssetsChart({
                 position: 'top',
                 offset: retirementLabelOffset,
                 style: {
-                  fill: '#dc2626',
+                  fill: 'var(--chart-retirement)',
                   fontSize: '11px',
                   fontWeight: 'semibold',
                   whiteSpace: 'normal',
@@ -284,7 +284,7 @@ export function AssetsChart({
             />
             <ReferenceLine
               x={legalRetirementAge}
-              stroke="#059669"
+              stroke="var(--chart-pension)"
               strokeDasharray="5 5"
               strokeWidth={2}
               label={{
@@ -292,7 +292,7 @@ export function AssetsChart({
                 position: 'top',
                 offset: pensionLabelOffset,
                 style: {
-                  fill: '#059669',
+                  fill: 'var(--chart-pension)',
                   fontSize: '11px',
                   fontWeight: 'semibold',
                   whiteSpace: 'normal',
@@ -304,7 +304,7 @@ export function AssetsChart({
             <Line
               type="monotone"
               dataKey="assets_p10"
-              stroke="#ff3b5c"
+              stroke="var(--neo-red)"
               strokeWidth={isMobile ? 2 : 2.5}
               dot={false}
               name={t('legend.p10')}
@@ -320,7 +320,7 @@ export function AssetsChart({
               <Line
                 type="monotone"
                 dataKey="assets_p20"
-                stroke="#f6c90e"
+                stroke="var(--neo-yellow)"
                 strokeWidth={2}
                 dot={false}
                 name={t('legend.p20')}
@@ -334,7 +334,7 @@ export function AssetsChart({
             <Line
               type="monotone"
               dataKey="assets_p50"
-              stroke="#0e67f6"
+              stroke="var(--neo-blue)"
               strokeWidth={isMobile ? 2.5 : 3.5}
               dot={false}
               name={t('legend.p50')}
@@ -349,7 +349,7 @@ export function AssetsChart({
               <Line
                 type="monotone"
                 dataKey="assets_p80"
-                stroke="#2ad576"
+                stroke="var(--neo-green)"
                 strokeWidth={2}
                 dot={false}
                 name={t('legend.p80')}
@@ -363,7 +363,7 @@ export function AssetsChart({
             <Line
               type="monotone"
               dataKey="assets_p90"
-              stroke="#14c2c9"
+              stroke="var(--neo-cyan)"
               strokeWidth={isMobile ? 2 : 2.5}
               dot={false}
               name={t('legend.p90')}
@@ -376,7 +376,7 @@ export function AssetsChart({
             <Line
               type="monotone"
               dataKey="monthly_savings_p50"
-              stroke="#05080f"
+              stroke="var(--chart-axis)"
               strokeWidth={isMobile ? 1.5 : 2}
               dot={false}
               name={t('legend.monthlySavings')}
@@ -386,7 +386,7 @@ export function AssetsChart({
             <Brush
               dataKey="age"
               height={isMobile ? 18 : 22}
-              stroke="#9ca3af"
+              stroke="var(--chart-brush)"
               travellerWidth={isMobile ? 6 : 8}
               startIndex={indexRange.startIndex}
               endIndex={indexRange.endIndex}

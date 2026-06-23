@@ -25,6 +25,16 @@
       "de": "Deutsch"
     }
   },
+  "themeSwitcher": {
+    "label": "Theme",
+    "options": {
+      "neo": "Neo Brutal",
+      "aurora": "Aurora Quant",
+      "ledger": "Calm Ledger",
+      "prism": "Prism Glass",
+      "signal": "Signal Bloom"
+    }
+  },
   "setup": {
     "header": {
       "title": "Setup",
@@ -238,6 +248,7 @@
     "description": "Schnellzugriff auf Einstellungen und Aktionen",
     "sections": {
       "language": "Sprache",
+      "theme": "Theme",
       "actions": "Aktionen"
     },
     "actions": {

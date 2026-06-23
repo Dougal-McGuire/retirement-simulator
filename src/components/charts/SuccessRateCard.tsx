@@ -28,24 +28,24 @@ export function SuccessRateCard({
           <CardHeader className="border-b-4 border-neo-black bg-muted pb-3">
             <CardTitle className="flex items-center justify-between">
               <span>{t('title')}</span>
-              <div className="h-6 w-6 animate-pulse rounded-none bg-slate-300 border-2 border-neo-black" />
+              <div className="h-6 w-6 animate-pulse rounded-none border-2 border-neo-black bg-muted" />
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center space-x-3">
-                  <div className="h-10 w-24 animate-pulse rounded-none bg-slate-300 border-2 border-neo-black" />
+                  <div className="h-10 w-24 animate-pulse rounded-none border-2 border-neo-black bg-muted" />
                 </div>
-                <div className="mt-3 h-3 w-40 animate-pulse rounded-none bg-slate-300" />
+                <div className="mt-3 h-3 w-40 animate-pulse rounded-none bg-muted" />
               </div>
               <div className="text-right">
-                <div className="mb-1 h-3 w-20 animate-pulse rounded-none bg-slate-300" />
-                <div className="h-3 w-24 animate-pulse rounded-none bg-slate-300" />
+                <div className="mb-1 h-3 w-20 animate-pulse rounded-none bg-muted" />
+                <div className="h-3 w-24 animate-pulse rounded-none bg-muted" />
               </div>
             </div>
             <div className="mt-6">
-              <div className="h-3 w-full animate-pulse rounded-none bg-slate-300 border-2 border-neo-black" />
+              <div className="h-3 w-full animate-pulse rounded-none border-2 border-neo-black bg-muted" />
             </div>
           </CardContent>
         </div>
@@ -79,7 +79,7 @@ export function SuccessRateCard({
       }
     if (successRate >= 75)
       return {
-        card: 'shadow-[6px_6px_0px_#f6c90e]',
+        card: 'shadow-neo-yellow',
         chip: 'bg-warning-500 text-neo-black',
         text: 'text-warning-600',
         progress: 'bg-warning-500',
@@ -95,13 +95,7 @@ export function SuccessRateCard({
   }, [successRate])
 
   return (
-    <Card
-      className={cn(
-        'relative overflow-hidden border-3 border-neo-black',
-        tone.card,
-        tone.bg
-      )}
-    >
+    <Card className={cn('relative overflow-hidden border-3 border-neo-black', tone.card, tone.bg)}>
       <div className="relative">
         <CardHeader className="border-b-3 border-neo-black bg-neo-white pb-5">
           <CardTitle className="flex items-center justify-between text-lg font-extrabold uppercase tracking-[0.2em]">

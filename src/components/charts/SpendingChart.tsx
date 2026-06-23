@@ -156,24 +156,24 @@ export function SpendingChart({
           >
             <defs>
               <linearGradient id="spendingGradient1" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#d97706" stopOpacity={0.8} />
+                <stop offset="5%" stopColor="var(--neo-yellow)" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="var(--neo-orange)" stopOpacity={0.8} />
               </linearGradient>
               <linearGradient id="spendingGradient2" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#7e22ce" stopOpacity={0.8} />
+                <stop offset="5%" stopColor="var(--neo-purple)" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="var(--neo-pink)" stopOpacity={0.8} />
               </linearGradient>
               <linearGradient id="spendingGradient3" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#fb923c" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#ea580c" stopOpacity={0.8} />
+                <stop offset="5%" stopColor="var(--neo-orange)" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="var(--neo-red)" stopOpacity={0.8} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="0 0" opacity={0.15} stroke="#000000" />
+            <CartesianGrid strokeDasharray="0 0" opacity={0.15} stroke="var(--chart-axis)" />
             <XAxis
               dataKey="age"
-              tick={{ fontSize: isMobile ? 10 : 11, fill: '#000000' }}
-              tickLine={{ stroke: '#000000' }}
-              axisLine={{ stroke: '#000000' }}
+              tick={{ fontSize: isMobile ? 10 : 11, fill: 'var(--chart-axis)' }}
+              tickLine={{ stroke: 'var(--chart-axis)' }}
+              axisLine={{ stroke: 'var(--chart-axis)' }}
               label={
                 isMobile
                   ? undefined
@@ -181,15 +181,15 @@ export function SpendingChart({
                       value: t('axis.age'),
                       position: 'insideBottom',
                       offset: -10,
-                      style: { textAnchor: 'middle', fontSize: '12px', fill: '#000000' },
+                      style: { textAnchor: 'middle', fontSize: '12px', fill: 'var(--chart-axis)' },
                     }
               }
             />
             <YAxis
               yAxisId="spending"
-              tick={{ fontSize: isMobile ? 10 : 11, fill: '#000000' }}
-              tickLine={{ stroke: '#000000' }}
-              axisLine={{ stroke: '#000000' }}
+              tick={{ fontSize: isMobile ? 10 : 11, fill: 'var(--chart-axis)' }}
+              tickLine={{ stroke: 'var(--chart-axis)' }}
+              axisLine={{ stroke: 'var(--chart-axis)' }}
               tickFormatter={formatCurrencyShort}
               label={
                 isMobile
@@ -198,7 +198,7 @@ export function SpendingChart({
                       value: t('axis.spending'),
                       angle: -90,
                       position: 'insideLeft',
-                      style: { textAnchor: 'middle', fontSize: '12px', fill: '#000000' },
+                      style: { textAnchor: 'middle', fontSize: '12px', fill: 'var(--chart-axis)' },
                     }
               }
             />
@@ -206,15 +206,15 @@ export function SpendingChart({
               <YAxis
                 yAxisId="rate"
                 orientation="right"
-                tick={{ fontSize: 11, fill: '#000000' }}
-                tickLine={{ stroke: '#000000' }}
-                axisLine={{ stroke: '#000000' }}
+                tick={{ fontSize: 11, fill: 'var(--chart-axis)' }}
+                tickLine={{ stroke: 'var(--chart-axis)' }}
+                axisLine={{ stroke: 'var(--chart-axis)' }}
                 tickFormatter={(value) => formatPercentage(value as number)}
                 label={{
                   value: t('axis.withdrawalRate'),
                   angle: 90,
                   position: 'insideRight',
-                  style: { textAnchor: 'middle', fontSize: '12px', fill: '#000000' },
+                  style: { textAnchor: 'middle', fontSize: '12px', fill: 'var(--chart-axis)' },
                 }}
                 domain={[0, 'auto']}
               />
@@ -239,24 +239,24 @@ export function SpendingChart({
               }}
               labelFormatter={(age) => t('tooltip.label', { age })}
               contentStyle={{
-                backgroundColor: '#ffffff',
-                border: '3px solid #05080f',
+                backgroundColor: 'var(--neo-white)',
+                border: '3px solid var(--neo-black)',
                 borderRadius: '0px',
                 fontSize: isMobile ? '11px' : '12px',
-                boxShadow: '6px 6px 0px #05080f',
+                boxShadow: 'var(--shadow-neo-md)',
               }}
               labelStyle={{
                 fontWeight: 800,
-                color: '#05080f',
+                color: 'var(--neo-black)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
               }}
-              cursor={{ stroke: '#05080f', strokeWidth: 1.5, strokeDasharray: '4 2' }}
+              cursor={{ stroke: 'var(--neo-black)', strokeWidth: 1.5, strokeDasharray: '4 2' }}
             />
             {/* Retirement age marker */}
             <ReferenceLine
               x={retirementAge}
-              stroke="#dc2626"
+              stroke="var(--chart-retirement)"
               strokeDasharray="5 5"
               strokeWidth={2}
               label={
@@ -265,27 +265,31 @@ export function SpendingChart({
                   : {
                       value: t('markers.retirement'),
                       position: 'top',
-                      style: { fill: '#dc2626', fontSize: '11px', fontWeight: 'semibold' },
+                      style: {
+                        fill: 'var(--chart-retirement)',
+                        fontSize: '11px',
+                        fontWeight: 'semibold',
+                      },
                     }
               }
             />
             <Bar
               dataKey="spending_p10"
-              fill="#f6c90e"
+              fill="var(--neo-yellow)"
               name={t('legend.p10')}
               radius={0}
               yAxisId="spending"
             />
             <Bar
               dataKey="spending_p50"
-              fill="#0e67f6"
+              fill="var(--neo-blue)"
               name={t('legend.p50')}
               radius={0}
               yAxisId="spending"
             />
             <Bar
               dataKey="spending_p90"
-              fill="#ff3b5c"
+              fill="var(--neo-red)"
               name={t('legend.p90')}
               radius={0}
               yAxisId="spending"
@@ -294,7 +298,7 @@ export function SpendingChart({
               type="monotone"
               dataKey="withdrawal_rate_p50"
               name={t('legend.withdrawalRate')}
-              stroke="#05080f"
+              stroke="var(--chart-axis)"
               strokeWidth={isMobile ? 1.5 : 2}
               yAxisId={isMobile ? 'spending' : 'rate'}
               dot={false}
@@ -303,7 +307,7 @@ export function SpendingChart({
             <Brush
               dataKey="age"
               height={isMobile ? 18 : 22}
-              stroke="#9ca3af"
+              stroke="var(--chart-brush)"
               travellerWidth={isMobile ? 6 : 8}
               startIndex={indexRange.startIndex}
               endIndex={indexRange.endIndex}

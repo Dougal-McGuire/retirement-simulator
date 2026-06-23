@@ -14,6 +14,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
+import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
 import type { SimulationParams, SimulationResults } from '@/types'
 
@@ -78,6 +79,13 @@ export function MobileMenu({
             <LocaleSwitcher className="w-full" />
           </div>
 
+          <div className="space-y-2">
+            <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {t('sections.theme')}
+            </h4>
+            <ThemeSwitcher className="w-full" />
+          </div>
+
           {/* Primary Actions */}
           <div className="space-y-3 border-t-3 border-neo-black pt-4">
             <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -100,12 +108,7 @@ export function MobileMenu({
             )}
 
             {showSetupLink && (
-              <Button
-                variant="secondary"
-                size="lg"
-                asChild
-                className="w-full justify-start"
-              >
+              <Button variant="secondary" size="lg" asChild className="w-full justify-start">
                 <Link href="/setup" onClick={() => setIsOpen(false)}>
                   <SettingsIcon className="mr-2 h-5 w-5" />
                   <span className="flex-1 text-left">{t('actions.goToSetup')}</span>

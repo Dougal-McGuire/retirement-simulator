@@ -16,6 +16,7 @@ import { SuccessRateCard } from '@/components/charts/SuccessRateCard'
 import { PlanDashboard } from '@/components/charts/PlanDashboard'
 import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
+import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { MobileMenu } from '@/components/navigation/MobileMenu'
 import { VersionInfo } from '@/components/navigation/VersionInfo'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
@@ -85,20 +86,20 @@ export default function SimulationPage() {
   }, []) // Empty deps - only run once on mount
 
   return (
-    <div className="relative min-h-screen pb-16">
+    <div className="app-page app-page-simulation relative min-h-screen pb-16">
       {/* Live region for screen readers to announce simulation results */}
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {successRate != null &&
           `Simulation complete. Success rate: ${formattedSuccessRate}. ${successMessage}`}
       </div>
       {/* Header */}
-      <header id="navigation" className="relative z-10 pt-12 pb-10">
-        <div className="mx-auto max-w-[90rem] px-2 sm:px-3 lg:px-4">
-          <div className="neo-surface relative overflow-hidden px-8 py-10 transition-neo">
-            <div className="relative flex flex-col gap-10">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+      <header id="navigation" className="theme-page-header relative z-10 pt-12 pb-10">
+        <div className="theme-container mx-auto max-w-[90rem] px-2 sm:px-3 lg:px-4">
+          <div className="theme-hero neo-surface relative overflow-hidden px-8 py-10 transition-neo">
+            <div className="theme-hero-layout relative flex flex-col gap-10">
+              <div className="theme-hero-top flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex flex-col gap-5 text-neo-black">
-                  <div className="flex flex-wrap items-center gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.32em]">
+                  <div className="theme-badge-row flex flex-wrap items-center gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.32em]">
                     <span className="neo-chip bg-neo-yellow text-neo-black shadow-neo-sm">
                       {t('header.badges.engine')}
                     </span>
@@ -123,8 +124,9 @@ export default function SimulationPage() {
                 </div>
 
                 {/* Desktop Actions */}
-                <div className="hidden lg:flex lg:flex-col lg:gap-3">
+                <div className="theme-action-strip hidden lg:flex lg:flex-col lg:gap-3">
                   <LocaleSwitcher className="w-48" />
+                  <ThemeSwitcher className="w-48" />
                   <GenerateReportButton
                     results={results}
                     params={params}
@@ -139,7 +141,7 @@ export default function SimulationPage() {
                 </div>
 
                 {/* Mobile Actions */}
-                <div className="flex items-center gap-3 lg:hidden">
+                <div className="theme-mobile-actions flex items-center gap-3 lg:hidden">
                   <GenerateReportButton
                     results={results}
                     params={params}
@@ -164,12 +166,12 @@ export default function SimulationPage() {
 
       <main
         id="main-content"
-        className="relative z-10 mx-auto mt-2 max-w-[90rem] px-2 pb-16 sm:px-3 lg:px-4"
+        className="theme-container relative z-10 mx-auto mt-2 max-w-[90rem] px-2 pb-16 sm:px-3 lg:px-4"
       >
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[432px_minmax(0,1fr)] xl:grid-cols-[456px_minmax(0,1fr)]">
-          <ParameterSidebar />
+        <div className="theme-page-grid theme-simulation-grid grid grid-cols-1 gap-8 lg:grid-cols-[432px_minmax(0,1fr)] xl:grid-cols-[456px_minmax(0,1fr)]">
+          <ParameterSidebar className="theme-parameter-sidebar" />
 
-          <div className="space-y-6">
+          <div className="theme-content theme-simulation-content space-y-6">
             {isLoading ? (
               <Card>
                 <SuccessRateCardSkeleton />
@@ -184,7 +186,7 @@ export default function SimulationPage() {
 
             <PlanDashboard params={params} results={results} isLoading={isLoading} />
 
-            <Card>
+            <Card className="theme-action-card">
               <CardHeader className="border-b-3 border-neo-black bg-neo-white">
                 <CardTitle className="text-xl font-extrabold tracking-[0.16em]">
                   {t('actionSummary.title')}
@@ -210,7 +212,7 @@ export default function SimulationPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="theme-chart-card">
               <CardHeader className="border-b-3 border-neo-black bg-neo-white">
                 <CardTitle className="text-xl font-extrabold tracking-[0.16em]">
                   {t('charts.asset.title')}

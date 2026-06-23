@@ -14,7 +14,7 @@ function Skeleton({ className, shimmer = true, ...props }: SkeletonProps) {
       {...props}
     >
       {shimmer && (
-        <div className="pointer-events-none absolute inset-[-120%] animate-[shimmer_2s_linear_infinite] bg-[linear-gradient(120deg,transparent 0%,rgba(14,103,246,0.12) 40%,rgba(14,103,246,0.12) 60%,transparent 100%)]" />
+        <div className="pointer-events-none absolute inset-[-120%] animate-[shimmer_2s_linear_infinite] bg-[linear-gradient(120deg,transparent_0%,rgb(var(--neo-blue-rgb)_/_0.12)_40%,rgb(var(--neo-blue-rgb)_/_0.12)_60%,transparent_100%)]" />
       )}
     </div>
   )
@@ -36,7 +36,7 @@ function ChartSkeleton({ className }: { className?: string }) {
 
         {/* Chart area with animated bars */}
         <div className="relative h-64 border-3 border-neo-black bg-neo-white p-4">
-          <div className="absolute inset-[-150%] bg-[linear-gradient(115deg,transparent 0%,rgba(14,103,246,0.08) 45%,rgba(242,196,15,0.14) 55%,transparent 100%)] animate-[shimmer_3s_linear_infinite]" />
+          <div className="absolute inset-[-150%] animate-[shimmer_3s_linear_infinite] bg-[linear-gradient(115deg,transparent_0%,rgb(var(--neo-blue-rgb)_/_0.08)_45%,rgb(var(--neo-yellow-rgb)_/_0.14)_55%,transparent_100%)]" />
 
           {/* Animated chart lines */}
           <div className="relative flex h-full items-end justify-between gap-[6px]">
@@ -72,7 +72,8 @@ function ChartSkeleton({ className }: { className?: string }) {
               <div
                 className="h-3 w-3 border-3 border-neo-black animate-pulse"
                 style={{
-                  backgroundColor: i === 0 ? '#ff3b5c' : i === 1 ? '#0e67f6' : '#2ad576',
+                  backgroundColor:
+                    i === 0 ? 'var(--neo-red)' : i === 1 ? 'var(--neo-blue)' : 'var(--neo-green)',
                   animationDelay: `${i * 220}ms`,
                 }}
               />
