@@ -5,6 +5,7 @@ set -euo pipefail
 INTERVAL_SECONDS="${IMPROVEMENT_LOOP_INTERVAL_SECONDS:-600}"
 DEPLOY_INTERVAL_SECONDS="${IMPROVEMENT_LOOP_DEPLOY_INTERVAL_SECONDS:-7200}"
 RUNS_DIR="${IMPROVEMENT_LOOP_RUNS_DIR:-.improvement-loop}"
+CODEX_MODEL="${IMPROVEMENT_LOOP_CODEX_MODEL:-gpt-5.4-mini}"
 MODE="loop"
 DEPLOY="false"
 
@@ -119,12 +120,27 @@ codex_exec() {
   local log_file="$4"
 
   pnpm exec codex \
+    -m "$CODEX_MODEL" \
     -a never \
     --sandbox "$sandbox" \
     exec \
     -C "$ROOT_DIR" \
     -o "$output_file" \
     - <"$prompt_file" >"$log_file" 2>&1
+}
+
+run_codex_preflight() {
+  local preflight_dir="$RUNS_PATH/preflight"
+  mkdir -p "$preflight_dir"
+
+  cat >"$preflight_dir/prompt.md" <<'PROMPT'
+Reply with exactly: improvement-loop-preflight-ok
+PROMPT
+
+  codex_exec read-only \
+    "$preflight_dir/prompt.md" \
+    "$preflight_dir/report.md" \
+    "$preflight_dir/log"
 }
 
 run_audit_threads() {
@@ -304,6 +320,7 @@ main() {
   mkdir -p "$RUNS_PATH"
   require_clean_start
   ensure_deploy_ready
+  run_codex_preflight
 
   while true; do
     run_cycle
