@@ -189,6 +189,7 @@ export default function SetupPage() {
                   max={70}
                   step={1}
                   className="w-full"
+                  aria-label={t('personal.fields.retirementAge.label')}
                 />
                 <div className="mt-3 flex items-center justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>{formatInteger(50)}</span>
@@ -451,6 +452,7 @@ export default function SetupPage() {
                   max={12}
                   step={0.5}
                   className="w-full"
+                  aria-label={t('market.averageROI.label')}
                 />
                 <div className="mt-3 flex items-center justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>{formatPercent(0.03, 0)}</span>
@@ -481,6 +483,7 @@ export default function SetupPage() {
                   max={6}
                   step={0.1}
                   className="w-full"
+                  aria-label={t('market.averageInflation.label')}
                 />
                 <div className="mt-3 flex items-center justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>{formatPercent(0.01, 0)}</span>
@@ -511,6 +514,7 @@ export default function SetupPage() {
                   max={5000}
                   step={100}
                   className="w-full"
+                  aria-label={t('market.simulationRuns.label')}
                 />
                 <div className="mt-3 flex items-center justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>{formatInteger(100)}</span>

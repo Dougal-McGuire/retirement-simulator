@@ -85,7 +85,7 @@ describe('Engine math correctness', () => {
       inflationVolatility: 0,
       capitalGainsTax: 25,
       customExpenses: [
-        { id: 'health', name: 'Health', amount: 100 / 12, interval: 'monthly' }, // total annual = 100
+        { id: 'health', name: 'Health', amount: 100 / 12, interval: 'monthly' as const }, // total annual = 100
       ],
       simulationRuns: 1,
     }
@@ -117,7 +117,7 @@ describe('Engine math correctness', () => {
       inflationVolatility: 0,
       capitalGainsTax: 0,
       customExpenses: [
-        { id: 'health', name: 'Health', amount: baseMonthlyExpense, interval: 'monthly' },
+        { id: 'health', name: 'Health', amount: baseMonthlyExpense, interval: 'monthly' as const },
       ],
       simulationRuns: 1,
     }

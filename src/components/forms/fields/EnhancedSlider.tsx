@@ -16,6 +16,7 @@ interface EnhancedSliderProps {
   className?: string
   showControls?: boolean
   hint?: string
+  ariaLabel?: string
 }
 
 export function EnhancedSlider({
@@ -28,6 +29,7 @@ export function EnhancedSlider({
   className,
   showControls = true,
   hint,
+  ariaLabel,
 }: EnhancedSliderProps) {
   const handleDecrement = () => {
     const newValue = Math.max(min, value - step)
@@ -73,6 +75,7 @@ export function EnhancedSlider({
             min={min}
             max={max}
             step={step}
+            aria-label={ariaLabel}
           />
         </div>
 

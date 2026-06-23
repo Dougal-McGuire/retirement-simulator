@@ -4,11 +4,11 @@ const renderToBuffer = jest.fn()
 const mapReportDataToContent = jest.fn((data) => data)
 
 jest.mock('@react-pdf/renderer', () => ({
-  renderToBuffer: (...args: unknown[]) => renderToBuffer(...args),
+  renderToBuffer: (document: unknown) => renderToBuffer(document),
 }))
 
 jest.mock('@/lib/pdf-generator/reportTypes', () => ({
-  mapReportDataToContent: (...args: unknown[]) => mapReportDataToContent(...args),
+  mapReportDataToContent: (data: unknown) => mapReportDataToContent(data),
 }))
 
 jest.mock('@/lib/pdf-generator/react-pdf', () => ({

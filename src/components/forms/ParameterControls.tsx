@@ -128,7 +128,13 @@ function ParameterField({ label, tooltip, children }: ParameterFieldProps) {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <HelpCircle className="h-3.5 w-3.5 cursor-help text-muted-foreground/70 transition-colors hover:text-neo-black" />
+              <button
+                type="button"
+                className="inline-flex h-5 w-5 items-center justify-center text-muted-foreground/70 transition-colors hover:text-neo-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neo-blue focus-visible:ring-offset-2 focus-visible:ring-offset-neo-white"
+                aria-label={tooltip}
+              >
+                <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
             </TooltipTrigger>
             <TooltipContent
               side="right"
@@ -785,6 +791,7 @@ export function ParameterControls() {
                   max={12}
                   step={0.25}
                   formatValue={(value) => formatPercent(value / 100, { maximumFractionDigits: 2 })}
+                  ariaLabel={t('fields.annualSavingsGrowthRate.label')}
                 />
               </ParameterField>
             </CollapsibleSection>
@@ -825,6 +832,7 @@ export function ParameterControls() {
                   formatValue={(value) =>
                     formatPercent(value / 100, { maximumFractionDigits: 2 })
                   }
+                  ariaLabel={t('fields.capitalGainsTax.label')}
                 />
               </ParameterField>
             </CollapsibleSection>
@@ -924,6 +932,7 @@ export function ParameterControls() {
                   max={12}
                   step={0.5}
                   formatValue={(value) => formatPercent(value / 100)}
+                  ariaLabel={t('fields.averageROI.label')}
                 />
               </ParameterField>
 
@@ -940,6 +949,7 @@ export function ParameterControls() {
                     step={0.5}
                     formatValue={(value) => formatPercent(value / 100)}
                     hint={`σ = ${formatPercent(params.roiVolatility)}`}
+                    ariaLabel={t('fields.roiVolatility.label')}
                   />
                   <div className="text-center text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground border-2 border-neo-black bg-neo-blue/5 px-3 py-2">
                     {t('fields.roiVolatility.range', {
@@ -968,6 +978,7 @@ export function ParameterControls() {
                   max={6}
                   step={0.1}
                   formatValue={(value) => formatPercent(value / 100)}
+                  ariaLabel={t('fields.averageInflation.label')}
                 />
               </ParameterField>
 
@@ -982,6 +993,7 @@ export function ParameterControls() {
                   max={3}
                   step={0.1}
                   formatValue={(value) => formatPercent(value / 100)}
+                  ariaLabel={t('fields.inflationVolatility.label')}
                 />
               </ParameterField>
             </CollapsibleSection>
@@ -1003,6 +1015,7 @@ export function ParameterControls() {
                     max={10000}
                     step={100}
                     formatValue={(value) => formatNumber(value)}
+                    ariaLabel={t('fields.simulationRuns.label')}
                   />
                   <div className="text-center border-2 border-neo-black px-3 py-2">
                     <span

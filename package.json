@@ -14,13 +14,19 @@
     "build": "next build --turbopack",
     "start": "next start",
     "stop": "lsof -ti:3000 | xargs kill -9 2>/dev/null || echo 'Port 3000 is already free'",
-    "restart": "npm run stop && npm run dev",
+    "restart": "pnpm run stop && pnpm run dev",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix"
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "verify:deploy": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e",
+    "improve:once": "bash scripts/improvement-loop.sh --once",
+    "improve:loop": "bash scripts/improvement-loop.sh",
+    "improve:deploy-loop": "IMPROVEMENT_LOOP_DEPLOY_INTERVAL_SECONDS=7200 bash scripts/improvement-loop.sh --deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

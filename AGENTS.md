@@ -32,7 +32,7 @@
 - Name tests `*.test.ts` and keep them near the code under test.
 - Prioritize coverage for `src/lib/simulation` and transformation logic.
 - Use defaults from `src/types` (for example `DEFAULT_PARAMS`) to build stable fixtures.
-- Run `npm test` before opening a PR; use `npx jest --coverage` when validating broader changes.
+- Run `pnpm test` before opening a PR; use `pnpm exec jest --coverage` when validating broader changes.
 
 ## Commit & Pull Request Guidelines
 - Keep commits concise and imperative (for example `Fix Vercel PDF generation`).
