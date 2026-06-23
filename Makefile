@@ -1,7 +1,7 @@
 .PHONY: improvement-loop improve-loop improve-once verify verify-deploy
 
 improvement-loop:
-	IMPROVEMENT_LOOP_CODEX_MODEL=$${IMPROVEMENT_LOOP_CODEX_MODEL:-gpt-5.4-mini} IMPROVEMENT_LOOP_INTERVAL_SECONDS=600 IMPROVEMENT_LOOP_DEPLOY_INTERVAL_SECONDS=7200 bash scripts/improvement-loop.sh --deploy
+	IMPROVEMENT_LOOP_CODEX_MODEL=$${IMPROVEMENT_LOOP_CODEX_MODEL:-gpt-5.5} IMPROVEMENT_LOOP_INTERVAL_SECONDS=600 IMPROVEMENT_LOOP_DEPLOY_INTERVAL_SECONDS=7200 bash scripts/improvement-loop.sh --deploy
 
 improve-loop: improvement-loop
 

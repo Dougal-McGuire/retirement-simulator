@@ -19,7 +19,7 @@ pnpm improve:deploy-loop
 
 `make improvement-loop` is the unattended production loop. It wakes every 10 minutes and deploys every other hour. The script refuses to start automated edit cycles on a dirty worktree unless `IMPROVEMENT_LOOP_ALLOW_DIRTY=1` is set. In normal loop mode, a cycle that produces changes stops so they can be reviewed and committed. In deploy mode, a changed cycle must be on `main`; the script keeps verified cycle changes pending, runs the full validation gate every other hour, commits, and pushes clean `main`.
 
-The loop pins Codex to `gpt-5.4-mini` by default because Codex CLI `0.98.0` cannot run the newer default `gpt-5.5` model. Override with `IMPROVEMENT_LOOP_CODEX_MODEL=<model>` after upgrading the CLI.
+The loop uses `gpt-5.5` by default. Override with `IMPROVEMENT_LOOP_CODEX_MODEL=<model>` when you want a cheaper or faster unattended pass.
 
 ## Thread Model
 
