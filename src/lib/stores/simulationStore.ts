@@ -14,6 +14,19 @@ import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 const STORAGE_KEY = 'retirement-simulator-params'
 const SAVED_SETUPS_KEY = 'retirement-simulator-saved-setups'
 
+type PersistedParams = Partial<Omit<SimulationParams, 'customExpenses' | 'oneTimeIncomes'>> & {
+  annualExpenses?: unknown
+  customExpenses?: unknown
+  monthlyExpenses?: unknown
+  oneTimeIncomes?: unknown
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+const toPersistedParams = (params: unknown): PersistedParams =>
+  isRecord(params) ? (params as PersistedParams) : {}
+
 const sanitizeOneTimeIncomes = (incomes: unknown): OneTimeIncome[] => {
   if (!Array.isArray(incomes)) return []
   return incomes
@@ -67,11 +80,11 @@ const sanitizeCustomExpenses = (expenses: unknown): CustomExpense[] => {
 }
 
 // Migration helper: convert old monthlyExpenses/annualExpenses to customExpenses
-const migrateToCustomExpenses = (params: any): CustomExpense[] => {
+const migrateToCustomExpenses = (params: PersistedParams): CustomExpense[] => {
   const expenses: CustomExpense[] = []
 
   // Migrate monthly expenses
-  if (params.monthlyExpenses && typeof params.monthlyExpenses === 'object') {
+  if (isRecord(params.monthlyExpenses)) {
     const monthlyLabels: Record<string, string> = {
       health: 'Health Insurance',
       food: 'Groceries',
@@ -92,7 +105,7 @@ const migrateToCustomExpenses = (params: any): CustomExpense[] => {
   }
 
   // Migrate annual expenses
-  if (params.annualExpenses && typeof params.annualExpenses === 'object') {
+  if (isRecord(params.annualExpenses)) {
     const annualLabels: Record<string, string> = {
       vacations: 'Vacations',
       repairs: 'Home Repairs',
@@ -111,6 +124,28 @@ const migrateToCustomExpenses = (params: any): CustomExpense[] => {
   }
 
   return expenses
+}
+
+const normalizePersistedParams = (persistedParams: unknown): SimulationParams => {
+  const params = toPersistedParams(persistedParams)
+  const {
+    annualExpenses: _annualExpenses,
+    customExpenses: rawCustomExpenses,
+    monthlyExpenses: _monthlyExpenses,
+    oneTimeIncomes: rawOneTimeIncomes,
+    ...currentParams
+  } = params
+  const sanitizedCustomExpenses = sanitizeCustomExpenses(rawCustomExpenses)
+  const migratedCustomExpenses = migrateToCustomExpenses(params)
+  const customExpenses =
+    Array.isArray(rawCustomExpenses) ? sanitizedCustomExpenses : migratedCustomExpenses
+
+  return {
+    ...DEFAULT_PARAMS,
+    ...currentParams,
+    oneTimeIncomes: sanitizeOneTimeIncomes(rawOneTimeIncomes),
+    customExpenses,
+  }
 }
 
 const normalizeParamsForFingerprint = (params: Partial<SimulationParams>): SimulationParams => ({
@@ -276,27 +311,8 @@ export const useSimulationStore = create<SimulationStore>()(
           try {
             const stored = localStorage.getItem(STORAGE_KEY)
             if (stored) {
-              const params = JSON.parse(stored) as any
-
-              // Migrate old data structure if needed or sanitize existing data
-              let customExpenses: CustomExpense[]
-              if (
-                params.customExpenses &&
-                Array.isArray(params.customExpenses) &&
-                params.customExpenses.length > 0
-              ) {
-                customExpenses = sanitizeCustomExpenses(params.customExpenses)
-              } else {
-                customExpenses = migrateToCustomExpenses(params)
-              }
-
               set({
-                params: {
-                  ...DEFAULT_PARAMS,
-                  ...params,
-                  oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
-                  customExpenses,
-                },
+                params: normalizePersistedParams(JSON.parse(stored) as unknown),
                 error: null,
               })
               // Run simulation with loaded parameters
@@ -336,27 +352,8 @@ export const useSimulationStore = create<SimulationStore>()(
           const { savedSetups } = get()
           const setup = savedSetups.find((s) => s.id === id)
           if (setup) {
-            const params = setup.params as any
-
-            // Migrate old data structure if needed or sanitize existing data
-            let customExpenses: CustomExpense[]
-            if (
-              params.customExpenses &&
-              Array.isArray(params.customExpenses) &&
-              params.customExpenses.length > 0
-            ) {
-              customExpenses = sanitizeCustomExpenses(params.customExpenses)
-            } else {
-              customExpenses = migrateToCustomExpenses(params)
-            }
-
             set({
-              params: {
-                ...DEFAULT_PARAMS,
-                ...params,
-                oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
-                customExpenses,
-              },
+              params: normalizePersistedParams(setup.params),
               error: null,
             })
             // Run simulation with loaded parameters
@@ -406,25 +403,14 @@ export const useSimulationStore = create<SimulationStore>()(
                 const savedSetups = JSON.parse(stored) as SavedSetup[]
                 state.savedSetups = savedSetups.map((setup) => ({
                   ...setup,
-                  params: {
-                    ...DEFAULT_PARAMS,
-                    ...setup.params,
-                    oneTimeIncomes: sanitizeOneTimeIncomes(setup.params.oneTimeIncomes),
-                    customExpenses: sanitizeCustomExpenses(setup.params.customExpenses),
-                  },
+                  params: normalizePersistedParams(setup.params),
                 }))
               }
             } catch (error) {
               console.error('Failed to load saved setups:', error)
             }
             if (state.params) {
-              state.params = {
-                ...DEFAULT_PARAMS,
-                ...state.params,
-              }
-              state.params.oneTimeIncomes = sanitizeOneTimeIncomes(state.params.oneTimeIncomes)
-              // Ensure customExpenses is always an array
-              state.params.customExpenses = sanitizeCustomExpenses(state.params.customExpenses)
+              state.params = normalizePersistedParams(state.params)
             }
 
             // Validate that persisted results match current params

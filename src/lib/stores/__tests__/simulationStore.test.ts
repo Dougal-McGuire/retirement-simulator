@@ -3,6 +3,7 @@ import { DEFAULT_PARAMS, type SimulationParams, type SimulationResults } from '@
 type StoreModule = typeof import('../simulationStore')
 
 const STORE_KEY = 'retirement-simulator-store'
+const STORAGE_KEY = 'retirement-simulator-params'
 
 function createResults(params: SimulationParams): SimulationResults {
   return {
@@ -157,6 +158,128 @@ describe('simulationStore', () => {
     expect(useSimulationStore.getState().results).toBeNull()
   })
 
+  it('migrates legacy expenses when hydrating persisted params', () => {
+    const { customExpenses: _customExpenses, ...legacyParams } = DEFAULT_PARAMS
+    const { useSimulationStore } = loadStore({
+      [STORE_KEY]: JSON.stringify({
+        state: {
+          params: {
+            ...legacyParams,
+            monthlyExpenses: {
+              food: 725,
+              health: 0,
+            },
+            annualExpenses: {
+              repairs: 3400,
+              vacations: 'skip-invalid',
+            },
+          },
+          results: null,
+          savedSetups: [],
+        },
+        version: 0,
+      }),
+    })
+
+    expect(useSimulationStore.getState().params.customExpenses).toEqual([
+      {
+        id: 'migrated-monthly-food',
+        name: 'Groceries',
+        amount: 725,
+        interval: 'monthly',
+      },
+      {
+        id: 'migrated-annual-repairs',
+        name: 'Home Repairs',
+        amount: 3400,
+        interval: 'annual',
+      },
+    ])
+  })
+
+  it('preserves current custom expenses when hydrating persisted params', () => {
+    const currentExpense = {
+      id: 'current-rent',
+      name: 'Rent',
+      amount: 2500,
+      interval: 'monthly' as const,
+    }
+    const { useSimulationStore } = loadStore({
+      [STORE_KEY]: JSON.stringify({
+        state: {
+          params: {
+            ...DEFAULT_PARAMS,
+            customExpenses: [currentExpense],
+          },
+          results: null,
+          savedSetups: [],
+        },
+        version: 0,
+      }),
+    })
+
+    expect(useSimulationStore.getState().params.customExpenses).toEqual([currentExpense])
+  })
+
+  it('preserves empty current custom expenses instead of reviving stale legacy expenses', () => {
+    const { useSimulationStore } = loadStore({
+      [STORE_KEY]: JSON.stringify({
+        state: {
+          params: {
+            ...DEFAULT_PARAMS,
+            customExpenses: [],
+            monthlyExpenses: {
+              food: 725,
+            },
+            annualExpenses: {
+              repairs: 3400,
+            },
+          },
+          results: null,
+          savedSetups: [],
+        },
+        version: 0,
+      }),
+    })
+
+    expect(useSimulationStore.getState().params.customExpenses).toEqual([])
+  })
+
+  it('migrates legacy expenses when loading params from storage', () => {
+    const { customExpenses: _customExpenses, ...legacyParams } = DEFAULT_PARAMS
+    const { useSimulationStore } = loadStore({
+      [STORAGE_KEY]: JSON.stringify({
+        ...legacyParams,
+        monthlyExpenses: {
+          utilities: 410,
+        },
+        annualExpenses: {
+          carMaintenance: 1600,
+        },
+      }),
+    })
+    const runSimulation = jest.fn(async () => {})
+    useSimulationStore.setState({ runSimulation })
+
+    useSimulationStore.getState().loadFromStorage()
+
+    expect(runSimulation).toHaveBeenCalledTimes(1)
+    expect(useSimulationStore.getState().params.customExpenses).toEqual([
+      {
+        id: 'migrated-monthly-utilities',
+        name: 'Utilities',
+        amount: 410,
+        interval: 'monthly',
+      },
+      {
+        id: 'migrated-annual-carMaintenance',
+        name: 'Car Maintenance',
+        amount: 1600,
+        interval: 'annual',
+      },
+    ])
+  })
+
   it('runs one simulation when loading a saved setup', async () => {
     const { useSimulationStore } = loadStore()
     const runSimulation = jest.fn(async () => {
@@ -178,6 +301,14 @@ describe('simulationStore', () => {
           params: {
             ...DEFAULT_PARAMS,
             currentAge: 59,
+            customExpenses: [
+              {
+                id: 'saved-current-expense',
+                name: 'Saved expense',
+                amount: 1200,
+                interval: 'annual',
+              },
+            ],
           },
         },
       ],
@@ -188,5 +319,13 @@ describe('simulationStore', () => {
 
     expect(runSimulation).toHaveBeenCalledTimes(1)
     expect(useSimulationStore.getState().params.currentAge).toBe(59)
+    expect(useSimulationStore.getState().params.customExpenses).toEqual([
+      {
+        id: 'saved-current-expense',
+        name: 'Saved expense',
+        amount: 1200,
+        interval: 'annual',
+      },
+    ])
   })
 })
