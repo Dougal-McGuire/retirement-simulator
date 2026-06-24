@@ -21,6 +21,8 @@ pnpm improve:deploy-loop
 
 The loop uses `gpt-5.5` by default. Override with `IMPROVEMENT_LOOP_CODEX_MODEL=<model>` when you want a cheaper or faster unattended pass.
 
+If an audit, critic, or validation gate rejects a cycle, the loop writes the report and rejected patch under `.improvement-loop/<cycle>/`, resets that cycle's uncommitted changes, and continues on the next 10-minute wake-up.
+
 ## Thread Model
 
 Use separate threads for distinct work. Give each thread a narrow ownership area and tell it not to revert other edits.

@@ -43,6 +43,10 @@ has_changes() {
   [[ -n "$(git -C "$ROOT_DIR" status --porcelain)" ]]
 }
 
+has_unpushed_commits() {
+  [[ -n "$(git -C "$ROOT_DIR" log --oneline '@{u}..HEAD' 2>/dev/null)" ]]
+}
+
 require_clean_start() {
   if has_changes && [[ "${IMPROVEMENT_LOOP_ALLOW_DIRTY:-0}" != "1" ]]; then
     cat >&2 <<'MSG'
@@ -163,7 +167,7 @@ run_audit_threads() {
 
   if [[ "$failed" != "0" ]]; then
     echo "One or more audit threads failed. See $run_dir/*.log." >&2
-    exit 1
+    return 1
   fi
 }
 
@@ -230,8 +234,28 @@ run_critic_thread() {
 
   if ! grep -q '^RELEASE_DECISION: PASS$' "$run_dir/critic-$scope.report.md"; then
     echo "Critic blocked the $scope. See $run_dir/critic-$scope.report.md." >&2
-    exit 1
+    return 1
   fi
+}
+
+reject_current_changes() {
+  local run_dir="$1"
+  local reason="$2"
+
+  {
+    echo "$reason"
+    echo
+    git -C "$ROOT_DIR" status --short
+  } >"$run_dir/rejected-status.txt"
+
+  if has_changes; then
+    git -C "$ROOT_DIR" diff >"$run_dir/rejected.patch"
+    git -C "$ROOT_DIR" diff --cached >"$run_dir/rejected-staged.patch"
+    git -C "$ROOT_DIR" reset --hard HEAD
+    git -C "$ROOT_DIR" clean -fd
+  fi
+
+  echo "[$(date -Is)] Rejected cycle changes: $reason. Patch saved in $run_dir."
 }
 
 run_cycle_validation_gate() {
@@ -260,12 +284,26 @@ run_cycle() {
   mkdir -p "$run_dir"
 
   echo "[$(date -Is)] Starting improvement cycle $CYCLE_NUMBER ($run_dir)"
-  run_audit_threads "$run_dir"
-  run_worker_thread "$run_dir"
+  if ! run_audit_threads "$run_dir"; then
+    echo "[$(date -Is)] Skipping cycle $CYCLE_NUMBER after audit thread failure."
+    return
+  fi
+
+  if ! run_worker_thread "$run_dir"; then
+    reject_current_changes "$run_dir" "worker thread failed"
+    return
+  fi
 
   if has_changes; then
-    run_critic_thread "$run_dir" cycle
-    run_cycle_validation_gate
+    if ! run_critic_thread "$run_dir" cycle; then
+      reject_current_changes "$run_dir" "cycle critic blocked the worker patch"
+      return
+    fi
+
+    if ! run_cycle_validation_gate >"$run_dir/cycle-validation.log" 2>&1; then
+      reject_current_changes "$run_dir" "cycle validation gate failed"
+      return
+    fi
 
     if [[ "$DEPLOY" != "true" ]]; then
       cat >&2 <<'MSG'
@@ -291,7 +329,7 @@ maybe_commit_and_deploy() {
 
   LAST_DEPLOY_CHECK="$now"
 
-  if ! has_changes; then
+  if ! has_changes && ! has_unpushed_commits; then
     echo "[$(date -Is)] Two-hour deploy gate reached; no changes to commit or deploy."
     return
   fi
@@ -302,16 +340,26 @@ maybe_commit_and_deploy() {
   mkdir -p "$run_dir"
 
   echo "[$(date -Is)] Two-hour deploy gate reached; validating, committing, and pushing."
-  run_critic_thread "$run_dir" deploy
-  run_deploy_gate
-
-  git -C "$ROOT_DIR" add -A
-  if git -C "$ROOT_DIR" diff --cached --quiet; then
-    echo "[$(date -Is)] No staged changes after validation."
+  if ! run_critic_thread "$run_dir" deploy; then
+    reject_current_changes "$run_dir" "deploy critic blocked accumulated changes"
     return
   fi
 
-  git -C "$ROOT_DIR" commit -m "${IMPROVEMENT_LOOP_COMMIT_MESSAGE:-Automated improvement loop cycle}"
+  if ! run_deploy_gate >"$run_dir/deploy-validation.log" 2>&1; then
+    reject_current_changes "$run_dir" "deploy validation gate failed"
+    return
+  fi
+
+  if has_changes; then
+    git -C "$ROOT_DIR" add -A
+    if git -C "$ROOT_DIR" diff --cached --quiet; then
+      echo "[$(date -Is)] No staged changes after validation."
+      return
+    fi
+
+    git -C "$ROOT_DIR" commit -m "${IMPROVEMENT_LOOP_COMMIT_MESSAGE:-Automated improvement loop cycle}"
+  fi
+
   git -C "$ROOT_DIR" push origin main
 }
 
