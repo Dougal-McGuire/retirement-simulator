@@ -31,6 +31,9 @@ export function EnhancedSlider({
   hint,
   ariaLabel,
 }: EnhancedSliderProps) {
+  const decrementAriaLabel = ariaLabel ? `Decrease ${ariaLabel}` : 'Decrease value'
+  const incrementAriaLabel = ariaLabel ? `Increase ${ariaLabel}` : 'Increase value'
+
   const handleDecrement = () => {
     const newValue = Math.max(min, value - step)
     onChange(newValue)
@@ -62,7 +65,7 @@ export function EnhancedSlider({
             onClick={handleDecrement}
             disabled={value <= min}
             className="h-7 w-7 flex-shrink-0 border-2 border-neo-black bg-neo-white shadow-neo-xs hover:-translate-y-[1px] hover:-translate-x-[1px] hover:shadow-neo-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0"
-            aria-label="Decrease value"
+            aria-label={decrementAriaLabel}
           >
             <Minus className="h-3 w-3" />
           </Button>
@@ -87,7 +90,7 @@ export function EnhancedSlider({
             onClick={handleIncrement}
             disabled={value >= max}
             className="h-7 w-7 flex-shrink-0 border-2 border-neo-black bg-neo-white shadow-neo-xs hover:-translate-y-[1px] hover:-translate-x-[1px] hover:shadow-neo-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0"
-            aria-label="Increase value"
+            aria-label={incrementAriaLabel}
           >
             <Plus className="h-3 w-3" />
           </Button>

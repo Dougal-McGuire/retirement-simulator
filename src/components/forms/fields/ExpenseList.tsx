@@ -135,6 +135,16 @@ export function ExpenseList({
     handleAdd()
   }
 
+  const getExpenseContext = (expense: CustomExpense) => {
+    const intervalLabel =
+      expense.interval === 'monthly' ? strings.intervalMonthly : strings.intervalAnnual
+
+    return `${expense.name}, ${formatCurrency(expense.amount)}, ${intervalLabel}`
+  }
+
+  const getExpenseControlLabel = (label: string, expense: CustomExpense) =>
+    `${label}: ${getExpenseContext(expense)}`
+
   const renderExpenseRow = (expense: CustomExpense) => {
     const isEditing = editingId === expense.id
 
@@ -149,9 +159,13 @@ export function ExpenseList({
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder={strings.namePlaceholder}
                 className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase"
+                aria-label={getExpenseControlLabel(strings.nameLabel, expense)}
               />
               <Select value={editInterval} onValueChange={(v) => setEditInterval(v as ExpenseInterval)}>
-                <SelectTrigger className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.62rem]">
+                <SelectTrigger
+                  className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.62rem]"
+                  aria-label={getExpenseControlLabel(strings.intervalLabel, expense)}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -176,6 +190,7 @@ export function ExpenseList({
                 }
               }}
               className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase text-right"
+              aria-label={getExpenseControlLabel(strings.amountLabel, expense)}
             />
           </td>
           <td className="w-20 px-2 py-3 text-center">
@@ -186,7 +201,7 @@ export function ExpenseList({
                 size="icon"
                 onClick={handleSaveEdit}
                 className="h-8 w-8 text-green-600 hover:bg-green-600 hover:text-neo-white"
-                aria-label={strings.save}
+                aria-label={getExpenseControlLabel(strings.save, expense)}
               >
                 <Check className="h-3.5 w-3.5" />
               </Button>
@@ -196,7 +211,7 @@ export function ExpenseList({
                 size="icon"
                 onClick={handleCancelEdit}
                 className="h-8 w-8 text-neo-black hover:bg-neo-red hover:text-neo-white"
-                aria-label={strings.cancel}
+                aria-label={getExpenseControlLabel(strings.cancel, expense)}
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
@@ -230,7 +245,7 @@ export function ExpenseList({
                 size="icon"
                 onClick={() => handleStartEdit(expense)}
                 className="h-8 w-8 text-neo-black hover:bg-neo-blue hover:text-neo-white"
-                aria-label={strings.edit}
+                aria-label={getExpenseControlLabel(strings.edit, expense)}
               >
                 <Edit2 className="h-3.5 w-3.5" />
               </Button>
@@ -241,7 +256,7 @@ export function ExpenseList({
               size="icon"
               onClick={() => onRemove(expense.id)}
               className="h-8 w-8 text-neo-black hover:bg-neo-red hover:text-neo-white"
-              aria-label={strings.remove}
+              aria-label={getExpenseControlLabel(strings.remove, expense)}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

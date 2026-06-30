@@ -144,6 +144,15 @@ export function OneTimeIncomeList({
     handleAdd()
   }
 
+  const getIncomeName = (income: OneTimeIncome) =>
+    income.name || `${strings.agePrefix} ${income.age}`
+
+  const getIncomeContext = (income: OneTimeIncome) =>
+    `${getIncomeName(income)}, ${strings.agePrefix} ${income.age}, ${formatCurrency(income.amount)}`
+
+  const getIncomeControlLabel = (label: string, income: OneTimeIncome) =>
+    `${label}: ${getIncomeContext(income)}`
+
   const renderIncomeRow = (income: OneTimeIncome & { index: number }) => {
     const isEditing = editingIndex === income.index
 
@@ -158,6 +167,7 @@ export function OneTimeIncomeList({
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder={strings.namePlaceholder}
                 className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase"
+                aria-label={getIncomeControlLabel(strings.nameLabel, income)}
               />
               <Input
                 type="number"
@@ -173,6 +183,7 @@ export function OneTimeIncomeList({
                   }
                 }}
                 className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase"
+                aria-label={getIncomeControlLabel(strings.ageLabel, income)}
               />
             </div>
           </td>
@@ -191,6 +202,7 @@ export function OneTimeIncomeList({
                 }
               }}
               className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase text-right"
+              aria-label={getIncomeControlLabel(strings.amountLabel, income)}
             />
           </td>
           <td className="w-20 px-2 py-3 text-center">
@@ -201,7 +213,7 @@ export function OneTimeIncomeList({
                 size="icon"
                 onClick={handleSaveEdit}
                 className="h-8 w-8 text-green-600 hover:bg-green-600 hover:text-neo-white"
-                aria-label={strings.save}
+                aria-label={getIncomeControlLabel(strings.save, income)}
               >
                 <Check className="h-3.5 w-3.5" />
               </Button>
@@ -211,7 +223,7 @@ export function OneTimeIncomeList({
                 size="icon"
                 onClick={handleCancelEdit}
                 className="h-8 w-8 text-neo-black hover:bg-neo-red hover:text-neo-white"
-                aria-label={strings.cancel}
+                aria-label={getIncomeControlLabel(strings.cancel, income)}
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
@@ -245,7 +257,7 @@ export function OneTimeIncomeList({
                 size="icon"
                 onClick={() => handleStartEdit(income)}
                 className="h-8 w-8 text-neo-black hover:bg-neo-blue hover:text-neo-white"
-                aria-label={strings.edit}
+                aria-label={getIncomeControlLabel(strings.edit, income)}
               >
                 <Edit2 className="h-3.5 w-3.5" />
               </Button>
@@ -256,7 +268,7 @@ export function OneTimeIncomeList({
               size="icon"
               onClick={() => onRemove(income.index)}
               className="h-8 w-8 text-neo-black hover:bg-neo-red hover:text-neo-white"
-              aria-label={strings.remove}
+              aria-label={getIncomeControlLabel(strings.remove, income)}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
