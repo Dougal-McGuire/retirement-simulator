@@ -1,15 +1,44 @@
-.PHONY: improvement-loop improve-loop improve-once verify verify-deploy
+.DEFAULT_GOAL := help
 
-improvement-loop:
+MSG ?= Update retirement simulator
+
+.PHONY: help dev sync commit push deploy improvement-loop improve-loop improve-once verify verify-deploy
+
+help: ## List available targets.
+	@awk 'BEGIN {FS = ":.*##"; print "Available targets:"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+dev: ## Start the local Next.js dev server.
+	pnpm dev
+
+sync: ## Pull the latest upstream changes for the current branch.
+	git pull --rebase --autostash
+
+commit: ## Stage and commit all current changes. Override with MSG="...".
+	git add -A
+	@if git diff --cached --quiet; then \
+		echo "No changes to commit."; \
+	else \
+		git commit -m "$(MSG)"; \
+	fi
+
+push: ## Push the current branch to its upstream.
+	git push
+
+deploy: ## Sync, commit, and push the current branch.
+	$(MAKE) sync
+	$(MAKE) commit
+	$(MAKE) push
+
+improvement-loop: ## Run the continuous improvement loop with periodic deploys.
 	IMPROVEMENT_LOOP_CODEX_MODEL=$${IMPROVEMENT_LOOP_CODEX_MODEL:-gpt-5.5} IMPROVEMENT_LOOP_INTERVAL_SECONDS=600 IMPROVEMENT_LOOP_DEPLOY_INTERVAL_SECONDS=7200 bash scripts/improvement-loop.sh --deploy
 
-improve-loop: improvement-loop
+improve-loop: improvement-loop ## Alias for improvement-loop.
 
-improve-once:
+improve-once: ## Run one improvement-loop cycle.
 	bash scripts/improvement-loop.sh --once
 
-verify:
+verify: ## Run lint, typecheck, tests, and build.
 	pnpm verify
 
-verify-deploy:
+verify-deploy: ## Run the full deploy verification gate.
 	pnpm verify:deploy
