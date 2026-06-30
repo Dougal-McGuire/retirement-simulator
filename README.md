@@ -1,6 +1,6 @@
 ## Tech Stack
 
-- Node.js 22, pnpm 10, TypeScript 5
+- Node.js 24.14.0, pnpm 10, TypeScript 5
 - Next.js 16 (App Router) with Turbopack
 - Tailwind CSS 4 + shadcn/ui
 - zod, react-hook-form
@@ -9,7 +9,7 @@
 
 ## Prerequisites
 
-- Node.js >= 22 (see `package.json#engines`)
+- Node.js 24.14.0 or newer on the Node 24 line (see `package.json#engines`)
 - pnpm >= 10 (`corepack enable` recommended)
 
 ## Development
