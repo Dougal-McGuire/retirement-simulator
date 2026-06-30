@@ -2,7 +2,7 @@
 
 MSG ?= Update retirement simulator
 
-.PHONY: help dev sync commit push deploy improvement-loop improve-loop improve-once verify verify-deploy
+.PHONY: help dev sync commit push deploy improvement-loop improve-loop improve-once improve-deploy verify verify-deploy
 
 help: ## List available targets.
 	@awk 'BEGIN {FS = ":.*##"; print "Available targets:"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -29,13 +29,16 @@ deploy: ## Sync, commit, and push the current branch.
 	$(MAKE) commit
 	$(MAKE) push
 
-improvement-loop: ## Run the continuous improvement loop with periodic deploys.
-	IMPROVEMENT_LOOP_CODEX_MODEL=$${IMPROVEMENT_LOOP_CODEX_MODEL:-gpt-5.5} IMPROVEMENT_LOOP_INTERVAL_SECONDS=600 IMPROVEMENT_LOOP_DEPLOY_INTERVAL_SECONDS=7200 bash scripts/improvement-loop.sh --deploy
+improvement-loop: improve-loop ## Alias for improve-loop.
 
-improve-loop: improvement-loop ## Alias for improvement-loop.
+improve-loop: ## Run the continuous improvement loop without deploys.
+	IMPROVEMENT_LOOP_CODEX_MODEL=$${IMPROVEMENT_LOOP_CODEX_MODEL:-gpt-5.5} IMPROVEMENT_LOOP_INTERVAL_SECONDS=600 bash scripts/improvement-loop.sh
 
 improve-once: ## Run one improvement-loop cycle.
 	bash scripts/improvement-loop.sh --once
+
+improve-deploy: ## Run the improvement loop with periodic verified deploys.
+	IMPROVEMENT_LOOP_CODEX_MODEL=$${IMPROVEMENT_LOOP_CODEX_MODEL:-gpt-5.5} IMPROVEMENT_LOOP_INTERVAL_SECONDS=600 IMPROVEMENT_LOOP_DEPLOY_INTERVAL_SECONDS=7200 bash scripts/improvement-loop.sh --deploy
 
 verify: ## Run lint, typecheck, tests, and build.
 	pnpm verify

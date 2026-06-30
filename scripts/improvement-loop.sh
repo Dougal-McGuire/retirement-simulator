@@ -6,11 +6,40 @@ INTERVAL_SECONDS="${IMPROVEMENT_LOOP_INTERVAL_SECONDS:-600}"
 DEPLOY_INTERVAL_SECONDS="${IMPROVEMENT_LOOP_DEPLOY_INTERVAL_SECONDS:-7200}"
 RUNS_DIR="${IMPROVEMENT_LOOP_RUNS_DIR:-.improvement-loop}"
 CODEX_MODEL="${IMPROVEMENT_LOOP_CODEX_MODEL:-gpt-5.5}"
+RESET_REJECTED_CHANGES="${IMPROVEMENT_LOOP_RESET_REJECTED:-0}"
 MODE="loop"
 DEPLOY="false"
 
+print_usage() {
+  cat <<'USAGE'
+Usage: scripts/improvement-loop.sh [options]
+
+Options:
+  --once             Run one improvement cycle, then exit.
+  --deploy          Enable periodic verified commits and pushes from main.
+  --interval N      Seconds between loop cycles. Default: 600.
+  --deploy-interval N
+                    Seconds between deploy gates when --deploy is enabled.
+                    Default: 7200.
+  --reset-rejected  Restore legacy behavior: reset rejected changes and continue.
+  --help            Show this help.
+
+Environment:
+  IMPROVEMENT_LOOP_CODEX_MODEL       Codex model to use. Default: gpt-5.5.
+  IMPROVEMENT_LOOP_ALLOW_DIRTY=1     Allow starting from a dirty worktree.
+  IMPROVEMENT_LOOP_ALLOW_ENGINE_MISMATCH=1
+                                    Warn, instead of fail, when Node/pnpm do
+                                    not match package.json engines.
+  IMPROVEMENT_LOOP_RESET_REJECTED=1  Reset rejected changes and continue.
+USAGE
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --help)
+      print_usage
+      exit 0
+      ;;
     --once)
       MODE="once"
       shift
@@ -27,8 +56,13 @@ while [[ $# -gt 0 ]]; do
       DEPLOY_INTERVAL_SECONDS="$2"
       shift 2
       ;;
+    --reset-rejected)
+      RESET_REJECTED_CHANGES="1"
+      shift
+      ;;
     *)
       echo "Unknown argument: $1" >&2
+      print_usage >&2
       exit 2
       ;;
   esac
@@ -36,6 +70,7 @@ done
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNS_PATH="$ROOT_DIR/$RUNS_DIR"
+LOCK_DIR="$RUNS_PATH/.lock"
 LAST_DEPLOY_CHECK="$(date +%s)"
 CYCLE_NUMBER=0
 
@@ -45,6 +80,143 @@ has_changes() {
 
 has_unpushed_commits() {
   [[ -n "$(git -C "$ROOT_DIR" log --oneline '@{u}..HEAD' 2>/dev/null)" ]]
+}
+
+has_protected_env_changes() {
+  git -C "$ROOT_DIR" status --porcelain --untracked-files=all |
+    awk '
+      {
+        path = substr($0, 4)
+        if (path ~ /^\.env($|\.)/ && path != ".env.example") {
+          found = 1
+        }
+      }
+      END { exit found ? 0 : 1 }
+    '
+}
+
+print_protected_env_changes() {
+  git -C "$ROOT_DIR" status --porcelain --untracked-files=all |
+    awk '
+      {
+        path = substr($0, 4)
+        if (path ~ /^\.env($|\.)/ && path != ".env.example") {
+          print
+        }
+      }
+    '
+}
+
+require_command() {
+  local name="$1"
+
+  if ! command -v "$name" >/dev/null 2>&1; then
+    echo "Refusing to start improvement loop: required command '$name' is not available." >&2
+    exit 1
+  fi
+}
+
+check_package_engines() {
+  node <<'NODE'
+const fs = require('fs')
+
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+const nodeEngine = pkg.engines && pkg.engines.node
+const pnpmEngine = pkg.engines && pkg.engines.pnpm
+const currentNodeMajor = Number(process.versions.node.split('.')[0])
+const pnpmVersion = process.env.IMPROVEMENT_LOOP_PNPM_VERSION || ''
+const currentPnpmMajor = Number(pnpmVersion.split('.')[0])
+const allowMismatch = process.env.IMPROVEMENT_LOOP_ALLOW_ENGINE_MISMATCH === '1'
+const warnings = []
+
+if (nodeEngine === '>=22 <23' && currentNodeMajor !== 22) {
+  warnings.push(`Node ${process.versions.node} does not satisfy ${nodeEngine}`)
+}
+
+if (pnpmEngine === '>=10' && Number.isFinite(currentPnpmMajor) && currentPnpmMajor < 10) {
+  warnings.push(`pnpm ${pnpmVersion} does not satisfy ${pnpmEngine}`)
+}
+
+if (warnings.length > 0) {
+  const prefix = allowMismatch ? 'Warning' : 'Refusing to start improvement loop'
+  for (const warning of warnings) {
+    console.error(`${prefix}: ${warning}.`)
+  }
+  if (!allowMismatch) {
+    console.error('Use the repo Node version, or set IMPROVEMENT_LOOP_ALLOW_ENGINE_MISMATCH=1 to continue anyway.')
+    process.exit(1)
+  }
+}
+NODE
+}
+
+run_preflight_checks() {
+  require_command git
+  require_command node
+  require_command pnpm
+
+  local pnpm_version
+  pnpm_version="$(pnpm --version)"
+  IMPROVEMENT_LOOP_PNPM_VERSION="$pnpm_version" check_package_engines
+}
+
+acquire_lock() {
+  mkdir -p "$RUNS_PATH"
+
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    echo "$$" >"$LOCK_DIR/pid"
+    trap 'rm -f "$LOCK_DIR/pid"; rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+    return
+  fi
+
+  local existing_pid
+  existing_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+  if [[ -n "$existing_pid" ]] && kill -0 "$existing_pid" 2>/dev/null; then
+    echo "Refusing to start improvement loop: another loop is already running as PID $existing_pid." >&2
+    exit 1
+  fi
+
+  echo "Removing stale improvement-loop lock." >&2
+  rm -f "$LOCK_DIR/pid"
+  rmdir "$LOCK_DIR" 2>/dev/null || {
+    echo "Refusing to start improvement loop: stale lock directory could not be removed: $LOCK_DIR" >&2
+    exit 1
+  }
+
+  mkdir "$LOCK_DIR"
+  echo "$$" >"$LOCK_DIR/pid"
+  trap 'rm -f "$LOCK_DIR/pid"; rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+}
+
+ensure_no_protected_env_changes() {
+  local context="$1"
+
+  if ! has_protected_env_changes; then
+    return
+  fi
+
+  echo "Refusing $context because protected env-local files are changed:" >&2
+  print_protected_env_changes >&2
+  return 1
+}
+
+ensure_not_behind_upstream() {
+  local upstream
+  upstream="$(git -C "$ROOT_DIR" rev-parse --abbrev-ref --symbolic-full-name '@{u}')" || return 1
+
+  if ! git -C "$ROOT_DIR" fetch --quiet; then
+    echo "Refusing deploy: failed to fetch upstream before deploy." >&2
+    return 1
+  fi
+
+  local counts behind
+  counts="$(git -C "$ROOT_DIR" rev-list --left-right --count HEAD..."$upstream")" || return 1
+  behind="$(awk '{print $2}' <<<"$counts")"
+
+  if (( behind > 0 )); then
+    echo "Refusing deploy: current branch is behind $upstream by $behind commit(s). Pull/rebase first." >&2
+    return 1
+  fi
 }
 
 require_clean_start() {
@@ -251,6 +423,16 @@ reject_current_changes() {
   if has_changes; then
     git -C "$ROOT_DIR" diff >"$run_dir/rejected.patch"
     git -C "$ROOT_DIR" diff --cached >"$run_dir/rejected-staged.patch"
+
+    if [[ "$RESET_REJECTED_CHANGES" != "1" ]]; then
+      cat >&2 <<MSG
+[$(date -Is)] Rejected cycle changes: $reason.
+The rejected diff was saved in $run_dir/rejected.patch and left in the worktree for manual review.
+Set IMPROVEMENT_LOOP_RESET_REJECTED=1 or pass --reset-rejected to restore the legacy reset-and-continue behavior.
+MSG
+      exit 1
+    fi
+
     git -C "$ROOT_DIR" reset --hard HEAD
     git -C "$ROOT_DIR" clean -fd
   fi
@@ -291,6 +473,11 @@ run_cycle() {
 
   if ! run_worker_thread "$run_dir"; then
     reject_current_changes "$run_dir" "worker thread failed"
+    return
+  fi
+
+  if ! ensure_no_protected_env_changes "cycle validation"; then
+    reject_current_changes "$run_dir" "worker changed protected env-local files"
     return
   fi
 
@@ -340,6 +527,16 @@ maybe_commit_and_deploy() {
   mkdir -p "$run_dir"
 
   echo "[$(date -Is)] Two-hour deploy gate reached; validating, committing, and pushing."
+  if ! ensure_not_behind_upstream; then
+    reject_current_changes "$run_dir" "deploy branch is behind upstream"
+    return
+  fi
+
+  if ! ensure_no_protected_env_changes "deploy"; then
+    reject_current_changes "$run_dir" "deploy includes protected env-local files"
+    return
+  fi
+
   if ! run_critic_thread "$run_dir" deploy; then
     reject_current_changes "$run_dir" "deploy critic blocked accumulated changes"
     return
@@ -365,7 +562,8 @@ maybe_commit_and_deploy() {
 
 main() {
   cd "$ROOT_DIR"
-  mkdir -p "$RUNS_PATH"
+  run_preflight_checks
+  acquire_lock
   require_clean_start
   ensure_deploy_ready
   run_codex_preflight

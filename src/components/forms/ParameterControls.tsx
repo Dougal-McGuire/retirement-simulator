@@ -349,6 +349,15 @@ export function ParameterControls() {
     [baseNumberFormat, format]
   )
 
+  const getSliderAriaLabels = React.useCallback(
+    (label: string) => ({
+      ariaLabel: label,
+      decrementAriaLabel: t('sliderControls.decrease', { label }),
+      incrementAriaLabel: t('sliderControls.increase', { label }),
+    }),
+    [t]
+  )
+
   const handleInputChange = (field: keyof SimulationParams, value: number) => {
     suspendAndDebounceResume()
     updateParams({ [field]: value })
@@ -803,7 +812,7 @@ export function ParameterControls() {
                       formatValue={(value) =>
                         formatPercent(value / 100, { maximumFractionDigits: 2 })
                       }
-                      ariaLabel={t('fields.annualSavingsGrowthRate.label')}
+                      {...getSliderAriaLabels(t('fields.annualSavingsGrowthRate.label'))}
                     />
                   </ParameterField>
                 </CollapsibleSection>
@@ -842,7 +851,7 @@ export function ParameterControls() {
                       formatValue={(value) =>
                         formatPercent(value / 100, { maximumFractionDigits: 2 })
                       }
-                      ariaLabel={t('fields.capitalGainsTax.label')}
+                      {...getSliderAriaLabels(t('fields.capitalGainsTax.label'))}
                     />
                   </ParameterField>
                 </CollapsibleSection>
@@ -942,7 +951,7 @@ export function ParameterControls() {
                       max={12}
                       step={0.5}
                       formatValue={(value) => formatPercent(value / 100)}
-                      ariaLabel={t('fields.averageROI.label')}
+                      {...getSliderAriaLabels(t('fields.averageROI.label'))}
                     />
                   </ParameterField>
 
@@ -959,7 +968,7 @@ export function ParameterControls() {
                         step={0.5}
                         formatValue={(value) => formatPercent(value / 100)}
                         hint={`σ = ${formatPercent(params.roiVolatility)}`}
-                        ariaLabel={t('fields.roiVolatility.label')}
+                        {...getSliderAriaLabels(t('fields.roiVolatility.label'))}
                       />
                       <div className="text-center text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground border-2 border-neo-black bg-neo-blue/5 px-3 py-2">
                         {t('fields.roiVolatility.range', {
@@ -988,7 +997,7 @@ export function ParameterControls() {
                       max={6}
                       step={0.1}
                       formatValue={(value) => formatPercent(value / 100)}
-                      ariaLabel={t('fields.averageInflation.label')}
+                      {...getSliderAriaLabels(t('fields.averageInflation.label'))}
                     />
                   </ParameterField>
 
@@ -1003,7 +1012,7 @@ export function ParameterControls() {
                       max={3}
                       step={0.1}
                       formatValue={(value) => formatPercent(value / 100)}
-                      ariaLabel={t('fields.inflationVolatility.label')}
+                      {...getSliderAriaLabels(t('fields.inflationVolatility.label'))}
                     />
                   </ParameterField>
                 </CollapsibleSection>
@@ -1057,7 +1066,7 @@ export function ParameterControls() {
                           formatValue={(value) =>
                             formatPercent(value / 100, { maximumFractionDigits: 2 })
                           }
-                          ariaLabel={t('fields.dsWithdrawalRate.label')}
+                          {...getSliderAriaLabels(t('fields.dsWithdrawalRate.label'))}
                         />
                       </ParameterField>
 
@@ -1074,7 +1083,7 @@ export function ParameterControls() {
                           formatValue={(value) =>
                             formatPercent(value / 100, { maximumFractionDigits: 1 })
                           }
-                          ariaLabel={t('fields.dsCeilingRate.label')}
+                          {...getSliderAriaLabels(t('fields.dsCeilingRate.label'))}
                         />
                       </ParameterField>
 
@@ -1091,7 +1100,7 @@ export function ParameterControls() {
                           formatValue={(value) =>
                             formatPercent(value / 100, { maximumFractionDigits: 1 })
                           }
-                          ariaLabel={t('fields.dsFloorRate.label')}
+                          {...getSliderAriaLabels(t('fields.dsFloorRate.label'))}
                         />
                       </ParameterField>
                     </div>
@@ -1115,7 +1124,7 @@ export function ParameterControls() {
                         max={10000}
                         step={100}
                         formatValue={(value) => formatNumber(value)}
-                        ariaLabel={t('fields.simulationRuns.label')}
+                        {...getSliderAriaLabels(t('fields.simulationRuns.label'))}
                       />
                       <div className="text-center border-2 border-neo-black px-3 py-2">
                         <span

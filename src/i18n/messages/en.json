@@ -314,6 +314,10 @@
       "financial": "Financial",
       "simulation": "Simulation"
     },
+    "sliderControls": {
+      "decrease": "Decrease {label}",
+      "increase": "Increase {label}"
+    },
     "sections": {
       "personal": {
         "timeline": {
