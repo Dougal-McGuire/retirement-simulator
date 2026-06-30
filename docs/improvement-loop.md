@@ -27,7 +27,7 @@ The loop uses `gpt-5.5` by default. Override with `IMPROVEMENT_LOOP_CODEX_MODEL=
 
 If an audit, critic, or validation gate rejects a cycle, the loop writes the report and rejected patch under `.improvement-loop/<cycle>/`, leaves the rejected diff in the worktree, and stops for manual review. Set `IMPROVEMENT_LOOP_RESET_REJECTED=1` or pass `--reset-rejected` only when you intentionally want the old reset-and-continue behavior.
 
-The loop enforces the repo engines from `package.json`; use Node 22 (`.node-version` / `.nvmrc`) and pnpm 10. Set `IMPROVEMENT_LOOP_ALLOW_ENGINE_MISMATCH=1` only for a deliberate local experiment.
+The loop enforces the repo engines from `package.json`; use Node 24.14.0 (`.node-version` / `.nvmrc`) and pnpm 10. Set `IMPROVEMENT_LOOP_ALLOW_ENGINE_MISMATCH=1` only for a deliberate local experiment.
 
 ## Thread Model
 

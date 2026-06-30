@@ -123,17 +123,78 @@ const fs = require('fs')
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
 const nodeEngine = pkg.engines && pkg.engines.node
 const pnpmEngine = pkg.engines && pkg.engines.pnpm
-const currentNodeMajor = Number(process.versions.node.split('.')[0])
 const pnpmVersion = process.env.IMPROVEMENT_LOOP_PNPM_VERSION || ''
-const currentPnpmMajor = Number(pnpmVersion.split('.')[0])
 const allowMismatch = process.env.IMPROVEMENT_LOOP_ALLOW_ENGINE_MISMATCH === '1'
 const warnings = []
 
-if (nodeEngine === '>=22 <23' && currentNodeMajor !== 22) {
+function parseVersion(version) {
+  const match = String(version).trim().match(/^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?/)
+  if (!match) return null
+
+  return [
+    Number(match[1]),
+    Number(match[2] || 0),
+    Number(match[3] || 0),
+  ]
+}
+
+function compareVersions(left, right) {
+  for (let index = 0; index < 3; index += 1) {
+    if (left[index] > right[index]) return 1
+    if (left[index] < right[index]) return -1
+  }
+
+  return 0
+}
+
+function satisfiesComparator(version, comparator) {
+  const match = comparator.match(/^(>=|>|<=|<|=)?v?(\d+(?:\.\d+){0,2})$/)
+  if (!match) {
+    throw new Error(`Unsupported engine comparator: ${comparator}`)
+  }
+
+  const operator = match[1] || '='
+  const expected = parseVersion(match[2])
+  const comparison = compareVersions(version, expected)
+
+  switch (operator) {
+    case '>=':
+      return comparison >= 0
+    case '>':
+      return comparison > 0
+    case '<=':
+      return comparison <= 0
+    case '<':
+      return comparison < 0
+    case '=':
+      return comparison === 0
+    default:
+      throw new Error(`Unsupported engine operator: ${operator}`)
+  }
+}
+
+function satisfiesRange(versionString, range) {
+  if (!range) return true
+
+  const version = parseVersion(versionString)
+  if (!version) {
+    throw new Error(`Unsupported version: ${versionString}`)
+  }
+
+  return String(range)
+    .split('||')
+    .some((group) => {
+      const comparators = group.trim().split(/\s+/).filter(Boolean)
+      return comparators.length > 0 &&
+        comparators.every((comparator) => satisfiesComparator(version, comparator))
+    })
+}
+
+if (nodeEngine && !satisfiesRange(process.versions.node, nodeEngine)) {
   warnings.push(`Node ${process.versions.node} does not satisfy ${nodeEngine}`)
 }
 
-if (pnpmEngine === '>=10' && Number.isFinite(currentPnpmMajor) && currentPnpmMajor < 10) {
+if (pnpmEngine && !satisfiesRange(pnpmVersion, pnpmEngine)) {
   warnings.push(`pnpm ${pnpmVersion} does not satisfy ${pnpmEngine}`)
 }
 
