@@ -56,7 +56,7 @@ export function sampleLognormalFactorFromArithmetic(mean: number, stdev: number)
 /**
  * Calculate percentiles from a sorted array
  * @param arr - Array of numbers
- * @param percentile - Percentile to calculate (0-100)
+ * @param percentile - Percentile to calculate (0-100; values outside this range are clamped)
  * @returns The value at the given percentile
  */
 export function calculatePercentile(arr: number[], percentile: number): number {
@@ -65,7 +65,12 @@ export function calculatePercentile(arr: number[], percentile: number): number {
 }
 
 function calculatePercentileFromSortedArray(sorted: number[], percentile: number): number {
-  const index = (percentile / 100) * (sorted.length - 1)
+  if (sorted.length === 0) {
+    return 0
+  }
+
+  const boundedPercentile = normalizePercentile(percentile)
+  const index = (boundedPercentile / 100) * (sorted.length - 1)
   const lower = Math.floor(index)
   const upper = Math.ceil(index)
 
@@ -74,6 +79,18 @@ function calculatePercentileFromSortedArray(sorted: number[], percentile: number
   } else {
     return sorted[lower] * (upper - index) + sorted[upper] * (index - lower)
   }
+}
+
+function normalizePercentile(percentile: number): number {
+  if (percentile === Number.POSITIVE_INFINITY) {
+    return 100
+  }
+
+  if (!Number.isFinite(percentile)) {
+    return 0
+  }
+
+  return Math.min(100, Math.max(0, percentile))
 }
 
 /**

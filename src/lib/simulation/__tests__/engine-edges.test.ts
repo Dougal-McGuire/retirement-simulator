@@ -1,5 +1,8 @@
 import { runMonteCarloSimulation, calculateCombinedExpenses } from '../engine'
+import type { SimulationParams } from '@/types'
 import { DEFAULT_PARAMS } from '@/types'
+
+const unsafeSimulationParams = (params: unknown): SimulationParams => params as SimulationParams
 
 describe('Simulation Engine - edges', () => {
   it('spending percentiles are monotonic (p10 <= p50 <= p90)', () => {
@@ -32,7 +35,7 @@ describe('Simulation Engine - edges', () => {
   })
 
   it('normalizes temporary invalid inputs so simulation still returns finite outputs', () => {
-    const params = {
+    const params = unsafeSimulationParams({
       ...DEFAULT_PARAMS,
       currentAge: 30,
       retirementAge: 20,
@@ -44,7 +47,7 @@ describe('Simulation Engine - edges', () => {
       dsCeilingRate: -1,
       dsFloorRate: 1,
       simulationRuns: 0,
-    } as typeof DEFAULT_PARAMS
+    })
 
     const results = runMonteCarloSimulation(params)
 

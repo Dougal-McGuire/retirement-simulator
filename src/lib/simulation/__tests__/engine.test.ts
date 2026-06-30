@@ -32,6 +32,19 @@ describe('Simulation Engine', () => {
       expect(calculatePercentile(data, 100)).toBe(10) // maximum
       expect(calculatePercentile(data, 25)).toBe(3.25) // first quartile
     })
+
+    it('should return a finite fallback for empty data', () => {
+      expect(calculatePercentile([], 50)).toBe(0)
+    })
+
+    it('should clamp invalid percentile values to finite boundaries', () => {
+      const data = [1, 2, 3, 4, 5]
+
+      expect(calculatePercentile(data, -10)).toBe(1)
+      expect(calculatePercentile(data, 110)).toBe(5)
+      expect(calculatePercentile(data, Number.NaN)).toBe(1)
+      expect(calculatePercentile(data, Number.POSITIVE_INFINITY)).toBe(5)
+    })
   })
 
   describe('calculatePercentiles', () => {

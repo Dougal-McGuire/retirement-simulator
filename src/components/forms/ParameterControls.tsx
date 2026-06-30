@@ -523,6 +523,7 @@ export function ParameterControls() {
             >
               <SelectTrigger
                 size="sm"
+                aria-label={t('presets.investment.title')}
                 className="h-auto min-h-10 justify-between bg-neo-white py-2"
               >
                 <SelectValue placeholder={t('presets.investment.placeholder')}>
@@ -578,6 +579,7 @@ export function ParameterControls() {
             >
               <SelectTrigger
                 size="sm"
+                aria-label={t('presets.inflation.title')}
                 className="h-auto min-h-10 justify-between bg-neo-white py-2"
               >
                 <SelectValue placeholder={t('presets.inflation.placeholder')}>
@@ -642,6 +644,7 @@ export function ParameterControls() {
                   >
                     <Input
                       type="number"
+                      aria-label={t('fields.currentAge.label')}
                       value={params.currentAge}
                       onChange={(e) =>
                         handleInputChange('currentAge', sanitizeNumberInput(e.target.value))
@@ -658,6 +661,7 @@ export function ParameterControls() {
                     <div>
                       <Input
                         type="number"
+                        aria-label={t('fields.retirementAge.label')}
                         value={params.retirementAge}
                         onChange={(e) =>
                           handleInputChange('retirementAge', sanitizeNumberInput(e.target.value))
@@ -717,6 +721,7 @@ export function ParameterControls() {
                   >
                     <Input
                       type="number"
+                      aria-label={t('fields.legalRetirementAge.label')}
                       value={params.legalRetirementAge}
                       onChange={(e) =>
                         handleInputChange('legalRetirementAge', sanitizeNumberInput(e.target.value))
@@ -732,6 +737,7 @@ export function ParameterControls() {
                   >
                     <Input
                       type="number"
+                      aria-label={t('fields.endAge.label')}
                       value={params.endAge}
                       onChange={(e) =>
                         handleInputChange('endAge', sanitizeNumberInput(e.target.value))
@@ -756,6 +762,7 @@ export function ParameterControls() {
                   >
                     <Input
                       type="number"
+                      aria-label={t('fields.currentAssets.label')}
                       value={params.currentAssets}
                       onChange={(e) =>
                         handleInputChange('currentAssets', sanitizeNumberInput(e.target.value))
@@ -771,6 +778,7 @@ export function ParameterControls() {
                   >
                     <Input
                       type="number"
+                      aria-label={t('fields.annualSavings.label')}
                       value={params.annualSavings}
                       onChange={(e) =>
                         handleInputChange('annualSavings', sanitizeNumberInput(e.target.value))
@@ -811,6 +819,7 @@ export function ParameterControls() {
                   >
                     <Input
                       type="number"
+                      aria-label={t('fields.monthlyPension.label')}
                       value={params.monthlyPension}
                       onChange={(e) =>
                         handleInputChange('monthlyPension', sanitizeNumberInput(e.target.value))
@@ -1211,7 +1220,11 @@ export function ParameterControls() {
                     }}
                     disabled={savedSetups.length === 0}
                   >
-                    <SelectTrigger size="sm" className="flex-1 h-10 w-full">
+                    <SelectTrigger
+                      size="sm"
+                      aria-label={t('saved.actions.loadPlaceholder')}
+                      className="flex-1 h-10 w-full"
+                    >
                       <SelectValue
                         placeholder={
                           savedSetups.length === 0
