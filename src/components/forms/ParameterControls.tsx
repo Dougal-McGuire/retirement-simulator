@@ -42,8 +42,13 @@ import {
   useSetAutoRunSuspended,
 } from '@/lib/stores/simulationStore'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
-import { DEFAULT_PARAMS, SimulationParams, type OneTimeIncome, type CustomExpense } from '@/types'
-
+import {
+  DEFAULT_PARAMS,
+  type CustomExpense,
+  type OneTimeIncome,
+  type SimulationParams,
+  type WithdrawalStrategy,
+} from '@/types'
 
 // Preset configurations
 const INVESTMENT_PRESETS = [
@@ -96,6 +101,11 @@ const INFLATION_PRESETS = [
     },
   },
 ] as const
+
+const WITHDRAWAL_STRATEGIES = [
+  'vanguardDynamic',
+  'fixedReal',
+] as const satisfies readonly WithdrawalStrategy[]
 
 const sanitizeNumberInput = (rawValue: string): number => {
   // Allow empty input during editing - will be clamped on blur
@@ -204,7 +214,10 @@ export function ParameterControls() {
   const [saveDialogOpen, setSaveDialogOpen] = React.useState(false)
   const [setupName, setSetupName] = React.useState('')
   const [selectedSetupId, setSelectedSetupId] = React.useState('')
-  const [lastLoadedSetup, setLastLoadedSetup] = React.useState<{ name: string; timestamp: number } | null>(null)
+  const [lastLoadedSetup, setLastLoadedSetup] = React.useState<{
+    name: string
+    timestamp: number
+  } | null>(null)
   const params = useSimulationParams()
   const updateParams = useUpdateParams()
   const setAutoRunSuspended = useSetAutoRunSuspended()
@@ -241,18 +254,17 @@ export function ParameterControls() {
   )
   const oneTimeIncomes = params.oneTimeIncomes ?? []
   const defaultOneTimeIncomeAge = React.useMemo(
-    () =>
-      Math.min(
-        params.endAge,
-        Math.max(params.retirementAge, params.currentAge + 1)
-      ),
+    () => Math.min(params.endAge, Math.max(params.retirementAge, params.currentAge + 1)),
     [params.currentAge, params.endAge, params.retirementAge]
   )
   const clampOneTimeIncomeAge = React.useCallback(
     (age: number) => Math.min(params.endAge, Math.max(params.currentAge, Math.round(age))),
     [params.currentAge, params.endAge]
   )
-  const sanitizeIncomeAmount = React.useCallback((amount: number) => Math.max(0, Math.round(amount)), [])
+  const sanitizeIncomeAmount = React.useCallback(
+    (amount: number) => Math.max(0, Math.round(amount)),
+    []
+  )
 
   React.useEffect(() => {
     if (params.retirementAge < params.currentAge) {
@@ -342,12 +354,13 @@ export function ParameterControls() {
     updateParams({ [field]: value })
   }
 
+  const handleWithdrawalStrategyChange = (withdrawalStrategy: WithdrawalStrategy) => {
+    suspendAndDebounceResume()
+    updateParams({ withdrawalStrategy })
+  }
+
   // Helper to create onBlur handler that clamps values to constraints
-  const createClampingBlurHandler = (
-    field: keyof SimulationParams,
-    min?: number,
-    max?: number
-  ) => {
+  const createClampingBlurHandler = (field: keyof SimulationParams, min?: number, max?: number) => {
     return () => {
       const currentValue = params[field] as number
       let clampedValue = currentValue
@@ -367,7 +380,9 @@ export function ParameterControls() {
   }
 
   const handleAddExpense = (expense: Omit<CustomExpense, 'id'>) => {
-    const sanitizedAmount = Number.isFinite(expense.amount) ? Math.max(0, Math.round(expense.amount)) : 0
+    const sanitizedAmount = Number.isFinite(expense.amount)
+      ? Math.max(0, Math.round(expense.amount))
+      : 0
     const trimmedName = expense.name.trim()
     if (!trimmedName || sanitizedAmount === 0) return
     suspendAndDebounceResume()
@@ -502,11 +517,14 @@ export function ParameterControls() {
               value={investmentPresetKey ?? 'custom'}
               onValueChange={(value) => {
                 if (value !== 'custom') {
-                  applyInvestmentPreset(value as typeof INVESTMENT_PRESETS[number]['key'])
+                  applyInvestmentPreset(value as (typeof INVESTMENT_PRESETS)[number]['key'])
                 }
               }}
             >
-              <SelectTrigger size="sm" className="h-auto min-h-10 justify-between bg-neo-white py-2">
+              <SelectTrigger
+                size="sm"
+                className="h-auto min-h-10 justify-between bg-neo-white py-2"
+              >
                 <SelectValue placeholder={t('presets.investment.placeholder')}>
                   {investmentPresetKey ? (
                     <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em]">
@@ -518,7 +536,8 @@ export function ParameterControls() {
                         {t('customConfiguration')}
                       </span>
                       <span className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                        {formatPercent(params.averageROI)} ROI · σ {formatPercent(params.roiVolatility)}
+                        {formatPercent(params.averageROI)} ROI · σ{' '}
+                        {formatPercent(params.roiVolatility)}
                       </span>
                     </div>
                   )}
@@ -553,11 +572,14 @@ export function ParameterControls() {
               value={inflationPresetKey ?? 'custom'}
               onValueChange={(value) => {
                 if (value !== 'custom') {
-                  applyInflationPreset(value as typeof INFLATION_PRESETS[number]['key'])
+                  applyInflationPreset(value as (typeof INFLATION_PRESETS)[number]['key'])
                 }
               }}
             >
-              <SelectTrigger size="sm" className="h-auto min-h-10 justify-between bg-neo-white py-2">
+              <SelectTrigger
+                size="sm"
+                className="h-auto min-h-10 justify-between bg-neo-white py-2"
+              >
                 <SelectValue placeholder={t('presets.inflation.placeholder')}>
                   {inflationPresetKey ? (
                     <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em]">
@@ -569,7 +591,8 @@ export function ParameterControls() {
                         {t('customConfiguration')}
                       </span>
                       <span className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                        {formatPercent(params.averageInflation)} · σ {formatPercent(params.inflationVolatility)}
+                        {formatPercent(params.averageInflation)} · σ{' '}
+                        {formatPercent(params.inflationVolatility)}
                       </span>
                     </div>
                   )}
@@ -600,444 +623,512 @@ export function ParameterControls() {
         <Tabs defaultValue="personal" className="w-full">
           <div className="border-3 border-neo-black shadow-neo-sm">
             <TabsList className="grid grid-cols-3 border-b border-neo-black divide-x-[3px] divide-neo-black bg-neo-white">
-              <TabsTrigger value="personal">
-                {t('tabs.personal')}
-              </TabsTrigger>
-              <TabsTrigger value="financial">
-                {t('tabs.financial')}
-              </TabsTrigger>
-              <TabsTrigger value="simulation">
-                {t('tabs.simulation')}
-              </TabsTrigger>
+              <TabsTrigger value="personal">{t('tabs.personal')}</TabsTrigger>
+              <TabsTrigger value="financial">{t('tabs.financial')}</TabsTrigger>
+              <TabsTrigger value="simulation">{t('tabs.simulation')}</TabsTrigger>
             </TabsList>
 
             <div className="border-t-3 border-neo-black bg-neo-white p-6">
-          {/* Personal Information Tab */}
-          <TabsContent value="personal" className="space-y-6">
-            <CollapsibleSection
-              title={t('sections.personal.timeline.title')}
-              description={t('sections.personal.timeline.description')}
-              defaultOpen
-            >
-              <ParameterField
-                label={t('fields.currentAge.label')}
-                tooltip={t('fields.currentAge.tooltip')}
-              >
-                <Input
-                  type="number"
-                  value={params.currentAge}
-                  onChange={(e) =>
-                    handleInputChange(
-                      'currentAge',
-                      sanitizeNumberInput(e.target.value)
-                    )
-                  }
-                  onBlur={createClampingBlurHandler('currentAge', 18, 80)}
-                  className={FIELD_INPUT_CLASS}
-                />
-              </ParameterField>
+              {/* Personal Information Tab */}
+              <TabsContent value="personal" className="space-y-6">
+                <CollapsibleSection
+                  title={t('sections.personal.timeline.title')}
+                  description={t('sections.personal.timeline.description')}
+                  defaultOpen
+                >
+                  <ParameterField
+                    label={t('fields.currentAge.label')}
+                    tooltip={t('fields.currentAge.tooltip')}
+                  >
+                    <Input
+                      type="number"
+                      value={params.currentAge}
+                      onChange={(e) =>
+                        handleInputChange('currentAge', sanitizeNumberInput(e.target.value))
+                      }
+                      onBlur={createClampingBlurHandler('currentAge', 18, 80)}
+                      className={FIELD_INPUT_CLASS}
+                    />
+                  </ParameterField>
 
-              <ParameterField
-                label={t('fields.retirementAge.label')}
-                tooltip={t('fields.retirementAge.tooltip')}
-              >
-                <div>
-                  <Input
-                    type="number"
-                    value={params.retirementAge}
-                    onChange={(e) =>
-                      handleInputChange(
-                        'retirementAge',
-                        sanitizeNumberInput(e.target.value)
-                      )
-                    }
-                    onBlur={createClampingBlurHandler(
-                      'retirementAge',
-                      params.currentAge,
-                      Math.max(params.currentAge, params.legalRetirementAge, 70)
-                    )}
-                    className={FIELD_INPUT_CLASS}
-                  />
+                  <ParameterField
+                    label={t('fields.retirementAge.label')}
+                    tooltip={t('fields.retirementAge.tooltip')}
+                  >
+                    <div>
+                      <Input
+                        type="number"
+                        value={params.retirementAge}
+                        onChange={(e) =>
+                          handleInputChange('retirementAge', sanitizeNumberInput(e.target.value))
+                        }
+                        onBlur={createClampingBlurHandler(
+                          'retirementAge',
+                          params.currentAge,
+                          Math.max(params.currentAge, params.legalRetirementAge, 70)
+                        )}
+                        className={FIELD_INPUT_CLASS}
+                      />
 
-                  {/* Enhanced working years display */}
-                  <div className="mt-4 border-3 border-neo-black bg-gradient-to-r from-neo-blue/10 to-neo-yellow/10 p-4 shadow-neo-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground mb-1">
-                          {t('workingYearsRemaining')}
+                      {/* Enhanced working years display */}
+                      <div className="mt-4 border-3 border-neo-black bg-gradient-to-r from-neo-blue/10 to-neo-yellow/10 p-4 shadow-neo-sm">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground mb-1">
+                              {t('workingYearsRemaining')}
+                            </div>
+                            <div className="text-[1.2rem] font-black uppercase tracking-[0.14em] text-neo-black">
+                              {t('workingYears', { count: remainingWorkingYears })}
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1 text-right">
+                            <div className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-neo-blue">
+                              {t('accumulationPhase')}
+                            </div>
+                            <div className="text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                              {t('agesRange', {
+                                start: params.currentAge,
+                                end: params.retirementAge,
+                              })}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-[1.2rem] font-black uppercase tracking-[0.14em] text-neo-black">
-                          {t('workingYears', { count: remainingWorkingYears })}
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1 text-right">
-                        <div className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-neo-blue">
-                          {t('accumulationPhase')}
-                        </div>
-                        <div className="text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                          {t('agesRange', { start: params.currentAge, end: params.retirementAge })}
+
+                        {/* Visual timeline */}
+                        <div className="mt-3 flex items-center gap-2">
+                          <div
+                            className="h-2 bg-neo-blue border-2 border-neo-black transition-all duration-300"
+                            style={{
+                              width: `${Math.max(10, (remainingWorkingYears / (params.endAge - params.currentAge)) * 100)}%`,
+                            }}
+                          />
+                          <div className="h-2 flex-1 bg-neo-yellow/30 border-2 border-neo-black" />
+                          <div className="text-[0.58rem] font-bold uppercase tracking-[0.1em] text-muted-foreground whitespace-nowrap">
+                            {t('retirementYears', { years: params.endAge - params.retirementAge })}
+                          </div>
                         </div>
                       </div>
                     </div>
+                  </ParameterField>
 
-                    {/* Visual timeline */}
-                    <div className="mt-3 flex items-center gap-2">
-                      <div
-                        className="h-2 bg-neo-blue border-2 border-neo-black transition-all duration-300"
-                        style={{
-                          width: `${Math.max(10, (remainingWorkingYears / (params.endAge - params.currentAge)) * 100)}%`
-                        }}
+                  <ParameterField
+                    label={t('fields.legalRetirementAge.label')}
+                    tooltip={t('fields.legalRetirementAge.tooltip')}
+                  >
+                    <Input
+                      type="number"
+                      value={params.legalRetirementAge}
+                      onChange={(e) =>
+                        handleInputChange('legalRetirementAge', sanitizeNumberInput(e.target.value))
+                      }
+                      onBlur={createClampingBlurHandler('legalRetirementAge', 60, 70)}
+                      className={FIELD_INPUT_CLASS}
+                    />
+                  </ParameterField>
+
+                  <ParameterField
+                    label={t('fields.endAge.label')}
+                    tooltip={t('fields.endAge.tooltip')}
+                  >
+                    <Input
+                      type="number"
+                      value={params.endAge}
+                      onChange={(e) =>
+                        handleInputChange('endAge', sanitizeNumberInput(e.target.value))
+                      }
+                      onBlur={createClampingBlurHandler('endAge', 70, 100)}
+                      className={FIELD_INPUT_CLASS}
+                    />
+                  </ParameterField>
+                </CollapsibleSection>
+              </TabsContent>
+
+              {/* Financial Parameters Tab */}
+              <TabsContent value="financial" className="space-y-6">
+                <CollapsibleSection
+                  title={t('sections.financial.assets.title')}
+                  description={t('sections.financial.assets.description')}
+                  defaultOpen
+                >
+                  <ParameterField
+                    label={t('fields.currentAssets.label')}
+                    tooltip={t('fields.currentAssets.tooltip')}
+                  >
+                    <Input
+                      type="number"
+                      value={params.currentAssets}
+                      onChange={(e) =>
+                        handleInputChange('currentAssets', sanitizeNumberInput(e.target.value))
+                      }
+                      onBlur={createClampingBlurHandler('currentAssets', 0)}
+                      className={FIELD_INPUT_CLASS}
+                    />
+                  </ParameterField>
+
+                  <ParameterField
+                    label={t('fields.annualSavings.label')}
+                    tooltip={t('fields.annualSavings.tooltip')}
+                  >
+                    <Input
+                      type="number"
+                      value={params.annualSavings}
+                      onChange={(e) =>
+                        handleInputChange('annualSavings', sanitizeNumberInput(e.target.value))
+                      }
+                      onBlur={createClampingBlurHandler('annualSavings', 0)}
+                      className={FIELD_INPUT_CLASS}
+                    />
+                  </ParameterField>
+
+                  <ParameterField
+                    label={t('fields.annualSavingsGrowthRate.label')}
+                    tooltip={t('fields.annualSavingsGrowthRate.tooltip')}
+                  >
+                    <EnhancedSlider
+                      value={params.annualSavingsGrowthRate * 100}
+                      onChange={(value) =>
+                        handleInputChange('annualSavingsGrowthRate', value / 100)
+                      }
+                      min={-5}
+                      max={12}
+                      step={0.25}
+                      formatValue={(value) =>
+                        formatPercent(value / 100, { maximumFractionDigits: 2 })
+                      }
+                      ariaLabel={t('fields.annualSavingsGrowthRate.label')}
+                    />
+                  </ParameterField>
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  title={t('sections.financial.pension.title')}
+                  description={t('sections.financial.pension.description')}
+                  defaultOpen
+                >
+                  <ParameterField
+                    label={t('fields.monthlyPension.label')}
+                    tooltip={t('fields.monthlyPension.tooltip')}
+                  >
+                    <Input
+                      type="number"
+                      value={params.monthlyPension}
+                      onChange={(e) =>
+                        handleInputChange('monthlyPension', sanitizeNumberInput(e.target.value))
+                      }
+                      onBlur={createClampingBlurHandler('monthlyPension', 0)}
+                      className={FIELD_INPUT_CLASS}
+                    />
+                  </ParameterField>
+
+                  <ParameterField
+                    label={t('fields.capitalGainsTax.label')}
+                    tooltip={t('fields.capitalGainsTax.tooltip')}
+                  >
+                    <EnhancedSlider
+                      value={params.capitalGainsTax}
+                      onChange={(value) => handleInputChange('capitalGainsTax', value)}
+                      min={0}
+                      max={50}
+                      step={0.25}
+                      formatValue={(value) =>
+                        formatPercent(value / 100, { maximumFractionDigits: 2 })
+                      }
+                      ariaLabel={t('fields.capitalGainsTax.label')}
+                    />
+                  </ParameterField>
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  title={t('sections.financial.oneTime.title')}
+                  description={t('sections.financial.oneTime.description')}
+                  defaultOpen={false}
+                >
+                  <OneTimeIncomeList
+                    incomes={oneTimeIncomes}
+                    minAge={params.currentAge}
+                    maxAge={params.endAge}
+                    defaultAge={defaultOneTimeIncomeAge}
+                    strings={{
+                      addButton: t('fields.oneTimeIncomes.add'),
+                      empty: t('fields.oneTimeIncomes.empty'),
+                      emptyHint: t('fields.oneTimeIncomes.emptyHint'),
+                      nameLabel: t('fields.oneTimeIncomes.nameLabel'),
+                      namePlaceholder: t('fields.oneTimeIncomes.namePlaceholder'),
+                      ageLabel: t('fields.oneTimeIncomes.ageLabel'),
+                      agePrefix: uiT('age'),
+                      amountLabel: t('fields.oneTimeIncomes.amountLabel'),
+                      remove: t('fields.oneTimeIncomes.remove'),
+                      edit: t('fields.oneTimeIncomes.edit'),
+                      save: t('fields.oneTimeIncomes.save'),
+                      cancel: t('fields.oneTimeIncomes.cancel'),
+                      summaryLabel: t('fields.oneTimeIncomes.summary'),
+                      tableHeaders: {
+                        name: t('fields.oneTimeIncomes.table.name'),
+                        age: t('fields.oneTimeIncomes.table.age'),
+                        amount: t('fields.oneTimeIncomes.table.amount'),
+                        actions: t('fields.oneTimeIncomes.table.actions'),
+                      },
+                    }}
+                    onAdd={handleAddOneTimeIncome}
+                    onUpdate={handleUpdateOneTimeIncome}
+                    onRemove={handleRemoveOneTimeIncome}
+                    formatCurrency={(value) => formatCurrency(value)}
+                  />
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  title={t('sections.financial.expenses.title')}
+                  description={t('sections.financial.expenses.description', {
+                    value: formatCurrency(combinedExpenses.combinedAnnual),
+                  })}
+                  defaultOpen={false}
+                >
+                  <ExpenseList
+                    expenses={customExpenses}
+                    strings={{
+                      addButton: t('fields.expenses.add'),
+                      empty: t('fields.expenses.empty'),
+                      emptyHint: t('fields.expenses.emptyHint'),
+                      nameLabel: t('fields.expenses.nameLabel'),
+                      namePlaceholder: t('fields.expenses.namePlaceholder'),
+                      amountLabel: t('fields.expenses.amountLabel'),
+                      intervalLabel: t('fields.expenses.intervalLabel'),
+                      intervalMonthly: t('fields.expenses.intervalMonthly'),
+                      intervalAnnual: t('fields.expenses.intervalAnnual'),
+                      remove: t('fields.expenses.remove'),
+                      edit: t('fields.expenses.edit'),
+                      save: t('fields.expenses.save'),
+                      cancel: t('fields.expenses.cancel'),
+                      summaryLabel: t('fields.expenses.summary'),
+                      tableHeaders: {
+                        name: t('fields.expenses.table.name'),
+                        amount: t('fields.expenses.table.amount'),
+                        interval: t('fields.expenses.table.interval'),
+                        actions: t('fields.expenses.table.actions'),
+                      },
+                    }}
+                    onAdd={handleAddExpense}
+                    onUpdate={handleUpdateExpense}
+                    onRemove={handleRemoveExpense}
+                    formatCurrency={(value) => formatCurrency(value)}
+                  />
+                </CollapsibleSection>
+              </TabsContent>
+
+              {/* Simulation Parameters Tab */}
+              <TabsContent value="simulation" className="space-y-6">
+                <CollapsibleSection
+                  title={t('sections.simulation.market.title')}
+                  description={t('sections.simulation.market.description')}
+                  defaultOpen
+                >
+                  <ParameterField
+                    label={t('fields.averageROI.label')}
+                    tooltip={t('fields.averageROI.tooltip')}
+                  >
+                    <EnhancedSlider
+                      value={params.averageROI * 100}
+                      onChange={(value) => handleInputChange('averageROI', value / 100)}
+                      min={3}
+                      max={12}
+                      step={0.5}
+                      formatValue={(value) => formatPercent(value / 100)}
+                      ariaLabel={t('fields.averageROI.label')}
+                    />
+                  </ParameterField>
+
+                  <ParameterField
+                    label={t('fields.roiVolatility.label')}
+                    tooltip={t('fields.roiVolatility.tooltip')}
+                  >
+                    <div className="space-y-2">
+                      <EnhancedSlider
+                        value={params.roiVolatility * 100}
+                        onChange={(value) => handleInputChange('roiVolatility', value / 100)}
+                        min={2}
+                        max={25}
+                        step={0.5}
+                        formatValue={(value) => formatPercent(value / 100)}
+                        hint={`σ = ${formatPercent(params.roiVolatility)}`}
+                        ariaLabel={t('fields.roiVolatility.label')}
                       />
-                      <div
-                        className="h-2 flex-1 bg-neo-yellow/30 border-2 border-neo-black"
-                      />
-                      <div className="text-[0.58rem] font-bold uppercase tracking-[0.1em] text-muted-foreground whitespace-nowrap">
-                        {t('retirementYears', { years: params.endAge - params.retirementAge })}
+                      <div className="text-center text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground border-2 border-neo-black bg-neo-blue/5 px-3 py-2">
+                        {t('fields.roiVolatility.range', {
+                          range: '68%',
+                          lower: formatPercent(params.averageROI - params.roiVolatility),
+                          upper: formatPercent(params.averageROI + params.roiVolatility),
+                        })}
                       </div>
                     </div>
-                  </div>
-                </div>
-              </ParameterField>
+                  </ParameterField>
+                </CollapsibleSection>
 
-              <ParameterField
-                label={t('fields.legalRetirementAge.label')}
-                tooltip={t('fields.legalRetirementAge.tooltip')}
-              >
-                <Input
-                  type="number"
-                  value={params.legalRetirementAge}
-                  onChange={(e) =>
-                    handleInputChange(
-                      'legalRetirementAge',
-                      sanitizeNumberInput(e.target.value)
-                    )
-                  }
-                  onBlur={createClampingBlurHandler('legalRetirementAge', 60, 70)}
-                  className={FIELD_INPUT_CLASS}
-                />
-              </ParameterField>
+                <CollapsibleSection
+                  title={t('sections.simulation.inflation.title')}
+                  description={t('sections.simulation.inflation.description')}
+                  defaultOpen
+                >
+                  <ParameterField
+                    label={t('fields.averageInflation.label')}
+                    tooltip={t('fields.averageInflation.tooltip')}
+                  >
+                    <EnhancedSlider
+                      value={params.averageInflation * 100}
+                      onChange={(value) => handleInputChange('averageInflation', value / 100)}
+                      min={1}
+                      max={6}
+                      step={0.1}
+                      formatValue={(value) => formatPercent(value / 100)}
+                      ariaLabel={t('fields.averageInflation.label')}
+                    />
+                  </ParameterField>
 
-              <ParameterField
-                label={t('fields.endAge.label')}
-                tooltip={t('fields.endAge.tooltip')}
-              >
-                <Input
-                  type="number"
-                  value={params.endAge}
-                  onChange={(e) =>
-                    handleInputChange(
-                      'endAge',
-                      sanitizeNumberInput(e.target.value)
-                    )
-                  }
-                  onBlur={createClampingBlurHandler('endAge', 70, 100)}
-                  className={FIELD_INPUT_CLASS}
-                />
-              </ParameterField>
-            </CollapsibleSection>
-          </TabsContent>
+                  <ParameterField
+                    label={t('fields.inflationVolatility.label')}
+                    tooltip={t('fields.inflationVolatility.tooltip')}
+                  >
+                    <EnhancedSlider
+                      value={params.inflationVolatility * 100}
+                      onChange={(value) => handleInputChange('inflationVolatility', value / 100)}
+                      min={0.1}
+                      max={3}
+                      step={0.1}
+                      formatValue={(value) => formatPercent(value / 100)}
+                      ariaLabel={t('fields.inflationVolatility.label')}
+                    />
+                  </ParameterField>
+                </CollapsibleSection>
 
-          {/* Financial Parameters Tab */}
-          <TabsContent value="financial" className="space-y-6">
-            <CollapsibleSection
-              title={t('sections.financial.assets.title')}
-              description={t('sections.financial.assets.description')}
-              defaultOpen
-            >
-              <ParameterField
-                label={t('fields.currentAssets.label')}
-                tooltip={t('fields.currentAssets.tooltip')}
-              >
-                <Input
-                  type="number"
-                  value={params.currentAssets}
-                  onChange={(e) =>
-                    handleInputChange(
-                      'currentAssets',
-                      sanitizeNumberInput(e.target.value)
-                    )
-                  }
-                  onBlur={createClampingBlurHandler('currentAssets', 0)}
-                  className={FIELD_INPUT_CLASS}
-                />
-              </ParameterField>
+                <CollapsibleSection
+                  title={t('sections.simulation.withdrawal.title')}
+                  description={t('sections.simulation.withdrawal.description')}
+                  defaultOpen
+                >
+                  <ParameterField
+                    label={t('fields.withdrawalStrategy.label')}
+                    tooltip={t('fields.withdrawalStrategy.tooltip')}
+                  >
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {WITHDRAWAL_STRATEGIES.map((strategy) => {
+                        const isSelected = params.withdrawalStrategy === strategy
 
-              <ParameterField
-                label={t('fields.annualSavings.label')}
-                tooltip={t('fields.annualSavings.tooltip')}
-              >
-                <Input
-                  type="number"
-                  value={params.annualSavings}
-                  onChange={(e) =>
-                    handleInputChange(
-                      'annualSavings',
-                      sanitizeNumberInput(e.target.value)
-                    )
-                  }
-                  onBlur={createClampingBlurHandler('annualSavings', 0)}
-                  className={FIELD_INPUT_CLASS}
-                />
-              </ParameterField>
+                        return (
+                          <Button
+                            key={strategy}
+                            type="button"
+                            variant={isSelected ? 'default' : 'outline'}
+                            onClick={() => handleWithdrawalStrategyChange(strategy)}
+                            className="h-auto min-h-16 flex-col items-start gap-1 whitespace-normal px-4 py-3 text-left tracking-[0.12em]"
+                            aria-pressed={isSelected}
+                          >
+                            <span className="text-[0.72rem] font-extrabold">
+                              {t(`fields.withdrawalStrategy.options.${strategy}.label`)}
+                            </span>
+                            <span className="text-[0.58rem] font-semibold leading-snug tracking-[0.08em] opacity-80">
+                              {t(`fields.withdrawalStrategy.options.${strategy}.description`)}
+                            </span>
+                          </Button>
+                        )
+                      })}
+                    </div>
+                  </ParameterField>
 
-              <ParameterField
-                label={t('fields.annualSavingsGrowthRate.label')}
-                tooltip={t('fields.annualSavingsGrowthRate.tooltip')}
-              >
-                <EnhancedSlider
-                  value={params.annualSavingsGrowthRate * 100}
-                  onChange={(value) => handleInputChange('annualSavingsGrowthRate', value / 100)}
-                  min={-5}
-                  max={12}
-                  step={0.25}
-                  formatValue={(value) => formatPercent(value / 100, { maximumFractionDigits: 2 })}
-                  ariaLabel={t('fields.annualSavingsGrowthRate.label')}
-                />
-              </ParameterField>
-            </CollapsibleSection>
+                  {params.withdrawalStrategy === 'vanguardDynamic' && (
+                    <div className="space-y-5">
+                      <ParameterField
+                        label={t('fields.dsWithdrawalRate.label')}
+                        tooltip={t('fields.dsWithdrawalRate.tooltip')}
+                      >
+                        <EnhancedSlider
+                          value={params.dsWithdrawalRate * 100}
+                          onChange={(value) => handleInputChange('dsWithdrawalRate', value / 100)}
+                          min={2}
+                          max={8}
+                          step={0.25}
+                          formatValue={(value) =>
+                            formatPercent(value / 100, { maximumFractionDigits: 2 })
+                          }
+                          ariaLabel={t('fields.dsWithdrawalRate.label')}
+                        />
+                      </ParameterField>
 
-            <CollapsibleSection
-              title={t('sections.financial.pension.title')}
-              description={t('sections.financial.pension.description')}
-              defaultOpen
-            >
-              <ParameterField
-                label={t('fields.monthlyPension.label')}
-                tooltip={t('fields.monthlyPension.tooltip')}
-              >
-                <Input
-                  type="number"
-                  value={params.monthlyPension}
-                  onChange={(e) =>
-                    handleInputChange(
-                      'monthlyPension',
-                      sanitizeNumberInput(e.target.value)
-                    )
-                  }
-                  onBlur={createClampingBlurHandler('monthlyPension', 0)}
-                  className={FIELD_INPUT_CLASS}
-                />
-              </ParameterField>
+                      <ParameterField
+                        label={t('fields.dsCeilingRate.label')}
+                        tooltip={t('fields.dsCeilingRate.tooltip')}
+                      >
+                        <EnhancedSlider
+                          value={params.dsCeilingRate * 100}
+                          onChange={(value) => handleInputChange('dsCeilingRate', value / 100)}
+                          min={0}
+                          max={15}
+                          step={0.5}
+                          formatValue={(value) =>
+                            formatPercent(value / 100, { maximumFractionDigits: 1 })
+                          }
+                          ariaLabel={t('fields.dsCeilingRate.label')}
+                        />
+                      </ParameterField>
 
-              <ParameterField
-                label={t('fields.capitalGainsTax.label')}
-                tooltip={t('fields.capitalGainsTax.tooltip')}
-              >
-                <EnhancedSlider
-                  value={params.capitalGainsTax}
-                  onChange={(value) => handleInputChange('capitalGainsTax', value)}
-                  min={0}
-                  max={50}
-                  step={0.25}
-                  formatValue={(value) =>
-                    formatPercent(value / 100, { maximumFractionDigits: 2 })
-                  }
-                  ariaLabel={t('fields.capitalGainsTax.label')}
-                />
-              </ParameterField>
-            </CollapsibleSection>
+                      <ParameterField
+                        label={t('fields.dsFloorRate.label')}
+                        tooltip={t('fields.dsFloorRate.tooltip')}
+                      >
+                        <EnhancedSlider
+                          value={params.dsFloorRate * 100}
+                          onChange={(value) => handleInputChange('dsFloorRate', value / 100)}
+                          min={-15}
+                          max={0}
+                          step={0.5}
+                          formatValue={(value) =>
+                            formatPercent(value / 100, { maximumFractionDigits: 1 })
+                          }
+                          ariaLabel={t('fields.dsFloorRate.label')}
+                        />
+                      </ParameterField>
+                    </div>
+                  )}
+                </CollapsibleSection>
 
-            <CollapsibleSection
-              title={t('sections.financial.oneTime.title')}
-              description={t('sections.financial.oneTime.description')}
-              defaultOpen={false}
-            >
-              <OneTimeIncomeList
-                incomes={oneTimeIncomes}
-                minAge={params.currentAge}
-                maxAge={params.endAge}
-                defaultAge={defaultOneTimeIncomeAge}
-                strings={{
-                  addButton: t('fields.oneTimeIncomes.add'),
-                  empty: t('fields.oneTimeIncomes.empty'),
-                  emptyHint: t('fields.oneTimeIncomes.emptyHint'),
-                  nameLabel: t('fields.oneTimeIncomes.nameLabel'),
-                  namePlaceholder: t('fields.oneTimeIncomes.namePlaceholder'),
-                  ageLabel: t('fields.oneTimeIncomes.ageLabel'),
-                  agePrefix: uiT('age'),
-                  amountLabel: t('fields.oneTimeIncomes.amountLabel'),
-                  remove: t('fields.oneTimeIncomes.remove'),
-                  edit: t('fields.oneTimeIncomes.edit'),
-                  save: t('fields.oneTimeIncomes.save'),
-                  cancel: t('fields.oneTimeIncomes.cancel'),
-                  summaryLabel: t('fields.oneTimeIncomes.summary'),
-                  tableHeaders: {
-                    name: t('fields.oneTimeIncomes.table.name'),
-                    age: t('fields.oneTimeIncomes.table.age'),
-                    amount: t('fields.oneTimeIncomes.table.amount'),
-                    actions: t('fields.oneTimeIncomes.table.actions'),
-                  },
-                }}
-                onAdd={handleAddOneTimeIncome}
-                onUpdate={handleUpdateOneTimeIncome}
-                onRemove={handleRemoveOneTimeIncome}
-                formatCurrency={(value) => formatCurrency(value)}
-              />
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              title={t('sections.financial.expenses.title')}
-              description={t('sections.financial.expenses.description', {
-                value: formatCurrency(combinedExpenses.combinedAnnual),
-              })}
-              defaultOpen={false}
-            >
-              <ExpenseList
-                expenses={customExpenses}
-                strings={{
-                  addButton: t('fields.expenses.add'),
-                  empty: t('fields.expenses.empty'),
-                  emptyHint: t('fields.expenses.emptyHint'),
-                  nameLabel: t('fields.expenses.nameLabel'),
-                  namePlaceholder: t('fields.expenses.namePlaceholder'),
-                  amountLabel: t('fields.expenses.amountLabel'),
-                  intervalLabel: t('fields.expenses.intervalLabel'),
-                  intervalMonthly: t('fields.expenses.intervalMonthly'),
-                  intervalAnnual: t('fields.expenses.intervalAnnual'),
-                  remove: t('fields.expenses.remove'),
-                  edit: t('fields.expenses.edit'),
-                  save: t('fields.expenses.save'),
-                  cancel: t('fields.expenses.cancel'),
-                  summaryLabel: t('fields.expenses.summary'),
-                  tableHeaders: {
-                    name: t('fields.expenses.table.name'),
-                    amount: t('fields.expenses.table.amount'),
-                    interval: t('fields.expenses.table.interval'),
-                    actions: t('fields.expenses.table.actions'),
-                  },
-                }}
-                onAdd={handleAddExpense}
-                onUpdate={handleUpdateExpense}
-                onRemove={handleRemoveExpense}
-                formatCurrency={(value) => formatCurrency(value)}
-              />
-            </CollapsibleSection>
-          </TabsContent>
-
-          {/* Simulation Parameters Tab */}
-          <TabsContent value="simulation" className="space-y-6">
-            <CollapsibleSection
-              title={t('sections.simulation.market.title')}
-              description={t('sections.simulation.market.description')}
-              defaultOpen
-            >
-              <ParameterField
-                label={t('fields.averageROI.label')}
-                tooltip={t('fields.averageROI.tooltip')}
-              >
-                <EnhancedSlider
-                  value={params.averageROI * 100}
-                  onChange={(value) => handleInputChange('averageROI', value / 100)}
-                  min={3}
-                  max={12}
-                  step={0.5}
-                  formatValue={(value) => formatPercent(value / 100)}
-                  ariaLabel={t('fields.averageROI.label')}
-                />
-              </ParameterField>
-
-              <ParameterField
-                label={t('fields.roiVolatility.label')}
-                tooltip={t('fields.roiVolatility.tooltip')}
-              >
-                <div className="space-y-2">
-                  <EnhancedSlider
-                    value={params.roiVolatility * 100}
-                    onChange={(value) => handleInputChange('roiVolatility', value / 100)}
-                    min={2}
-                    max={25}
-                    step={0.5}
-                    formatValue={(value) => formatPercent(value / 100)}
-                    hint={`σ = ${formatPercent(params.roiVolatility)}`}
-                    ariaLabel={t('fields.roiVolatility.label')}
-                  />
-                  <div className="text-center text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground border-2 border-neo-black bg-neo-blue/5 px-3 py-2">
-                    {t('fields.roiVolatility.range', {
-                      range: '68%',
-                      lower: formatPercent(params.averageROI - params.roiVolatility),
-                      upper: formatPercent(params.averageROI + params.roiVolatility),
-                    })}
-                  </div>
-                </div>
-              </ParameterField>
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              title={t('sections.simulation.inflation.title')}
-              description={t('sections.simulation.inflation.description')}
-              defaultOpen
-            >
-              <ParameterField
-                label={t('fields.averageInflation.label')}
-                tooltip={t('fields.averageInflation.tooltip')}
-              >
-                <EnhancedSlider
-                  value={params.averageInflation * 100}
-                  onChange={(value) => handleInputChange('averageInflation', value / 100)}
-                  min={1}
-                  max={6}
-                  step={0.1}
-                  formatValue={(value) => formatPercent(value / 100)}
-                  ariaLabel={t('fields.averageInflation.label')}
-                />
-              </ParameterField>
-
-              <ParameterField
-                label={t('fields.inflationVolatility.label')}
-                tooltip={t('fields.inflationVolatility.tooltip')}
-              >
-                <EnhancedSlider
-                  value={params.inflationVolatility * 100}
-                  onChange={(value) => handleInputChange('inflationVolatility', value / 100)}
-                  min={0.1}
-                  max={3}
-                  step={0.1}
-                  formatValue={(value) => formatPercent(value / 100)}
-                  ariaLabel={t('fields.inflationVolatility.label')}
-                />
-              </ParameterField>
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              title={t('sections.simulation.quality.title')}
-              description={t('sections.simulation.quality.description')}
-              defaultOpen={false}
-            >
-              <ParameterField
-                label={t('fields.simulationRuns.label')}
-                tooltip={t('fields.simulationRuns.tooltip')}
-              >
-                <div className="space-y-2">
-                  <EnhancedSlider
-                    value={params.simulationRuns}
-                    onChange={(value) => handleInputChange('simulationRuns', value)}
-                    min={100}
-                    max={10000}
-                    step={100}
-                    formatValue={(value) => formatNumber(value)}
-                    ariaLabel={t('fields.simulationRuns.label')}
-                  />
-                  <div className="text-center border-2 border-neo-black px-3 py-2">
-                    <span
-                      className={`text-[0.68rem] font-extrabold uppercase tracking-[0.12em] ${
-                        params.simulationRuns >= 1000
-                          ? 'text-green-600'
-                          : params.simulationRuns >= 500
-                            ? 'text-yellow-600'
-                            : 'text-red-600'
-                      }`}
-                    >
-                      {params.simulationRuns >= 1000
-                        ? t('sections.simulation.quality.level.high')
-                        : params.simulationRuns >= 500
-                          ? t('sections.simulation.quality.level.medium')
-                          : t('sections.simulation.quality.level.low')}
-                    </span>
-                  </div>
-                </div>
-              </ParameterField>
-            </CollapsibleSection>
-          </TabsContent>
+                <CollapsibleSection
+                  title={t('sections.simulation.quality.title')}
+                  description={t('sections.simulation.quality.description')}
+                  defaultOpen={false}
+                >
+                  <ParameterField
+                    label={t('fields.simulationRuns.label')}
+                    tooltip={t('fields.simulationRuns.tooltip')}
+                  >
+                    <div className="space-y-2">
+                      <EnhancedSlider
+                        value={params.simulationRuns}
+                        onChange={(value) => handleInputChange('simulationRuns', value)}
+                        min={100}
+                        max={10000}
+                        step={100}
+                        formatValue={(value) => formatNumber(value)}
+                        ariaLabel={t('fields.simulationRuns.label')}
+                      />
+                      <div className="text-center border-2 border-neo-black px-3 py-2">
+                        <span
+                          className={`text-[0.68rem] font-extrabold uppercase tracking-[0.12em] ${
+                            params.simulationRuns >= 1000
+                              ? 'text-green-600'
+                              : params.simulationRuns >= 500
+                                ? 'text-yellow-600'
+                                : 'text-red-600'
+                          }`}
+                        >
+                          {params.simulationRuns >= 1000
+                            ? t('sections.simulation.quality.level.high')
+                            : params.simulationRuns >= 500
+                              ? t('sections.simulation.quality.level.medium')
+                              : t('sections.simulation.quality.level.low')}
+                        </span>
+                      </div>
+                    </div>
+                  </ParameterField>
+                </CollapsibleSection>
+              </TabsContent>
             </div>
           </div>
         </Tabs>
@@ -1123,11 +1214,9 @@ export function ParameterControls() {
                     <SelectTrigger size="sm" className="flex-1 h-10 w-full">
                       <SelectValue
                         placeholder={
-                          savedSetups.length === 0 ? (
-                            t('noSavedSetups')
-                          ) : (
-                            t('saved.actions.loadPlaceholder')
-                          )
+                          savedSetups.length === 0
+                            ? t('noSavedSetups')
+                            : t('saved.actions.loadPlaceholder')
                         }
                       />
                     </SelectTrigger>
@@ -1145,10 +1234,7 @@ export function ParameterControls() {
                         </SelectItem>
                       ) : (
                         savedSetups.map((setup) => (
-                          <SelectItem
-                            key={setup.id}
-                            value={setup.id}
-                          >
+                          <SelectItem key={setup.id} value={setup.id}>
                             <div className="flex items-center justify-between gap-3">
                               <div
                                 className="flex items-center gap-2 flex-1"

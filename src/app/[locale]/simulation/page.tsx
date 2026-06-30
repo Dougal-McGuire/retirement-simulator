@@ -16,7 +16,6 @@ import { SuccessRateCard } from '@/components/charts/SuccessRateCard'
 import { PlanDashboard } from '@/components/charts/PlanDashboard'
 import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
-import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { MobileMenu } from '@/components/navigation/MobileMenu'
 import { VersionInfo } from '@/components/navigation/VersionInfo'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
@@ -126,7 +125,6 @@ export default function SimulationPage() {
                 {/* Desktop Actions */}
                 <div className="theme-action-strip hidden lg:flex lg:flex-col lg:gap-3">
                   <LocaleSwitcher className="w-48" />
-                  <ThemeSwitcher className="w-48" />
                   <GenerateReportButton
                     results={results}
                     params={params}

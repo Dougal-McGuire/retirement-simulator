@@ -1,4 +1,9 @@
-import type { Milestone, Recommendation, ReportData, Summary } from '@/lib/pdf-generator/schema/reportData'
+import type {
+  Milestone,
+  Recommendation,
+  ReportData,
+  Summary,
+} from '@/lib/pdf-generator/schema/reportData'
 
 type SummaryBridge = NonNullable<Summary>['bridge']
 
@@ -71,8 +76,20 @@ const RECOMMENDATION_IMPACT_DE: Record<string, string> = {
 }
 
 const MONTHLY_CATEGORY_LABELS: Record<ReportLocale, string[]> = {
-  de: ['Gesundheit & Pflege', 'Lebensmittel & Haushalt', 'Freizeit & Kultur', 'Einkauf & Sonstiges', 'Wohnen & Energie'],
-  en: ['Health & care', 'Food & household', 'Leisure & culture', 'Shopping & misc.', 'Housing & utilities'],
+  de: [
+    'Gesundheit & Pflege',
+    'Lebensmittel & Haushalt',
+    'Freizeit & Kultur',
+    'Einkauf & Sonstiges',
+    'Wohnen & Energie',
+  ],
+  en: [
+    'Health & care',
+    'Food & household',
+    'Leisure & culture',
+    'Shopping & misc.',
+    'Housing & utilities',
+  ],
 }
 
 const ANNUAL_CATEGORY_LABELS: Record<ReportLocale, string[]> = {
@@ -98,17 +115,49 @@ function fallbackExpenseCategories(
   const annualLabels = ANNUAL_CATEGORY_LABELS[locale]
 
   const monthlyCategories: ReportExpensesCategory[] = [
-    { label: monthlyLabels[0], annualAmount: monthlyTotals.health * 12, share: expensesShare(monthlyTotals.health * 12, yearlyTotal) },
-    { label: monthlyLabels[1], annualAmount: monthlyTotals.food * 12, share: expensesShare(monthlyTotals.food * 12, yearlyTotal) },
-    { label: monthlyLabels[2], annualAmount: monthlyTotals.entertainment * 12, share: expensesShare(monthlyTotals.entertainment * 12, yearlyTotal) },
-    { label: monthlyLabels[3], annualAmount: monthlyTotals.shopping * 12, share: expensesShare(monthlyTotals.shopping * 12, yearlyTotal) },
-    { label: monthlyLabels[4], annualAmount: monthlyTotals.utilities * 12, share: expensesShare(monthlyTotals.utilities * 12, yearlyTotal) },
+    {
+      label: monthlyLabels[0],
+      annualAmount: monthlyTotals.health * 12,
+      share: expensesShare(monthlyTotals.health * 12, yearlyTotal),
+    },
+    {
+      label: monthlyLabels[1],
+      annualAmount: monthlyTotals.food * 12,
+      share: expensesShare(monthlyTotals.food * 12, yearlyTotal),
+    },
+    {
+      label: monthlyLabels[2],
+      annualAmount: monthlyTotals.entertainment * 12,
+      share: expensesShare(monthlyTotals.entertainment * 12, yearlyTotal),
+    },
+    {
+      label: monthlyLabels[3],
+      annualAmount: monthlyTotals.shopping * 12,
+      share: expensesShare(monthlyTotals.shopping * 12, yearlyTotal),
+    },
+    {
+      label: monthlyLabels[4],
+      annualAmount: monthlyTotals.utilities * 12,
+      share: expensesShare(monthlyTotals.utilities * 12, yearlyTotal),
+    },
   ].filter((item) => item.annualAmount > 0 || monthlyTotal === 0)
 
   const annualCategories: ReportExpensesCategory[] = [
-    { label: annualLabels[0], annualAmount: annualTotals.vacations, share: expensesShare(annualTotals.vacations, yearlyTotal) },
-    { label: annualLabels[1], annualAmount: annualTotals.homeRepairs, share: expensesShare(annualTotals.homeRepairs, yearlyTotal) },
-    { label: annualLabels[2], annualAmount: annualTotals.car, share: expensesShare(annualTotals.car, yearlyTotal) },
+    {
+      label: annualLabels[0],
+      annualAmount: annualTotals.vacations,
+      share: expensesShare(annualTotals.vacations, yearlyTotal),
+    },
+    {
+      label: annualLabels[1],
+      annualAmount: annualTotals.homeRepairs,
+      share: expensesShare(annualTotals.homeRepairs, yearlyTotal),
+    },
+    {
+      label: annualLabels[2],
+      annualAmount: annualTotals.car,
+      share: expensesShare(annualTotals.car, yearlyTotal),
+    },
   ].filter((item) => item.annualAmount > 0 || annualTotal === 0)
 
   return { monthlyCategories, annualCategories }
@@ -161,6 +210,10 @@ export interface ReportAssumptions {
   returnVolatility: number
   inflation: number
   inflationVolatility: number
+  withdrawalStrategy: 'fixedReal' | 'vanguardDynamic'
+  dsWithdrawalRate: number
+  dsCeilingRate: number
+  dsFloorRate: number
   capitalGainsTax: number
   simulationRuns: number
 }
@@ -262,7 +315,8 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
     p90: m.p90,
   }))
 
-  const reasonSource = summary?.planHealthWhyBits ?? (summary?.planHealthWhy ? [summary.planHealthWhy] : [])
+  const reasonSource =
+    summary?.planHealthWhyBits ?? (summary?.planHealthWhy ? [summary.planHealthWhy] : [])
   let reasons: string[]
   if (!reasonSource.length) {
     reasons = [DEFAULT_REASON[locale]]
@@ -321,7 +375,9 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
     annualCategories = fallback.annualCategories
   }
 
-  const allCategories = [...monthlyCategories, ...annualCategories].sort((a, b) => b.annualAmount - a.annualAmount)
+  const allCategories = [...monthlyCategories, ...annualCategories].sort(
+    (a, b) => b.annualAmount - a.annualAmount
+  )
 
   const scenarios: ReportScenario[] = []
   if (summary?.bridge) {
@@ -368,6 +424,10 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       returnVolatility: data.assumptions.roiStdev,
       inflation: data.assumptions.inflationMean,
       inflationVolatility: data.assumptions.inflationStdev,
+      withdrawalStrategy: data.assumptions.withdrawalStrategy,
+      dsWithdrawalRate: data.assumptions.dsWithdrawalRate,
+      dsCeilingRate: data.assumptions.dsCeilingRate,
+      dsFloorRate: data.assumptions.dsFloorRate,
       capitalGainsTax: data.assumptions.capGainsTaxRatePct,
       simulationRuns: data.assumptions.mcRuns,
     },
@@ -393,7 +453,8 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
               title: RECOMMENDATION_TITLES_DE[rec.title] ?? DEFAULT_HIGHLIGHT.de,
               category: RECOMMENDATION_CATEGORIES_DE[rec.category] ?? 'Allgemeine Strategie',
               body:
-                RECOMMENDATION_BODIES_DE[rec.body] ?? 'Vertiefte Analyse empfohlen, um konkrete Handlungsschritte zu definieren.',
+                RECOMMENDATION_BODIES_DE[rec.body] ??
+                'Vertiefte Analyse empfohlen, um konkrete Handlungsschritte zu definieren.',
               impactLabel: RECOMMENDATION_IMPACT_DE[rec.impact] ?? rec.impact,
             }))
           : data.recommendations,

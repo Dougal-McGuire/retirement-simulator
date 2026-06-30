@@ -348,6 +348,10 @@
           "title": "Inflationsannahmen",
           "description": "Wie sich Kosten im Zeitverlauf verändern"
         },
+        "withdrawal": {
+          "title": "Entnahmestrategie",
+          "description": "Wie sich Ausgaben im Ruhestand anpassen"
+        },
         "quality": {
           "title": "Simulationsqualität",
           "description": "Abwägung zwischen Genauigkeit und Laufzeit",
@@ -479,6 +483,32 @@
       "simulationRuns": {
         "label": "Anzahl der Läufe",
         "tooltip": "Monte-Carlo-Simulationen. Mehr Läufe bedeuten höhere Genauigkeit, benötigen aber mehr Rechenzeit."
+      },
+      "withdrawalStrategy": {
+        "label": "Entnahmestrategie",
+        "tooltip": "Wählen Sie, ob Ausgaben inflationsgebunden bleiben oder sich nach Vanguard Dynamic Spending mit Ober- und Untergrenze anpassen.",
+        "options": {
+          "vanguardDynamic": {
+            "label": "Vanguard DS",
+            "description": "Portfoliobezogene Ausgaben mit jährlicher Ober- und Untergrenze."
+          },
+          "fixedReal": {
+            "label": "Real konstant",
+            "description": "Ausgaben steigen mit der Inflation unabhängig von Marktrenditen."
+          }
+        }
+      },
+      "dsWithdrawalRate": {
+        "label": "DS-Entnahmerate",
+        "tooltip": "Zielprozentsatz des Portfolios zum Ende des Vorjahres für die dynamische Ausgabenberechnung."
+      },
+      "dsCeilingRate": {
+        "label": "DS-Obergrenze",
+        "tooltip": "Maximaler jährlicher Anstieg gegenüber den inflationsbereinigten Ausgaben des Vorjahres."
+      },
+      "dsFloorRate": {
+        "label": "DS-Untergrenze",
+        "tooltip": "Maximaler jährlicher Rückgang gegenüber den inflationsbereinigten Ausgaben des Vorjahres."
       }
     },
     "saved": {
@@ -614,14 +644,20 @@
     },
     "spendingTable": {
       "toggle": "Tabelle der Ausgaben anzeigen",
-      "caption": "Monatliche Ausgabenprojektion während des Ruhestands nach Alter und Perzentil",
+      "caption": "Monatliche Ausgabenprojektion nach Strategieregeln während des Ruhestands nach Alter und Perzentil",
+      "note": {
+        "dynamic": "Die Zeilen zeigen jedes Ruhestandsjahr mit Vanguard Dynamic Spending: Die Ausgaben im ersten Ruhestandsjahr starten aus dem Plan, danach liegt das Ziel bei {withdrawalRate} des Portfolios zum Ende des Vorjahres und wird durch {ceiling} / {floor} gegenüber den inflationsbereinigten Vorjahresausgaben begrenzt. Die Rente bestimmt den DS-Ausgabenrahmen nicht; sie reduziert den Teil des Median-Ausgabenrahmens, der aus dem Portfolio finanziert werden muss.",
+        "fixed": "Die Zeilen zeigen jedes Ruhestandsjahr mit real konstanten Ausgaben: Die erfassten Ausgaben steigen mit der simulierten Inflation und werden nicht an die Portfoliowertentwicklung angepasst. Die Rente reduziert den Teil des Median-Ausgabenrahmens, der aus dem Portfolio finanziert werden muss."
+      },
       "headers": {
         "age": "Alter",
         "p10": "10. Perzentil",
-        "p20": "20. Perzentil",
         "p50": "50. Perzentil",
-        "p80": "80. Perzentil",
-        "p90": "90. Perzentil"
+        "p90": "90. Perzentil",
+        "withdrawalRate": "Portfoliofinanzierte Entnahmerate",
+        "pension": "Monatliche Rente",
+        "portfolioDraw": "Portfoliofinanziert",
+        "availableCash": "Verfügbarer Cashflow"
       }
     }
   },
@@ -664,11 +700,22 @@
   "spendingChart": {
     "title": "Ausgaben im Ruhestand",
     "reset": "Zoom zurücksetzen",
-    "description": "Geschätzte monatliche Ausgaben nach dem Renteneintritt inklusive monatlicher und annualisierter jährlicher Ausgaben.",
+    "description": "Geschätzte monatliche Ausgaben nach dem Renteneintritt inklusive dynamischer Ausgabenanpassungen, sofern aktiviert.",
+    "explanation": {
+      "strategyLabel": "Ausgabenregel",
+      "readingLabel": "Lesart",
+      "reading": "Die Linien zeigen den monatlichen Ausgabenrahmen nach Strategieregeln: Gelb ist P10, Blau der Median und Rot P90. Die schwarze Linie ist die mediane portfoliofinanzierte Entnahmerate nach Rentenverrechnung.",
+      "dynamic": {
+        "summary": "Vanguard DS startet mit dem geplanten Budget im ersten Ruhestandsjahr. Danach liegt das Ziel bei {withdrawalRate} des Portfolios zum Ende des Vorjahres, begrenzt auf {ceiling} nach oben und {floor} nach unten gegenüber den inflationsbereinigten Vorjahresausgaben."
+      },
+      "fixed": {
+        "summary": "Real konstante Ausgaben folgen dem geplanten Budget plus Inflation. Portfoliorenditen beeinflussen die Erfolgswahrscheinlichkeit, ändern aber nicht die Ausgaben."
+      }
+    },
     "axis": {
       "age": "Alter",
       "spending": "Monatliche Ausgaben (€)",
-      "withdrawalRate": "Jährliche Entnahmerate (%)"
+      "withdrawalRate": "Portfoliofinanzierte Rate (%)"
     },
     "tooltip": {
       "label": "Alter: {age}"
@@ -677,10 +724,9 @@
       "title": "Legende",
       "p10": "10. Perzentil",
       "p50": "50. Perzentil",
-      "p80": "80. Perzentil",
       "p90": "90. Perzentil",
-      "withdrawalRate": "Median-Entnahmerate",
-      "note": "Beinhaltet monatliche Ausgaben plus auf den Monat umgelegte jährliche Kosten (Urlaub, Reparaturen usw.)."
+      "withdrawalRate": "Portfoliofinanzierte Entnahmerate",
+      "note": "Die Ausgabenlinien zeigen den Rahmen vor Rentenverrechnung; die Entnahmeratenlinie nutzt nur den portfoliofinanzierten Medianbetrag."
     },
     "markers": {
       "retirement": "Ruhestand"
@@ -690,7 +736,7 @@
       "zoomed": "Zoomansicht aktiv"
     },
     "aria": {
-      "description": "Balkendiagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge} über verschiedene Perzentile, ergänzt um eine Linie mit der medianen jährlichen Entnahmerate.",
+      "description": "Diagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge} mit P10-, Median- und P90-Linien sowie einer Linie für die mediane portfoliofinanzierte Entnahmerate.",
       "controls": "Verwenden Sie die Pfeiltasten, um durch die Ausgabendaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen."
     }
   },

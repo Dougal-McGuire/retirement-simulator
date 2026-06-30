@@ -71,6 +71,12 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
               Math.pow(1 + results.params.annualSavingsGrowthRate, Math.max(0, yearsFromStart))
             : 0
         const monthlySavings = age < results.params.retirementAge ? annualSavingsAtAge / 12 : null
+        const monthlyPensionAtAge =
+          age >= results.params.legalRetirementAge ? results.params.monthlyPension : 0
+        const medianPortfolioDraw = Math.max(
+          0,
+          results.spendingPercentiles.p50[index] - monthlyPensionAtAge
+        )
 
         return {
           age,
@@ -80,14 +86,11 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
           assets_p80: Math.round(results.assetPercentiles.p80[index]),
           assets_p90: Math.round(results.assetPercentiles.p90[index]),
           spending_p10: Math.round(results.spendingPercentiles.p10[index]),
-          spending_p20: Math.round(results.spendingPercentiles.p20[index]),
           spending_p50: Math.round(results.spendingPercentiles.p50[index]),
-          spending_p80: Math.round(results.spendingPercentiles.p80[index]),
           spending_p90: Math.round(results.spendingPercentiles.p90[index]),
           withdrawal_rate_p50:
             results.assetPercentiles.p50[index] > 0
-              ? (results.spendingPercentiles.p50[index] * 12) /
-                results.assetPercentiles.p50[index]
+              ? (medianPortfolioDraw * 12) / results.assetPercentiles.p50[index]
               : null,
           monthly_savings_p50: monthlySavings,
         }
@@ -235,6 +238,27 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
     [format]
   )
 
+  const formatPercent = useCallback(
+    (value: number | null) =>
+      value == null
+        ? '—'
+        : format.number(value, {
+            style: 'percent',
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          }),
+    [format]
+  )
+
+  const spendingTableNoteKey =
+    results.params.withdrawalStrategy === 'vanguardDynamic'
+      ? 'spendingTable.note.dynamic'
+      : 'spendingTable.note.fixed'
+  const monthlyPensionAtAge = useCallback(
+    (age: number) => (age >= results.params.legalRetirementAge ? results.params.monthlyPension : 0),
+    [results.params.legalRetirementAge, results.params.monthlyPension]
+  )
+
   return (
     <div className="space-y-8">
       <AssetsChart
@@ -257,10 +281,18 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
             <caption className="sr-only">{t('assetTable.caption')}</caption>
             <thead>
               <tr className="bg-muted">
-                <th className="border border-neo-black px-3 py-2 text-left">{t('assetTable.headers.age')}</th>
-                <th className="border border-neo-black px-3 py-2 text-right">{t('assetTable.headers.p10')}</th>
-                <th className="border border-neo-black px-3 py-2 text-right">{t('assetTable.headers.p50')}</th>
-                <th className="border border-neo-black px-3 py-2 text-right">{t('assetTable.headers.p90')}</th>
+                <th className="border border-neo-black px-3 py-2 text-left">
+                  {t('assetTable.headers.age')}
+                </th>
+                <th className="border border-neo-black px-3 py-2 text-right">
+                  {t('assetTable.headers.p10')}
+                </th>
+                <th className="border border-neo-black px-3 py-2 text-right">
+                  {t('assetTable.headers.p50')}
+                </th>
+                <th className="border border-neo-black px-3 py-2 text-right">
+                  {t('assetTable.headers.p90')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -269,7 +301,12 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
                 return (
                   <tr
                     key={row.age}
-                    className={cn('border-b border-neo-black', isRetirementAge ? 'bg-neo-blue/10 font-bold text-neo-blue' : 'bg-neo-white text-foreground')}
+                    className={cn(
+                      'border-b border-neo-black',
+                      isRetirementAge
+                        ? 'bg-neo-blue/10 font-bold text-neo-blue'
+                        : 'bg-neo-white text-foreground'
+                    )}
                   >
                     <td className="border border-neo-black px-3 py-2">
                       {row.age}{' '}
@@ -279,9 +316,15 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
                         </span>
                       )}
                     </td>
-                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(row.p10)}</td>
-                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(row.p50)}</td>
-                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(row.p90)}</td>
+                    <td className="border border-neo-black px-3 py-2 text-right">
+                      {formatCurrency(row.p10)}
+                    </td>
+                    <td className="border border-neo-black px-3 py-2 text-right">
+                      {formatCurrency(row.p50)}
+                    </td>
+                    <td className="border border-neo-black px-3 py-2 text-right">
+                      {formatCurrency(row.p90)}
+                    </td>
                   </tr>
                 )
               })}
@@ -293,6 +336,10 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
       <SpendingChart
         data={spendingData}
         retirementAge={results.params.retirementAge}
+        withdrawalStrategy={results.params.withdrawalStrategy}
+        dsWithdrawalRate={results.params.dsWithdrawalRate}
+        dsCeilingRate={results.params.dsCeilingRate}
+        dsFloorRate={results.params.dsFloorRate}
         indexRange={spendingIndexRange}
         onBrushChange={onSpendingBrushChange}
         onResetZoom={resetZoom}
@@ -306,31 +353,76 @@ export function SimulationChart({ results, isLoading }: SimulationChartProps) {
           {t('spendingTable.toggle')}
         </summary>
         <div className="mt-4 overflow-x-auto border-t-3 border-neo-black pt-4">
+          <p className="mb-3 max-w-3xl text-[0.64rem] font-semibold uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
+            {t(spendingTableNoteKey, {
+              withdrawalRate: formatPercent(results.params.dsWithdrawalRate),
+              ceiling: formatPercent(results.params.dsCeilingRate),
+              floor: formatPercent(results.params.dsFloorRate),
+            })}
+          </p>
           <table className="min-w-full border-3 border-neo-black bg-neo-white text-[0.68rem] uppercase tracking-[0.12em]">
             <caption className="sr-only">{t('spendingTable.caption')}</caption>
             <thead>
               <tr className="bg-muted">
-                <th className="border border-neo-black px-3 py-2 text-left">{t('spendingTable.headers.age')}</th>
-                <th className="border border-neo-black px-3 py-2 text-right">{t('spendingTable.headers.p10')}</th>
-                <th className="border border-neo-black px-3 py-2 text-right">{t('spendingTable.headers.p20')}</th>
-                <th className="border border-neo-black px-3 py-2 text-right">{t('spendingTable.headers.p50')}</th>
-                <th className="border border-neo-black px-3 py-2 text-right">{t('spendingTable.headers.p80')}</th>
-                <th className="border border-neo-black px-3 py-2 text-right">{t('spendingTable.headers.p90')}</th>
+                <th className="border border-neo-black px-3 py-2 text-left">
+                  {t('spendingTable.headers.age')}
+                </th>
+                <th className="border border-neo-black px-3 py-2 text-right">
+                  {t('spendingTable.headers.p10')}
+                </th>
+                <th className="border border-neo-black px-3 py-2 text-right">
+                  {t('spendingTable.headers.p50')}
+                </th>
+                <th className="border border-neo-black px-3 py-2 text-right">
+                  {t('spendingTable.headers.p90')}
+                </th>
+                <th className="border border-neo-black px-3 py-2 text-right">
+                  {t('spendingTable.headers.withdrawalRate')}
+                </th>
+                <th className="border border-neo-black px-3 py-2 text-right">
+                  {t('spendingTable.headers.pension')}
+                </th>
+                <th className="border border-neo-black px-3 py-2 text-right">
+                  {t('spendingTable.headers.portfolioDraw')}
+                </th>
+                <th className="border border-neo-black px-3 py-2 text-right">
+                  {t('spendingTable.headers.availableCash')}
+                </th>
               </tr>
             </thead>
             <tbody>
-              {chartData
-                .filter((d) => d.age >= results.params.retirementAge && d.age % 5 === 0)
-                .map((data, index) => (
+              {spendingData.map((data, index) => {
+                const pension = monthlyPensionAtAge(data.age)
+                const portfolioDraw = Math.max(0, data.spending_p50 - pension)
+                const availableCash = pension + portfolioDraw
+
+                return (
                   <tr key={index} className="border-b border-neo-black">
                     <td className="border border-neo-black px-3 py-2 text-left">{data.age}</td>
-                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(data.spending_p10)}</td>
-                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(data.spending_p20)}</td>
-                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(data.spending_p50)}</td>
-                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(data.spending_p80)}</td>
-                    <td className="border border-neo-black px-3 py-2 text-right">{formatCurrency(data.spending_p90)}</td>
+                    <td className="border border-neo-black px-3 py-2 text-right">
+                      {formatCurrency(data.spending_p10)}
+                    </td>
+                    <td className="border border-neo-black px-3 py-2 text-right">
+                      {formatCurrency(data.spending_p50)}
+                    </td>
+                    <td className="border border-neo-black px-3 py-2 text-right">
+                      {formatCurrency(data.spending_p90)}
+                    </td>
+                    <td className="border border-neo-black px-3 py-2 text-right">
+                      {formatPercent(data.withdrawal_rate_p50)}
+                    </td>
+                    <td className="border border-neo-black px-3 py-2 text-right">
+                      {formatCurrency(pension)}
+                    </td>
+                    <td className="border border-neo-black px-3 py-2 text-right">
+                      {formatCurrency(portfolioDraw)}
+                    </td>
+                    <td className="border border-neo-black px-3 py-2 text-right font-black text-neo-black">
+                      {formatCurrency(availableCash)}
+                    </td>
                   </tr>
-                ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

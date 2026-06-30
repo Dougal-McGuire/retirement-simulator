@@ -12,6 +12,12 @@ export function Inputs({ content }: InputsProps) {
   const locale = content.locale ?? 'de'
   const intlLocale = locale === 'de' ? 'de-DE' : 'en-US'
   const isGerman = locale === 'de'
+  const withdrawalStrategyLabel =
+    assumptions.withdrawalStrategy === 'vanguardDynamic'
+      ? 'Vanguard Dynamic Spending'
+      : isGerman
+        ? 'Real konstante Ausgaben'
+        : 'Fixed real spending'
 
   return (
     <ReportSection
@@ -65,7 +71,9 @@ export function Inputs({ content }: InputsProps) {
           <table aria-label={isGerman ? 'Marktannahmen' : 'Market assumptions'}>
             <tbody>
               <tr>
-                <th scope="row">{isGerman ? 'Erwartete Rendite (p.a.)' : 'Expected return (p.a.)'}</th>
+                <th scope="row">
+                  {isGerman ? 'Erwartete Rendite (p.a.)' : 'Expected return (p.a.)'}
+                </th>
                 <td>{fmtPercent(assumptions.expectedReturn, 1, intlLocale)}</td>
               </tr>
               <tr>
@@ -84,6 +92,26 @@ export function Inputs({ content }: InputsProps) {
                 <th scope="row">{isGerman ? 'Kapitalertragsteuer' : 'Capital gains tax'}</th>
                 <td>{fmtPercent(assumptions.capitalGainsTax, 1, intlLocale)}</td>
               </tr>
+              <tr>
+                <th scope="row">{isGerman ? 'Entnahmestrategie' : 'Withdrawal strategy'}</th>
+                <td>{withdrawalStrategyLabel}</td>
+              </tr>
+              {assumptions.withdrawalStrategy === 'vanguardDynamic' && (
+                <>
+                  <tr>
+                    <th scope="row">{isGerman ? 'DS-Entnahmerate' : 'DS withdrawal rate'}</th>
+                    <td>{fmtPercent(assumptions.dsWithdrawalRate, 2, intlLocale)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">{isGerman ? 'DS-Obergrenze' : 'DS ceiling'}</th>
+                    <td>{fmtPercent(assumptions.dsCeilingRate, 1, intlLocale)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">{isGerman ? 'DS-Untergrenze' : 'DS floor'}</th>
+                    <td>{fmtPercent(assumptions.dsFloorRate, 1, intlLocale)}</td>
+                  </tr>
+                </>
+              )}
             </tbody>
           </table>
         </div>

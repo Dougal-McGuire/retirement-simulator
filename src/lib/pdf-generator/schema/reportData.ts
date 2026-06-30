@@ -44,6 +44,10 @@ export const AssumptionsSchema = z.object({
   roiStdev: z.number().min(0).max(0.5),
   inflationMean: z.number().min(-0.05).max(0.15),
   inflationStdev: z.number().min(0).max(0.1),
+  withdrawalStrategy: z.enum(['fixedReal', 'vanguardDynamic']).default('vanguardDynamic'),
+  dsWithdrawalRate: z.number().min(0).max(1).default(0.05),
+  dsCeilingRate: z.number().min(0).max(1).default(0.05),
+  dsFloorRate: z.number().min(-1).max(0).default(-0.025),
   // Fix absurd tax rates like 2625% -> cap at 80%
   capGainsTaxRatePct: z
     .number()

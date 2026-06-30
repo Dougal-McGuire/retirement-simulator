@@ -168,4 +168,120 @@ describe('Engine math correctness', () => {
       flatSavings.assetPercentiles.p50[horizonIndex]
     )
   })
+
+  it('uses the inflated expense plan as the first Vanguard DS retirement-year spending baseline', () => {
+    const params = {
+      ...DEFAULT_PARAMS,
+      currentAge: 58,
+      retirementAge: 60,
+      legalRetirementAge: 90,
+      endAge: 60,
+      currentAssets: 1_000_000,
+      annualSavings: 0,
+      monthlyPension: 0,
+      averageROI: 0,
+      roiVolatility: 0,
+      averageInflation: 0.02,
+      inflationVolatility: 0,
+      capitalGainsTax: 0,
+      withdrawalStrategy: 'vanguardDynamic' as const,
+      customExpenses: [{ id: 'base', name: 'Base', amount: 4_000, interval: 'monthly' as const }],
+      simulationRuns: 1,
+    }
+
+    const results = runMonteCarloSimulation(params)
+    const retirementIndex = results.ages.indexOf(60)
+
+    expect(results.spendingPercentiles.p50[retirementIndex]).toBeCloseTo(
+      4_000 * Math.pow(1.02, 2),
+      6
+    )
+  })
+
+  it('caps Vanguard DS spending at the configured ceiling after strong portfolio growth', () => {
+    const params = {
+      ...DEFAULT_PARAMS,
+      currentAge: 60,
+      retirementAge: 60,
+      legalRetirementAge: 90,
+      endAge: 61,
+      currentAssets: 1_000_000,
+      annualSavings: 0,
+      monthlyPension: 0,
+      averageROI: 0.2,
+      roiVolatility: 0,
+      averageInflation: 0,
+      inflationVolatility: 0,
+      capitalGainsTax: 0,
+      withdrawalStrategy: 'vanguardDynamic' as const,
+      dsWithdrawalRate: 0.05,
+      dsCeilingRate: 0.05,
+      dsFloorRate: -0.025,
+      customExpenses: [{ id: 'base', name: 'Base', amount: 50_000, interval: 'annual' as const }],
+      simulationRuns: 1,
+    }
+
+    const results = runMonteCarloSimulation(params)
+    const secondRetirementYearIndex = results.ages.indexOf(61)
+
+    expect(results.spendingPercentiles.p50[secondRetirementYearIndex] * 12).toBeCloseTo(52_500, 6)
+  })
+
+  it('floors Vanguard DS spending at the configured floor after weak portfolio values', () => {
+    const params = {
+      ...DEFAULT_PARAMS,
+      currentAge: 60,
+      retirementAge: 60,
+      legalRetirementAge: 90,
+      endAge: 61,
+      currentAssets: 1_000_000,
+      annualSavings: 0,
+      monthlyPension: 0,
+      averageROI: 0,
+      roiVolatility: 0,
+      averageInflation: 0,
+      inflationVolatility: 0,
+      capitalGainsTax: 0,
+      withdrawalStrategy: 'vanguardDynamic' as const,
+      dsWithdrawalRate: 0.05,
+      dsCeilingRate: 0.05,
+      dsFloorRate: -0.025,
+      customExpenses: [{ id: 'base', name: 'Base', amount: 50_000, interval: 'annual' as const }],
+      simulationRuns: 1,
+    }
+
+    const results = runMonteCarloSimulation(params)
+    const secondRetirementYearIndex = results.ages.indexOf(61)
+
+    expect(results.spendingPercentiles.p50[secondRetirementYearIndex] * 12).toBeCloseTo(48_750, 6)
+  })
+
+  it('keeps fixed-real spending unchanged when DS parameters are aggressive', () => {
+    const params = {
+      ...DEFAULT_PARAMS,
+      currentAge: 60,
+      retirementAge: 60,
+      legalRetirementAge: 90,
+      endAge: 61,
+      currentAssets: 1_000_000,
+      annualSavings: 0,
+      monthlyPension: 0,
+      averageROI: 0.2,
+      roiVolatility: 0,
+      averageInflation: 0,
+      inflationVolatility: 0,
+      capitalGainsTax: 0,
+      withdrawalStrategy: 'fixedReal' as const,
+      dsWithdrawalRate: 0.08,
+      dsCeilingRate: 0.15,
+      dsFloorRate: 0,
+      customExpenses: [{ id: 'base', name: 'Base', amount: 50_000, interval: 'annual' as const }],
+      simulationRuns: 1,
+    }
+
+    const results = runMonteCarloSimulation(params)
+
+    expect(results.spendingPercentiles.p50[0] * 12).toBeCloseTo(50_000, 6)
+    expect(results.spendingPercentiles.p50[1] * 12).toBeCloseTo(50_000, 6)
+  })
 })

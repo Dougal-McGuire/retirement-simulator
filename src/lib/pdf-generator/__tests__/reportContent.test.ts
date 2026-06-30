@@ -10,8 +10,17 @@ describe('Report content mapping', () => {
   const content = mapReportDataToContent(reportData)
 
   it('keeps success count mathematisch konsistent', () => {
-    const expected = Math.round(content.profile.success.successRate * content.profile.success.trials)
+    const expected = Math.round(
+      content.profile.success.successRate * content.profile.success.trials
+    )
     expect(content.profile.success.successCount).toBe(expected)
+  })
+
+  it('maps withdrawal strategy assumptions', () => {
+    expect(content.assumptions.withdrawalStrategy).toBe(params.withdrawalStrategy)
+    expect(content.assumptions.dsWithdrawalRate).toBe(params.dsWithdrawalRate)
+    expect(content.assumptions.dsCeilingRate).toBe(params.dsCeilingRate)
+    expect(content.assumptions.dsFloorRate).toBe(params.dsFloorRate)
   })
 
   it('liefert deutsche Beschriftungen', () => {
@@ -25,9 +34,13 @@ describe('Report content mapping', () => {
     })
 
     content.recommendations.primary.forEach((rec) => {
-      expect(rec.title).not.toMatch(/Increase Savings Rate|Delay Retirement|Optimize Investment Mix/)
+      expect(rec.title).not.toMatch(
+        /Increase Savings Rate|Delay Retirement|Optimize Investment Mix/
+      )
       expect(rec.category).not.toMatch(/Savings Strategy|Investment Strategy|Expense Management/)
-      expect(rec.body).not.toMatch(/Your current success rate|Working an additional|Review your asset allocation/)
+      expect(rec.body).not.toMatch(
+        /Your current success rate|Working an additional|Review your asset allocation/
+      )
     })
   })
 })

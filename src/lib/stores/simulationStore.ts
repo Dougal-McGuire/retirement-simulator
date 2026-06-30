@@ -14,18 +14,70 @@ import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 const STORAGE_KEY = 'retirement-simulator-params'
 const SAVED_SETUPS_KEY = 'retirement-simulator-saved-setups'
 
-type PersistedParams = Partial<Omit<SimulationParams, 'customExpenses' | 'oneTimeIncomes'>> & {
+type NumericParamKey = keyof Omit<
+  SimulationParams,
+  'customExpenses' | 'oneTimeIncomes' | 'withdrawalStrategy'
+>
+
+type PersistedParams = Partial<Record<NumericParamKey, unknown>> & {
   annualExpenses?: unknown
   customExpenses?: unknown
   monthlyExpenses?: unknown
   oneTimeIncomes?: unknown
+  withdrawalStrategy?: unknown
 }
+
+const numericParamKeys = [
+  'currentAge',
+  'retirementAge',
+  'legalRetirementAge',
+  'endAge',
+  'currentAssets',
+  'annualSavings',
+  'annualSavingsGrowthRate',
+  'monthlyPension',
+  'averageROI',
+  'roiVolatility',
+  'averageInflation',
+  'inflationVolatility',
+  'capitalGainsTax',
+  'dsWithdrawalRate',
+  'dsCeilingRate',
+  'dsFloorRate',
+  'simulationRuns',
+] satisfies NumericParamKey[]
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 
 const toPersistedParams = (params: unknown): PersistedParams =>
   isRecord(params) ? (params as PersistedParams) : {}
+
+const toFiniteNumber = (value: unknown, fallback: number): number => {
+  if (typeof value !== 'number' && typeof value !== 'string') return fallback
+  if (typeof value === 'string' && value.trim() === '') return fallback
+
+  const numberValue = Number(value)
+  return Number.isFinite(numberValue) ? numberValue : fallback
+}
+
+const sanitizeNumericParams = (
+  params: PersistedParams
+): Partial<Record<NumericParamKey, number>> => {
+  const sanitized: Partial<Record<NumericParamKey, number>> = {}
+
+  numericParamKeys.forEach((key) => {
+    if (params[key] === undefined) return
+    sanitized[key] = toFiniteNumber(params[key], DEFAULT_PARAMS[key])
+  })
+
+  return sanitized
+}
+
+const sanitizeWithdrawalStrategy = (strategy: unknown): SimulationParams['withdrawalStrategy'] =>
+  strategy === 'fixedReal' || strategy === 'vanguardDynamic'
+    ? strategy
+    : DEFAULT_PARAMS.withdrawalStrategy
 
 const sanitizeOneTimeIncomes = (incomes: unknown): OneTimeIncome[] => {
   if (!Array.isArray(incomes)) return []
@@ -133,16 +185,18 @@ const normalizePersistedParams = (persistedParams: unknown): SimulationParams =>
     customExpenses: rawCustomExpenses,
     monthlyExpenses: _monthlyExpenses,
     oneTimeIncomes: rawOneTimeIncomes,
-    ...currentParams
+    withdrawalStrategy: rawWithdrawalStrategy,
   } = params
   const sanitizedCustomExpenses = sanitizeCustomExpenses(rawCustomExpenses)
   const migratedCustomExpenses = migrateToCustomExpenses(params)
-  const customExpenses =
-    Array.isArray(rawCustomExpenses) ? sanitizedCustomExpenses : migratedCustomExpenses
+  const customExpenses = Array.isArray(rawCustomExpenses)
+    ? sanitizedCustomExpenses
+    : migratedCustomExpenses
 
   return {
     ...DEFAULT_PARAMS,
-    ...currentParams,
+    ...sanitizeNumericParams(params),
+    withdrawalStrategy: sanitizeWithdrawalStrategy(rawWithdrawalStrategy),
     oneTimeIncomes: sanitizeOneTimeIncomes(rawOneTimeIncomes),
     customExpenses,
   }

@@ -39,8 +39,12 @@ describe('Simulation Engine - edges', () => {
       legalRetirementAge: 10,
       endAge: 25,
       averageROI: -1.5,
+      withdrawalStrategy: 'not-a-strategy',
+      dsWithdrawalRate: 1,
+      dsCeilingRate: -1,
+      dsFloorRate: 1,
       simulationRuns: 0,
-    }
+    } as typeof DEFAULT_PARAMS
 
     const results = runMonteCarloSimulation(params)
 
@@ -51,5 +55,9 @@ describe('Simulation Engine - edges', () => {
     expect(results.params.simulationRuns).toBe(1)
     expect(results.params.endAge).toBeGreaterThanOrEqual(results.params.retirementAge)
     expect(results.params.retirementAge).toBeGreaterThanOrEqual(results.params.currentAge)
+    expect(results.params.withdrawalStrategy).toBe('vanguardDynamic')
+    expect(results.params.dsWithdrawalRate).toBe(0.08)
+    expect(results.params.dsCeilingRate).toBe(0)
+    expect(results.params.dsFloorRate).toBe(0)
   })
 })

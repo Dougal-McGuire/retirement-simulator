@@ -12,6 +12,10 @@ describe('Report data transformer', () => {
     expect(parsed.projections.milestones.length).toBe(results.ages.length)
     expect(parsed.projections.successRatePct).toBeGreaterThanOrEqual(0)
     expect(parsed.projections.successRatePct).toBeLessThanOrEqual(100)
+    expect(parsed.assumptions.withdrawalStrategy).toBe(params.withdrawalStrategy)
+    expect(parsed.assumptions.dsWithdrawalRate).toBe(params.dsWithdrawalRate)
+    expect(parsed.assumptions.dsCeilingRate).toBe(params.dsCeilingRate)
+    expect(parsed.assumptions.dsFloorRate).toBe(params.dsFloorRate)
   })
 
   it('corrects absurd cap gains tax inputs (>100) down to sensible range', () => {

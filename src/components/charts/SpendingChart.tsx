@@ -3,7 +3,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import {
   ComposedChart,
-  Bar,
   Line,
   XAxis,
   YAxis,
@@ -13,7 +12,7 @@ import {
   ReferenceLine,
 } from 'recharts'
 import { useTranslations } from 'next-intl'
-import type { ChartDataPoint } from '@/types'
+import type { ChartDataPoint, WithdrawalStrategy } from '@/types'
 import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/lib/hooks/useMediaQuery'
 import { MoveHorizontal } from 'lucide-react'
@@ -21,6 +20,10 @@ import { MoveHorizontal } from 'lucide-react'
 interface SpendingChartProps {
   data: ChartDataPoint[]
   retirementAge: number
+  withdrawalStrategy: WithdrawalStrategy
+  dsWithdrawalRate: number
+  dsCeilingRate: number
+  dsFloorRate: number
   indexRange: { startIndex: number; endIndex: number }
   onBrushChange: (range: { startIndex?: number; endIndex?: number }) => void
   formatCurrency: (value: number) => string
@@ -31,6 +34,10 @@ interface SpendingChartProps {
 export function SpendingChart({
   data,
   retirementAge,
+  withdrawalStrategy,
+  dsWithdrawalRate,
+  dsCeilingRate,
+  dsFloorRate,
   indexRange,
   onBrushChange,
   formatCurrency,
@@ -56,6 +63,57 @@ export function SpendingChart({
 
   const formatPercentage = (value: number | null): string =>
     value == null ? '—' : percentageFormatter.format(value)
+
+  const isDynamicSpending = withdrawalStrategy === 'vanguardDynamic'
+  const strategySummary = isDynamicSpending
+    ? t('explanation.dynamic.summary', {
+        withdrawalRate: formatPercentage(dsWithdrawalRate),
+        ceiling: formatPercentage(dsCeilingRate),
+        floor: formatPercentage(dsFloorRate),
+      })
+    : t('explanation.fixed.summary')
+
+  const renderTooltip = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean
+    payload?: ReadonlyArray<{ payload?: ChartDataPoint }>
+    label?: string | number
+  }) => {
+    if (!active || !payload?.length) return null
+
+    const point = payload[0]?.payload
+    if (!point) return null
+    const tooltipAge = label ?? ''
+
+    return (
+      <div className="border-3 border-neo-black bg-neo-white p-3 text-[0.68rem] shadow-neo-md">
+        <div className="mb-2 font-black uppercase tracking-[0.12em] text-neo-black">
+          {t('tooltip.label', { age: tooltipAge })}
+        </div>
+        <div className="space-y-1 font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          <div className="flex justify-between gap-6">
+            <span>{t('legend.p10')}</span>
+            <span className="text-neo-black">{formatCurrency(point.spending_p10)}</span>
+          </div>
+          <div className="flex justify-between gap-6">
+            <span>{t('legend.p50')}</span>
+            <span className="text-neo-black">{formatCurrency(point.spending_p50)}</span>
+          </div>
+          <div className="flex justify-between gap-6">
+            <span>{t('legend.p90')}</span>
+            <span className="text-neo-black">{formatCurrency(point.spending_p90)}</span>
+          </div>
+          <div className="flex justify-between gap-6 border-t-2 border-neo-black pt-1">
+            <span>{t('legend.withdrawalRate')}</span>
+            <span className="text-neo-black">{formatPercentage(point.withdrawal_rate_p50)}</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Hide hint after user interaction or 5 seconds
   useEffect(() => {
@@ -120,6 +178,25 @@ export function SpendingChart({
         >
           {t('reset')}
         </Button>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+        <div className="border-2 border-neo-black bg-neo-blue/5 p-3">
+          <div className="text-[0.58rem] font-extrabold uppercase tracking-[0.16em] text-neo-blue">
+            {t('explanation.strategyLabel')}
+          </div>
+          <p className="mt-2 text-[0.68rem] font-semibold uppercase leading-relaxed tracking-[0.08em] text-neo-black">
+            {strategySummary}
+          </p>
+        </div>
+        <div className="border-2 border-neo-black bg-background p-3">
+          <div className="text-[0.58rem] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">
+            {t('explanation.readingLabel')}
+          </div>
+          <p className="mt-2 text-[0.68rem] font-semibold uppercase leading-relaxed tracking-[0.08em] text-neo-black">
+            {t('explanation.reading')}
+          </p>
+        </div>
       </div>
 
       {/* Interactive hint */}
@@ -220,24 +297,7 @@ export function SpendingChart({
               />
             )}
             <Tooltip
-              formatter={(
-                value: number | string | readonly (number | string)[] | undefined,
-                name: string | number | undefined,
-                item
-              ) => {
-                const numericValue = typeof value === 'number' ? value : Number(value ?? NaN)
-                if (item?.dataKey === 'withdrawal_rate_p50') {
-                  return [
-                    formatPercentage(Number.isFinite(numericValue) ? numericValue : null),
-                    String(name ?? ''),
-                  ]
-                }
-                return [
-                  formatCurrency(Number.isFinite(numericValue) ? numericValue : 0),
-                  String(name ?? ''),
-                ]
-              }}
-              labelFormatter={(age) => t('tooltip.label', { age })}
+              content={renderTooltip}
               contentStyle={{
                 backgroundColor: 'var(--neo-white)',
                 border: '3px solid var(--neo-black)',
@@ -273,25 +333,31 @@ export function SpendingChart({
                     }
               }
             />
-            <Bar
+            <Line
+              type="monotone"
               dataKey="spending_p10"
-              fill="var(--neo-yellow)"
+              stroke="var(--neo-yellow)"
+              strokeWidth={isMobile ? 1.25 : 1.75}
               name={t('legend.p10')}
-              radius={0}
+              dot={false}
               yAxisId="spending"
             />
-            <Bar
+            <Line
+              type="monotone"
               dataKey="spending_p50"
-              fill="var(--neo-blue)"
+              stroke="var(--neo-blue)"
+              strokeWidth={isMobile ? 2 : 3}
               name={t('legend.p50')}
-              radius={0}
+              dot={false}
               yAxisId="spending"
             />
-            <Bar
+            <Line
+              type="monotone"
               dataKey="spending_p90"
-              fill="var(--neo-red)"
+              stroke="var(--neo-red)"
+              strokeWidth={isMobile ? 1.25 : 1.75}
               name={t('legend.p90')}
-              radius={0}
+              dot={false}
               yAxisId="spending"
             />
             <Line

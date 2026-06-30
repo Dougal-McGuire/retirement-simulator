@@ -39,8 +39,12 @@ export function Appendix({ content }: AppendixProps) {
           </li>
           <li>
             {isGerman
-              ? 'Entnahmen erfolgen monatlich; Steuern auf Kapitalerträge werden am Jahresende gemäß Annahmen berücksichtigt.'
-              : 'Withdrawals occur monthly; capital-gains taxes are applied at year-end per assumptions.'}
+              ? assumptions.withdrawalStrategy === 'vanguardDynamic'
+                ? 'Ausgaben folgen Vanguard Dynamic Spending; Steuern auf Kapitalerträge werden am Jahresende gemäß Annahmen berücksichtigt.'
+                : 'Entnahmen folgen real konstanten Ausgaben; Steuern auf Kapitalerträge werden am Jahresende gemäß Annahmen berücksichtigt.'
+              : assumptions.withdrawalStrategy === 'vanguardDynamic'
+                ? 'Spending follows Vanguard Dynamic Spending; capital-gains taxes are applied at year-end per assumptions.'
+                : 'Withdrawals follow fixed real spending; capital-gains taxes are applied at year-end per assumptions.'}
           </li>
         </ul>
       </div>

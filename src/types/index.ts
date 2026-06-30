@@ -1,3 +1,5 @@
+export type WithdrawalStrategy = 'fixedReal' | 'vanguardDynamic'
+
 // Simulation parameter interfaces
 export interface SimulationParams {
   // Personal information
@@ -22,6 +24,12 @@ export interface SimulationParams {
 
   // Expenses
   customExpenses: CustomExpense[]
+
+  // Withdrawal strategy
+  withdrawalStrategy: WithdrawalStrategy
+  dsWithdrawalRate: number
+  dsCeilingRate: number
+  dsFloorRate: number
 
   // Simulation settings
   simulationRuns: number
@@ -128,9 +136,7 @@ export interface ChartDataPoint {
   assets_p80: number
   assets_p90: number
   spending_p10: number
-  spending_p20: number
   spending_p50: number
-  spending_p80: number
   spending_p90: number
   withdrawal_rate_p50: number | null
   monthly_savings_p50: number | null
@@ -168,5 +174,9 @@ export const DEFAULT_PARAMS: SimulationParams = {
     { id: 'repairs', name: 'Home Repairs', amount: 5000, interval: 'annual' },
     { id: 'carMaintenance', name: 'Car Maintenance', amount: 1500, interval: 'annual' },
   ],
+  withdrawalStrategy: 'vanguardDynamic',
+  dsWithdrawalRate: 0.05,
+  dsCeilingRate: 0.05,
+  dsFloorRate: -0.025,
   simulationRuns: 500,
 }

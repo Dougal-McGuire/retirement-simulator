@@ -348,6 +348,10 @@
           "title": "Inflation Assumptions",
           "description": "How costs increase over time"
         },
+        "withdrawal": {
+          "title": "Withdrawal Strategy",
+          "description": "How retirement spending adapts over time"
+        },
         "quality": {
           "title": "Simulation Quality",
           "description": "Accuracy versus performance trade-off",
@@ -479,6 +483,32 @@
       "simulationRuns": {
         "label": "Number of Runs",
         "tooltip": "Monte Carlo simulations to run. More runs = higher accuracy but slower computation. 1000+ recommended for reliable results."
+      },
+      "withdrawalStrategy": {
+        "label": "Withdrawal Strategy",
+        "tooltip": "Choose whether retirement expenses stay inflation-linked or adjust with Vanguard Dynamic Spending guardrails.",
+        "options": {
+          "vanguardDynamic": {
+            "label": "Vanguard DS",
+            "description": "Portfolio-linked spending with annual ceiling and floor."
+          },
+          "fixedReal": {
+            "label": "Fixed real",
+            "description": "Expenses rise with inflation regardless of market returns."
+          }
+        }
+      },
+      "dsWithdrawalRate": {
+        "label": "DS Withdrawal Rate",
+        "tooltip": "Target percentage of the prior year-end portfolio used to calculate dynamic spending."
+      },
+      "dsCeilingRate": {
+        "label": "DS Ceiling",
+        "tooltip": "Maximum annual increase versus last year’s inflation-adjusted spending."
+      },
+      "dsFloorRate": {
+        "label": "DS Floor",
+        "tooltip": "Maximum annual decrease versus last year’s inflation-adjusted spending."
       }
     },
     "saved": {
@@ -614,14 +644,20 @@
     },
     "spendingTable": {
       "toggle": "View spending data table",
-      "caption": "Monthly spending projections during retirement by age and percentile",
+      "caption": "Monthly post-strategy spending projections during retirement by age and percentile",
+      "note": {
+        "dynamic": "Rows show every retirement year using Vanguard Dynamic Spending: first-year expenses start from the plan, then target spending is {withdrawalRate} of the prior year-end portfolio and is bounded by {ceiling} / {floor} guardrails versus inflation-adjusted prior spending. Pension does not set the DS allowance; it offsets how much of the median allowance must come from the portfolio.",
+        "fixed": "Rows show every retirement year using fixed real spending: configured expenses rise with simulated inflation and are not adjusted for portfolio performance. Pension offsets how much of the median allowance must come from the portfolio."
+      },
       "headers": {
         "age": "Age",
         "p10": "10th Percentile",
-        "p20": "20th Percentile",
         "p50": "50th Percentile",
-        "p80": "80th Percentile",
-        "p90": "90th Percentile"
+        "p90": "90th Percentile",
+        "withdrawalRate": "Portfolio-funded withdrawal rate",
+        "pension": "Monthly pension",
+        "portfolioDraw": "Portfolio-funded",
+        "availableCash": "Available cash"
       }
     }
   },
@@ -664,11 +700,22 @@
   "spendingChart": {
     "title": "Spending Patterns During Retirement",
     "reset": "Reset Zoom",
-    "description": "Estimated monthly spending after retirement across scenarios. Includes monthly expenses plus annualised annual expenses.",
+    "description": "Estimated monthly spending after retirement across scenarios, including dynamic spending adjustments when enabled.",
+    "explanation": {
+      "strategyLabel": "Spending rule",
+      "readingLabel": "How to read it",
+      "reading": "Lines show monthly allowance after strategy rules: yellow is P10, blue is median, and red is P90. The black line is the median portfolio-funded withdrawal rate after pension offsets.",
+      "dynamic": {
+        "summary": "Vanguard DS starts from the planned first retirement-year budget. Later years target {withdrawalRate} of the prior year-end portfolio, capped to {ceiling} above and {floor} below last year’s inflation-adjusted spending."
+      },
+      "fixed": {
+        "summary": "Fixed real spending keeps the planned budget on an inflation path. Portfolio returns affect whether withdrawals succeed, but they do not change spending."
+      }
+    },
     "axis": {
       "age": "Age",
       "spending": "Monthly Spending (€)",
-      "withdrawalRate": "Annual Withdrawal Rate (%)"
+      "withdrawalRate": "Portfolio-Funded Rate (%)"
     },
     "tooltip": {
       "label": "Age: {age}"
@@ -677,10 +724,9 @@
       "title": "Chart legend",
       "p10": "10th Percentile",
       "p50": "50th Percentile",
-      "p80": "80th Percentile",
       "p90": "90th Percentile",
-      "withdrawalRate": "Median withdrawal rate",
-      "note": "Includes monthly expenses plus annualized annual expenses (vacations, repairs, etc.)."
+      "withdrawalRate": "Portfolio-funded withdrawal rate",
+      "note": "Allowance lines show spending before pension offsets; the withdrawal-rate line uses only the portfolio-funded median amount."
     },
     "markers": {
       "retirement": "Retirement"
@@ -690,7 +736,7 @@
       "zoomed": "Zoomed view active"
     },
     "aria": {
-      "description": "Monthly spending bar chart showing spending patterns from retirement age {retirementAge} onwards across percentiles, with a line for the median annual withdrawal rate.",
+      "description": "Monthly spending chart showing spending patterns from retirement age {retirementAge} onwards across P10, median, and P90 lines, plus a line for the median portfolio-funded withdrawal rate.",
       "controls": "Use arrow keys to navigate spending data. Press R to reset zoom. Drag across the chart to zoom into a time range."
     }
   },

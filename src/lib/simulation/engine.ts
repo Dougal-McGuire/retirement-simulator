@@ -31,10 +31,13 @@ export function sampleStandardNormal(): number {
  * For lognormal Y ~ logN(mu, sigma^2): E[Y] = exp(mu + sigma^2/2), Var[Y] = (exp(sigma^2)-1)exp(2mu+sigma^2).
  * Here Y = 1 + r with E[Y] = 1 + m and SD[Y] = s.
  */
-export function lognormalParamsFromArithmetic(mean: number, stdev: number): { mu: number; sigma: number } {
+export function lognormalParamsFromArithmetic(
+  mean: number,
+  stdev: number
+): { mu: number; sigma: number } {
   const A = 1 + mean
   const variance = stdev * stdev
-  const sigma2 = Math.log(1 + (variance / (A * A)))
+  const sigma2 = Math.log(1 + variance / (A * A))
   const sigma = Math.sqrt(Math.max(0, sigma2))
   const mu = Math.log(A) - 0.5 * sigma2
   return { mu, sigma }
@@ -90,9 +93,7 @@ export function calculatePercentiles(data: number[][]): PercentileData {
   }
 
   for (let ageIndex = 0; ageIndex < ageCount; ageIndex++) {
-    const sortedValuesAtAge = data
-      .map((run) => run[ageIndex])
-      .sort((a, b) => a - b)
+    const sortedValuesAtAge = data.map((run) => run[ageIndex]).sort((a, b) => a - b)
 
     result.p10.push(calculatePercentileFromSortedArray(sortedValuesAtAge, 10))
     result.p20.push(calculatePercentileFromSortedArray(sortedValuesAtAge, 20))
@@ -109,6 +110,36 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 const sanitizeFiniteNumber = (value: unknown, fallback: number): number => {
   const next = Number(value)
   return Number.isFinite(next) ? next : fallback
+}
+
+const normalizeWithdrawalStrategy = (value: unknown): SimulationParams['withdrawalStrategy'] =>
+  value === 'fixedReal' ? 'fixedReal' : 'vanguardDynamic'
+
+export function calculateVanguardDynamicAnnualSpending({
+  priorYearPortfolioValue,
+  previousAnnualSpending,
+  inflationFactor,
+  withdrawalRate,
+  ceilingRate,
+  floorRate,
+}: {
+  priorYearPortfolioValue: number
+  previousAnnualSpending: number
+  inflationFactor: number
+  withdrawalRate: number
+  ceilingRate: number
+  floorRate: number
+}): number {
+  const targetAnnualSpending = Math.max(0, priorYearPortfolioValue * withdrawalRate)
+  const inflationAdjustedPreviousSpending = Math.max(0, previousAnnualSpending * inflationFactor)
+  const lowerBound = inflationAdjustedPreviousSpending * (1 + floorRate)
+  const upperBound = inflationAdjustedPreviousSpending * (1 + ceilingRate)
+
+  return clamp(
+    targetAnnualSpending,
+    Math.min(lowerBound, upperBound),
+    Math.max(lowerBound, upperBound)
+  )
 }
 
 function normalizeSimulationParams(params: SimulationParams): SimulationParams {
@@ -129,28 +160,28 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
 
   const customExpenses = Array.isArray(params.customExpenses)
     ? params.customExpenses
-      .filter((expense) => {
-        if (!expense) return false
-        if (expense.interval !== 'monthly' && expense.interval !== 'annual') return false
-        return Number.isFinite(expense.amount) && expense.amount >= 0
-      })
-      .map((expense) => ({
-        ...expense,
-        amount: Math.max(0, expense.amount),
-      }))
+        .filter((expense) => {
+          if (!expense) return false
+          if (expense.interval !== 'monthly' && expense.interval !== 'annual') return false
+          return Number.isFinite(expense.amount) && expense.amount >= 0
+        })
+        .map((expense) => ({
+          ...expense,
+          amount: Math.max(0, expense.amount),
+        }))
     : []
 
   const oneTimeIncomes = Array.isArray(params.oneTimeIncomes)
     ? params.oneTimeIncomes
-      .filter((income) => {
-        if (!income) return false
-        return Number.isFinite(income.age) && Number.isFinite(income.amount) && income.amount >= 0
-      })
-      .map((income) => ({
-        ...income,
-        age: Math.round(clamp(income.age, currentAge, endAge)),
-        amount: Math.max(0, income.amount),
-      }))
+        .filter((income) => {
+          if (!income) return false
+          return Number.isFinite(income.age) && Number.isFinite(income.amount) && income.amount >= 0
+        })
+        .map((income) => ({
+          ...income,
+          age: Math.round(clamp(income.age, currentAge, endAge)),
+          amount: Math.max(0, income.amount),
+        }))
     : []
 
   return {
@@ -174,6 +205,10 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
     inflationVolatility: clamp(sanitizeFiniteNumber(params.inflationVolatility, 0.01), 0, 0.3),
     capitalGainsTax: clamp(sanitizeFiniteNumber(params.capitalGainsTax, 26.25), 0, 100),
     customExpenses,
+    withdrawalStrategy: normalizeWithdrawalStrategy(params.withdrawalStrategy),
+    dsWithdrawalRate: clamp(sanitizeFiniteNumber(params.dsWithdrawalRate, 0.05), 0.02, 0.08),
+    dsCeilingRate: clamp(sanitizeFiniteNumber(params.dsCeilingRate, 0.05), 0, 0.15),
+    dsFloorRate: clamp(sanitizeFiniteNumber(params.dsFloorRate, -0.025), -0.15, 0),
     simulationRuns: Math.max(1, Math.round(sanitizeFiniteNumber(params.simulationRuns, 1))),
   }
 }
@@ -212,10 +247,7 @@ function runSingleSimulation(params: SimulationParams): {
       if (!Number.isFinite(payoutAge)) continue
       const depositAge = payoutAge + 1
       if (depositAge < params.currentAge || depositAge > params.endAge) continue
-      oneTimeIncomeSchedule.set(
-        depositAge,
-        (oneTimeIncomeSchedule.get(depositAge) ?? 0) + amount
-      )
+      oneTimeIncomeSchedule.set(depositAge, (oneTimeIncomeSchedule.get(depositAge) ?? 0) + amount)
     }
   }
 
@@ -231,8 +263,11 @@ function runSingleSimulation(params: SimulationParams): {
   let currentMonthlyExpense = totalMonthlyExpense
   let currentAnnualExpense = totalAnnualExpense
   let runFailed = false
+  let previousDynamicAnnualSpending: number | null = null
+  let dynamicSpendingInflationFactor = 1
 
   const effectiveRetirementAge = Math.max(params.retirementAge, params.currentAge)
+  const usesDynamicSpending = params.withdrawalStrategy === 'vanguardDynamic'
 
   for (let age = params.currentAge; age <= params.endAge; age++) {
     const scheduledIncome = oneTimeIncomeSchedule.get(age)
@@ -244,10 +279,7 @@ function runSingleSimulation(params: SimulationParams): {
 
     if (age < effectiveRetirementAge) {
       // Accumulation phase (working years)
-      const roiFactor = sampleLognormalFactorFromArithmetic(
-        params.averageROI,
-        params.roiVolatility
-      )
+      const roiFactor = sampleLognormalFactorFromArithmetic(params.averageROI, params.roiVolatility)
 
       // During accumulation, assume reinvestment without realizing gains
       currentAssets = currentAssets * roiFactor + currentAnnualSavings
@@ -266,7 +298,19 @@ function runSingleSimulation(params: SimulationParams): {
       currentAnnualSavings = Math.max(0, currentAnnualSavings * savingsGrowthFactor)
     } else {
       // Distribution phase (retirement years)
-      const totalAnnualExpenseThisYear = currentMonthlyExpense * 12 + currentAnnualExpense
+      const baselineAnnualExpenseThisYear = currentMonthlyExpense * 12 + currentAnnualExpense
+      const priorYearPortfolioValue = Math.max(0, currentAssets)
+      const totalAnnualExpenseThisYear: number =
+        usesDynamicSpending && previousDynamicAnnualSpending !== null
+          ? calculateVanguardDynamicAnnualSpending({
+              priorYearPortfolioValue,
+              previousAnnualSpending: previousDynamicAnnualSpending,
+              inflationFactor: dynamicSpendingInflationFactor,
+              withdrawalRate: params.dsWithdrawalRate,
+              ceilingRate: params.dsCeilingRate,
+              floorRate: params.dsFloorRate,
+            })
+          : baselineAnnualExpenseThisYear
 
       // Add pension income if at legal retirement age
       let annualIncome = 0
@@ -278,10 +322,7 @@ function runSingleSimulation(params: SimulationParams): {
       const netNeeded = totalAnnualExpenseThisYear - annualIncome
 
       // Apply investment growth first
-      const roiFactor = sampleLognormalFactorFromArithmetic(
-        params.averageROI,
-        params.roiVolatility
-      )
+      const roiFactor = sampleLognormalFactorFromArithmetic(params.averageROI, params.roiVolatility)
       currentAssets = Math.max(0, currentAssets * roiFactor)
 
       if (netNeeded > 0) {
@@ -293,7 +334,8 @@ function runSingleSimulation(params: SimulationParams): {
           const t = Math.max(0, params.capitalGainsTax / 100)
           const totalWithdrawal = computeGrossWithdrawal(currentAssets, costBasis, netNeeded, t)
           const withdrawal = Math.min(totalWithdrawal, currentAssets)
-          const withdrawalRatio = withdrawal > 0 && currentAssets > 0 ? withdrawal / currentAssets : 0
+          const withdrawalRatio =
+            withdrawal > 0 && currentAssets > 0 ? withdrawal / currentAssets : 0
           costBasis = Math.max(0, costBasis * (1 - withdrawalRatio))
           currentAssets = Math.max(0, currentAssets - withdrawal)
           if (currentAssets <= 0) {
@@ -309,7 +351,7 @@ function runSingleSimulation(params: SimulationParams): {
       }
 
       // Store total monthly-equivalent spending (includes annualized annual expenses)
-      const monthlyEquivalentSpending = currentMonthlyExpense + currentAnnualExpense / 12
+      const monthlyEquivalentSpending = totalAnnualExpenseThisYear / 12
       spendingHistory.push(monthlyEquivalentSpending)
 
       // Apply inflation to expenses for next year
@@ -319,6 +361,10 @@ function runSingleSimulation(params: SimulationParams): {
       )
       currentMonthlyExpense *= inflationFactor
       currentAnnualExpense *= inflationFactor
+      if (usesDynamicSpending) {
+        previousDynamicAnnualSpending = totalAnnualExpenseThisYear
+        dynamicSpendingInflationFactor = inflationFactor
+      }
 
       // Check for failure (running out of money)
       if (currentAssets <= 0) {
@@ -438,7 +484,9 @@ export function formatPercentage(value: number): string {
  * @param customExpenses - Array containing custom expense items
  * @returns Object with combined totals
  */
-export function calculateCombinedExpenses(customExpenses?: { interval: 'monthly' | 'annual'; amount: number }[]) {
+export function calculateCombinedExpenses(
+  customExpenses?: { interval: 'monthly' | 'annual'; amount: number }[]
+) {
   // Defensive check: ensure expenses is always an array
   const expenses = Array.isArray(customExpenses) ? customExpenses : []
   const totalMonthly = expenses

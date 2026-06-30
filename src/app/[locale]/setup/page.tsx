@@ -14,7 +14,6 @@ import { ExpenseList } from '@/components/forms/fields/ExpenseList'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
 import { OneTimeIncome, CustomExpense, ExpenseInterval } from '@/types'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
-import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { cn } from '@/lib/utils'
 
 const STEP_KEYS = ['personal', 'assets', 'expenses', 'market'] as const
@@ -571,7 +570,6 @@ export default function SetupPage() {
 
                 <div className="theme-action-strip flex flex-col gap-3 sm:flex-row sm:items-center">
                   <LocaleSwitcher className="w-full sm:w-48" />
-                  <ThemeSwitcher className="w-full sm:w-56" />
                   <Button variant="secondary" size="sm" asChild className="min-w-[11rem]">
                     <Link href="/simulation">{t('header.simulationLink')}</Link>
                   </Button>

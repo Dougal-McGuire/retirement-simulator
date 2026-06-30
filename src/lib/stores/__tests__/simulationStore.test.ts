@@ -158,6 +158,69 @@ describe('simulationStore', () => {
     expect(useSimulationStore.getState().results).toBeNull()
   })
 
+  it('sanitizes invalid scalar params when hydrating persisted params', () => {
+    const { useSimulationStore } = loadStore({
+      [STORE_KEY]: JSON.stringify({
+        state: {
+          params: {
+            ...DEFAULT_PARAMS,
+            currentAge: 'bad',
+            retirementAge: '61',
+            currentAssets: null,
+            annualSavingsGrowthRate: '',
+            monthlyPension: false,
+            averageROI: '0.09',
+            withdrawalStrategy: 'invalid',
+            dsWithdrawalRate: '0.06',
+            dsCeilingRate: '',
+            dsFloorRate: false,
+          },
+          results: null,
+          savedSetups: [],
+        },
+        version: 0,
+      }),
+    })
+
+    const { params } = useSimulationStore.getState()
+    expect(params.currentAge).toBe(DEFAULT_PARAMS.currentAge)
+    expect(params.retirementAge).toBe(61)
+    expect(params.currentAssets).toBe(DEFAULT_PARAMS.currentAssets)
+    expect(params.annualSavingsGrowthRate).toBe(DEFAULT_PARAMS.annualSavingsGrowthRate)
+    expect(params.monthlyPension).toBe(DEFAULT_PARAMS.monthlyPension)
+    expect(params.averageROI).toBe(0.09)
+    expect(params.withdrawalStrategy).toBe(DEFAULT_PARAMS.withdrawalStrategy)
+    expect(params.dsWithdrawalRate).toBe(0.06)
+    expect(params.dsCeilingRate).toBe(DEFAULT_PARAMS.dsCeilingRate)
+    expect(params.dsFloorRate).toBe(DEFAULT_PARAMS.dsFloorRate)
+  })
+
+  it('adds Vanguard DS defaults when hydrating legacy persisted params', () => {
+    const {
+      dsCeilingRate: _dsCeilingRate,
+      dsFloorRate: _dsFloorRate,
+      dsWithdrawalRate: _dsWithdrawalRate,
+      withdrawalStrategy: _withdrawalStrategy,
+      ...legacyParams
+    } = DEFAULT_PARAMS
+    const { useSimulationStore } = loadStore({
+      [STORE_KEY]: JSON.stringify({
+        state: {
+          params: legacyParams,
+          results: null,
+          savedSetups: [],
+        },
+        version: 0,
+      }),
+    })
+
+    const { params } = useSimulationStore.getState()
+    expect(params.withdrawalStrategy).toBe('vanguardDynamic')
+    expect(params.dsWithdrawalRate).toBe(DEFAULT_PARAMS.dsWithdrawalRate)
+    expect(params.dsCeilingRate).toBe(DEFAULT_PARAMS.dsCeilingRate)
+    expect(params.dsFloorRate).toBe(DEFAULT_PARAMS.dsFloorRate)
+  })
+
   it('migrates legacy expenses when hydrating persisted params', () => {
     const { customExpenses: _customExpenses, ...legacyParams } = DEFAULT_PARAMS
     const { useSimulationStore } = loadStore({
@@ -243,6 +306,33 @@ describe('simulationStore', () => {
     })
 
     expect(useSimulationStore.getState().params.customExpenses).toEqual([])
+  })
+
+  it('sanitizes invalid scalar params when loading params from storage', () => {
+    const { useSimulationStore } = loadStore({
+      [STORAGE_KEY]: JSON.stringify({
+        ...DEFAULT_PARAMS,
+        currentAge: 'invalid',
+        legalRetirementAge: '68',
+        endAge: null,
+        simulationRuns: '750',
+        withdrawalStrategy: 'fixedReal',
+        dsWithdrawalRate: '0.055',
+      }),
+    })
+    const runSimulation = jest.fn(async () => {})
+    useSimulationStore.setState({ runSimulation })
+
+    useSimulationStore.getState().loadFromStorage()
+
+    const { params } = useSimulationStore.getState()
+    expect(runSimulation).toHaveBeenCalledTimes(1)
+    expect(params.currentAge).toBe(DEFAULT_PARAMS.currentAge)
+    expect(params.legalRetirementAge).toBe(68)
+    expect(params.endAge).toBe(DEFAULT_PARAMS.endAge)
+    expect(params.simulationRuns).toBe(750)
+    expect(params.withdrawalStrategy).toBe('fixedReal')
+    expect(params.dsWithdrawalRate).toBe(0.055)
   })
 
   it('migrates legacy expenses when loading params from storage', () => {

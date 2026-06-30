@@ -18,7 +18,15 @@ interface ReportSection {
   render: () => React.ReactNode
 }
 
-function AppendixSection({ content, isGerman, intlLocale }: { content: ReportContent; isGerman: boolean; intlLocale: string }) {
+function AppendixSection({
+  content,
+  isGerman,
+  intlLocale,
+}: {
+  content: ReportContent
+  isGerman: boolean
+  intlLocale: string
+}) {
   const { assumptions } = content
 
   return (
@@ -27,29 +35,41 @@ function AppendixSection({ content, isGerman, intlLocale }: { content: ReportCon
 
       <View style={styles.card}>
         <Text style={styles.label}>{isGerman ? 'Methodik' : 'Methodology'}</Text>
-        <Text style={{ marginTop: 5, fontSize: 9.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
+        <Text
+          style={{ marginTop: 5, fontSize: 9.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}
+        >
           {isGerman
-            ? `Monte-Carlo-Simulation mit ${fmtNumber(assumptions.simulationRuns, { locale: intlLocale })} Läufen. Zufallsrenditen basieren auf Erwartungswert ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} und Volatilität ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}.`
-            : `Monte Carlo simulation with ${fmtNumber(assumptions.simulationRuns, { locale: intlLocale })} runs. Random returns use an expected value of ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} and volatility of ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}.`}
+            ? `Monte-Carlo-Simulation mit ${fmtNumber(assumptions.simulationRuns, { locale: intlLocale })} Läufen. Zufallsrenditen basieren auf Erwartungswert ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} und Volatilität ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}. Entnahmestrategie: ${assumptions.withdrawalStrategy === 'vanguardDynamic' ? 'Vanguard Dynamic Spending' : 'real konstante Ausgaben'}.`
+            : `Monte Carlo simulation with ${fmtNumber(assumptions.simulationRuns, { locale: intlLocale })} runs. Random returns use an expected value of ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} and volatility of ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}. Withdrawal strategy: ${assumptions.withdrawalStrategy === 'vanguardDynamic' ? 'Vanguard Dynamic Spending' : 'fixed real spending'}.`}
         </Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.label}>{isGerman ? 'Interpretationshilfe' : 'Interpretation Guide'}</Text>
+        <Text style={styles.label}>
+          {isGerman ? 'Interpretationshilfe' : 'Interpretation Guide'}
+        </Text>
         <Table>
           <TableRow>
             <TableCell width="20%">P10</TableCell>
             <TableCell width="80%">
-              {isGerman ? 'Konservatives Stressszenario (10 % der Läufe schlechter).' : 'Conservative stress scenario (10% of runs are worse).'}
+              {isGerman
+                ? 'Konservatives Stressszenario (10 % der Läufe schlechter).'
+                : 'Conservative stress scenario (10% of runs are worse).'}
             </TableCell>
           </TableRow>
           <TableRow>
             <TableCell width="20%">P50</TableCell>
-            <TableCell width="80%">{isGerman ? 'Medianpfad (typischer Verlauf).' : 'Median path (typical trajectory).'}</TableCell>
+            <TableCell width="80%">
+              {isGerman ? 'Medianpfad (typischer Verlauf).' : 'Median path (typical trajectory).'}
+            </TableCell>
           </TableRow>
           <TableRow>
             <TableCell width="20%">P90</TableCell>
-            <TableCell width="80%">{isGerman ? 'Positives Szenario (10 % der Läufe besser).' : 'Upside scenario (10% of runs are better).'}</TableCell>
+            <TableCell width="80%">
+              {isGerman
+                ? 'Positives Szenario (10 % der Läufe besser).'
+                : 'Upside scenario (10% of runs are better).'}
+            </TableCell>
           </TableRow>
         </Table>
       </View>
@@ -112,7 +132,9 @@ export function RetirementReport({ content }: RetirementReportProps) {
     {
       id: 'section-appendix',
       title: isGerman ? 'Anhang' : 'Appendix',
-      render: () => <AppendixSection content={content} isGerman={isGerman} intlLocale={intlLocale} />,
+      render: () => (
+        <AppendixSection content={content} isGerman={isGerman} intlLocale={intlLocale} />
+      ),
     },
   ]
 
@@ -126,7 +148,11 @@ export function RetirementReport({ content }: RetirementReportProps) {
   return (
     <ReportDocument
       title={reportTitle}
-      subject={isGerman ? 'Monte-Carlo Analyse Ruhestandsplanung' : 'Monte Carlo retirement planning analysis'}
+      subject={
+        isGerman
+          ? 'Monte-Carlo Analyse Ruhestandsplanung'
+          : 'Monte Carlo retirement planning analysis'
+      }
     >
       <CoverPage
         title={reportTitle}
@@ -138,12 +164,18 @@ export function RetirementReport({ content }: RetirementReportProps) {
         badge={`${isGerman ? 'Erfolgsquote' : 'Success Rate'} ${fmtPercent(profile.success.successRate, 1, intlLocale)}`}
         metadata={[
           { label: isGerman ? 'Berichts-ID' : 'Report ID', value: metadata.id },
-          { label: isGerman ? 'Erstellt am' : 'Generated on', value: fmtDate(metadata.generatedAt, intlLocale) },
+          {
+            label: isGerman ? 'Erstellt am' : 'Generated on',
+            value: fmtDate(metadata.generatedAt, intlLocale),
+          },
           {
             label: isGerman ? 'Planungshorizont' : 'Planning Horizon',
             value: `${profile.person.currentAge}-${profile.person.horizonAge}`,
           },
-          { label: isGerman ? 'Jahresbudget' : 'Annual Budget', value: fmtCurrency(annualSpend, intlLocale) },
+          {
+            label: isGerman ? 'Jahresbudget' : 'Annual Budget',
+            value: fmtCurrency(annualSpend, intlLocale),
+          },
         ]}
       />
 
@@ -155,11 +187,16 @@ export function RetirementReport({ content }: RetirementReportProps) {
               <TableRow key={entry.id}>
                 <TableCell width="8%">{index + 1}.</TableCell>
                 <TableCell width="82%">
-                  <Link src={`#${entry.id}`} style={{ color: tokens.colors.accent[700], textDecoration: 'none' }}>
+                  <Link
+                    src={`#${entry.id}`}
+                    style={{ color: tokens.colors.accent[700], textDecoration: 'none' }}
+                  >
                     {entry.title}
                   </Link>
                 </TableCell>
-                <TableCell width="10%" align="right">{entry.page}</TableCell>
+                <TableCell width="10%" align="right">
+                  {entry.page}
+                </TableCell>
               </TableRow>
             ))}
           </Table>
@@ -170,21 +207,27 @@ export function RetirementReport({ content }: RetirementReportProps) {
               <View style={{ width: '33%', paddingRight: 6 }}>
                 <View style={styles.card} wrap={false}>
                   <Text style={styles.kpiLabel}>{isGerman ? 'Erfolgsquote' : 'Success Rate'}</Text>
-                  <Text style={styles.kpiValue}>{fmtPercent(profile.success.successRate, 1, intlLocale)}</Text>
+                  <Text style={styles.kpiValue}>
+                    {fmtPercent(profile.success.successRate, 1, intlLocale)}
+                  </Text>
                 </View>
               </View>
               <View style={{ width: '33%', paddingHorizontal: 3 }}>
                 <View style={styles.card} wrap={false}>
                   <Text style={styles.kpiLabel}>{isGerman ? 'Planungs-Score' : 'Plan Score'}</Text>
                   <Text style={styles.kpiValue}>
-                    {profile.success.score !== null ? fmtNumber(profile.success.score, { locale: intlLocale }) : '-'}
+                    {profile.success.score !== null
+                      ? fmtNumber(profile.success.score, { locale: intlLocale })
+                      : '-'}
                   </Text>
                 </View>
               </View>
               <View style={{ width: '34%', paddingLeft: 6 }}>
                 <View style={styles.card} wrap={false}>
                   <Text style={styles.kpiLabel}>{isGerman ? 'Simulationen' : 'Simulations'}</Text>
-                  <Text style={styles.kpiValue}>{fmtNumber(assumptions.simulationRuns, { locale: intlLocale })}</Text>
+                  <Text style={styles.kpiValue}>
+                    {fmtNumber(assumptions.simulationRuns, { locale: intlLocale })}
+                  </Text>
                 </View>
               </View>
             </View>
