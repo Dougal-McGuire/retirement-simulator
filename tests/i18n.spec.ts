@@ -20,4 +20,14 @@ test.describe('i18n routing', () => {
     await expect(page.getByLabel('Current Age')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeVisible()
   })
+
+  test('exposes setup progress to assistive technology', async ({ page }) => {
+    await page.goto('/en/setup')
+
+    const progressbar = page.getByRole('progressbar')
+    await expect(progressbar).toHaveAttribute('aria-valuenow', '25')
+
+    await page.getByRole('button', { name: 'Next', exact: true }).click()
+    await expect(progressbar).toHaveAttribute('aria-valuenow', '50')
+  })
 })

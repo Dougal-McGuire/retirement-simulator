@@ -597,7 +597,14 @@ export default function SetupPage() {
                     {t('progress.autosave')}
                   </span>
                 </div>
-                <div className="theme-progress-bar relative h-5 w-full overflow-hidden border-3 border-neo-black bg-neo-white shadow-neo sm:max-w-sm">
+                <div
+                  className="theme-progress-bar relative h-5 w-full overflow-hidden border-3 border-neo-black bg-neo-white shadow-neo sm:max-w-sm"
+                  role="progressbar"
+                  aria-label={`${progressLabel}, ${percentLabel}`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={progressPercent}
+                >
                   <div
                     className="h-full bg-neo-blue transition-all duration-300 ease-out"
                     style={{ width: `${progressPercent}%` }}
