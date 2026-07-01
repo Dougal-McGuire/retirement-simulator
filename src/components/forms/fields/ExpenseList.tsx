@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { CustomExpense, ExpenseInterval } from '@/types'
+import { EXPENSE_INTERVALS, type CustomExpense, type ExpenseInterval } from '@/types'
 
 interface ExpenseListStrings {
   addButton: string
@@ -52,6 +52,12 @@ interface ExpenseListProps {
   onUpdate?: (id: string, expense: Omit<CustomExpense, 'id'>) => void
   onRemove: (id: string) => void
   formatCurrency: (value: number) => string
+}
+
+const expenseIntervals: readonly string[] = EXPENSE_INTERVALS
+
+function isExpenseInterval(value: string): value is ExpenseInterval {
+  return expenseIntervals.includes(value)
 }
 
 export function ExpenseList({
@@ -135,6 +141,18 @@ export function ExpenseList({
     handleAdd()
   }
 
+  const handleEditIntervalChange = (value: string) => {
+    if (isExpenseInterval(value)) {
+      setEditInterval(value)
+    }
+  }
+
+  const handleDraftIntervalChange = (value: string) => {
+    if (isExpenseInterval(value)) {
+      setDraftInterval(value)
+    }
+  }
+
   const getExpenseContext = (expense: CustomExpense) => {
     const intervalLabel =
       expense.interval === 'monthly' ? strings.intervalMonthly : strings.intervalAnnual
@@ -161,7 +179,7 @@ export function ExpenseList({
                 className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase"
                 aria-label={getExpenseControlLabel(strings.nameLabel, expense)}
               />
-              <Select value={editInterval} onValueChange={(v) => setEditInterval(v as ExpenseInterval)}>
+              <Select value={editInterval} onValueChange={handleEditIntervalChange}>
                 <SelectTrigger
                   className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.62rem]"
                   aria-label={getExpenseControlLabel(strings.intervalLabel, expense)}
@@ -394,7 +412,7 @@ export function ExpenseList({
               >
                 {strings.intervalLabel}
               </Label>
-              <Select value={draftInterval} onValueChange={(value) => setDraftInterval(value as ExpenseInterval)}>
+              <Select value={draftInterval} onValueChange={handleDraftIntervalChange}>
                 <SelectTrigger id="expense-interval" className="h-11 border-2 border-neo-black bg-neo-white">
                   <SelectValue />
                 </SelectTrigger>

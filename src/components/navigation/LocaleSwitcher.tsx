@@ -3,7 +3,7 @@
 import { useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/navigation'
-import { locales, type Locale } from '@/i18n/config'
+import { defaultLocale, locales, type Locale } from '@/i18n/config'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
@@ -12,18 +12,25 @@ interface LocaleSwitcherProps {
   size?: 'sm' | 'default'
 }
 
+const supportedLocales: readonly string[] = locales
+
+function isLocale(value: string): value is Locale {
+  return supportedLocales.includes(value)
+}
+
 export function LocaleSwitcher({ className, size = 'sm' }: LocaleSwitcherProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const locale = useLocale() as Locale
+  const currentLocale = useLocale()
+  const locale = isLocale(currentLocale) ? currentLocale : defaultLocale
   const t = useTranslations('localeSwitcher')
   const [isPending, startTransition] = useTransition()
 
   const handleChange = (nextLocale: string) => {
-    if (nextLocale === locale) return
+    if (!isLocale(nextLocale) || nextLocale === locale) return
 
     startTransition(() => {
-      router.replace(pathname, { locale: nextLocale as Locale })
+      router.replace(pathname, { locale: nextLocale })
     })
   }
 
@@ -42,4 +49,3 @@ export function LocaleSwitcher({ className, size = 'sm' }: LocaleSwitcherProps) 
     </Select>
   )
 }
-
