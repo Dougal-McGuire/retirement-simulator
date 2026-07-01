@@ -31,6 +31,7 @@ export default function SetupPage() {
   const setAutoRunSuspended = useSimulationStore((state) => state.setAutoRunSuspended)
 
   const [currentStep, setCurrentStep] = useState(0)
+  const [progressLoaded, setProgressLoaded] = useState(false)
 
   const steps = useMemo(
     () =>
@@ -62,21 +63,13 @@ export default function SetupPage() {
   const formatInteger = (value: number) =>
     format.number(value, { maximumFractionDigits: 0, minimumFractionDigits: 0 })
 
-  // Auto-save currentStep to localStorage (for continuing where user left off)
-  useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        currentStep,
-        timestamp: Date.now(),
-      })
-    )
-  }, [currentStep])
-
   // Load saved currentStep on mount (formData is already from params)
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (!saved) return
+    if (!saved) {
+      setProgressLoaded(true)
+      return
+    }
 
     try {
       const parsed = JSON.parse(saved)
@@ -85,8 +78,23 @@ export default function SetupPage() {
       }
     } catch {
       // ignore invalid cached state
+    } finally {
+      setProgressLoaded(true)
     }
   }, [])
+
+  // Auto-save currentStep to localStorage (for continuing where user left off)
+  useEffect(() => {
+    if (!progressLoaded) return
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        currentStep,
+        timestamp: Date.now(),
+      })
+    )
+  }, [currentStep, progressLoaded])
 
   useEffect(() => {
     setAutoRunSuspended(true)
