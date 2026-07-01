@@ -3,19 +3,13 @@
 import { useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/navigation'
-import { defaultLocale, locales, type Locale } from '@/i18n/config'
+import { defaultLocale, isLocale, locales } from '@/i18n/config'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
 interface LocaleSwitcherProps {
   className?: string
   size?: 'sm' | 'default'
-}
-
-const supportedLocales: readonly string[] = locales
-
-function isLocale(value: string): value is Locale {
-  return supportedLocales.includes(value)
 }
 
 export function LocaleSwitcher({ className, size = 'sm' }: LocaleSwitcherProps) {

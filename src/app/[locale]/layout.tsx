@@ -5,7 +5,7 @@ import { getMessages, setRequestLocale } from 'next-intl/server'
 import { Analytics } from '@vercel/analytics/next'
 import { ToastProvider } from '@/components/ui/toast'
 import { SkipLinks } from '@/components/navigation/SkipLinks'
-import { locales, type Locale } from '@/i18n/config'
+import { isLocale, locales } from '@/i18n/config'
 
 interface LocaleLayoutProps {
   children: ReactNode
@@ -22,7 +22,7 @@ export default async function LocaleLayout({
 }: LocaleLayoutProps) {
   const { locale } = await params
 
-  if (!locales.includes(locale as Locale)) {
+  if (!isLocale(locale)) {
     notFound()
   }
 
