@@ -20,7 +20,6 @@ import {
   getPlanHealth,
   type PlanHealth,
 } from '@/lib/simulation/planInsights'
-import { runSimulationInClient } from '@/lib/simulation/workerClient'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
@@ -80,26 +79,30 @@ export function PlanDashboard({ params, results, isLoading }: PlanDashboardProps
 
     setScenarioStatus('loading')
 
-    Promise.all(
-      scenarioParams.map(async (scenario) => {
-        const scenarioResults = await runSimulationInClient(scenario.params)
-        return {
-          id: scenario.id,
-          successRate: scenarioResults.successRate,
-          delta: scenarioResults.successRate - results.successRate,
-        }
-      })
-    )
-      .then((nextScenarios) => {
-        if (cancelled) return
-        setScenarios(nextScenarios.sort((a, b) => b.delta - a.delta))
-        setScenarioStatus('ready')
-      })
-      .catch(() => {
-        if (cancelled) return
+    const loadScenarios = async () => {
+      const { runSimulationInClient } = await import('@/lib/simulation/workerClient')
+      const nextScenarios = await Promise.all(
+        scenarioParams.map(async (scenario) => {
+          const scenarioResults = await runSimulationInClient(scenario.params)
+          return {
+            id: scenario.id,
+            successRate: scenarioResults.successRate,
+            delta: scenarioResults.successRate - results.successRate,
+          }
+        })
+      )
+
+      if (cancelled) return
+      setScenarios(nextScenarios.sort((a, b) => b.delta - a.delta))
+      setScenarioStatus('ready')
+    }
+
+    void loadScenarios().catch(() => {
+      if (!cancelled) {
         setScenarios([])
         setScenarioStatus('idle')
-      })
+      }
+    })
 
     return () => {
       cancelled = true
