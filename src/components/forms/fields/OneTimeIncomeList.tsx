@@ -85,22 +85,24 @@ export function OneTimeIncomeList({
     () => incomes.reduce((sum, income) => sum + income.amount, 0),
     [incomes]
   )
+  const trimmedDraftName = draftName.trim()
+  const parsedDraftAmount = Number(draftAmount)
+  const sanitizedDraftAmount = Number.isFinite(parsedDraftAmount)
+    ? Math.max(0, Math.round(parsedDraftAmount))
+    : 0
+  const canAddDraft = trimmedDraftName.length > 0 && sanitizedDraftAmount > 0
 
   const handleAdd = () => {
-    const trimmedName = draftName.trim()
-    if (!trimmedName) return // Name is required
+    if (!canAddDraft) return
 
     const parsedAge = Number(draftAge)
-    const parsedAmount = Number(draftAmount)
     const nextAge = clamp(Math.round(parsedAge), minAge, maxAge)
-    const nextAmount = Math.max(0, Math.round(parsedAmount))
-    if (!Number.isFinite(nextAge) || !Number.isFinite(nextAmount)) return
-    if (nextAmount === 0) return
+    if (!Number.isFinite(nextAge)) return
 
     onAdd({
-      name: trimmedName,
+      name: trimmedDraftName,
       age: nextAge,
-      amount: nextAmount,
+      amount: sanitizedDraftAmount,
     })
     setDraftName('')
     setDraftAge(String(defaultAge))
@@ -405,7 +407,13 @@ export function OneTimeIncomeList({
           </div>
 
           <div className="flex items-center justify-start">
-            <Button type="submit" variant="secondary" size="sm" className="h-11 w-full px-6">
+            <Button
+              type="submit"
+              variant="secondary"
+              size="sm"
+              className="h-11 w-full px-6"
+              disabled={!canAddDraft}
+            >
               {strings.addButton}
             </Button>
           </div>
