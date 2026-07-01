@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
 import type { DocumentProps } from '@react-pdf/renderer'
 import { transformToReportData } from '@/lib/transformers/reportDataTransformer'
-import { ReportDataSchema, type ReportData } from '@/lib/pdf-generator/schema/reportData'
+import {
+  DEFAULT_REPORT_LOCALE,
+  ReportDataSchema,
+  ReportLocaleSchema,
+  type ReportData,
+  type ReportLocale,
+} from '@/lib/pdf-generator/schema/reportData'
 import { mapReportDataToContent } from '@/lib/pdf-generator/reportTypes'
 import { RetirementReport } from '@/lib/pdf-generator/react-pdf'
 import React from 'react'
@@ -91,7 +97,7 @@ const GeneratePdfRequestBodySchema = z
     params: z.unknown().optional(),
     results: z.unknown().optional(),
     reportData: z.unknown().optional(),
-    locale: z.unknown().optional(),
+    locale: ReportLocaleSchema.optional(),
   })
   .passthrough()
 
@@ -128,7 +134,7 @@ function validateSimulationResults(value: unknown): Omit<SimulationResults, 'par
   return parsed.data
 }
 
-function withLocale(value: unknown, locale: 'en' | 'de') {
+function withLocale(value: unknown, locale: ReportLocale) {
   if (value && typeof value === 'object') {
     return { ...value, locale }
   }
@@ -148,16 +154,16 @@ export async function POST(req: NextRequest) {
 
     const parsedBody = GeneratePdfRequestBodySchema.safeParse(rawBody)
     if (!parsedBody.success) {
-      throw new ClientRequestError('Invalid request payload', 400, parsedBody.error.flatten())
+      const details = parsedBody.error.flatten()
+      if (details.fieldErrors.locale) {
+        throw new ClientRequestError('Unsupported locale', 400, details)
+      }
+      throw new ClientRequestError('Invalid request payload', 400, details)
     }
     body = parsedBody.data
 
     const { params, results, reportData } = body
-    const requestedLocale = body.locale === 'en' || body.locale === 'de' ? body.locale : 'de'
-
-    if (body.locale !== undefined && body.locale !== 'en' && body.locale !== 'de') {
-      throw new ClientRequestError('Unsupported locale')
-    }
+    const requestedLocale = body.locale ?? DEFAULT_REPORT_LOCALE
 
     // Validate input data
     let validated: ReportData

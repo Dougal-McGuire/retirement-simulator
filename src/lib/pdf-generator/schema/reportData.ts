@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+export const ReportLocaleSchema = z.enum(['en', 'de'])
+export type ReportLocale = z.infer<typeof ReportLocaleSchema>
+
+export const DEFAULT_REPORT_LOCALE: ReportLocale = 'de'
+
 // Validation schemas with min/max ranges
 export const PersonSchema = z.object({
   currentAge: z.number().min(18).max(100),
@@ -130,7 +135,7 @@ export const ReportDataSchema = z.object({
       version: z.string().default('1.0.0'),
     })
     .optional(),
-  locale: z.string().optional(),
+  locale: ReportLocaleSchema.optional(),
 })
 
 export type Person = z.infer<typeof PersonSchema>

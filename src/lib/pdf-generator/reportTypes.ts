@@ -2,12 +2,13 @@ import type {
   Milestone,
   Recommendation,
   ReportData,
+  ReportLocale,
   Summary,
 } from '@/lib/pdf-generator/schema/reportData'
 
-type SummaryBridge = NonNullable<Summary>['bridge']
+export type { ReportLocale } from '@/lib/pdf-generator/schema/reportData'
 
-export type ReportLocale = 'de' | 'en'
+type SummaryBridge = NonNullable<Summary>['bridge']
 
 const PLAN_HEALTH_LABELS_DE: Record<string, string> = {
   Strong: 'Stark',
@@ -271,15 +272,12 @@ export interface ReportContent {
   locale: ReportLocale
 }
 
-function normaliseLocale(value?: string): ReportLocale {
-  if (typeof value === 'string' && value.toLowerCase().startsWith('en')) {
-    return 'en'
-  }
-  return 'de'
+function normaliseLocale(value?: ReportLocale): ReportLocale {
+  return value ?? 'de'
 }
 
 export function mapReportDataToContent(data: ReportData): ReportContent {
-  const locale = normaliseLocale((data as Record<string, unknown>).locale as string | undefined)
+  const locale = normaliseLocale(data.locale)
 
   const summary = data.summary
   const trials = data.assumptions.mcRuns

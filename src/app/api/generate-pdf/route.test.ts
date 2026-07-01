@@ -149,6 +149,35 @@ describe('/api/generate-pdf', () => {
     expect(body.error).toBeTruthy()
   })
 
+  it('returns 400 for unsupported locales', async () => {
+    const request = createJsonRequest({
+      reportData: createValidReportData(),
+      locale: 'fr',
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe('Unsupported locale')
+    expect(mapReportDataToContent).not.toHaveBeenCalled()
+    expect(renderToBuffer).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when report and simulation payloads are missing', async () => {
+    const request = createJsonRequest({
+      locale: 'en',
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe('Parameter fehlen')
+    expect(mapReportDataToContent).not.toHaveBeenCalled()
+    expect(renderToBuffer).not.toHaveBeenCalled()
+  })
+
   it('returns 400 for malformed params and results payloads', async () => {
     const request = createJsonRequest({
       params: DEFAULT_PARAMS,
