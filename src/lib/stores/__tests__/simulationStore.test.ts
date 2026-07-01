@@ -4,6 +4,7 @@ type StoreModule = typeof import('../simulationStore')
 
 const STORE_KEY = 'retirement-simulator-store'
 const STORAGE_KEY = 'retirement-simulator-params'
+const SAVED_SETUPS_KEY = 'retirement-simulator-saved-setups'
 
 function createResults(params: SimulationParams): SimulationResults {
   return {
@@ -306,6 +307,94 @@ describe('simulationStore', () => {
     })
 
     expect(useSimulationStore.getState().params.customExpenses).toEqual([])
+  })
+
+  it('drops malformed saved setup storage while normalizing recovered setup params', () => {
+    const { useSimulationStore } = loadStore({
+      [SAVED_SETUPS_KEY]: JSON.stringify([
+        {
+          id: 'saved-valid',
+          name: 'Recovered setup',
+          timestamp: 1710000000000,
+          params: {
+            ...DEFAULT_PARAMS,
+            currentAge: '62',
+            currentAssets: 'invalid',
+            withdrawalStrategy: 'fixedReal',
+          },
+        },
+        {
+          id: '',
+          name: 'Missing id',
+          timestamp: 1710000000001,
+          params: DEFAULT_PARAMS,
+        },
+        {
+          id: 'missing-timestamp',
+          name: 'Missing timestamp',
+          params: DEFAULT_PARAMS,
+        },
+        'not-a-setup',
+      ]),
+    })
+
+    expect(useSimulationStore.getState().savedSetups).toEqual([
+      {
+        id: 'saved-valid',
+        name: 'Recovered setup',
+        timestamp: 1710000000000,
+        params: {
+          ...DEFAULT_PARAMS,
+          currentAge: 62,
+          currentAssets: DEFAULT_PARAMS.currentAssets,
+          withdrawalStrategy: 'fixedReal',
+        },
+      },
+    ])
+  })
+
+  it('drops malformed saved setups from the main persisted store', () => {
+    const { useSimulationStore } = loadStore({
+      [STORE_KEY]: JSON.stringify({
+        state: {
+          params: DEFAULT_PARAMS,
+          results: null,
+          savedSetups: [
+            {
+              id: 'persisted-valid',
+              name: 'Persisted setup',
+              timestamp: 1710000000002,
+              params: {
+                ...DEFAULT_PARAMS,
+                currentAge: '61',
+                simulationRuns: '1200',
+              },
+            },
+            {
+              id: '',
+              name: 'Missing id',
+              timestamp: 1710000000003,
+              params: DEFAULT_PARAMS,
+            },
+            null,
+          ],
+        },
+        version: 0,
+      }),
+    })
+
+    expect(useSimulationStore.getState().savedSetups).toEqual([
+      {
+        id: 'persisted-valid',
+        name: 'Persisted setup',
+        timestamp: 1710000000002,
+        params: {
+          ...DEFAULT_PARAMS,
+          currentAge: 61,
+          simulationRuns: 1200,
+        },
+      },
+    ])
   })
 
   it('sanitizes invalid scalar params when loading params from storage', () => {

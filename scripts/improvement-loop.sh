@@ -7,6 +7,8 @@ DEPLOY_INTERVAL_SECONDS="${IMPROVEMENT_LOOP_DEPLOY_INTERVAL_SECONDS:-7200}"
 RUNS_DIR="${IMPROVEMENT_LOOP_RUNS_DIR:-.improvement-loop}"
 CODEX_MODEL="${IMPROVEMENT_LOOP_CODEX_MODEL:-gpt-5.5}"
 RESET_REJECTED_CHANGES="${IMPROVEMENT_LOOP_RESET_REJECTED:-0}"
+AUTO_COMMIT="${IMPROVEMENT_LOOP_AUTO_COMMIT:-0}"
+REPAIR_ATTEMPTS="${IMPROVEMENT_LOOP_REPAIR_ATTEMPTS:-1}"
 MODE="loop"
 DEPLOY="false"
 
@@ -17,10 +19,15 @@ Usage: scripts/improvement-loop.sh [options]
 Options:
   --once             Run one improvement cycle, then exit.
   --deploy          Enable periodic verified commits and pushes from main.
+  --auto-commit     Commit verified cycle changes locally without pushing.
+  --no-auto-commit  Stop for manual review after verified cycle changes.
   --interval N      Seconds between loop cycles. Default: 600.
   --deploy-interval N
                     Seconds between deploy gates when --deploy is enabled.
                     Default: 7200.
+  --repair-attempts N
+                    Number of bounded repair attempts after critic failure.
+                    Default: 1.
   --reset-rejected  Restore legacy behavior: reset rejected changes and continue.
   --help            Show this help.
 
@@ -30,6 +37,8 @@ Environment:
   IMPROVEMENT_LOOP_ALLOW_ENGINE_MISMATCH=1
                                     Warn, instead of fail, when Node/pnpm do
                                     not match package.json engines.
+  IMPROVEMENT_LOOP_AUTO_COMMIT=1    Commit verified cycle changes locally.
+  IMPROVEMENT_LOOP_REPAIR_ATTEMPTS  Repair attempts after critic failure.
   IMPROVEMENT_LOOP_RESET_REJECTED=1  Reset rejected changes and continue.
 USAGE
 }
@@ -48,12 +57,24 @@ while [[ $# -gt 0 ]]; do
       DEPLOY="true"
       shift
       ;;
+    --auto-commit)
+      AUTO_COMMIT="1"
+      shift
+      ;;
+    --no-auto-commit)
+      AUTO_COMMIT="0"
+      shift
+      ;;
     --interval)
       INTERVAL_SECONDS="$2"
       shift 2
       ;;
     --deploy-interval)
       DEPLOY_INTERVAL_SECONDS="$2"
+      shift 2
+      ;;
+    --repair-attempts)
+      REPAIR_ATTEMPTS="$2"
       shift 2
       ;;
     --reset-rejected)
@@ -73,6 +94,11 @@ RUNS_PATH="$ROOT_DIR/$RUNS_DIR"
 LOCK_DIR="$RUNS_PATH/.lock"
 LAST_DEPLOY_CHECK="$(date +%s)"
 CYCLE_NUMBER=0
+
+if ! [[ "$REPAIR_ATTEMPTS" =~ ^[0-9]+$ ]]; then
+  echo "Invalid repair attempt count: $REPAIR_ATTEMPTS" >&2
+  exit 2
+fi
 
 has_changes() {
   [[ -n "$(git -C "$ROOT_DIR" status --porcelain)" ]]
@@ -280,6 +306,22 @@ ensure_not_behind_upstream() {
   fi
 }
 
+commit_current_changes() {
+  local message="$1"
+
+  if ! ensure_no_protected_env_changes "commit"; then
+    return 1
+  fi
+
+  git -C "$ROOT_DIR" add -A
+  if git -C "$ROOT_DIR" diff --cached --quiet; then
+    echo "[$(date -Is)] No staged changes to commit."
+    return 0
+  fi
+
+  git -C "$ROOT_DIR" commit -m "$message"
+}
+
 require_clean_start() {
   if has_changes && [[ "${IMPROVEMENT_LOOP_ALLOW_DIRTY:-0}" != "1" ]]; then
     cat >&2 <<'MSG'
@@ -471,6 +513,80 @@ run_critic_thread() {
   fi
 }
 
+write_repair_prompt() {
+  local run_dir="$1"
+  local prompt_file="$2"
+  local scope="$3"
+  local attempt="$4"
+
+  cat >"$prompt_file" <<PROMPT
+You are the repair thread for /home/wrichter/projects/retirement-simulator.
+
+Read AGENTS.md first. You are not alone in the codebase: preserve existing changes and never revert work you did not make. Do not commit or push. Address only the critic blockers for this $scope. Keep the patch narrow. If the blocker cannot be safely repaired, do not make speculative edits.
+
+Rules:
+- Preserve the worker's valid changes where possible.
+- Do not broaden scope beyond the critic findings.
+- Do not edit protected env-local files.
+- Run the smallest meaningful verification for the repaired area.
+- Finish with changed files, verification results, remaining risk, and exactly one final marker:
+  REPAIR_DECISION: REPAIRED
+  REPAIR_DECISION: NO_CHANGE
+  REPAIR_DECISION: BLOCKED
+
+Repair attempt: $attempt
+
+Worker report:
+$(cat "$run_dir/worker.report.md" 2>/dev/null || true)
+
+Critic report:
+$(cat "$run_dir/critic-$scope.report.md" 2>/dev/null || true)
+PROMPT
+}
+
+run_repair_thread() {
+  local run_dir="$1"
+  local scope="$2"
+  local attempt="$3"
+
+  write_repair_prompt "$run_dir" "$run_dir/repair-$scope-$attempt.prompt.md" "$scope" "$attempt"
+  codex_exec workspace-write "$run_dir/repair-$scope-$attempt.prompt.md" "$run_dir/repair-$scope-$attempt.report.md" "$run_dir/repair-$scope-$attempt.log"
+}
+
+run_critic_with_repair() {
+  local run_dir="$1"
+  local scope="$2"
+
+  if run_critic_thread "$run_dir" "$scope"; then
+    return 0
+  fi
+
+  if (( REPAIR_ATTEMPTS <= 0 )); then
+    return 1
+  fi
+
+  local attempt
+  for ((attempt = 1; attempt <= REPAIR_ATTEMPTS; attempt += 1)); do
+    cp "$run_dir/critic-$scope.report.md" "$run_dir/critic-$scope-before-repair-$attempt.report.md" 2>/dev/null || true
+    echo "[$(date -Is)] Critic blocked $scope; starting repair attempt $attempt/$REPAIR_ATTEMPTS."
+
+    if ! run_repair_thread "$run_dir" "$scope" "$attempt"; then
+      echo "Repair attempt $attempt failed. See $run_dir/repair-$scope-$attempt.log." >&2
+      return 1
+    fi
+
+    if ! ensure_no_protected_env_changes "repair"; then
+      return 1
+    fi
+
+    if run_critic_thread "$run_dir" "$scope"; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 reject_current_changes() {
   local run_dir="$1"
   local reason="$2"
@@ -543,7 +659,7 @@ run_cycle() {
   fi
 
   if has_changes; then
-    if ! run_critic_thread "$run_dir" cycle; then
+    if ! run_critic_with_repair "$run_dir" cycle; then
       reject_current_changes "$run_dir" "cycle critic blocked the worker patch"
       return
     fi
@@ -554,6 +670,11 @@ run_cycle() {
     fi
 
     if [[ "$DEPLOY" != "true" ]]; then
+      if [[ "$AUTO_COMMIT" == "1" ]]; then
+        commit_current_changes "${IMPROVEMENT_LOOP_COMMIT_MESSAGE:-Automated improvement loop cycle}"
+        return
+      fi
+
       cat >&2 <<'MSG'
 Cycle produced changes. Review and commit them before starting the next automated cycle.
 MSG
@@ -598,7 +719,7 @@ maybe_commit_and_deploy() {
     return
   fi
 
-  if ! run_critic_thread "$run_dir" deploy; then
+  if ! run_critic_with_repair "$run_dir" deploy; then
     reject_current_changes "$run_dir" "deploy critic blocked accumulated changes"
     return
   fi
@@ -609,13 +730,7 @@ maybe_commit_and_deploy() {
   fi
 
   if has_changes; then
-    git -C "$ROOT_DIR" add -A
-    if git -C "$ROOT_DIR" diff --cached --quiet; then
-      echo "[$(date -Is)] No staged changes after validation."
-      return
-    fi
-
-    git -C "$ROOT_DIR" commit -m "${IMPROVEMENT_LOOP_COMMIT_MESSAGE:-Automated improvement loop cycle}"
+    commit_current_changes "${IMPROVEMENT_LOOP_COMMIT_MESSAGE:-Automated improvement loop cycle}"
   fi
 
   git -C "$ROOT_DIR" push origin main

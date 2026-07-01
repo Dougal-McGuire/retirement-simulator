@@ -5,7 +5,8 @@ This loop is for small, verified improvements that can be reviewed and deployed 
 ## Cadence
 
 - Every 10 minutes: wake up, run code-quality, speed, and UX audit threads, then send one narrow implementation task to a worker thread.
-- In normal mode: stop after a verified changed cycle so the diff can be reviewed and committed manually.
+- In normal mode: critic-approved and fully verified changes are committed locally, then the loop continues without pushing.
+- In review mode: stop after a verified changed cycle so the diff can be reviewed and committed manually.
 - In explicit deploy mode: every other hour, run a critic thread, run the full deploy gate, commit the accumulated verified changes, and deploy by pushing `main`.
 - Stop the loop if verification fails, the worktree contains unrelated dirty files, production deployment is unavailable, protected env-local files are changed, or a thread reports a high-risk change.
 
@@ -13,19 +14,23 @@ This loop is for small, verified improvements that can be reviewed and deployed 
 
 ```bash
 make improvement-loop
+make improve-review
 make improve-deploy
 pnpm run improve:once
 pnpm run improve:loop
+pnpm run improve:review
 pnpm run improve:deploy
 ```
 
-`make improvement-loop` and `make improve-loop` run the non-deploy loop. They wake every 10 minutes, then stop after a verified changed cycle so the diff can be reviewed and committed manually. The script refuses to start automated edit cycles on a dirty worktree unless `IMPROVEMENT_LOOP_ALLOW_DIRTY=1` is set.
+`make improvement-loop` and `make improve-loop` run the non-deploy loop. They wake every 10 minutes, run a critic and the standard validation gate for any worker patch, commit verified changes locally, and keep going. They do not push.
+
+`make improve-review` uses the same audit, worker, critic, and validation flow, but stops after a verified changed cycle so the diff can be reviewed and committed manually. The script refuses to start automated edit cycles on a dirty worktree unless `IMPROVEMENT_LOOP_ALLOW_DIRTY=1` is set.
 
 `make improve-deploy` is the unattended production loop. It requires `main`, an upstream tracking branch, configured Git author metadata, the repo Node/pnpm engines, and no protected env-local changes. In deploy mode, the script keeps verified cycle changes pending, runs the full validation gate every other hour, commits, and pushes clean `main`.
 
 The loop uses `gpt-5.5` by default. Override with `IMPROVEMENT_LOOP_CODEX_MODEL=<model>` when you want a cheaper or faster unattended pass.
 
-If an audit, critic, or validation gate rejects a cycle, the loop writes the report and rejected patch under `.improvement-loop/<cycle>/`, leaves the rejected diff in the worktree, and stops for manual review. Set `IMPROVEMENT_LOOP_RESET_REJECTED=1` or pass `--reset-rejected` only when you intentionally want the old reset-and-continue behavior.
+If a critic rejects a cycle, the loop runs one bounded repair attempt by default, then asks the critic again. If the critic still rejects, or if an audit or validation gate fails, the loop writes the report and rejected patch under `.improvement-loop/<cycle>/`, leaves the rejected diff in the worktree, and stops for manual review. Set `IMPROVEMENT_LOOP_REPAIR_ATTEMPTS=0` to disable repair attempts. Set `IMPROVEMENT_LOOP_RESET_REJECTED=1` or pass `--reset-rejected` only when you intentionally want the old reset-and-continue behavior.
 
 The loop enforces the repo engines from `package.json`; use Node 24.14.0 (`.node-version` / `.nvmrc`) and pnpm 10. Set `IMPROVEMENT_LOOP_ALLOW_ENGINE_MISMATCH=1` only for a deliberate local experiment.
 

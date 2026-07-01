@@ -28,7 +28,8 @@
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "verify:deploy": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e",
     "improve:once": "bash scripts/improvement-loop.sh --once",
-    "improve:loop": "bash scripts/improvement-loop.sh",
+    "improve:loop": "bash scripts/improvement-loop.sh --auto-commit",
+    "improve:review": "bash scripts/improvement-loop.sh --no-auto-commit",
     "improve:deploy": "IMPROVEMENT_LOOP_DEPLOY_INTERVAL_SECONDS=7200 bash scripts/improvement-loop.sh --deploy",
     "improve:deploy-loop": "pnpm run improve:deploy"
   },

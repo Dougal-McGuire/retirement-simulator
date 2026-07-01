@@ -202,6 +202,34 @@ const normalizePersistedParams = (persistedParams: unknown): SimulationParams =>
   }
 }
 
+const normalizeSavedSetups = (value: unknown): SavedSetup[] => {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((entry) => {
+      if (!isRecord(entry)) return null
+
+      const { id, name, timestamp, params } = entry
+      if (
+        typeof id !== 'string' ||
+        id.trim() === '' ||
+        typeof name !== 'string' ||
+        typeof timestamp !== 'number' ||
+        !Number.isFinite(timestamp)
+      ) {
+        return null
+      }
+
+      return {
+        id,
+        name,
+        timestamp,
+        params: normalizePersistedParams(params),
+      }
+    })
+    .filter((setup): setup is SavedSetup => setup !== null)
+}
+
 const normalizeParamsForFingerprint = (params: Partial<SimulationParams>): SimulationParams => ({
   ...DEFAULT_PARAMS,
   ...params,
@@ -450,15 +478,13 @@ export const useSimulationStore = create<SimulationStore>()(
       onRehydrateStorage: () => {
         return (state) => {
           if (state) {
+            state.savedSetups = normalizeSavedSetups(state.savedSetups)
+
             // Load saved setups from separate storage
             try {
               const stored = localStorage.getItem(SAVED_SETUPS_KEY)
               if (stored) {
-                const savedSetups = JSON.parse(stored) as SavedSetup[]
-                state.savedSetups = savedSetups.map((setup) => ({
-                  ...setup,
-                  params: normalizePersistedParams(setup.params),
-                }))
+                state.savedSetups = normalizeSavedSetups(JSON.parse(stored) as unknown)
               }
             } catch (error) {
               console.error('Failed to load saved setups:', error)
