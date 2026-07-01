@@ -30,6 +30,7 @@ export function ReportDocument({ content, projectionSvg, breakdownSvg }: ReportD
 
   return (
     <html lang={locale}>
+      {/* eslint-disable-next-line @next/next/no-head-element -- Legacy static markup rendered outside Next document handling. */}
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
