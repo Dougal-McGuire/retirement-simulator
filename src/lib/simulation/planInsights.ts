@@ -16,11 +16,75 @@ export type PlanInsightMetrics = {
   realReturn: number
 }
 
+const comparableNumericParamKeys = [
+  'currentAge',
+  'retirementAge',
+  'legalRetirementAge',
+  'endAge',
+  'currentAssets',
+  'annualSavings',
+  'annualSavingsGrowthRate',
+  'monthlyPension',
+  'averageROI',
+  'roiVolatility',
+  'averageInflation',
+  'inflationVolatility',
+  'capitalGainsTax',
+  'dsWithdrawalRate',
+  'dsCeilingRate',
+  'dsFloorRate',
+  'simulationRuns',
+] as const satisfies readonly (keyof SimulationParams)[]
+
 const scaleExpenses = (expenses: CustomExpense[], multiplier: number) =>
   expenses.map((expense) => ({
     ...expense,
     amount: Math.max(0, Math.round(expense.amount * multiplier)),
   }))
+
+export function areSimulationParamsEqual(
+  currentParams: SimulationParams,
+  resultParams: SimulationParams
+): boolean {
+  if (currentParams.withdrawalStrategy !== resultParams.withdrawalStrategy) {
+    return false
+  }
+
+  if (comparableNumericParamKeys.some((key) => currentParams[key] !== resultParams[key])) {
+    return false
+  }
+
+  if (currentParams.oneTimeIncomes.length !== resultParams.oneTimeIncomes.length) {
+    return false
+  }
+
+  if (
+    currentParams.oneTimeIncomes.some((income, index) => {
+      const resultIncome = resultParams.oneTimeIncomes[index]
+      return (
+        income.age !== resultIncome.age ||
+        income.amount !== resultIncome.amount ||
+        income.name !== resultIncome.name
+      )
+    })
+  ) {
+    return false
+  }
+
+  if (currentParams.customExpenses.length !== resultParams.customExpenses.length) {
+    return false
+  }
+
+  return !currentParams.customExpenses.some((expense, index) => {
+    const resultExpense = resultParams.customExpenses[index]
+    return (
+      expense.id !== resultExpense.id ||
+      expense.name !== resultExpense.name ||
+      expense.amount !== resultExpense.amount ||
+      expense.interval !== resultExpense.interval
+    )
+  })
+}
 
 export function getPlanHealth(successRate: number): PlanHealth {
   if (successRate >= 90) return 'strong'

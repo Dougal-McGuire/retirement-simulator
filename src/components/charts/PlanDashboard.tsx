@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import type { SimulationParams, SimulationResults } from '@/types'
 import {
+  areSimulationParamsEqual,
   buildPlanInsightMetrics,
   buildScenarioParams,
   getPlanHealth,
@@ -68,7 +69,7 @@ export function PlanDashboard({ params, results, isLoading }: PlanDashboardProps
         })
 
   useEffect(() => {
-    if (!results || isLoading) {
+    if (!results || isLoading || !areSimulationParamsEqual(params, results.params)) {
       setScenarios([])
       setScenarioStatus('idle')
       return
