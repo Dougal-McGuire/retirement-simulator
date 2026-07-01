@@ -8,6 +8,7 @@ import {
   DEFAULT_PARAMS,
   OneTimeIncome,
   CustomExpense,
+  isWithdrawalStrategy,
 } from '@/types'
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 
@@ -75,9 +76,7 @@ const sanitizeNumericParams = (
 }
 
 const sanitizeWithdrawalStrategy = (strategy: unknown): SimulationParams['withdrawalStrategy'] =>
-  strategy === 'fixedReal' || strategy === 'vanguardDynamic'
-    ? strategy
-    : DEFAULT_PARAMS.withdrawalStrategy
+  isWithdrawalStrategy(strategy) ? strategy : DEFAULT_PARAMS.withdrawalStrategy
 
 const sanitizeOneTimeIncomes = (incomes: unknown): OneTimeIncome[] => {
   if (!Array.isArray(incomes)) return []

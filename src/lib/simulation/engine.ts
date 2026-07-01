@@ -1,4 +1,9 @@
-import { SimulationParams, SimulationResults, PercentileData } from '@/types'
+import {
+  SimulationParams,
+  SimulationResults,
+  PercentileData,
+  isWithdrawalStrategy,
+} from '@/types'
 
 /**
  * Box-Muller transform for generating normally distributed random numbers
@@ -145,7 +150,7 @@ const sanitizeFiniteNumber = (value: unknown, fallback: number): number => {
 }
 
 const normalizeWithdrawalStrategy = (value: unknown): SimulationParams['withdrawalStrategy'] =>
-  value === 'fixedReal' ? 'fixedReal' : 'vanguardDynamic'
+  isWithdrawalStrategy(value) ? value : 'vanguardDynamic'
 
 export function calculateVanguardDynamicAnnualSpending({
   priorYearPortfolioValue,

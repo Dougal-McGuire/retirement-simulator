@@ -2,6 +2,9 @@ export const WITHDRAWAL_STRATEGIES = ['fixedReal', 'vanguardDynamic'] as const
 
 export type WithdrawalStrategy = (typeof WITHDRAWAL_STRATEGIES)[number]
 
+export const isWithdrawalStrategy = (value: unknown): value is WithdrawalStrategy =>
+  typeof value === 'string' && (WITHDRAWAL_STRATEGIES as readonly string[]).includes(value)
+
 // Simulation parameter interfaces
 export interface SimulationParams {
   // Personal information
