@@ -1,4 +1,6 @@
 import { POST } from './route'
+import { NextRequest } from 'next/server'
+import { DEFAULT_PARAMS, type SimulationParams, type SimulationResults } from '@/types'
 
 const renderToBuffer = jest.fn()
 const mapReportDataToContent = jest.fn((data) => data)
@@ -14,6 +16,40 @@ jest.mock('@/lib/pdf-generator/reportTypes', () => ({
 jest.mock('@/lib/pdf-generator/react-pdf', () => ({
   RetirementReport: () => null,
 }))
+
+function createJsonRequest(body: unknown): NextRequest {
+  return new NextRequest('http://localhost/api/generate-pdf', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+}
+
+function createSimulationResults(params: SimulationParams = DEFAULT_PARAMS): SimulationResults {
+  const ages = [params.currentAge, params.retirementAge, params.legalRetirementAge, params.endAge]
+
+  return {
+    ages,
+    assetPercentiles: {
+      p10: [580000, 540000, 390000, 100000],
+      p20: [600000, 590000, 470000, 180000],
+      p50: [630000, 710000, 650000, 420000],
+      p80: [700000, 840000, 880000, 760000],
+      p90: [760000, 930000, 1040000, 920000],
+    },
+    spendingPercentiles: {
+      p10: [56000, 59000, 63000, 71000],
+      p20: [57000, 60000, 65000, 73000],
+      p50: [61000, 66000, 72000, 82000],
+      p80: [66000, 72000, 79000, 90000],
+      p90: [69000, 76000, 84000, 96000],
+    },
+    successRate: 82,
+    params,
+  }
+}
 
 function createValidReportData() {
   return {
@@ -97,22 +133,16 @@ describe('/api/generate-pdf', () => {
   })
 
   it('returns 400 for schema-invalid report payloads', async () => {
-    const request = new Request('http://localhost/api/generate-pdf', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        reportData: {
-          person: {
-            currentAge: 55,
-          },
+    const request = createJsonRequest({
+      reportData: {
+        person: {
+          currentAge: 55,
         },
-        locale: 'en',
-      }),
+      },
+      locale: 'en',
     })
 
-    const response = await POST(request as never)
+    const response = await POST(request)
     const body = await response.json()
 
     expect(response.status).toBe(400)
@@ -122,23 +152,51 @@ describe('/api/generate-pdf', () => {
   it('returns a PDF attachment for valid report payloads', async () => {
     renderToBuffer.mockResolvedValue(Buffer.from('%PDF-1.4\nfake pdf'))
 
-    const request = new Request('http://localhost/api/generate-pdf', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        reportData: createValidReportData(),
-        locale: 'en',
-      }),
+    const request = createJsonRequest({
+      reportData: createValidReportData(),
+      locale: 'en',
     })
 
-    const response = await POST(request as never)
+    const response = await POST(request)
     const body = Buffer.from(await response.arrayBuffer())
 
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Type')).toBe('application/pdf')
     expect(response.headers.get('Content-Disposition')).toContain('attachment; filename=')
     expect(body.toString()).toContain('%PDF-1.4')
+  })
+
+  it('returns a PDF attachment for params and results payloads with the requested locale', async () => {
+    renderToBuffer.mockResolvedValue(Buffer.from('%PDF-1.4\nfake pdf'))
+
+    const params = { ...DEFAULT_PARAMS, simulationRuns: 100 }
+    const results = createSimulationResults(params)
+    const request = createJsonRequest({
+      params,
+      results,
+      locale: 'en',
+    })
+
+    const response = await POST(request)
+    const body = Buffer.from(await response.arrayBuffer())
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe('application/pdf')
+    expect(body.toString()).toContain('%PDF-1.4')
+    expect(mapReportDataToContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locale: 'en',
+        person: expect.objectContaining({
+          currentAge: params.currentAge,
+          retireAge: params.retirementAge,
+        }),
+        assumptions: expect.objectContaining({
+          mcRuns: params.simulationRuns,
+        }),
+        projections: expect.objectContaining({
+          successRatePct: results.successRate,
+        }),
+      })
+    )
   })
 })
