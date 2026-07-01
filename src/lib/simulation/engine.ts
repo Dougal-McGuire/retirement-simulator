@@ -112,6 +112,7 @@ function normalizePercentile(percentile: number): number {
  */
 export function calculatePercentiles(data: number[][]): PercentileData {
   const ageCount = data[0]?.length || 0
+  const sortedValuesAtAge = new Array<number>(data.length)
   const result: PercentileData = {
     p10: [],
     p20: [],
@@ -121,7 +122,10 @@ export function calculatePercentiles(data: number[][]): PercentileData {
   }
 
   for (let ageIndex = 0; ageIndex < ageCount; ageIndex++) {
-    const sortedValuesAtAge = data.map((run) => run[ageIndex]).sort((a, b) => a - b)
+    for (let runIndex = 0; runIndex < data.length; runIndex++) {
+      sortedValuesAtAge[runIndex] = data[runIndex][ageIndex]
+    }
+    sortedValuesAtAge.sort((a, b) => a - b)
 
     result.p10.push(calculatePercentileFromSortedArray(sortedValuesAtAge, 10))
     result.p20.push(calculatePercentileFromSortedArray(sortedValuesAtAge, 20))

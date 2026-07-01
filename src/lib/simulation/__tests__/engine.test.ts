@@ -48,6 +48,23 @@ describe('Simulation Engine', () => {
   })
 
   describe('calculatePercentiles', () => {
+    it('calculates all supported percentiles for each age slice', () => {
+      const result = calculatePercentiles([
+        [10, 100],
+        [20, 200],
+        [30, 300],
+        [40, 400],
+      ])
+
+      expect(result).toEqual({
+        p10: [13, 130],
+        p20: [16, 160],
+        p50: [25, 250],
+        p80: [34, 340],
+        p90: [37, 370],
+      })
+    })
+
     it('sorts each age slice only once', () => {
       const sortSpy = jest.spyOn(Array.prototype, 'sort')
 
