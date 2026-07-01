@@ -6,19 +6,95 @@ import { ReportDataSchema, type ReportData } from '@/lib/pdf-generator/schema/re
 import { mapReportDataToContent } from '@/lib/pdf-generator/reportTypes'
 import { RetirementReport } from '@/lib/pdf-generator/react-pdf'
 import React from 'react'
-import { ZodError } from 'zod'
+import { z, ZodError } from 'zod'
 import type { SimulationParams, SimulationResults } from '@/types'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30 // Reduced from 60s since react-pdf is much faster
 
-interface GeneratePdfRequestBody {
-  params?: SimulationParams
-  results?: SimulationResults
-  reportData?: ReportData
-  locale?: string
-}
+const PERCENTILE_KEYS = ['p10', 'p20', 'p50', 'p80', 'p90'] as const
+const PERCENTILE_GROUPS = ['assetPercentiles', 'spendingPercentiles'] as const
+
+const CustomExpenseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  amount: z.number(),
+  interval: z.enum(['monthly', 'annual']),
+})
+
+const OneTimeIncomeSchema = z.object({
+  age: z.number(),
+  amount: z.number(),
+  name: z.string(),
+})
+
+const SimulationParamsSchema = z.object({
+  currentAge: z.number(),
+  retirementAge: z.number(),
+  legalRetirementAge: z.number(),
+  endAge: z.number(),
+  currentAssets: z.number(),
+  annualSavings: z.number(),
+  annualSavingsGrowthRate: z.number(),
+  monthlyPension: z.number(),
+  oneTimeIncomes: z.array(OneTimeIncomeSchema),
+  averageROI: z.number(),
+  roiVolatility: z.number(),
+  averageInflation: z.number(),
+  inflationVolatility: z.number(),
+  capitalGainsTax: z.number(),
+  customExpenses: z.array(CustomExpenseSchema),
+  withdrawalStrategy: z.enum(['fixedReal', 'vanguardDynamic']),
+  dsWithdrawalRate: z.number(),
+  dsCeilingRate: z.number(),
+  dsFloorRate: z.number(),
+  simulationRuns: z.number(),
+})
+
+const PercentileDataSchema = z.object({
+  p10: z.array(z.number()).nonempty(),
+  p20: z.array(z.number()).nonempty(),
+  p50: z.array(z.number()).nonempty(),
+  p80: z.array(z.number()).nonempty(),
+  p90: z.array(z.number()).nonempty(),
+})
+
+const SimulationResultsSchema = z
+  .object({
+    ages: z.array(z.number()).nonempty(),
+    assetPercentiles: PercentileDataSchema,
+    spendingPercentiles: PercentileDataSchema,
+    successRate: z.number(),
+    params: SimulationParamsSchema.optional(),
+  })
+  .superRefine((results, ctx) => {
+    const expectedLength = results.ages.length
+
+    for (const group of PERCENTILE_GROUPS) {
+      for (const key of PERCENTILE_KEYS) {
+        const actualLength = results[group][key].length
+        if (actualLength !== expectedLength) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [group, key],
+            message: `Expected ${expectedLength} values to match ages, received ${actualLength}`,
+          })
+        }
+      }
+    }
+  })
+
+const GeneratePdfRequestBodySchema = z
+  .object({
+    params: z.unknown().optional(),
+    results: z.unknown().optional(),
+    reportData: z.unknown().optional(),
+    locale: z.unknown().optional(),
+  })
+  .passthrough()
+
+type GeneratePdfRequestBody = z.infer<typeof GeneratePdfRequestBodySchema>
 
 class ClientRequestError extends Error {
   constructor(
@@ -31,14 +107,49 @@ class ClientRequestError extends Error {
   }
 }
 
+function validateSimulationParams(value: unknown): SimulationParams {
+  const parsed = SimulationParamsSchema.safeParse(value)
+  if (!parsed.success) {
+    throw new ClientRequestError('Ungueltige Parameter', 400, parsed.error.flatten())
+  }
+
+  return parsed.data
+}
+
+function validateSimulationResults(value: unknown): Omit<SimulationResults, 'params'> & {
+  params?: SimulationParams
+} {
+  const parsed = SimulationResultsSchema.safeParse(value)
+  if (!parsed.success) {
+    throw new ClientRequestError('Ungueltige Simulationsergebnisse', 400, parsed.error.flatten())
+  }
+
+  return parsed.data
+}
+
+function withLocale(value: unknown, locale: 'en' | 'de') {
+  if (value && typeof value === 'object') {
+    return { ...value, locale }
+  }
+
+  return { locale }
+}
+
 export async function POST(req: NextRequest) {
   try {
     let body: GeneratePdfRequestBody
+    let rawBody: unknown
     try {
-      body = await req.json() as GeneratePdfRequestBody
+      rawBody = await req.json()
     } catch {
       throw new ClientRequestError('Invalid JSON payload')
     }
+
+    const parsedBody = GeneratePdfRequestBodySchema.safeParse(rawBody)
+    if (!parsedBody.success) {
+      throw new ClientRequestError('Invalid request payload', 400, parsedBody.error.flatten())
+    }
+    body = parsedBody.data
 
     const { params, results, reportData } = body
     const requestedLocale = body.locale === 'en' || body.locale === 'de' ? body.locale : 'de'
@@ -50,18 +161,19 @@ export async function POST(req: NextRequest) {
     // Validate input data
     let validated: ReportData
     if (results) {
-      const freshParams = results.params ?? params
+      const validResults = validateSimulationResults(results)
+      const freshParams = validResults.params ?? (params ? validateSimulationParams(params) : null)
       if (!freshParams) {
         throw new ClientRequestError('Parameter fehlen')
       }
-      const generated = transformToReportData(freshParams, results)
+      const generated = transformToReportData(freshParams, { ...validResults, params: freshParams })
       const parsed = ReportDataSchema.safeParse({ ...generated, locale: requestedLocale })
       if (!parsed.success) {
         throw new ClientRequestError('Ungueltige Berichtsdaten', 400, parsed.error.flatten())
       }
       validated = parsed.data
     } else if (reportData) {
-      const parsed = ReportDataSchema.safeParse({ ...reportData, locale: requestedLocale })
+      const parsed = ReportDataSchema.safeParse(withLocale(reportData, requestedLocale))
       if (!parsed.success) {
         throw new ClientRequestError('Ungueltige Berichtsdaten', 400, parsed.error.flatten())
       }

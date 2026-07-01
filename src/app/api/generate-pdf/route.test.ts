@@ -149,6 +149,65 @@ describe('/api/generate-pdf', () => {
     expect(body.error).toBeTruthy()
   })
 
+  it('returns 400 for malformed params and results payloads', async () => {
+    const request = createJsonRequest({
+      params: DEFAULT_PARAMS,
+      results: {
+        ...createSimulationResults(DEFAULT_PARAMS),
+        assetPercentiles: {
+          p10: null,
+          p20: [],
+          p50: [],
+          p80: [],
+          p90: [],
+        },
+      },
+      locale: 'en',
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe('Ungueltige Simulationsergebnisse')
+    expect(mapReportDataToContent).not.toHaveBeenCalled()
+    expect(renderToBuffer).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 for length-mismatched simulation percentile arrays', async () => {
+    const results = createSimulationResults(DEFAULT_PARAMS)
+    const request = createJsonRequest({
+      params: DEFAULT_PARAMS,
+      results: {
+        ...results,
+        ages: results.ages.slice(0, 2),
+        assetPercentiles: {
+          p10: results.assetPercentiles.p10.slice(0, 1),
+          p20: results.assetPercentiles.p20.slice(0, 2),
+          p50: results.assetPercentiles.p50.slice(0, 2),
+          p80: results.assetPercentiles.p80.slice(0, 2),
+          p90: results.assetPercentiles.p90.slice(0, 2),
+        },
+        spendingPercentiles: {
+          p10: results.spendingPercentiles.p10.slice(0, 2),
+          p20: results.spendingPercentiles.p20.slice(0, 2),
+          p50: results.spendingPercentiles.p50.slice(0, 2),
+          p80: results.spendingPercentiles.p80.slice(0, 2),
+          p90: results.spendingPercentiles.p90.slice(0, 2),
+        },
+      },
+      locale: 'en',
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe('Ungueltige Simulationsergebnisse')
+    expect(mapReportDataToContent).not.toHaveBeenCalled()
+    expect(renderToBuffer).not.toHaveBeenCalled()
+  })
+
   it('returns a PDF attachment for valid report payloads', async () => {
     renderToBuffer.mockResolvedValue(Buffer.from('%PDF-1.4\nfake pdf'))
 
