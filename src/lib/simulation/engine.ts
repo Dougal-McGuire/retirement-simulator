@@ -48,7 +48,18 @@ export function lognormalParamsFromArithmetic(
  * Returns X such that r = X - 1.
  */
 export function sampleLognormalFactorFromArithmetic(mean: number, stdev: number): number {
-  const { mu, sigma } = lognormalParamsFromArithmetic(mean, stdev)
+  const params = lognormalParamsFromArithmetic(mean, stdev)
+  return sampleLognormalFactor(params)
+}
+
+type LognormalParams = ReturnType<typeof lognormalParamsFromArithmetic>
+
+type SimulationDistributions = {
+  roi: LognormalParams
+  inflation: LognormalParams
+}
+
+function sampleLognormalFactor({ mu, sigma }: LognormalParams): number {
   const z = sampleStandardNormal()
   return Math.exp(mu + sigma * z)
 }
@@ -241,9 +252,13 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
  * - Proportional cost basis adjustment during withdrawals
  *
  * @param params - Simulation parameters
+ * @param distributions - Precomputed lognormal sampling parameters
  * @returns Object containing asset history and spending history for this run
  */
-function runSingleSimulation(params: SimulationParams): {
+function runSingleSimulation(
+  params: SimulationParams,
+  distributions: SimulationDistributions
+): {
   assetHistory: number[]
   spendingHistory: number[]
   failed: boolean
@@ -296,7 +311,7 @@ function runSingleSimulation(params: SimulationParams): {
 
     if (age < effectiveRetirementAge) {
       // Accumulation phase (working years)
-      const roiFactor = sampleLognormalFactorFromArithmetic(params.averageROI, params.roiVolatility)
+      const roiFactor = sampleLognormalFactor(distributions.roi)
 
       // During accumulation, assume reinvestment without realizing gains
       currentAssets = currentAssets * roiFactor + currentAnnualSavings
@@ -304,10 +319,7 @@ function runSingleSimulation(params: SimulationParams): {
       spendingHistory.push(0) // No spending during accumulation for visualization
 
       // Inflate expenses so that retirement starts with age-adjusted spending
-      const inflationFactor = sampleLognormalFactorFromArithmetic(
-        params.averageInflation,
-        params.inflationVolatility
-      )
+      const inflationFactor = sampleLognormalFactor(distributions.inflation)
       currentMonthlyExpense *= inflationFactor
       currentAnnualExpense *= inflationFactor
 
@@ -339,7 +351,7 @@ function runSingleSimulation(params: SimulationParams): {
       const netNeeded = totalAnnualExpenseThisYear - annualIncome
 
       // Apply investment growth first
-      const roiFactor = sampleLognormalFactorFromArithmetic(params.averageROI, params.roiVolatility)
+      const roiFactor = sampleLognormalFactor(distributions.roi)
       currentAssets = Math.max(0, currentAssets * roiFactor)
 
       if (netNeeded > 0) {
@@ -372,10 +384,7 @@ function runSingleSimulation(params: SimulationParams): {
       spendingHistory.push(monthlyEquivalentSpending)
 
       // Apply inflation to expenses for next year
-      const inflationFactor = sampleLognormalFactorFromArithmetic(
-        params.averageInflation,
-        params.inflationVolatility
-      )
+      const inflationFactor = sampleLognormalFactor(distributions.inflation)
       currentMonthlyExpense *= inflationFactor
       currentAnnualExpense *= inflationFactor
       if (usesDynamicSpending) {
@@ -407,6 +416,13 @@ function runSingleSimulation(params: SimulationParams): {
  */
 export function runMonteCarloSimulation(params: SimulationParams): SimulationResults {
   const normalizedParams = normalizeSimulationParams(params)
+  const distributions: SimulationDistributions = {
+    roi: lognormalParamsFromArithmetic(normalizedParams.averageROI, normalizedParams.roiVolatility),
+    inflation: lognormalParamsFromArithmetic(
+      normalizedParams.averageInflation,
+      normalizedParams.inflationVolatility
+    ),
+  }
   const ages: number[] = []
   const assetRuns: number[][] = []
   const spendingRuns: number[][] = []
@@ -419,7 +435,7 @@ export function runMonteCarloSimulation(params: SimulationParams): SimulationRes
 
   // Run all simulations
   for (let run = 0; run < normalizedParams.simulationRuns; run++) {
-    const result = runSingleSimulation(normalizedParams)
+    const result = runSingleSimulation(normalizedParams, distributions)
 
     if (!result.failed) {
       successfulRuns++
