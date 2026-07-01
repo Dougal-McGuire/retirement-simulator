@@ -21,6 +21,12 @@ test.describe('i18n routing', () => {
     await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeVisible()
   })
 
+  test('links setup input help text to the number field', async ({ page }) => {
+    await page.goto('/en/setup')
+
+    await expect(page.getByLabel('Current Age')).toHaveAttribute('aria-describedby', /currentAge-help/)
+  })
+
   test('exposes setup progress to assistive technology', async ({ page }) => {
     await page.goto('/en/setup')
 

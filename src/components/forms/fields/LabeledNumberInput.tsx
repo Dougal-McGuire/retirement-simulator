@@ -157,6 +157,18 @@ export function LabeledNumberInput({
     }
   }
 
+  const descriptionIds: string[] = []
+  if (helpText) {
+    descriptionIds.push(`${id}-help`)
+  }
+  if (touched && validationMessage) {
+    descriptionIds.push(`${id}-validation-message`)
+  }
+  if (validation && (validation.typicalMin !== undefined || validation.typicalMax !== undefined)) {
+    descriptionIds.push(`${id}-typical-range`)
+  }
+  const describedBy = descriptionIds.length > 0 ? descriptionIds.join(' ') : undefined
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -206,6 +218,8 @@ export function LabeledNumberInput({
             onChange(nextValue)
           }}
           onBlur={handleBlur}
+          aria-describedby={describedBy}
+          aria-invalid={validationState === 'error' ? true : undefined}
           className={cn(
             'h-11 border-2 font-semibold uppercase tracking-[0.12em] pr-10',
             getInputBorderClass(),
@@ -220,6 +234,7 @@ export function LabeledNumberInput({
       {/* Validation message */}
       {touched && validationMessage && (
         <div
+          id={`${id}-validation-message`}
           className={cn(
             'flex items-start gap-2 rounded-none border-2 px-3 py-2 text-[0.62rem] font-semibold uppercase tracking-[0.1em]',
             validationState === 'error' && 'border-neo-red bg-neo-red/10 text-neo-red',
@@ -238,18 +253,25 @@ export function LabeledNumberInput({
       )}
 
       {/* Typical range hint */}
-      {validation && (validation.typicalMin !== undefined || validation.typicalMax !== undefined) && (
-        <p className="text-[0.62rem] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-          Typical range:{' '}
-          {formatValue
-            ? `${formatValue(validation.typicalMin ?? 0)} - ${formatValue(validation.typicalMax ?? 0)}`
-            : `${validation.typicalMin ?? 0} - ${validation.typicalMax ?? '∞'}`}
-        </p>
-      )}
+      {validation &&
+        (validation.typicalMin !== undefined || validation.typicalMax !== undefined) && (
+          <p
+            id={`${id}-typical-range`}
+            className="text-[0.62rem] font-medium uppercase tracking-[0.1em] text-muted-foreground"
+          >
+            Typical range:{' '}
+            {formatValue
+              ? `${formatValue(validation.typicalMin ?? 0)} - ${formatValue(validation.typicalMax ?? 0)}`
+              : `${validation.typicalMin ?? 0} - ${validation.typicalMax ?? '∞'}`}
+          </p>
+        )}
 
       {/* Help text */}
       {helpText && (
-        <p className="text-[0.65rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        <p
+          id={`${id}-help`}
+          className="text-[0.65rem] font-medium uppercase tracking-[0.12em] text-muted-foreground"
+        >
           {helpText}
         </p>
       )}
