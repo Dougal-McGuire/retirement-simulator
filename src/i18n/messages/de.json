@@ -49,6 +49,7 @@
       "step": "Schritt {current} von {total}",
       "percentComplete": "{percent}% abgeschlossen",
       "autosave": "Fortschritt wird lokal automatisch gespeichert",
+      "stepsLabel": "Setup-Schritte",
       "timeRemaining": "Verbleibende Zeit"
     },
     "buttons": {

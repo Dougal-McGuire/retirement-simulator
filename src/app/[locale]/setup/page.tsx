@@ -647,13 +647,16 @@ export default function SetupPage() {
                 </div>
               </div>
             </div>
-            <div className="theme-step-list space-y-6">
+            <ol
+              aria-label={t('progress.stepsLabel')}
+              className="theme-step-list m-0 list-none space-y-6 p-0"
+            >
               {steps.map((step, index) => {
                 const isCompleted = index < currentStep
                 const isActive = index === currentStep
 
                 return (
-                  <div key={step.id} className="theme-step-item relative pl-12">
+                  <li key={step.id} className="theme-step-item relative pl-12">
                     {index < steps.length - 1 && (
                       <span
                         className={cn(
@@ -667,6 +670,7 @@ export default function SetupPage() {
                       type="button"
                       onClick={() => handleStepClick(index)}
                       aria-label={`${step.title} - ${isCompleted ? tStatus('completed') : isActive ? tStatus('current') : tStatus('notStarted')}`}
+                      aria-current={isActive ? 'step' : undefined}
                       className={cn(
                         'theme-step-button absolute left-0 top-0 flex h-10 w-10 items-center justify-center border-3 border-neo-black bg-neo-white font-extrabold text-neo-black shadow-neo-sm transition-neo',
                         isCompleted && 'bg-neo-yellow',
@@ -697,10 +701,10 @@ export default function SetupPage() {
                         {step.description}
                       </p>
                     </div>
-                  </div>
+                  </li>
                 )
               })}
-            </div>
+            </ol>
           </aside>
 
           <section className="theme-content theme-setup-content space-y-0">

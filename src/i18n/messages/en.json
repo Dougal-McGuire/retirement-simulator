@@ -49,6 +49,7 @@
       "step": "Step {current} of {total}",
       "percentComplete": "{percent}% complete",
       "autosave": "Progress auto-saves locally",
+      "stepsLabel": "Setup steps",
       "timeRemaining": "Time remaining"
     },
     "buttons": {
