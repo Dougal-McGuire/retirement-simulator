@@ -79,7 +79,7 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
             <Button
               variant="secondary"
               size="sm"
-              className="fixed bottom-5 left-5 z-40 h-12 min-w-[11rem] shadow-neo"
+              className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-5 z-40 h-12 min-w-[11rem] shadow-neo"
             >
               <Settings className="mr-2 h-4 w-4" />
               {t('trigger')}

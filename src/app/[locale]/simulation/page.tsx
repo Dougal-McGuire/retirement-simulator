@@ -164,7 +164,7 @@ export default function SimulationPage() {
 
       <main
         id="main-content"
-        className="theme-container relative z-10 mx-auto mt-2 max-w-[90rem] px-2 pb-16 sm:px-3 lg:px-4"
+        className="theme-container relative z-10 mx-auto mt-2 max-w-[90rem] px-2 pb-28 sm:px-3 lg:px-4 lg:pb-16"
       >
         <div className="theme-page-grid theme-simulation-grid grid grid-cols-1 gap-8 lg:grid-cols-[432px_minmax(0,1fr)] xl:grid-cols-[456px_minmax(0,1fr)]">
           <ParameterSidebar className="theme-parameter-sidebar" />
