@@ -7,6 +7,7 @@ import { mapReportDataToContent } from '@/lib/pdf-generator/reportTypes'
 import { RetirementReport } from '@/lib/pdf-generator/react-pdf'
 import React from 'react'
 import { z, ZodError } from 'zod'
+import { EXPENSE_INTERVALS, WITHDRAWAL_STRATEGIES } from '@/types'
 import type { SimulationParams, SimulationResults } from '@/types'
 
 export const runtime = 'nodejs'
@@ -20,7 +21,7 @@ const CustomExpenseSchema = z.object({
   id: z.string(),
   name: z.string(),
   amount: z.number(),
-  interval: z.enum(['monthly', 'annual']),
+  interval: z.enum(EXPENSE_INTERVALS),
 })
 
 const OneTimeIncomeSchema = z.object({
@@ -45,7 +46,7 @@ const SimulationParamsSchema = z.object({
   inflationVolatility: z.number(),
   capitalGainsTax: z.number(),
   customExpenses: z.array(CustomExpenseSchema),
-  withdrawalStrategy: z.enum(['fixedReal', 'vanguardDynamic']),
+  withdrawalStrategy: z.enum(WITHDRAWAL_STRATEGIES),
   dsWithdrawalRate: z.number(),
   dsCeilingRate: z.number(),
   dsFloorRate: z.number(),

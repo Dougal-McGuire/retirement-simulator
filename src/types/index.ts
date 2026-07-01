@@ -1,4 +1,6 @@
-export type WithdrawalStrategy = 'fixedReal' | 'vanguardDynamic'
+export const WITHDRAWAL_STRATEGIES = ['fixedReal', 'vanguardDynamic'] as const
+
+export type WithdrawalStrategy = (typeof WITHDRAWAL_STRATEGIES)[number]
 
 // Simulation parameter interfaces
 export interface SimulationParams {
@@ -118,7 +120,9 @@ export interface OneTimeIncome {
   name: string
 }
 
-export type ExpenseInterval = 'monthly' | 'annual'
+export const EXPENSE_INTERVALS = ['monthly', 'annual'] as const
+
+export type ExpenseInterval = (typeof EXPENSE_INTERVALS)[number]
 
 export interface CustomExpense {
   id: string
