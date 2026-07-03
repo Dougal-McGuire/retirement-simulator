@@ -34,6 +34,7 @@ describe('reportDataTransformer behavior', () => {
     const runMonteCarloSimulation = jest.fn()
 
     jest.doMock('@/lib/simulation/engine', () => ({
+      ...jest.requireActual('@/lib/simulation/engine'),
       runMonteCarloSimulation,
     }))
 

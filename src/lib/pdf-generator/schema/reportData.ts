@@ -86,6 +86,7 @@ export const ProjectionsSchema = z.object({
 })
 
 export const RecommendationSchema = z.object({
+  id: z.string().optional(),
   title: z.string(),
   category: z.string(),
   body: z.string(),
