@@ -4,22 +4,27 @@ import { useEffect, useMemo } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { Link } from '@/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   useSimulationStore,
   useSimulationParams,
   useSimulationResults,
   useSimulationLoading,
 } from '@/lib/stores/simulationStore'
-import { SimulationChart } from '@/components/charts/SimulationChart'
-import { SuccessRateCard } from '@/components/charts/SuccessRateCard'
-import { PlanDashboard } from '@/components/charts/PlanDashboard'
+import { PlanHealthHero } from '@/components/charts/PlanHealthHero'
+import { AssetsSection } from '@/components/charts/AssetsSection'
+import { SpendingSection } from '@/components/charts/SpendingSection'
+import { ShortfallChart } from '@/components/charts/ShortfallChart'
+import { CashflowCard } from '@/components/charts/CashflowCard'
+import { ScenarioList } from '@/components/charts/ScenarioList'
+import { RecommendationList } from '@/components/charts/RecommendationList'
+import { ChartEmptyState } from '@/components/charts/ChartEmptyState'
 import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { MobileMenu } from '@/components/navigation/MobileMenu'
 import { VersionInfo } from '@/components/navigation/VersionInfo'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
-import { ChartSkeleton, SuccessRateCardSkeleton } from '@/components/ui/skeleton'
+import { ChartSkeleton } from '@/components/ui/skeleton'
 
 export default function SimulationPage() {
   const t = useTranslations('simulation')
@@ -52,29 +57,6 @@ export default function SimulationPage() {
   }, [successRate])
 
   const successMessage = successTone ? t(`header.confidence.${successTone}`) : null
-  const actionSummaryItems = useMemo(() => {
-    if (successTone === 'high') {
-      return [
-        t('actionSummary.items.high.review'),
-        t('actionSummary.items.high.contributions'),
-        t('actionSummary.items.high.report'),
-      ]
-    }
-
-    if (successTone === 'medium') {
-      return [
-        t('actionSummary.items.medium.spending'),
-        t('actionSummary.items.medium.compare'),
-        t('actionSummary.items.medium.report'),
-      ]
-    }
-
-    return [
-      t('actionSummary.items.low.savings'),
-      t('actionSummary.items.low.expenses'),
-      t('actionSummary.items.low.assumptions'),
-    ]
-  }, [successTone, t])
 
   // Run initial simulation if no results exist
   // This happens on first visit or when params have changed and results were invalidated
@@ -83,6 +65,12 @@ export default function SimulationPage() {
       runSimulation()
     }
   }, []) // Empty deps - only run once on mount
+
+  const renderTabBody = (content: React.ReactNode) => {
+    if (isLoading) return <ChartSkeleton />
+    if (!results) return <ChartEmptyState />
+    return content
+  }
 
   return (
     <div className="app-page app-page-simulation relative min-h-screen pb-16">
@@ -156,7 +144,6 @@ export default function SimulationPage() {
                   />
                 </div>
               </div>
-              {/* Removed redundant success probability banner */}
             </div>
           </div>
         </div>
@@ -170,63 +157,54 @@ export default function SimulationPage() {
           <ParameterSidebar className="theme-parameter-sidebar" />
 
           <div className="theme-content theme-simulation-content space-y-6">
-            {isLoading ? (
-              <Card>
-                <SuccessRateCardSkeleton />
-              </Card>
-            ) : (
-              <SuccessRateCard
-                successRate={results?.successRate || 0}
-                isLoading={isLoading}
-                simulationRuns={params.simulationRuns}
-              />
-            )}
+            <PlanHealthHero params={params} results={results} isLoading={isLoading} />
 
-            <PlanDashboard params={params} results={results} isLoading={isLoading} />
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-1 border-3 border-neo-black bg-neo-white shadow-neo sm:grid-cols-3">
+                <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
+                <TabsTrigger value="details">{t('tabs.details')}</TabsTrigger>
+                <TabsTrigger value="scenarios">{t('tabs.scenarios')}</TabsTrigger>
+              </TabsList>
 
-            <Card className="theme-action-card">
-              <CardHeader className="border-b-3 border-neo-black bg-neo-white">
-                <CardTitle className="text-xl font-extrabold tracking-[0.16em]">
-                  {t('actionSummary.title')}
-                </CardTitle>
-                <CardDescription className="mt-1 text-sm font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  {t('actionSummary.description')}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-6">
-                <p className="text-sm font-medium text-foreground/80">
-                  {successMessage ?? t('actionSummary.fallback')}
-                </p>
-                <ul className="space-y-3">
-                  {actionSummaryItems.map((item) => (
-                    <li
-                      key={item}
-                      className="border-2 border-neo-black bg-neo-white px-4 py-3 text-[0.72rem] font-semibold uppercase tracking-[0.12em]"
-                    >
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="theme-chart-card">
-              <CardHeader className="border-b-3 border-neo-black bg-neo-white">
-                <CardTitle className="text-xl font-extrabold tracking-[0.16em]">
-                  {t('charts.asset.title')}
-                </CardTitle>
-                <CardDescription className="mt-1 text-sm font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  {t('charts.asset.description')}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {isLoading ? (
-                  <ChartSkeleton />
-                ) : (
-                  <SimulationChart results={results} isLoading={isLoading} />
+              <TabsContent
+                value="overview"
+                forceMount
+                className="mt-6 space-y-6 data-[state=inactive]:hidden"
+              >
+                {renderTabBody(
+                  results && (
+                    <>
+                      <AssetsSection results={results} />
+                      <ShortfallChart results={results} />
+                    </>
+                  )
                 )}
-              </CardContent>
-            </Card>
+              </TabsContent>
+
+              <TabsContent
+                value="details"
+                forceMount
+                className="mt-6 space-y-6 data-[state=inactive]:hidden"
+              >
+                {renderTabBody(
+                  results && (
+                    <>
+                      <SpendingSection results={results} />
+                      <CashflowCard params={params} results={results} />
+                    </>
+                  )
+                )}
+              </TabsContent>
+
+              <TabsContent
+                value="scenarios"
+                forceMount
+                className="mt-6 space-y-6 data-[state=inactive]:hidden"
+              >
+                <ScenarioList params={params} results={results} isLoading={isLoading} />
+                <RecommendationList params={params} results={results} />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </main>

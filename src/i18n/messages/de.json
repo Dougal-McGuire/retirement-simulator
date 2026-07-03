@@ -208,33 +208,10 @@
       },
       "confidenceMeta": "Basiert auf {count} stochastischen Simulationen"
     },
-    "actionSummary": {
-      "title": "Nächste Schritte",
-      "description": "Leiten Sie aus der aktuellen Simulation eine kurze Aktionsliste ab, bevor Sie weitere Parameter ändern.",
-      "fallback": "Führen Sie zuerst eine Simulation aus, um eine umsetzbare Zusammenfassung zu erhalten.",
-      "items": {
-        "high": {
-          "review": "Prüfen Sie diese Basisversion einmal pro Jahr oder nach größeren Lebensereignissen.",
-          "contributions": "Halten Sie Beiträge stabil und lassen Sie Ausgaben nicht schneller als die Inflation wachsen.",
-          "report": "Erstellen Sie jetzt einen Bericht, damit Sie spätere Änderungen damit vergleichen können."
-        },
-        "medium": {
-          "spending": "Testen Sie einen leicht niedrigeren Ausgabenplan, um mehr Puffer aufzubauen.",
-          "compare": "Vergleichen Sie mindestens ein Szenario mit höherer Sparrate oder späterem Ruhestand.",
-          "report": "Erstellen Sie nach jeder relevanten Anpassung einen neuen Bericht, um die beste Stellschraube zu erkennen."
-        },
-        "low": {
-          "savings": "Erhöhen Sie die Sparrate, verschieben Sie den Ruhestand oder testen Sie beide Änderungen gemeinsam.",
-          "expenses": "Prüfen Sie wiederkehrende Ausgaben und streichen Sie Posten mit geringer Priorität vor dem Ruhestand.",
-          "assumptions": "Nutzen Sie das Setup, um Rendite-, Inflations- und Rentenannahmen zu überarbeiten und erneut zu rechnen."
-        }
-      }
-    },
-    "charts": {
-      "asset": {
-        "title": "Vermögens- und Ausgabenprojektion",
-        "description": "Monte-Carlo-Simulation mit Vermögens- und Ausgabeverlauf inklusive 10., 50. und 90. Perzentil"
-      }
+    "tabs": {
+      "overview": "Überblick",
+      "details": "Cashflow & Details",
+      "scenarios": "Szenarien & Empfehlungen"
     }
   },
   "parameterSidebar": {
@@ -550,28 +527,6 @@
       "generate": "Bericht erstellen"
     }
   },
-  "successCard": {
-    "title": "Erfolgswahrscheinlichkeit",
-    "messages": {
-      "excellent": "Ausgezeichnet! Sehr hohe Erfolgswahrscheinlichkeit",
-      "veryGood": "Sehr gute Chance, Ihre Ziele zu erreichen",
-      "good": "Gute Chance – Optimierung prüfen",
-      "moderate": "Mittlere Erfolgsquote – Plan überprüfen",
-      "low": "Niedrige Erfolgsquote – deutliche Anpassungen nötig",
-      "veryLow": "Sehr niedrige Erfolgsquote – Plan grundlegend überarbeiten"
-    },
-    "summary": {
-      "basedOn": "Basis",
-      "runs": "{count} Läufe",
-      "detail": "{rate}% von {runs} laufen nicht vor dem Endalter leer.",
-      "confidenceLabel": "Plan-Vertrauen"
-    },
-    "progress": {
-      "min": "0%",
-      "label": "Erfolgsquote",
-      "max": "100%"
-    }
-  },
   "planHero": {
     "title": "Planzustand",
     "score": {
@@ -606,33 +561,7 @@
     }
   },
   "planDashboard": {
-    "title": "Plan-Cockpit",
-    "description": "Kompakter Überblick über Cashflow, Brückenrisiko und die wirksamsten Stellschrauben.",
     "notAvailable": "n/v",
-    "health": {
-      "strong": "Starker Plan",
-      "watch": "Beobachten",
-      "strained": "Handlungsbedarf"
-    },
-    "metrics": {
-      "retirementAssets": {
-        "label": "Median zum Ruhestand",
-        "detail": "Projizierter P50-Portfoliowert zum Rentenstart"
-      },
-      "monthlySpend": {
-        "label": "Monatliche Ausgaben",
-        "detail": "{annual} pro Jahr über alle Ausgabenposten"
-      },
-      "withdrawalRate": {
-        "label": "Entnahme im 1. Jahr",
-        "detail": "{need} müssen vor Rentenbeginn aus dem Portfolio kommen"
-      },
-      "bridge": {
-        "label": "Rentenbrücke",
-        "value": "{years, plural, =0 {Keine Lücke} one {# Jahr} other {# Jahre}}",
-        "detail": "{pension} jährliche Rente ab Leistungsbeginn"
-      }
-    },
     "cashflow": {
       "title": "Cashflow im Ruhestand",
       "portfolioNeed": "Portfoliofinanziertes erstes Jahr",

@@ -86,32 +86,6 @@ function ChartSkeleton({ className }: { className?: string }) {
   )
 }
 
-// Success rate card skeleton
-function SuccessRateCardSkeleton() {
-  return (
-    <div className="border-3 border-neo-black bg-neo-white p-6 shadow-neo">
-      <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-4 w-20" />
-        </div>
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-12 w-28" />
-          <Skeleton className="h-4 w-48" />
-        </div>
-        <div className="mt-2 grid grid-cols-3 gap-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-5 w-16" />
-              <Skeleton className="h-6 w-24" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // Progress indicator skeleton for setup wizard
 function ProgressIndicatorSkeleton() {
   return (
@@ -157,10 +131,4 @@ function StatCardSkeleton() {
   )
 }
 
-export {
-  Skeleton,
-  ChartSkeleton,
-  SuccessRateCardSkeleton,
-  ProgressIndicatorSkeleton,
-  StatCardSkeleton,
-}
+export { Skeleton, ChartSkeleton, ProgressIndicatorSkeleton, StatCardSkeleton }
