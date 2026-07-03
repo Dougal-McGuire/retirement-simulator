@@ -262,7 +262,7 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
  *
  * @param params - Simulation parameters
  * @param distributions - Precomputed lognormal sampling parameters
- * @returns Object containing asset history and spending history for this run
+ * @returns Object containing asset history, spending history, a failure flag, and the index of the first failure year (depletionIndex, null if the run never failed)
  */
 function runSingleSimulation(
   params: SimulationParams,

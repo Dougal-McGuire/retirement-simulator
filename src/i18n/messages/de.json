@@ -627,10 +627,6 @@
     }
   },
   "simulationChart": {
-    "loading": {
-      "title": "Monte-Carlo-Simulation wird ausgeführt…",
-      "subtitle": "Dies kann einen Moment dauern."
-    },
     "empty": {
       "title": "Keine Simulationsdaten verfügbar",
       "subtitle": "Passen Sie die Parameter an und starten Sie die Simulation."

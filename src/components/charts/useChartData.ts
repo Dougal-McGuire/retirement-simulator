@@ -128,6 +128,7 @@ function toIndexRange(ages: number[], startAge?: number, endAge?: number) {
 export function useBrushRange(ages: number[]) {
   const [ageRange, setAgeRange] = useState<{ startAge?: number; endAge?: number }>({})
   const setAutoRunSuspended = useSetAutoRunSuspended()
+  // Intentionally not cleared on unmount: the pending timer must still resume auto-run, otherwise it could stay suspended forever.
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const scheduleResume = useCallback(() => {

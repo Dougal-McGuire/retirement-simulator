@@ -561,7 +561,7 @@
     }
   },
   "planDashboard": {
-    "notAvailable": "n/a",
+    "notAvailable": "—",
     "cashflow": {
       "title": "Retirement cash flow",
       "portfolioNeed": "Portfolio-funded first year",
@@ -627,10 +627,6 @@
     }
   },
   "simulationChart": {
-    "loading": {
-      "title": "Running Monte Carlo simulation…",
-      "subtitle": "This may take a few moments."
-    },
     "empty": {
       "title": "No simulation data available",
       "subtitle": "Adjust parameters to run the simulation."

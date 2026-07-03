@@ -79,7 +79,7 @@ describe('buildPlanWarnings', () => {
 
   it('flags an unsustainable first-year withdrawal rate', () => {
     const results = makeResults()
-    // Median assets at retirement of 100k vs ~46k annual portfolio need -> way above 6%
+    // Median assets at retirement of 100k vs ~62.9k annual portfolio need -> way above 6%
     results.assetPercentiles.p50 = results.ages.map(() => 100_000)
     const warnings = buildPlanWarnings(DEFAULT_PARAMS, results)
     expect(warnings.some((w) => w.id === 'highWithdrawal')).toBe(true)
