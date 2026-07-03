@@ -271,6 +271,7 @@ function runSingleSimulation(
   assetHistory: number[]
   spendingHistory: number[]
   failed: boolean
+  depletionIndex: number | null
 } {
   const assetHistory: number[] = []
   const spendingHistory: number[] = []
@@ -304,6 +305,7 @@ function runSingleSimulation(
   let currentMonthlyExpense = totalMonthlyExpense
   let currentAnnualExpense = totalAnnualExpense
   let runFailed = false
+  let depletionIndex: number | null = null
   let previousDynamicAnnualSpending: number | null = null
   let dynamicSpendingInflationFactor = 1
 
@@ -409,12 +411,17 @@ function runSingleSimulation(
     }
 
     assetHistory.push(currentAssets)
+
+    if (runFailed && depletionIndex === null) {
+      depletionIndex = assetHistory.length - 1
+    }
   }
 
   return {
     assetHistory,
     spendingHistory,
     failed: runFailed,
+    depletionIndex,
   }
 }
 
@@ -442,6 +449,8 @@ export function runMonteCarloSimulation(params: SimulationParams): SimulationRes
     ages.push(age)
   }
 
+  const depletionCounts = new Array<number>(ages.length).fill(0)
+
   // Run all simulations
   for (let run = 0; run < normalizedParams.simulationRuns; run++) {
     const result = runSingleSimulation(normalizedParams, distributions)
@@ -452,6 +461,10 @@ export function runMonteCarloSimulation(params: SimulationParams): SimulationRes
 
     assetRuns.push(result.assetHistory)
     spendingRuns.push(result.spendingHistory)
+
+    if (result.depletionIndex !== null && result.depletionIndex < depletionCounts.length) {
+      depletionCounts[result.depletionIndex]++
+    }
   }
 
   // Calculate percentiles
@@ -461,11 +474,18 @@ export function runMonteCarloSimulation(params: SimulationParams): SimulationRes
   // Calculate success rate
   const successRate = (successfulRuns / normalizedParams.simulationRuns) * 100
 
+  let depletedSoFar = 0
+  const depletionByAge = depletionCounts.map((count) => {
+    depletedSoFar += count
+    return depletedSoFar / normalizedParams.simulationRuns
+  })
+
   return {
     ages,
     assetPercentiles,
     spendingPercentiles,
     successRate,
+    depletionByAge,
     params: normalizedParams,
   }
 }

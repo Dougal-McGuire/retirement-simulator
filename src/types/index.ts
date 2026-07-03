@@ -54,6 +54,11 @@ export interface SimulationResults {
   assetPercentiles: PercentileData
   spendingPercentiles: PercentileData
   successRate: number
+  /**
+   * Fraction of runs (0..1) whose assets were exhausted at or before each age.
+   * Optional because results persisted before this field existed lack it.
+   */
+  depletionByAge?: number[]
   params: SimulationParams
 }
 
