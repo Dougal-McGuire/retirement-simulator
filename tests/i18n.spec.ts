@@ -12,7 +12,9 @@ test.describe('i18n routing', () => {
     await expect(
       page.getByRole('heading', { level: 1, name: 'Ruhestandssimulation' })
     ).toBeVisible()
-    await expect(page.getByText('Vermögens- und Ausgabenprojektion')).toBeVisible()
+    await expect(
+      page.getByText('Planen, justieren und überwachen Sie Ihren Ruhestand mit Live-Monte-Carlo-Ergebnissen.')
+    ).toBeVisible()
     await expect(page.getByRole('button', { name: 'Keine Daten' })).toBeVisible()
   })
 
