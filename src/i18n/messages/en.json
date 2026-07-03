@@ -660,6 +660,43 @@
       }
     }
   },
+  "recommendations": {
+    "title": "Recommendations",
+    "subtitle": "Rule-based suggestions derived from your plan — estimated uplift in success-rate points",
+    "empty": "Run the simulation to see recommendations.",
+    "uplift": "+{min}–{max} pts",
+    "impact": { "high": "High impact", "medium": "Medium impact", "low": "Low impact" },
+    "items": {
+      "increaseSavings": {
+        "title": "Increase savings rate",
+        "body": "Your current success rate indicates potential challenges. Consider increasing your annual savings by 10-20% to improve retirement security."
+      },
+      "delayRetirement": {
+        "title": "Delay retirement",
+        "body": "Working an additional 2-3 years could significantly improve your success rate by allowing more time for asset accumulation."
+      },
+      "optimizeMix": {
+        "title": "Optimize investment mix",
+        "body": "Review your asset allocation to ensure an appropriate balance between growth and stability for your risk tolerance."
+      },
+      "reviewSpending": {
+        "title": "Review spending plan",
+        "body": "Your expenses are high relative to savings. Consider reviewing discretionary spending to improve financial flexibility."
+      },
+      "maximizeTaxDeferred": {
+        "title": "Maximize tax-advantaged accounts",
+        "body": "Ensure you are taking full advantage of tax-advantaged retirement accounts to reduce current tax liability and enhance long-term growth."
+      },
+      "reduceVolatility": {
+        "title": "Consider volatility reduction",
+        "body": "Your portfolio has high volatility. As you approach retirement, consider gradually shifting to more stable investments."
+      },
+      "reviewInsurance": {
+        "title": "Review insurance coverage",
+        "body": "Evaluate current insurance policies including health, long-term care and life insurance to ensure adequate protection."
+      }
+    }
+  },
   "simulationChart": {
     "loading": {
       "title": "Running Monte Carlo simulation…",

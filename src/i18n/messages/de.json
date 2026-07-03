@@ -660,6 +660,43 @@
       }
     }
   },
+  "recommendations": {
+    "title": "Empfehlungen",
+    "subtitle": "Regelbasierte Vorschläge aus Ihrem Plan – geschätzter Zugewinn in Erfolgsquoten-Punkten",
+    "empty": "Führen Sie die Simulation aus, um Empfehlungen zu sehen.",
+    "uplift": "+{min}–{max} Pkt.",
+    "impact": { "high": "Hohe Wirkung", "medium": "Mittlere Wirkung", "low": "Geringe Wirkung" },
+    "items": {
+      "increaseSavings": {
+        "title": "Sparrate erhöhen",
+        "body": "Ihre aktuelle Erfolgsquote deutet auf Risiken hin. Erhöhen Sie Ihre jährliche Sparrate um 10–20 %, um die Absicherung zu verbessern."
+      },
+      "delayRetirement": {
+        "title": "Renteneintritt verschieben",
+        "body": "Zwei bis drei zusätzliche Arbeitsjahre können die Erfolgsquote deutlich verbessern, weil mehr Zeit für den Vermögensaufbau bleibt."
+      },
+      "optimizeMix": {
+        "title": "Anlagemix optimieren",
+        "body": "Überprüfen Sie Ihre Vermögensaufteilung, um Wachstum und Stabilität passend zu Ihrer Risikotoleranz auszubalancieren."
+      },
+      "reviewSpending": {
+        "title": "Ausgabenplan überprüfen",
+        "body": "Ihre Ausgaben sind im Verhältnis zur Sparrate hoch. Prüfen Sie variable Ausgaben, um finanziellen Spielraum zu gewinnen."
+      },
+      "maximizeTaxDeferred": {
+        "title": "Steuervorteile ausschöpfen",
+        "body": "Nutzen Sie steuerbegünstigte Altersvorsorgeprodukte voll aus, um die Steuerlast zu senken und das langfristige Wachstum zu stärken."
+      },
+      "reduceVolatility": {
+        "title": "Volatilität reduzieren",
+        "body": "Ihr Portfolio schwankt stark. Mit näher rückendem Ruhestand empfiehlt sich eine schrittweise Umschichtung in stabilere Anlagen."
+      },
+      "reviewInsurance": {
+        "title": "Versicherungsschutz prüfen",
+        "body": "Überprüfen Sie bestehende Policen – Kranken-, Pflege- und Lebensversicherung –, um ausreichenden Schutz sicherzustellen."
+      }
+    }
+  },
   "simulationChart": {
     "loading": {
       "title": "Monte-Carlo-Simulation wird ausgeführt…",
