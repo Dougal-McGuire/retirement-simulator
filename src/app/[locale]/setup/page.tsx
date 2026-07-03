@@ -15,6 +15,7 @@ import { useSimulationStore } from '@/lib/stores/simulationStore'
 import { OneTimeIncome, CustomExpense, ExpenseInterval } from '@/types'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { cn } from '@/lib/utils'
+import { parseSetupProgressStep } from './setupProgress'
 
 const STEP_KEYS = ['personal', 'assets', 'expenses', 'market'] as const
 
@@ -71,16 +72,12 @@ export default function SetupPage() {
       return
     }
 
-    try {
-      const parsed = JSON.parse(saved)
-      if (typeof parsed.currentStep === 'number') {
-        setCurrentStep(Math.min(parsed.currentStep, STEP_KEYS.length - 1))
-      }
-    } catch {
-      // ignore invalid cached state
-    } finally {
-      setProgressLoaded(true)
+    const savedStep = parseSetupProgressStep(saved, STEP_KEYS.length)
+    if (savedStep !== null) {
+      setCurrentStep(savedStep)
     }
+
+    setProgressLoaded(true)
   }, [])
 
   // Auto-save currentStep to localStorage (for continuing where user left off)
