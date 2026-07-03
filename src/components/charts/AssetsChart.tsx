@@ -27,6 +27,8 @@ interface AssetsChartProps {
   data: BandPoint[]
   retirementAge: number
   legalRetirementAge: number
+  p10DepletionAge?: number | null
+  p50DepletionAge?: number | null
   indexRange: { startIndex: number; endIndex: number }
   onBrushChange: (range: { startIndex?: number; endIndex?: number }) => void
   onResetZoom: () => void
@@ -38,6 +40,8 @@ export function AssetsChart({
   data,
   retirementAge,
   legalRetirementAge,
+  p10DepletionAge = null,
+  p50DepletionAge = null,
   indexRange,
   onBrushChange,
   onResetZoom,
@@ -301,6 +305,31 @@ export function AssetsChart({
               }}
               className="transition-all duration-300 hover:stroke-green-400"
             />
+            {p50DepletionAge != null && (
+              <ReferenceLine
+                x={p50DepletionAge}
+                stroke="var(--neo-red)"
+                strokeWidth={2}
+                label={{
+                  value: t('markers.depletionP50'),
+                  position: 'insideTopRight',
+                  style: { fill: 'var(--neo-red)', fontSize: '11px', fontWeight: 'bold' },
+                }}
+              />
+            )}
+            {p10DepletionAge != null && p10DepletionAge !== p50DepletionAge && (
+              <ReferenceLine
+                x={p10DepletionAge}
+                stroke="var(--neo-red)"
+                strokeDasharray="3 3"
+                strokeWidth={2}
+                label={{
+                  value: t('markers.depletionP10'),
+                  position: 'insideBottomRight',
+                  style: { fill: 'var(--neo-red)', fontSize: '11px', fontWeight: 'semibold' },
+                }}
+              />
+            )}
             <Line
               type="monotone"
               dataKey="assets_p10"

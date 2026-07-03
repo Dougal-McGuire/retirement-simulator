@@ -691,7 +691,9 @@
     },
     "markers": {
       "retirement": "Retirement",
-      "pension": "Pension Starts"
+      "pension": "Pension Starts",
+      "depletionP50": "Median depleted",
+      "depletionP10": "P10 depleted"
     },
     "hint": {
       "dragToZoom": "Drag to zoom",
@@ -701,6 +703,13 @@
       "description": "Asset projection chart showing three scenarios: worst case (10th percentile) in red, median (50th percentile) in blue, and best case (90th percentile) in green.",
       "controls": "Use arrow keys to navigate chart data points. Press R to reset zoom. Drag across the chart to zoom into a time range."
     }
+  },
+  "shortfallChart": {
+    "title": "Risk of running out",
+    "subtitle": "Share of simulation runs whose assets are exhausted by each age",
+    "ariaLabel": "Chart showing the share of simulation runs with depleted assets by age",
+    "yAxisLabel": "runs depleted",
+    "ageLabel": "Age"
   },
   "spendingChart": {
     "title": "Spending Patterns During Retirement",

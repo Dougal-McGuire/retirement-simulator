@@ -691,7 +691,9 @@
     },
     "markers": {
       "retirement": "Ruhestand",
-      "pension": "Renteneintritt"
+      "pension": "Renteneintritt",
+      "depletionP50": "Median erschöpft",
+      "depletionP10": "P10 erschöpft"
     },
     "hint": {
       "dragToZoom": "Ziehen zum Zoomen",
@@ -701,6 +703,13 @@
       "description": "Vermögensdiagramm mit drei Szenarien: schlechtester Fall (10. Perzentil) in Rot, Median (50. Perzentil) in Blau und bester Fall (90. Perzentil) in Grün.",
       "controls": "Verwenden Sie die Pfeiltasten, um durch die Diagrammdaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen."
     }
+  },
+  "shortfallChart": {
+    "title": "Erschöpfungsrisiko",
+    "subtitle": "Anteil der Simulationsläufe, deren Vermögen bis zum jeweiligen Alter aufgebraucht ist",
+    "ariaLabel": "Diagramm des Anteils der Simulationsläufe mit erschöpftem Vermögen je Alter",
+    "yAxisLabel": "Läufe erschöpft",
+    "ageLabel": "Alter"
   },
   "spendingChart": {
     "title": "Ausgaben im Ruhestand",

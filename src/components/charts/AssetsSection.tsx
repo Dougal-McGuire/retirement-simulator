@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import type { SimulationResults } from '@/types'
 import { AssetsChart } from '@/components/charts/AssetsChart'
 import { useBrushRange, useChartData, useChartFormatters } from '@/components/charts/useChartData'
+import { deriveDepletionAges } from '@/lib/insights/depletion'
 import { cn } from '@/lib/utils'
 
 interface AssetsSectionProps {
@@ -17,6 +18,7 @@ export function AssetsSection({ results }: AssetsSectionProps) {
   const { formatCurrency, formatCurrencyShort } = useChartFormatters()
   const ages = useMemo(() => chartDataWithBand.map((d) => d.age), [chartDataWithBand])
   const { indexRange, onBrushChange, resetZoom } = useBrushRange(ages)
+  const depletion = useMemo(() => deriveDepletionAges(results), [results])
 
   return (
     <div className="space-y-5">
@@ -24,6 +26,8 @@ export function AssetsSection({ results }: AssetsSectionProps) {
         data={chartDataWithBand}
         retirementAge={results.params.retirementAge}
         legalRetirementAge={results.params.legalRetirementAge}
+        p10DepletionAge={depletion.p10DepletionAge}
+        p50DepletionAge={depletion.p50DepletionAge}
         indexRange={indexRange}
         onBrushChange={onBrushChange}
         onResetZoom={resetZoom}
