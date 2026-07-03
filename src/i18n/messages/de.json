@@ -572,6 +572,39 @@
       "max": "100%"
     }
   },
+  "planHero": {
+    "title": "Planzustand",
+    "score": {
+      "label": "Gesundheitswert",
+      "strong": "Stark",
+      "moderate": "Solide",
+      "needsAttention": "Handlungsbedarf"
+    },
+    "success": { "label": "Erfolgsquote", "detail": "{runs} Simulationsläufe" },
+    "lasts": {
+      "label": "Vermögen reicht",
+      "toAge": "bis Alter {age}",
+      "beyond": "über {age} hinaus",
+      "detailP10": "Worst Case (P10): Alter {age}",
+      "detailNone": "Auch im schlechtesten Zehntel keine Erschöpfung"
+    },
+    "withdrawal": {
+      "label": "Entnahme im 1. Jahr",
+      "detail": "{need} müssen aus dem Portfolio kommen"
+    },
+    "bridge": {
+      "label": "Rentenbrücke",
+      "value": "{years, plural, =0 {Keine Lücke} one {# Jahr} other {# Jahre}}",
+      "detail": "bis zur gesetzlichen Rente mit {age}"
+    },
+    "notAvailable": "n/v",
+    "warnings": {
+      "highWithdrawal": "Die Entnahmerate von {rate} im ersten Jahr liegt über dem nachhaltigen Bereich (max. 6 %).",
+      "medianDepletion": "Im Median ist Ihr Vermögen mit {age} aufgebraucht – vor dem Planungshorizont.",
+      "bridgeGap": "Der Bedarf in der Brückenphase ({need}) übersteigt Ihr Medianvermögen zum Rentenstart ({assets}).",
+      "inconsistentAges": "Bitte prüfen Sie die Altersangaben – aktuelles Alter, Renteneintritt und Endalter überschneiden sich."
+    }
+  },
   "planDashboard": {
     "title": "Plan-Cockpit",
     "description": "Kompakter Überblick über Cashflow, Brückenrisiko und die wirksamsten Stellschrauben.",

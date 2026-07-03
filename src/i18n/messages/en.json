@@ -572,6 +572,39 @@
       "max": "100%"
     }
   },
+  "planHero": {
+    "title": "Plan health",
+    "score": {
+      "label": "Health score",
+      "strong": "Strong",
+      "moderate": "Moderate",
+      "needsAttention": "Needs attention"
+    },
+    "success": { "label": "Success rate", "detail": "{runs} simulation runs" },
+    "lasts": {
+      "label": "Assets last",
+      "toAge": "to age {age}",
+      "beyond": "beyond {age}",
+      "detailP10": "Worst case (P10): age {age}",
+      "detailNone": "No depletion even in the worst 10%"
+    },
+    "withdrawal": {
+      "label": "First-year withdrawal",
+      "detail": "{need} needed from the portfolio"
+    },
+    "bridge": {
+      "label": "Pension bridge",
+      "value": "{years, plural, =0 {No gap} one {# year} other {# years}}",
+      "detail": "until statutory pension at {age}"
+    },
+    "notAvailable": "—",
+    "warnings": {
+      "highWithdrawal": "First-year withdrawal rate of {rate} is above the sustainable range (max. 6%).",
+      "medianDepletion": "In the median outcome your assets run out at age {age} — before your plan horizon.",
+      "bridgeGap": "The bridge-period need of {need} exceeds your median assets at retirement ({assets}).",
+      "inconsistentAges": "Check your age inputs — current, retirement and end age overlap."
+    }
+  },
   "planDashboard": {
     "title": "Plan Control Center",
     "description": "A concise readout of cash flow, bridge risk, and the highest-leverage adjustments.",
