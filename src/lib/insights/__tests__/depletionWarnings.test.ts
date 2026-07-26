@@ -77,12 +77,22 @@ describe('buildPlanWarnings', () => {
     expect(warnings).toContainEqual({ id: 'medianDepletion', age: 80 })
   })
 
-  it('flags an unsustainable first-year withdrawal rate', () => {
-    const results = makeResults()
+  it('flags an unsustainable first-year withdrawal rate under fixed-real withdrawals', () => {
+    const params: SimulationParams = { ...DEFAULT_PARAMS, withdrawalStrategy: 'fixedReal' }
+    const results = makeResults({}, params)
     // Median assets at retirement of 100k vs ~62.9k annual portfolio need -> way above 6%
     results.assetPercentiles.p50 = results.ages.map(() => 100_000)
-    const warnings = buildPlanWarnings(DEFAULT_PARAMS, results)
+    const warnings = buildPlanWarnings(params, results)
     expect(warnings.some((w) => w.id === 'highWithdrawal')).toBe(true)
+  })
+
+  it('does not flag the withdrawal rate under the dynamic strategy', () => {
+    // DEFAULT_PARAMS uses the vanguardDynamic strategy, where spending flexes with the
+    // portfolio inside the guardrails, so the fixed-rate ceiling warning must not fire.
+    const results = makeResults()
+    results.assetPercentiles.p50 = results.ages.map(() => 100_000)
+    const warnings = buildPlanWarnings(DEFAULT_PARAMS, results)
+    expect(warnings.some((w) => w.id === 'highWithdrawal')).toBe(false)
   })
 
   it('flags a bridge gap when the bridge need exceeds retirement median assets', () => {

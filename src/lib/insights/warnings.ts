@@ -25,7 +25,12 @@ export function buildPlanWarnings(
 
   const metrics = buildPlanInsightMetrics(params, results)
 
+  // The sustainable-withdrawal ceiling is a fixed-real-withdrawal heuristic (à la the
+  // 4% rule). Under the dynamic strategy, spending flexes with the portfolio within the
+  // floor/ceiling guardrails, so a static first-year rate cap does not apply — the
+  // success rate already reflects whether the drawdown is sustainable.
   if (
+    params.withdrawalStrategy === 'fixedReal' &&
     metrics.firstYearWithdrawalRate !== null &&
     metrics.firstYearWithdrawalRate > SUSTAINABLE_WITHDRAWAL_RATE
   ) {
