@@ -198,7 +198,7 @@ export const styles = StyleSheet.create({
   },
   overline: {
     fontSize: 7,
-    color: tokens.colors.accent[600],
+    color: tokens.colors.accent[700],
     fontWeight: 600,
     letterSpacing: 1.4,
     textTransform: 'uppercase',
@@ -212,7 +212,25 @@ export const styles = StyleSheet.create({
     marginBottom: tokens.spacing[6],
     paddingBottom: tokens.spacing[4],
     borderBottomWidth: 1.4,
-    borderBottomColor: tokens.colors.ink[900],
+    borderBottomColor: tokens.colors.brand.ink,
+  },
+  /** The app's yellow marker square, reused as the section tick. */
+  brandMark: {
+    width: 7,
+    height: 7,
+    backgroundColor: tokens.colors.brand.yellow,
+    marginRight: 5,
+  },
+  /** Card variant that carries the app accent on its top edge. */
+  cardAccent: {
+    borderWidth: 1,
+    borderColor: tokens.colors.ink[200],
+    borderTopWidth: 2,
+    borderTopColor: tokens.colors.brand.yellow,
+    borderRadius: tokens.radius.md,
+    backgroundColor: tokens.colors.white,
+    padding: tokens.spacing[5],
+    marginBottom: tokens.spacing[4],
   },
   sectionLead: {
     fontSize: tokens.fontSize.sm,
@@ -391,7 +409,7 @@ export const styles = StyleSheet.create({
   listBullet: {
     width: 14,
     fontSize: tokens.fontSize.sm,
-    color: tokens.colors.accent[600],
+    color: tokens.colors.accent[700],
   },
   listContent: {
     flex: 1,
