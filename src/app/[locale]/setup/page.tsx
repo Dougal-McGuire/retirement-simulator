@@ -262,6 +262,20 @@ export default function SetupPage() {
               }
             />
 
+            {timelineIssues.length > 0 && (
+              <div
+                role="alert"
+                className="flex items-start gap-3 border-2 border-neo-orange bg-neo-orange/10 px-4 py-3"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-neo-orange" />
+                <div className="space-y-1 text-xs font-medium leading-relaxed text-neo-black">
+                  {timelineIssues.map((issue) => (
+                    <p key={issue}>{issue}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-x-6 gap-y-7 sm:grid-cols-2">
               <LabeledNumberInput
                 id="endAge"
@@ -284,19 +298,6 @@ export default function SetupPage() {
               />
             </div>
 
-            {timelineIssues.length > 0 && (
-              <div
-                role="alert"
-                className="flex items-start gap-3 border-2 border-neo-orange bg-neo-orange/10 px-4 py-3"
-              >
-                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-neo-orange" />
-                <div className="space-y-1 text-xs font-medium leading-relaxed text-neo-black">
-                  {timelineIssues.map((issue) => (
-                    <p key={issue}>{issue}</p>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )
 
