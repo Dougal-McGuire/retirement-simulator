@@ -38,7 +38,107 @@ function AppendixSection({
   intlLocale: string
   sectionNumber: string
 }) {
-  const { assumptions } = content
+  const { assumptions, profile, expenses, finances } = content
+  const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
+
+  const glossary: Array<{ term: string; text: string }> = isGerman
+    ? [
+        {
+          term: 'Erfolgsquote',
+          text: `Anteil der Simulationsläufe, in denen das Vermögen bis Alter ${profile.person.horizonAge} nicht aufgebraucht ist.`,
+        },
+        {
+          term: 'Planungs-Score',
+          text: 'Gewichteter Mittelwert aus Erfolgsquote (60 %), Entnahmerate (25 %) und Liquidität (15 %), auf ganze Punkte gerundet — identisch zur Anzeige im Dashboard.',
+        },
+        {
+          term: 'Perzentil (P10/P50/P90)',
+          text: 'Rangwert über alle Läufe: P50 ist der Medianpfad, P10 der konservative Rand, P90 der günstige Rand.',
+        },
+        {
+          term: 'Überbrückungsphase',
+          text: 'Jahre zwischen dem gewählten Ruhestandsbeginn und dem Start der gesetzlichen Rente, in denen die Ausgaben vollständig aus dem Depot kommen.',
+        },
+        {
+          term: 'Entnahmerate',
+          text: 'Erstjahresentnahme aus dem Depot geteilt durch das Depotvermögen zu Ruhestandsbeginn.',
+        },
+        {
+          term: 'Realrendite',
+          text: 'Rendite nach Inflation: (1 + Rendite) / (1 + Inflation) − 1.',
+        },
+      ]
+    : [
+        {
+          term: 'Success rate',
+          text: `Share of simulation runs in which capital is not exhausted before age ${profile.person.horizonAge}.`,
+        },
+        {
+          term: 'Plan score',
+          text: 'Weighted mean of success rate (60%), withdrawal rate (25%) and liquidity (15%), rounded to whole points — the same figure the dashboard shows.',
+        },
+        {
+          term: 'Percentile (P10/P50/P90)',
+          text: 'Rank across all runs: P50 is the median path, P10 the conservative edge, P90 the favourable edge.',
+        },
+        {
+          term: 'Bridge phase',
+          text: 'The years between the chosen retirement age and the start of the state pension, when spending comes entirely from the portfolio.',
+        },
+        {
+          term: 'Withdrawal rate',
+          text: 'First-year portfolio withdrawal divided by portfolio value at retirement.',
+        },
+        {
+          term: 'Real return',
+          text: 'Return after inflation: (1 + return) / (1 + inflation) − 1.',
+        },
+      ]
+
+  const limitations = isGerman
+    ? [
+        'Renditen und Inflation werden als unabhängig gezogen; historische Autokorrelation und Sequenzrisiken im Übergangsjahr werden nicht nachgebildet.',
+        'Steuern werden pauschal mit einem Satz auf Kapitalerträge berücksichtigt; Freibeträge, Teilfreistellungen und Progressionseffekte bleiben unberücksichtigt.',
+        'Die Rentenhöhe wird nominal fortgeschrieben; abweichende Rentenanpassungen ändern die Ergebnisse.',
+        'Ausgaben werden mit der Inflationsannahme fortgeschrieben; Pflegekosten oder einmalige Sonderausgaben sind nur enthalten, soweit sie erfasst wurden.',
+      ]
+    : [
+        'Returns and inflation are drawn independently; historical autocorrelation and sequence-of-returns effects around the transition year are not reproduced.',
+        'Taxes are applied as a flat rate on capital gains; allowances, partial exemptions and progressive effects are not modelled.',
+        'The pension is carried forward in nominal terms; different indexation would change the outcome.',
+        'Spending is indexed with the inflation assumption; care costs and one-off items are only included where they were entered.',
+      ]
+
+  const parameterRecap: Array<{ label: string; value: string }> = [
+    {
+      label: isGerman ? 'Alter heute / Ruhestand / Rente / Ende' : 'Age today / retirement / pension / end',
+      value: `${profile.person.currentAge} · ${profile.person.retireAge} · ${profile.person.pensionAge} · ${profile.person.horizonAge}`,
+    },
+    {
+      label: isGerman ? 'Startvermögen' : 'Starting assets',
+      value: fmtCurrency(finances.currentAssets, intlLocale),
+    },
+    {
+      label: isGerman ? 'Sparleistung p.a.' : 'Annual savings',
+      value: fmtCurrency(finances.annualSavings, intlLocale),
+    },
+    {
+      label: isGerman ? 'Jahresbudget' : 'Annual budget',
+      value: fmtCurrency(annualSpend, intlLocale),
+    },
+    {
+      label: isGerman ? 'Rendite / Volatilität' : 'Return / volatility',
+      value: `${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} / ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}`,
+    },
+    {
+      label: isGerman ? 'Inflation / Volatilität' : 'Inflation / volatility',
+      value: `${fmtPercent(assumptions.inflation, 1, intlLocale)} / ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)}`,
+    },
+    {
+      label: isGerman ? 'Simulationsläufe' : 'Simulation runs',
+      value: fmtNumber(assumptions.simulationRuns, { locale: intlLocale }),
+    },
+  ]
 
   const percentileRows = [
     {
