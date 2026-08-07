@@ -5,11 +5,22 @@ import { computeBridgeAnalysis } from './bridge'
 
 export type PlanHealthLabel = 'Strong' | 'Moderate' | 'Needs Attention'
 
+/** One weighted input to the plan score, in the units the score is built from. */
+export type PlanHealthComponent = {
+  id: 'success' | 'spending' | 'liquidity'
+  /** 0–100 sub-score. */
+  value: number
+  /** Weight applied to `value` (weights sum to 1). */
+  weight: number
+}
+
 export type PlanHealthScore = {
   score: number
   label: PlanHealthLabel
   why: string
   whyBits: string[]
+  /** The weighted parts `score` is rounded from — same numbers, itemised. */
+  components: PlanHealthComponent[]
 }
 
 export function computePlanHealthScore(
