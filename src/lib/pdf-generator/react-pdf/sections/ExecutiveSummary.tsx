@@ -84,6 +84,40 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
 
   const perYear = isGerman ? 'pro Jahr' : 'per year'
 
+  const { person } = profile
+  const medianAt = (age: number) =>
+    content.projections.milestones.find((milestone) => milestone.age === age)?.p50
+  const timelineStops: Array<{ key: string; age: number; label: string; emphasis?: boolean }> = [
+    { key: 'today', age: person.currentAge, label: isGerman ? 'Heute' : 'Today' },
+    {
+      key: 'retire',
+      age: person.retireAge,
+      label: isGerman ? 'Ruhestand' : 'Retirement',
+      emphasis: true,
+    },
+    {
+      key: 'pension',
+      age: person.pensionAge,
+      label: isGerman ? 'Rentenbeginn' : 'State pension',
+      emphasis: true,
+    },
+    { key: 'horizon', age: person.horizonAge, label: isGerman ? 'Planungsende' : 'Horizon' },
+  ]
+  const timeline = timelineStops
+    .filter((stop, index, all) => all.findIndex((other) => other.age === stop.age) === index)
+    .map((stop) => {
+      const median = medianAt(stop.age)
+      return {
+        ...stop,
+        value:
+          median === undefined
+            ? '–'
+            : isGerman
+              ? `Median ${fmtCurrency(median, locale)}`
+              : `median ${fmtCurrency(median, locale)}`,
+      }
+    })
+
   return (
     <View>
       <SectionHeader
@@ -291,6 +325,57 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
               {profile.success.reasons.join('  ·  ')}
             </Text>
           )}
+        </View>
+      )}
+
+      {/* Timeline strip: the four dates the whole plan turns on, with the
+          median capital projected at each of them. */}
+      {timeline.length > 0 && (
+        <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+          {timeline.map((stop, index) => (
+            <View
+              key={stop.key}
+              style={{
+                flex: 1,
+                marginRight: index < timeline.length - 1 ? 8 : 0,
+                borderWidth: 1,
+                borderColor: tokens.colors.ink[200],
+                borderRadius: tokens.radius.md,
+                borderLeftWidth: 2,
+                borderLeftColor: stop.emphasis
+                  ? tokens.colors.brand.yellow
+                  : tokens.colors.ink[200],
+                paddingVertical: 7,
+                paddingHorizontal: 8,
+              }}
+              wrap={false}
+            >
+              <Text
+                style={{
+                  fontSize: 6.5,
+                  fontWeight: 600,
+                  letterSpacing: 0.7,
+                  textTransform: 'uppercase',
+                  color: tokens.colors.ink[500],
+                }}
+              >
+                {stop.label}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  color: tokens.colors.ink[900],
+                  marginTop: 2,
+                }}
+              >
+                {isGerman ? `Alter ${stop.age}` : `Age ${stop.age}`}
+              </Text>
+              <Text style={{ fontSize: 7.5, color: tokens.colors.ink[600], marginTop: 2 }}>
+                {stop.value}
+              </Text>
+            </View>
+          ))}
         </View>
       )}
 
