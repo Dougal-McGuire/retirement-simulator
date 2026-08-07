@@ -841,7 +841,7 @@ export default function SetupPage() {
 
             {/* Spacer so the fixed mobile action bar never covers the last
                 rows of the step card. Desktop keeps the bar in flow. */}
-            <div className="h-[7.5rem] sm:hidden" aria-hidden="true" />
+            <div className="h-[5.5rem] sm:hidden" aria-hidden="true" />
 
             <div className="theme-wizard-actions fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t-3 border-neo-black bg-background px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-3 shadow-[0_-4px_0_0_rgba(0,0,0,0.06)] sm:static sm:z-auto sm:mx-0 sm:flex-row sm:items-start sm:justify-between sm:border-t-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-0 sm:shadow-none">
               <div className="flex items-center gap-3 sm:contents">

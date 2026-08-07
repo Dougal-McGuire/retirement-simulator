@@ -36,15 +36,33 @@ export const tokens = {
       100: '#f2f4f7',
       50: '#f9fafb',
     },
+    /**
+     * Accent scale derived from the app's `--neo-blue` (rgb 14 103 246) so the
+     * report and the product read as one brand. Darker steps are print-safe
+     * (>= 4.5:1 on white) and used for text; 600 is the pure app blue used for
+     * rules, markers and data lines.
+     */
     accent: {
-      900: '#06344a',
-      800: '#08415c',
-      700: '#0b4f6c',
-      600: '#126782',
-      500: '#1b7f9c',
-      200: '#bcdde9',
-      100: '#d8edf4',
-      50: '#eef8fb',
+      900: '#062a63',
+      800: '#083a86',
+      700: '#0a4aad',
+      600: '#0e67f6',
+      500: '#3d85f8',
+      200: '#bcd6fd',
+      100: '#dce8fe',
+      50: '#eff5ff',
+    },
+    /**
+     * Signature colours lifted straight from the app shell: near-black ink,
+     * the neo-brutalist yellow used for badges/markers, and paper white.
+     * Yellow is only ever used as a fill behind near-black text or as a rule,
+     * never as ink — it does not carry contrast on white.
+     */
+    brand: {
+      ink: '#05080f',
+      yellow: '#f6c90e',
+      yellowSoft: '#fdf4cd',
+      yellowLine: '#e0b40a',
     },
     success: {
       700: '#05603a',
