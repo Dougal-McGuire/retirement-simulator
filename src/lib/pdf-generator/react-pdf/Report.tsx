@@ -186,34 +186,14 @@ function AppendixSection({
         }
       />
 
-      <View style={[styles.card, { marginBottom: 12 }]}>
+      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+        <View style={[styles.card, { width: '55%', marginRight: 10, marginBottom: 0 }]}>
         <Text style={styles.cardTitle}>{isGerman ? 'Methodik' : 'Methodology'}</Text>
-        <Text style={{ fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.6 }}>
+        <Text style={{ fontSize: 8, color: tokens.colors.ink[700], lineHeight: 1.55 }}>
           {isGerman
             ? `Die Analyse basiert auf einer Monte-Carlo-Simulation mit ${fmtNumber(assumptions.simulationRuns, { locale: intlLocale })} unabhängigen Läufen. Marktrenditen werden als lognormalverteilte Zufallsgrößen mit einem Erwartungswert von ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} p.a. und einer Volatilität von ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)} modelliert; die Inflation folgt einem Erwartungswert von ${fmtPercent(assumptions.inflation, 1, intlLocale)} bei ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)} Volatilität. In der Entnahmephase kommt die Strategie „${assumptions.withdrawalStrategy === 'vanguardDynamic' ? 'Vanguard Dynamic Spending' : 'Real konstante Ausgaben'}“ zur Anwendung; Kapitalerträge werden mit ${fmtPercent(assumptions.capitalGainsTax / 100, 1, intlLocale)} besteuert.`
             : `The analysis is based on a Monte Carlo simulation with ${fmtNumber(assumptions.simulationRuns, { locale: intlLocale })} independent runs. Market returns are modelled as lognormally distributed random variables with an expected value of ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} p.a. and a volatility of ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}; inflation follows an expected value of ${fmtPercent(assumptions.inflation, 1, intlLocale)} with ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)} volatility. The drawdown phase applies the "${assumptions.withdrawalStrategy === 'vanguardDynamic' ? 'Vanguard Dynamic Spending' : 'Fixed real spending'}" strategy; capital gains are taxed at ${fmtPercent(assumptions.capitalGainsTax / 100, 1, intlLocale)}.`}
         </Text>
-      </View>
-
-      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
-        <View style={[styles.card, { width: '54%', marginRight: 10, marginBottom: 0 }]}>
-          <Text style={styles.cardTitle}>
-            {isGerman ? 'Perzentile richtig lesen' : 'How to Read Percentiles'}
-          </Text>
-          <Table>
-            {percentileRows.map((row, index) => (
-              <TableRow key={row.key} alt={index % 2 === 1}>
-                <TableCell width="16%">
-                  <Text style={{ fontWeight: 600, color: tokens.colors.accent[700] }}>
-                    {row.key}
-                  </Text>
-                </TableCell>
-                <TableCell width="84%">
-                  <Text style={{ fontSize: 7.5, lineHeight: 1.45 }}>{row.text}</Text>
-                </TableCell>
-              </TableRow>
-            ))}
-          </Table>
         </View>
 
         <View style={[styles.card, { flex: 1, marginBottom: 0 }]}>
@@ -235,6 +215,24 @@ function AppendixSection({
             ))}
           </Table>
         </View>
+      </View>
+
+      <View style={[styles.card, { marginBottom: 10 }]}>
+        <Text style={styles.cardTitle}>
+          {isGerman ? 'Perzentile richtig lesen' : 'How to Read Percentiles'}
+        </Text>
+        <Table>
+          {percentileRows.map((row, index) => (
+            <TableRow key={row.key} alt={index % 2 === 1}>
+              <TableCell width="9%">
+                <Text style={{ fontWeight: 600, color: tokens.colors.accent[700] }}>{row.key}</Text>
+              </TableCell>
+              <TableCell width="91%">
+                <Text style={{ fontSize: 7.5, lineHeight: 1.45 }}>{row.text}</Text>
+              </TableCell>
+            </TableRow>
+          ))}
+        </Table>
       </View>
 
       <View style={[styles.card, { marginBottom: 10 }]}>
