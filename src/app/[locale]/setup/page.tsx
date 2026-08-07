@@ -627,7 +627,9 @@ export default function SetupPage() {
     <div className="app-page app-page-setup relative min-h-screen pb-16">
       <header id="navigation" className="theme-page-header relative z-10 pt-12 pb-10">
         <div className="theme-container mx-auto max-w-[90rem] px-2 sm:px-3 lg:px-4">
-          <div className={cn(glassCardClass, 'theme-hero relative overflow-hidden px-8 py-10')}>
+          <div
+            className={cn(glassCardClass, 'theme-hero relative overflow-hidden px-5 py-7 sm:px-8 sm:py-10')}
+          >
             <div className="theme-hero-accent absolute right-8 top-8 hidden h-12 w-12 rotate-6 border-3 border-neo-black bg-neo-yellow/40 md:block" />
             <div className="theme-hero-mark absolute -left-6 bottom-10 hidden h-16 w-16 -rotate-3 border-3 border-neo-black bg-neo-blue/20 md:block" />
 
@@ -635,7 +637,7 @@ export default function SetupPage() {
               <div className="theme-hero-top flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex flex-col gap-5 text-neo-black">
                   <div className="theme-badge-row flex flex-wrap items-center gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.18em]">
-                    <span className="inline-flex items-center gap-2 border-3 border-neo-black bg-neo-yellow px-4 py-1.5 text-neo-black shadow-neo-sm">
+                    <span className="inline-flex items-center gap-2 border-3 border-neo-black bg-secondary px-4 py-1.5 text-secondary-foreground shadow-neo-sm">
                       {t('header.badges.guide')}
                     </span>
                     <span className="inline-flex items-center gap-2 border-3 border-neo-black bg-neo-white px-4 py-1.5 text-muted-foreground shadow-neo-sm">
@@ -650,8 +652,8 @@ export default function SetupPage() {
                   </div>
                 </div>
 
-                <div className="theme-action-strip flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <ThemeSwitcher className="w-full sm:w-48" />
+                <div className="theme-action-strip flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  <ThemeSwitcher className="w-full sm:w-56" />
                   <LocaleSwitcher className="w-full sm:w-40" />
                   <Button variant="secondary" size="sm" asChild className="min-w-[11rem]">
                     <Link href="/simulation">{t('header.simulationLink')}</Link>
@@ -729,7 +731,7 @@ export default function SetupPage() {
                     onClick={() => handleStepClick(index)}
                     className={cn(
                       'h-2 flex-1 border border-neo-black/40 transition-colors',
-                      index < currentStep && 'bg-neo-yellow',
+                      index < currentStep && 'bg-secondary',
                       index === currentStep && 'bg-neo-blue',
                       index > currentStep && 'bg-muted'
                     )}
@@ -767,13 +769,13 @@ export default function SetupPage() {
                         aria-hidden="true"
                         className={cn(
                           'theme-step-button absolute left-0 top-0 flex h-10 w-10 items-center justify-center border-3 border-neo-black bg-neo-white font-extrabold text-neo-black shadow-neo-xs transition-neo',
-                          isCompleted && 'bg-neo-yellow',
+                          isCompleted && 'bg-secondary',
                           isActive && !isCompleted && 'bg-neo-white ring-3 ring-neo-blue ring-offset-2',
                           !isCompleted && !isActive && 'bg-muted text-muted-foreground'
                         )}
                       >
                         {isCompleted ? (
-                          <Check className="h-5 w-5 text-neo-black" />
+                          <Check className="h-5 w-5 text-secondary-foreground" />
                         ) : (
                           <span className="text-sm">{index + 1}</span>
                         )}

@@ -16,7 +16,7 @@ const buttonVariants = cva(
         outline:
           'border-3 border-neo-black bg-neo-white text-neo-black shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md active:translate-x-0 active:translate-y-0 active:shadow-none',
         secondary:
-          'border-3 border-neo-black bg-neo-yellow text-neo-black shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md active:translate-x-0 active:translate-y-0 active:shadow-none',
+          'border-3 border-neo-black bg-secondary text-secondary-foreground shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md active:translate-x-0 active:translate-y-0 active:shadow-none',
         success:
           'border-3 border-neo-black bg-neo-green text-neo-black shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md active:translate-x-0 active:translate-y-0 active:shadow-none',
         ghost:

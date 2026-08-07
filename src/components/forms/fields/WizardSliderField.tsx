@@ -55,7 +55,7 @@ export function WizardSliderField({
         <output
           htmlFor={id}
           aria-live="off"
-          className="border-2 border-neo-black bg-neo-yellow px-2.5 py-0.5 text-xs font-bold tabular-nums text-neo-black shadow-neo-xs"
+          className="border-2 border-neo-black bg-secondary px-2.5 py-0.5 text-xs font-bold tabular-nums text-secondary-foreground shadow-neo-xs"
         >
           {valueLabel}
         </output>

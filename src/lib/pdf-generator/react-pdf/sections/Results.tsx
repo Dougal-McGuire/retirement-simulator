@@ -4,11 +4,21 @@ import { styles, tokens } from '../styles'
 import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
 import { ProjectionChart } from '../charts'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
-import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
+import { fmtCurrency, fmtNumber } from '@/lib/pdf-generator/formatters'
 
 interface ResultsProps {
   content: ReportContent
   sectionNumber?: string
+}
+
+/**
+ * Signed percent label for growth figures. Not fmtPercent: growth can exceed
+ * 100%, which would trip fmtPercent's percentage-vs-fraction heuristic.
+ */
+function growthLabel(growth: number, locale: string, isGerman: boolean): string {
+  const sign = growth >= 0 ? '+' : ''
+  const pct = fmtNumber(growth * 100, { locale, maximumFractionDigits: 0 })
+  return `${sign}${pct}${isGerman ? ' %' : '%'}`
 }
 
 export function Results({ content, sectionNumber = '03' }: ResultsProps) {
@@ -19,16 +29,19 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
   const milestones = projections.milestones
   const { person } = profile
 
-  // Build outcome table: five-year interval ages plus life milestones
+  // Build outcome table: interval ages plus life milestones. The interval is
+  // widened for long horizons so the section always fits on a single page.
+  const horizonYears = person.horizonAge - person.currentAge
+  const ageStep = horizonYears > 30 ? 10 : 5
   const keyAges = new Set([person.currentAge, person.retireAge, person.pensionAge, person.horizonAge])
   const tableAges = new Set<number>(keyAges)
-  for (let age = person.currentAge; age <= person.horizonAge; age += 5) {
+  for (let age = person.currentAge; age <= person.horizonAge; age += ageStep) {
     tableAges.add(age)
   }
   const outcomeRows = milestones
     .filter((m) => tableAges.has(m.age))
     .sort((a, b) => a.age - b.age)
-    .slice(0, 12)
+    .slice(0, 10)
 
   const milestoneLabel = (age: number): string | null => {
     if (age === person.currentAge) return isGerman ? 'Heute' : 'Today'
@@ -46,6 +59,8 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
 
   const money = (value: number | undefined) =>
     value === undefined ? '–' : fmtCurrency(value, locale)
+
+  const hasBands = outcomeRows.some((row) => row.p20 !== undefined || row.p80 !== undefined)
 
   return (
     <View>
@@ -81,25 +96,29 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
         </Text>
         <Table>
           <TableRow header>
-            <TableCell header width="10%">
+            <TableCell header width={hasBands ? '10%' : '12%'}>
               {isGerman ? 'Alter' : 'Age'}
             </TableCell>
-            <TableCell header width="16%">
+            <TableCell header width={hasBands ? '16%' : '22%'}>
               {isGerman ? 'Phase' : 'Milestone'}
             </TableCell>
-            <TableCell header width="15%" align="right">
+            <TableCell header width={hasBands ? '15%' : '22%'} align="right">
               P10
             </TableCell>
-            <TableCell header width="15%" align="right">
-              P20
-            </TableCell>
-            <TableCell header width="15%" align="right">
+            {hasBands && (
+              <TableCell header width="15%" align="right">
+                P20
+              </TableCell>
+            )}
+            <TableCell header width={hasBands ? '15%' : '22%'} align="right">
               P50
             </TableCell>
-            <TableCell header width="14%" align="right">
-              P80
-            </TableCell>
-            <TableCell header width="15%" align="right">
+            {hasBands && (
+              <TableCell header width="14%" align="right">
+                P80
+              </TableCell>
+            )}
+            <TableCell header width={hasBands ? '15%' : '22%'} align="right">
               P90
             </TableCell>
           </TableRow>
@@ -107,17 +126,22 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
             const label = milestoneLabel(row.age)
             return (
               <TableRow key={row.age} alt={index % 2 === 1}>
-                <TableCell width="10%">
+                <TableCell width={hasBands ? '10%' : '12%'}>
                   <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
                     {fmtNumber(row.age, { locale })}
                   </Text>
                 </TableCell>
-                <TableCell width="16%">
-                  <Text style={{ fontSize: 7, color: label ? tokens.colors.accent[700] : tokens.colors.ink[400] }}>
+                <TableCell width={hasBands ? '16%' : '22%'}>
+                  <Text
+                    style={{
+                      fontSize: 7,
+                      color: label ? tokens.colors.accent[700] : tokens.colors.ink[400],
+                    }}
+                  >
                     {label ?? ''}
                   </Text>
                 </TableCell>
-                <TableCell width="15%" align="right">
+                <TableCell width={hasBands ? '15%' : '22%'} align="right">
                   <Text
                     style={{
                       color: row.p10 < 0 ? tokens.colors.danger[600] : tokens.colors.ink[700],
@@ -126,18 +150,22 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
                     {money(row.p10)}
                   </Text>
                 </TableCell>
-                <TableCell width="15%" align="right">
-                  {money(row.p20)}
-                </TableCell>
-                <TableCell width="15%" align="right">
+                {hasBands && (
+                  <TableCell width="15%" align="right">
+                    {money(row.p20)}
+                  </TableCell>
+                )}
+                <TableCell width={hasBands ? '15%' : '22%'} align="right">
                   <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
                     {money(row.p50)}
                   </Text>
                 </TableCell>
-                <TableCell width="14%" align="right">
-                  {money(row.p80)}
-                </TableCell>
-                <TableCell width="15%" align="right">
+                {hasBands && (
+                  <TableCell width="14%" align="right">
+                    {money(row.p80)}
+                  </TableCell>
+                )}
+                <TableCell width={hasBands ? '15%' : '22%'} align="right">
                   {money(row.p90)}
                 </TableCell>
               </TableRow>
@@ -154,8 +182,8 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
           <Text style={styles.kpiDescription}>
             {medianGrowth !== null
               ? isGerman
-                ? `Median bis Ruhestand: ${medianGrowth >= 0 ? '+' : ''}${fmtPercent(medianGrowth, 0, locale)}`
-                : `Median growth to retirement: ${medianGrowth >= 0 ? '+' : ''}${fmtPercent(medianGrowth, 0, locale)}`
+                ? `Median bis Ruhestand: ${growthLabel(medianGrowth, locale, isGerman)}`
+                : `Median growth to retirement: ${growthLabel(medianGrowth, locale, isGerman)}`
               : isGerman
                 ? `Alter ${person.horizonAge}`
                 : `Age ${person.horizonAge}`}
