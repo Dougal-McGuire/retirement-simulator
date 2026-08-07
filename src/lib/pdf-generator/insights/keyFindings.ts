@@ -1,5 +1,10 @@
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
-import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
+import {
+  fmtCurrency,
+  fmtNumber,
+  fmtPercent,
+  fmtRatioPercent,
+} from '@/lib/pdf-generator/formatters'
 
 export type FindingTone = 'positive' | 'neutral' | 'risk'
 
@@ -87,8 +92,8 @@ export function deriveKeyFindings(content: ReportContent): KeyFinding[] {
       id: 'bridge',
       tone: share !== null && share > 0.4 ? 'risk' : 'neutral',
       text: isGerman
-        ? `Zwischen Ruhestand (${person.retireAge}) und Rentenbeginn (${person.pensionAge}) liegen ${num(bridgeYears)} Jahre ohne Rentenzahlung: ${money(profile.bridge.cashNeedEUR)} müssen aus dem Depot kommen${share !== null ? ` (${fmtPercent(share, 0, locale)} des Medianvermögens bei Ruhestandsbeginn)` : ''}.`
-        : `${num(bridgeYears)} years sit between retirement (${person.retireAge}) and the state pension (${person.pensionAge}): ${money(profile.bridge.cashNeedEUR)} has to come from the portfolio${share !== null ? ` (${fmtPercent(share, 0, locale)} of median assets at retirement)` : ''}.`,
+        ? `Zwischen Ruhestand (${person.retireAge}) und Rentenbeginn (${person.pensionAge}) liegen ${num(bridgeYears)} Jahre ohne Rentenzahlung: ${money(profile.bridge.cashNeedEUR)} müssen aus dem Depot kommen${share !== null ? ` (${fmtRatioPercent(share, 0, locale)} des Medianvermögens bei Ruhestandsbeginn)` : ''}.`
+        : `${num(bridgeYears)} years sit between retirement (${person.retireAge}) and the state pension (${person.pensionAge}): ${money(profile.bridge.cashNeedEUR)} has to come from the portfolio${share !== null ? ` (${fmtRatioPercent(share, 0, locale)} of median assets at retirement)` : ''}.`,
     })
   }
 
@@ -100,8 +105,8 @@ export function deriveKeyFindings(content: ReportContent): KeyFinding[] {
       id: 'pensionCoverage',
       tone: coverage >= 0.8 ? 'positive' : 'neutral',
       text: isGerman
-        ? `Ab Alter ${person.pensionAge} deckt die Rente ${fmtPercent(coverage, 0, locale)} des Jahresbudgets von ${money(annualSpend)}; ${money(residual)} pro Jahr bleiben als Entnahme aus dem Depot.`
-        : `From age ${person.pensionAge} the pension covers ${fmtPercent(coverage, 0, locale)} of the ${money(annualSpend)} annual budget; ${money(residual)} a year still has to be withdrawn from the portfolio.`,
+        ? `Ab Alter ${person.pensionAge} deckt die Rente ${fmtRatioPercent(coverage, 0, locale)} des Jahresbudgets von ${money(annualSpend)}; ${money(residual)} pro Jahr bleiben als Entnahme aus dem Depot.`
+        : `From age ${person.pensionAge} the pension covers ${fmtRatioPercent(coverage, 0, locale)} of the ${money(annualSpend)} annual budget; ${money(residual)} a year still has to be withdrawn from the portfolio.`,
     })
   }
 

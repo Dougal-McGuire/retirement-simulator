@@ -3,7 +3,12 @@ import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
 import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
-import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
+import {
+  fmtCurrency,
+  fmtNumber,
+  fmtPercent,
+  fmtRatioPercent,
+} from '@/lib/pdf-generator/formatters'
 
 interface InputsProps {
   content: ReportContent
@@ -132,7 +137,10 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
     },
     {
       label: isGerman ? 'Entnahmerate' : 'Withdrawal rate',
-      value: firstYearWithdrawalRate !== null ? fmtPercent(firstYearWithdrawalRate, 1, locale) : '–',
+      value:
+        firstYearWithdrawalRate !== null
+          ? fmtRatioPercent(firstYearWithdrawalRate, 1, locale)
+          : '–',
       note: isGerman ? 'erstes Ruhestandsjahr' : 'first year of retirement',
     },
     {
@@ -144,7 +152,7 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
     },
     {
       label: isGerman ? 'Sparquote zu Ausgaben' : 'Savings vs spending',
-      value: baseSpend > 0 ? fmtPercent(finances.annualSavings / baseSpend, 0, locale) : '–',
+      value: baseSpend > 0 ? fmtRatioPercent(finances.annualSavings / baseSpend, 0, locale) : '–',
       note: isGerman ? 'Sparleistung / Jahresbudget' : 'annual savings / annual budget',
     },
   ]

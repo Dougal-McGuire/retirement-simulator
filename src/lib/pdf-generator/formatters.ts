@@ -70,6 +70,28 @@ export function fmtPercent(value: number, maximumFractionDigits = 1, locale: str
   return formatted
 }
 
+/**
+ * Percent for ratios that may legitimately exceed 100% (coverage, withdrawal
+ * and share figures). Unlike `fmtPercent` it never second-guesses the unit:
+ * the input is always a fraction, so 1.1 renders as 110%, not 1%.
+ */
+export function fmtRatioPercent(
+  value: number,
+  maximumFractionDigits = 0,
+  locale: string = 'de-DE'
+): string {
+  const formatted = getNumberFormatter(locale, {
+    style: 'percent',
+    maximumFractionDigits,
+    minimumFractionDigits: maximumFractionDigits,
+  }).format(value)
+
+  if (locale.startsWith('de')) {
+    return formatted.replace(`${nbsp}%`, `${nnbsp}%`)
+  }
+  return formatted
+}
+
 export function fmtSuccessMetric(
   count: number,
   trials: number,
