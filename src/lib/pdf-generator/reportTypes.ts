@@ -260,6 +260,8 @@ export interface ReportScenario {
 
 export interface ReportRecommendations {
   primary: Array<Recommendation & { impactLabel?: string }>
+  /** Estimated success-rate uplift per headline action, when available. */
+  uplifts: Array<{ title: string; upliftMin: number; upliftMax: number }>
 }
 
 export interface ReportContent {
@@ -449,6 +451,10 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
     },
     scenarios,
     recommendations: {
+      uplifts: (summary?.topActionsDetailed ?? []).map((uplift) => ({
+        ...uplift,
+        title: locale === 'de' ? (RECOMMENDATION_TITLES_DE[uplift.title] ?? uplift.title) : uplift.title,
+      })),
       primary:
         locale === 'de'
           ? data.recommendations.map((rec) => ({

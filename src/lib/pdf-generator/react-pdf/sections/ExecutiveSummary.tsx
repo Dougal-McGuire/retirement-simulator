@@ -3,6 +3,7 @@ import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
 import { SectionHeader } from '../primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
+import { deriveKeyFindings, type FindingTone } from '@/lib/pdf-generator/insights/keyFindings'
 import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
 
 interface ExecutiveSummaryProps {
@@ -23,19 +24,41 @@ function rateColor(rate: number) {
   return tokens.colors.danger[600]
 }
 
-function DataRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+const TONE_COLORS: Record<FindingTone, string> = {
+  positive: tokens.colors.success[600],
+  neutral: tokens.colors.accent[600],
+  risk: tokens.colors.danger[600],
+}
+
+/** A label/value pair with an explicit unit caption underneath the label. */
+function DataRow({
+  label,
+  unit,
+  value,
+  last,
+}: {
+  label: string
+  unit?: string
+  value: string
+  last?: boolean
+}) {
   return (
     <View
       style={{
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         paddingVertical: 4.5,
         borderBottomWidth: last ? 0 : 0.5,
         borderBottomColor: tokens.colors.ink[200],
       }}
     >
-      <Text style={{ fontSize: 8, color: tokens.colors.ink[600] }}>{label}</Text>
+      <View style={{ flex: 1, paddingRight: 8 }}>
+        <Text style={{ fontSize: 8, color: tokens.colors.ink[700] }}>{label}</Text>
+        {unit && (
+          <Text style={{ fontSize: 6.5, color: tokens.colors.ink[500], marginTop: 1 }}>{unit}</Text>
+        )}
+      </View>
       <Text style={{ fontSize: 8.5, fontWeight: 600, color: tokens.colors.ink[900] }}>{value}</Text>
     </View>
   )
@@ -47,9 +70,19 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
   const isGerman = content.locale !== 'en'
 
   const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
-  const annualNetGap = Math.max(0, annualSpend - finances.monthlyPension * 12)
+  const pensionAnnual = finances.monthlyPension * 12
+  const annualNetGap = Math.max(0, annualSpend - pensionAnnual)
   const confidence = profile.success.successRate
   const confidenceColor = rateColor(confidence)
+  const findings = deriveKeyFindings(content)
+
+  const componentLabels: Record<'success' | 'spending' | 'liquidity', string> = {
+    success: isGerman ? 'Erfolgsquote' : 'Success rate',
+    spending: isGerman ? 'Entnahmerate' : 'Withdrawal rate',
+    liquidity: isGerman ? 'Liquidität' : 'Liquidity',
+  }
+
+  const perYear = isGerman ? 'pro Jahr' : 'per year'
 
   return (
     <View>
@@ -65,8 +98,8 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
       />
 
       {/* KPI row */}
-      <View style={{ flexDirection: 'row', marginBottom: 12 }}>
-        <View style={[styles.card, { flex: 1, marginRight: 10, marginBottom: 0 }]} wrap={false}>
+      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+        <View style={[styles.cardAccent, { flex: 1, marginRight: 10, marginBottom: 0 }]} wrap={false}>
           <Text style={styles.kpiLabel}>{isGerman ? 'Erfolgsquote' : 'Success Rate'}</Text>
           <Text style={[styles.kpiValue, { color: confidenceColor }]}>
             {fmtPercent(confidence, 1, locale)}
@@ -96,7 +129,7 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
           </Text>
         </View>
 
-        <View style={[styles.card, { flex: 1, marginRight: 10, marginBottom: 0 }]} wrap={false}>
+        <View style={[styles.cardAccent, { flex: 1, marginRight: 10, marginBottom: 0 }]} wrap={false}>
           <Text style={styles.kpiLabel}>{isGerman ? 'Planungs-Score' : 'Plan Score'}</Text>
           <Text style={[styles.kpiValue, { color: scoreColor(profile.success.score) }]}>
             {profile.success.score !== null
@@ -105,92 +138,161 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
           </Text>
           <Text style={styles.kpiDescription}>
             {profile.success.label ?? (isGerman ? 'Nicht verfügbar' : 'Not available')}
+            {isGerman ? ' · identisch zum Dashboard' : ' · same figure as the dashboard'}
           </Text>
         </View>
 
-        <View style={[styles.card, { flex: 1, marginBottom: 0 }]} wrap={false}>
+        <View style={[styles.cardAccent, { flex: 1, marginBottom: 0 }]} wrap={false}>
           <Text style={styles.kpiLabel}>{isGerman ? 'Jahresbudget' : 'Annual Budget'}</Text>
           <Text style={styles.kpiValue}>{fmtCurrency(annualSpend, locale)}</Text>
           <Text style={styles.kpiDescription}>
-            {fmtNumber(expenses.horizonYears, { locale })}{' '}
-            {isGerman ? 'Jahre Planungshorizont' : 'years planning horizon'}
+            {isGerman
+              ? `Ausgaben pro Jahr · ${fmtNumber(expenses.horizonYears, { locale })} Jahre Horizont`
+              : `Spending per year · ${fmtNumber(expenses.horizonYears, { locale })} year horizon`}
           </Text>
         </View>
       </View>
 
       {/* Findings / planning data */}
-      <View style={{ flexDirection: 'row', marginBottom: 12 }}>
-        <View style={[styles.card, { width: '56%', marginRight: 10, marginBottom: 0 }]}>
-          <Text style={styles.cardTitle}>{isGerman ? 'Kernbefunde' : 'Key Findings'}</Text>
-          {profile.highlights.length > 0 ? (
-            profile.highlights.slice(0, 4).map((item, index) => (
-              <View key={index} style={{ flexDirection: 'row', marginBottom: 5 }}>
+      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+        <View style={[styles.card, { width: '57%', marginRight: 10, marginBottom: 0 }]}>
+          <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
+            {isGerman ? 'Kernbefunde' : 'Key Findings'}
+          </Text>
+          <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 8 }}>
+            {isGerman
+              ? 'Direkt aus dem Simulationsergebnis abgeleitet — Maßnahmen folgen in Abschnitt 05.'
+              : 'Derived directly from the simulation output — actions follow in section 05.'}
+          </Text>
+          {findings.map((finding) => (
+            <View key={finding.id} style={{ flexDirection: 'row', marginBottom: 6 }}>
+              <View
+                style={{
+                  width: 4,
+                  height: 4,
+                  backgroundColor: TONE_COLORS[finding.tone],
+                  marginTop: 3.5,
+                  marginRight: 6,
+                }}
+              />
+              <Text
+                style={{ flex: 1, fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}
+              >
+                {finding.text}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={[styles.card, { flex: 1, marginBottom: 0 }]}>
+          <Text style={styles.cardTitle}>{isGerman ? 'Planungsdaten' : 'Planning Data'}</Text>
+          <DataRow
+            label={isGerman ? 'Renditeerwartung' : 'Expected return'}
+            unit={isGerman ? 'nominal p.a.' : 'nominal p.a.'}
+            value={fmtPercent(assumptions.expectedReturn, 1, locale)}
+          />
+          <DataRow
+            label={isGerman ? 'Inflation' : 'Inflation'}
+            unit={isGerman ? 'p.a.' : 'p.a.'}
+            value={fmtPercent(assumptions.inflation, 1, locale)}
+          />
+          <DataRow
+            label={isGerman ? 'Rentenzahlung' : 'Pension income'}
+            unit={isGerman
+              ? `${fmtCurrency(finances.monthlyPension, locale)} monatlich`
+              : `${fmtCurrency(finances.monthlyPension, locale)} monthly`}
+            value={fmtCurrency(pensionAnnual, locale)}
+          />
+          <DataRow
+            label={isGerman ? 'Ausgaben' : 'Spending'}
+            unit={perYear}
+            value={fmtCurrency(annualSpend, locale)}
+          />
+          <DataRow
+            label={isGerman ? 'Verbleibende Lücke' : 'Remaining gap'}
+            unit={
+              isGerman
+                ? `Ausgaben − Rente, ${perYear}`
+                : `spending − pension, ${perYear}`
+            }
+            value={fmtCurrency(annualNetGap, locale)}
+            last
+          />
+        </View>
+      </View>
+
+      {/* Score composition — shows the arithmetic behind the number above */}
+      {profile.success.components.length > 0 && profile.success.score !== null && (
+        <View style={[styles.card, { marginBottom: 10 }]}>
+          <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
+            {isGerman ? 'Wie der Planungs-Score entsteht' : 'How the Plan Score Is Built'}
+          </Text>
+          <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 8 }}>
+            {isGerman
+              ? 'Gewichteter Mittelwert dreier Teilwerte, gerundet auf ganze Punkte.'
+              : 'Weighted mean of three sub-scores, rounded to whole points.'}
+          </Text>
+          <View style={{ flexDirection: 'row' }}>
+            {profile.success.components.map((component, index) => (
+              <View
+                key={component.id}
+                style={{
+                  flex: 1,
+                  marginRight: index < profile.success.components.length - 1 ? 12 : 0,
+                }}
+              >
                 <View
                   style={{
-                    width: 4,
-                    height: 4,
-                    borderRadius: 2,
-                    backgroundColor: tokens.colors.accent[600],
-                    marginTop: 3.5,
-                    marginRight: 6,
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'baseline',
+                    marginBottom: 3,
                   }}
-                />
-                <Text
-                  style={{ flex: 1, fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}
                 >
-                  {item}
+                  <Text style={{ fontSize: 7.5, color: tokens.colors.ink[700] }}>
+                    {componentLabels[component.id]}
+                  </Text>
+                  <Text style={{ fontSize: 7, color: tokens.colors.ink[500] }}>
+                    {fmtPercent(component.weight, 0, locale)}
+                  </Text>
+                </View>
+                <View
+                  style={{ height: 5, backgroundColor: tokens.colors.ink[100], borderRadius: 2.5 }}
+                >
+                  <View
+                    style={{
+                      width: `${Math.max(2, Math.min(100, component.value))}%`,
+                      height: 5,
+                      backgroundColor: tokens.colors.accent[600],
+                      borderRadius: 2.5,
+                    }}
+                  />
+                </View>
+                <Text style={{ fontSize: 7, color: tokens.colors.ink[600], marginTop: 3 }}>
+                  {fmtNumber(Math.round(component.value), { locale })} / 100 ·{' '}
+                  {isGerman ? 'Beitrag' : 'contributes'}{' '}
+                  {fmtNumber(Math.round(component.value * component.weight), { locale })}
                 </Text>
               </View>
-            ))
-          ) : (
-            <Text style={{ fontSize: 8.5, color: tokens.colors.ink[600] }}>
-              {isGerman
-                ? 'Keine zusätzlichen Highlights verfügbar.'
-                : 'No additional highlights available.'}
-            </Text>
-          )}
-
+            ))}
+          </View>
           {profile.success.reasons.length > 0 && (
-            <View
+            <Text
               style={{
+                fontSize: 7.5,
+                color: tokens.colors.ink[500],
+                lineHeight: 1.5,
                 marginTop: 8,
                 paddingTop: 7,
                 borderTopWidth: 0.5,
                 borderTopColor: tokens.colors.ink[200],
               }}
             >
-              <Text style={{ fontSize: 7.5, color: tokens.colors.ink[500], lineHeight: 1.5 }}>
-                {profile.success.reasons.join('  ·  ')}
-              </Text>
-            </View>
+              {profile.success.reasons.join('  ·  ')}
+            </Text>
           )}
         </View>
-
-        <View style={[styles.card, { flex: 1, marginBottom: 0 }]}>
-          <Text style={styles.cardTitle}>{isGerman ? 'Planungsdaten' : 'Planning Data'}</Text>
-          <DataRow
-            label={isGerman ? 'Renditeerwartung' : 'Expected Return'}
-            value={fmtPercent(assumptions.expectedReturn, 1, locale)}
-          />
-          <DataRow
-            label={isGerman ? 'Inflation' : 'Inflation'}
-            value={fmtPercent(assumptions.inflation, 1, locale)}
-          />
-          <DataRow
-            label={isGerman ? 'Simulationen' : 'Simulations'}
-            value={fmtNumber(assumptions.simulationRuns, { locale })}
-          />
-          <DataRow
-            label={isGerman ? 'Netto-Ausgabenlücke' : 'Annual Net Gap'}
-            value={fmtCurrency(annualNetGap, locale)}
-          />
-          <DataRow
-            label={isGerman ? 'Monatliche Rente' : 'Monthly Pension'}
-            value={fmtCurrency(finances.monthlyPension, locale)}
-            last
-          />
-        </View>
-      </View>
+      )}
 
       {profile.bridge && (
         <View style={[styles.callout]}>

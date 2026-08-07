@@ -1,8 +1,9 @@
 import React from 'react'
 import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
-import { SectionHeader } from '../primitives'
+import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
+import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
 
 interface RecommendationsProps {
   content: ReportContent
