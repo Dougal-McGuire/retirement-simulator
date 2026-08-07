@@ -320,7 +320,15 @@ export function ProjectionChart({
                   {item.type === 'swatch' ? (
                     <Rect x={0} y={0} width={9} height={7} fill={item.color} />
                   ) : (
-                    <Line x1={0} y1={3.5} x2={11} y2={3.5} stroke={item.color} strokeWidth={item.width} />
+                    <Line
+                      x1={0}
+                      y1={3.5}
+                      x2={11}
+                      y2={3.5}
+                      stroke={item.color}
+                      strokeWidth={item.width}
+                      strokeDasharray={item.type === 'dashed' ? BOUND_DASH : undefined}
+                    />
                   )}
                   <SvgText x={14} y={6} style={{ fontSize: 6.5, fill: tokens.colors.ink[600] }}>
                     {item.label}
@@ -344,13 +352,23 @@ interface CoverSparklineProps {
   width?: number
   height?: number
   locale?: string
+  retireAge?: number
+  pensionAge?: number
 }
 
-export function CoverSparkline({ data, width = 473, height = 190, locale = 'de' }: CoverSparklineProps) {
+export function CoverSparkline({
+  data,
+  width = 473,
+  height = 190,
+  locale = 'de',
+  retireAge,
+  pensionAge,
+}: CoverSparklineProps) {
   if (!data || data.length < 2) return null
 
   const intlLocale = intlLocaleOf(locale)
-  const margin = { top: 16, right: 52, bottom: 16, left: 6 }
+  const isGerman = locale !== 'en'
+  const margin = { top: 18, right: 74, bottom: 26, left: 8 }
   const chartWidth = width - margin.left - margin.right
   const chartHeight = height - margin.top - margin.bottom
 
