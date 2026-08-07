@@ -268,7 +268,7 @@ function AppendixSection({
         </View>
       </View>
 
-      <View style={[styles.card, { marginBottom: 10 }]}>
+      <View style={[styles.card, { marginBottom: 0 }]}>
         <Text style={[styles.cardTitle, { marginBottom: 5 }]}>
           {isGerman ? 'Grenzen des Modells' : 'Limits of the Model'}
         </Text>
@@ -283,24 +283,31 @@ function AppendixSection({
                 marginRight: 6,
               }}
             />
-            <Text style={{ flex: 1, fontSize: 8, color: tokens.colors.ink[600], lineHeight: 1.5 }}>
+            <Text style={{ flex: 1, fontSize: 7.5, color: tokens.colors.ink[600], lineHeight: 1.5 }}>
               {limitation}
             </Text>
           </View>
         ))}
-      </View>
 
-      <View style={[styles.callout, { borderLeftColor: tokens.colors.ink[400] }]}>
-        <Text
-          style={{ fontSize: 8.5, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 3 }}
+        <View
+          style={{
+            marginTop: 6,
+            paddingTop: 6,
+            borderTopWidth: 0.5,
+            borderTopColor: tokens.colors.ink[200],
+          }}
         >
-          {isGerman ? 'Wichtiger Hinweis' : 'Important Note'}
-        </Text>
-        <Text style={{ fontSize: 8, color: tokens.colors.ink[600], lineHeight: 1.55 }}>
-          {isGerman
-            ? 'Dieser Bericht dient ausschließlich der Information und stellt keine Anlage-, Steuer- oder Rechtsberatung dar. Alle Projektionen sind modellbasierte Schätzungen; tatsächliche Ergebnisse können erheblich abweichen. Vergangene Wertentwicklungen sind kein verlässlicher Indikator für zukünftige Ergebnisse.'
-            : 'This report is provided for information purposes only and does not constitute investment, tax, or legal advice. All projections are model-based estimates; actual outcomes may differ materially. Past performance is not a reliable indicator of future results.'}
-        </Text>
+          <Text
+            style={{ fontSize: 8, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 2 }}
+          >
+            {isGerman ? 'Wichtiger Hinweis' : 'Important Note'}
+          </Text>
+          <Text style={{ fontSize: 7.5, color: tokens.colors.ink[600], lineHeight: 1.5 }}>
+            {isGerman
+              ? 'Dieser Bericht dient ausschließlich der Information und stellt keine Anlage-, Steuer- oder Rechtsberatung dar. Alle Projektionen sind modellbasierte Schätzungen; tatsächliche Ergebnisse können erheblich abweichen. Vergangene Wertentwicklungen sind kein verlässlicher Indikator für zukünftige Ergebnisse.'
+              : 'This report is provided for information purposes only and does not constitute investment, tax, or legal advice. All projections are model-based estimates; actual outcomes may differ materially. Past performance is not a reliable indicator of future results.'}
+          </Text>
+        </View>
       </View>
     </View>
   )

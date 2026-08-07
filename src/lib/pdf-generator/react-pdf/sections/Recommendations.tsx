@@ -45,6 +45,42 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
   const bridgeYears = Math.max(0, person.pensionAge - person.retireAge)
 
   /**
+   * Deterministic lever arithmetic — no re-simulation, just the direct effect
+   * each lever has on the two numbers that drive the outcome: the annual gap
+   * the portfolio has to cover, and the cash needed across the bridge years.
+   * Labelled as arithmetic in the caption so it is never mistaken for a run.
+   */
+  const gapToday = Math.max(0, annualSpend - finances.monthlyPension * 12)
+  const bridgeNeed = profile.bridge?.cashNeedEUR ?? annualSpend * bridgeYears
+  const perBridgeYear = bridgeYears > 0 ? bridgeNeed / bridgeYears : annualSpend
+  const levers: Array<{ lever: string; gap: string; bridge: string }> = [
+    {
+      lever: isGerman ? 'Zwei Jahre später in Rente' : 'Retire two years later',
+      gap: isGerman
+        ? `+${fmtCurrency(finances.annualSavings * 2, locale)} zusätzlich gespart`
+        : `+${fmtCurrency(finances.annualSavings * 2, locale)} extra saved`,
+      bridge:
+        bridgeYears >= 2
+          ? `−${fmtCurrency(Math.min(bridgeNeed, perBridgeYear * 2), locale)}`
+          : isGerman
+            ? 'keine Überbrückung nötig'
+            : 'no bridge required',
+    },
+    {
+      lever: isGerman ? 'Jahresbudget um 10 % senken' : 'Cut the annual budget by 10%',
+      gap: `−${fmtCurrency(annualSpend * 0.1, locale)}`,
+      bridge: `−${fmtCurrency(bridgeNeed * 0.1, locale)}`,
+    },
+    {
+      lever: isGerman ? 'Sparrate um 10 % erhöhen' : 'Raise the savings rate by 10%',
+      gap: isGerman
+        ? `+${fmtCurrency(finances.annualSavings * 0.1, locale)} pro Jahr investiert`
+        : `+${fmtCurrency(finances.annualSavings * 0.1, locale)} invested per year`,
+      bridge: isGerman ? 'unverändert' : 'unchanged',
+    },
+  ]
+
+  /**
    * A short, concrete review agenda. Every row is derived from this plan's own
    * numbers so the reader leaves with dates and amounts, not platitudes.
    */
