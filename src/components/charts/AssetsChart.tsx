@@ -269,6 +269,7 @@ export function AssetsChart({
               stackId="outer"
               stroke="none"
               fill="transparent"
+              activeDot={false}
               isAnimationActive={false}
               yAxisId="assets"
               legendType="none"
@@ -280,6 +281,7 @@ export function AssetsChart({
               stroke="none"
               fill="url(#assetsFanOuter)"
               name={t('legend.fullRange')}
+              activeDot={false}
               isAnimationActive={false}
               yAxisId="assets"
               legendType="none"
@@ -291,6 +293,7 @@ export function AssetsChart({
               stackId="band"
               stroke="none"
               fill="transparent"
+              activeDot={false}
               isAnimationActive={false}
               yAxisId="assets"
               legendType="none"
@@ -302,6 +305,7 @@ export function AssetsChart({
               stroke="none"
               fill="url(#assetsFanInner)"
               name={t('legend.likelyRange')}
+              activeDot={false}
               isAnimationActive={false}
               yAxisId="assets"
               legendType="none"

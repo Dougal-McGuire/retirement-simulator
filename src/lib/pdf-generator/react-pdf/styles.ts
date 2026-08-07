@@ -105,7 +105,9 @@ export const styles = StyleSheet.create({
     fontFamily: sans,
     fontWeight: 400,
     fontSize: tokens.fontSize.base,
-    lineHeight: tokens.lineHeight.normal,
+    // NOTE: no page-level lineHeight — with a registered font, a Page-level
+    // lineHeight prevents bottom-anchored fixed elements (the running footer)
+    // from rendering in @react-pdf/renderer. Text styles set their own.
     color: tokens.colors.ink[900],
     backgroundColor: tokens.colors.white,
     paddingTop: page.margin.top,

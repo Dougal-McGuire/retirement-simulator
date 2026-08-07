@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Svg, Path, Line, Text as SvgText, G, Rect } from '@react-pdf/renderer'
 import { tokens } from './styles'
-import { fmtCompactCurrency } from '@/lib/pdf-generator/formatters'
+import { fmtCompactCurrency, fmtCurrency } from '@/lib/pdf-generator/formatters'
 
 function scaleLinear(domain: [number, number], range: [number, number]) {
   const [d0, d1] = domain
@@ -42,6 +42,21 @@ function niceTicks(min: number, max: number, targetCount = 5): number[] {
 
 function intlLocaleOf(locale: string): string {
   return locale === 'en' ? 'en-US' : 'de-DE'
+}
+
+/**
+ * Currency label for SVG text nodes. react-pdf's SVG text renderer does not
+ * handle narrow/no-break spaces (U+202F / U+00A0), so replace them with a
+ * regular space.
+ */
+function svgCurrency(value: number, intlLocale: string): string {
+  // German only abbreviates at millions ("Mio."); below that, compact notation
+  // drops digit grouping (e.g. "6000 EUR"), so use the standard grouped format.
+  const formatted =
+    intlLocale.startsWith('de') && Math.abs(value) < 1_000_000
+      ? fmtCurrency(value, intlLocale)
+      : fmtCompactCurrency(value, intlLocale)
+  return formatted.replace(/[\u202f\u00a0]/g, ' ')
 }
 
 const CHART_COLORS = {
@@ -210,7 +225,7 @@ export function ProjectionChart({
               y={y(tick) + 2.5}
               style={{ fontSize: 6.5, fill: CHART_COLORS.axisText, textAnchor: 'end' }}
             >
-              {fmtCompactCurrency(tick, intlLocale)}
+              {svgCurrency(tick, intlLocale)}
             </SvgText>
           ))}
 
@@ -273,7 +288,7 @@ interface CoverSparklineProps {
   locale?: string
 }
 
-export function CoverSparkline({ data, width = 473, height = 150, locale = 'de' }: CoverSparklineProps) {
+export function CoverSparkline({ data, width = 473, height = 190, locale = 'de' }: CoverSparklineProps) {
   if (!data || data.length < 2) return null
 
   const intlLocale = intlLocaleOf(locale)
@@ -318,7 +333,7 @@ export function CoverSparkline({ data, width = 473, height = 150, locale = 'de' 
             y={y(last.p50) + 2}
             style={{ fontSize: 6.5, fill: tokens.colors.ink[700] }}
           >
-            {fmtCompactCurrency(last.p50, intlLocale)}
+            {svgCurrency(last.p50, intlLocale)}
           </SvgText>
 
           {/* Age labels at both ends */}
@@ -423,7 +438,7 @@ export function SpendingChart({
                   y={yPos + barHeight / 2 + 2.5}
                   style={{ fontSize: 7, fill: tokens.colors.ink[600] }}
                 >
-                  {fmtCompactCurrency(row.annualAmount, intlLocale)}
+                  {svgCurrency(row.annualAmount, intlLocale)}
                 </SvgText>
               </G>
             )

@@ -240,6 +240,7 @@ export function SpendingChart({
               stackId="spendBand"
               stroke="none"
               fill="transparent"
+              activeDot={false}
               isAnimationActive={false}
               yAxisId="spending"
               legendType="none"
@@ -251,6 +252,7 @@ export function SpendingChart({
               stroke="none"
               fill="url(#spendingFan)"
               name={t('legend.band')}
+              activeDot={false}
               isAnimationActive={false}
               yAxisId="spending"
               legendType="none"
