@@ -37,7 +37,8 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
   const isGerman = content.locale !== 'en'
   const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
 
-  const list = recommendations.primary.slice(0, 5)
+  const list = recommendations.primary.slice(0, 4)
+  const hiddenCount = Math.max(0, recommendations.primary.length - list.length)
   const uplifts = recommendations.uplifts.slice(0, 3)
 
   const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
@@ -136,6 +137,29 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
         }
       />
 
+      <View
+        style={[
+          styles.callout,
+          projections.exhaustionAge ? styles.calloutWarning : styles.calloutSuccess,
+          { marginBottom: 10 },
+        ]}
+      >
+        <Text
+          style={{ fontSize: 8.5, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 3 }}
+        >
+          {isGerman ? 'Worauf es zuerst ankommt' : 'What Matters First'}
+        </Text>
+        <Text style={{ fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
+          {projections.exhaustionAge
+            ? isGerman
+              ? `Das Stressszenario läuft ab Alter ${fmtNumber(projections.exhaustionAge, { locale })} leer. Die wirksamsten Hebel sind ein späterer Ruhestandsbeginn als ${person.retireAge} und eine Senkung des Jahresbudgets von ${fmtCurrency(annualSpend, locale)}; beides wirkt direkt auf die Entnahmerate.`
+              : `The stress scenario runs dry from age ${fmtNumber(projections.exhaustionAge, { locale })}. The strongest levers are retiring later than ${person.retireAge} and trimming the ${fmtCurrency(annualSpend, locale)} annual budget; both act directly on the withdrawal rate.`
+            : isGerman
+              ? `Der Plan trägt auch im Stressszenario bis Alter ${person.horizonAge}. Der Fokus liegt daher auf Absicherung: Liquiditätspuffer für die Überbrückungsjahre und regelmäßige Überprüfung der Annahmen.`
+              : `The plan holds to age ${person.horizonAge} even under stress. The focus is therefore protective: keep the bridge-year liquidity buffer and revisit the assumptions regularly.`}
+        </Text>
+      </View>
+
       {list.length === 0 ? (
         <View style={styles.card}>
           <Text style={{ fontSize: 9, color: tokens.colors.ink[600] }}>
@@ -232,6 +256,14 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
             </View>
           )
         })
+      )}
+
+      {hiddenCount > 0 && (
+        <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 6 }}>
+          {isGerman
+            ? `${list.length} von ${recommendations.primary.length} Maßnahmen nach Wirkung priorisiert; die vollständige Liste zeigt die App.`
+            : `${list.length} of ${recommendations.primary.length} measures shown, ranked by effect; the app lists them all.`}
+        </Text>
       )}
 
       {uplifts.length > 0 && (
@@ -353,27 +385,6 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
         </Table>
       </View>
 
-      <View
-        style={[
-          styles.callout,
-          projections.exhaustionAge ? styles.calloutWarning : styles.calloutSuccess,
-        ]}
-      >
-        <Text
-          style={{ fontSize: 8.5, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 3 }}
-        >
-          {isGerman ? 'Worauf es zuerst ankommt' : 'What Matters First'}
-        </Text>
-        <Text style={{ fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
-          {projections.exhaustionAge
-            ? isGerman
-              ? `Das Stressszenario läuft ab Alter ${fmtNumber(projections.exhaustionAge, { locale })} leer. Die wirksamsten Hebel sind ein späterer Ruhestandsbeginn als ${person.retireAge} und eine Senkung des Jahresbudgets von ${fmtCurrency(annualSpend, locale)}; beides wirkt direkt auf die Entnahmerate.`
-              : `The stress scenario runs dry from age ${fmtNumber(projections.exhaustionAge, { locale })}. The strongest levers are retiring later than ${person.retireAge} and trimming the ${fmtCurrency(annualSpend, locale)} annual budget; both act directly on the withdrawal rate.`
-            : isGerman
-              ? `Der Plan trägt auch im Stressszenario bis Alter ${person.horizonAge}. Der Fokus liegt daher auf Absicherung: Liquiditätspuffer für die Überbrückungsjahre und regelmäßige Überprüfung der Annahmen.`
-              : `The plan holds to age ${person.horizonAge} even under stress. The focus is therefore protective: keep the bridge-year liquidity buffer and revisit the assumptions regularly.`}
-        </Text>
-      </View>
     </View>
   )
 }
