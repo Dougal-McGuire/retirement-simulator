@@ -15,7 +15,8 @@
     },
     "nav": {
       "appName": "Ruhestandssimulator",
-      "launch": "App starten"
+      "launch": "App starten",
+      "launchShort": "Starten"
     },
     "hero": {
       "badge": "Monte-Carlo-Engine · läuft in Ihrem Browser",

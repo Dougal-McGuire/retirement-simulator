@@ -93,11 +93,11 @@ export function LandingPage() {
       {/* ================= Header ================= */}
       <header id="navigation" className="relative z-20">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
-          <Link href="/" className="group flex items-center gap-3">
+          <Link href="/" className="group flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center border-3 border-neo-black bg-neo-yellow shadow-neo-sm transition-neo group-hover:-translate-x-[1px] group-hover:-translate-y-[1px] group-hover:shadow-neo">
               <Image src="/piggy.svg" alt="" width={24} height={24} priority />
             </span>
-            <span className="landing-label font-heading text-[0.8rem] font-black text-neo-black sm:text-sm">
+            <span className="landing-label font-heading text-[0.72rem] font-black text-neo-black [overflow-wrap:anywhere] sm:text-sm">
               {t('nav.appName')}
             </span>
           </Link>
@@ -106,9 +106,10 @@ export function LandingPage() {
             <LocaleSwitcher className="hidden w-auto px-3 tracking-[0.08em] lg:flex" />
             <ThemeSwitcher className="hidden lg:flex" />
             <HeaderControlsMenu className="lg:hidden" />
-            <Button size="sm" asChild>
+            <Button size="sm" asChild className="landing-label shrink-0">
               <Link href="/setup">
-                {t('nav.launch')}
+                <span className="sm:hidden">{t('nav.launchShort')}</span>
+                <span className="hidden sm:inline">{t('nav.launch')}</span>
                 <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
               </Link>
             </Button>
@@ -146,13 +147,13 @@ export function LandingPage() {
               </p>
 
               <div className="animate-fade-in-delayed mt-7 flex w-full flex-col flex-wrap gap-3 sm:flex-row sm:items-center">
-                <Button size="lg" asChild className="w-full sm:w-auto lg:w-full lg:max-w-[21rem]">
+                <Button size="lg" asChild className="landing-label h-auto w-full whitespace-normal py-3 text-center leading-tight sm:w-auto lg:w-full lg:max-w-[21rem]">
                   <Link href="/setup">
                     {t('hero.ctaPrimary')}
                     <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
                   </Link>
                 </Button>
-                <Button variant="outline" size="lg" asChild className="w-full sm:w-auto lg:w-full lg:max-w-[21rem]">
+                <Button variant="outline" size="lg" asChild className="landing-label h-auto w-full whitespace-normal py-3 text-center leading-tight sm:w-auto lg:w-full lg:max-w-[21rem]">
                   <Link href="/simulation">{t('hero.ctaSecondary')}</Link>
                 </Button>
               </div>
@@ -313,7 +314,7 @@ export function LandingPage() {
             <p className="landing-cta-sub landing-body mt-4 text-sm font-semibold">
               {t('cta.subtitle')}
             </p>
-            <Button size="lg" asChild className="mt-10 min-w-[16rem]">
+            <Button size="lg" asChild className="landing-label mt-10 h-auto w-full max-w-[20rem] whitespace-normal py-3 leading-tight sm:min-w-[16rem]">
               <Link href="/setup">
                 {t('cta.button')}
                 <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />

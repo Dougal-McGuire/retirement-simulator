@@ -15,7 +15,8 @@
     },
     "nav": {
       "appName": "Retirement Simulator",
-      "launch": "Launch app"
+      "launch": "Launch app",
+      "launchShort": "Start"
     },
     "hero": {
       "badge": "Monte Carlo engine · runs in your browser",
