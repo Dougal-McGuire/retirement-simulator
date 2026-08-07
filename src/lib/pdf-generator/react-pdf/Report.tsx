@@ -401,6 +401,78 @@ export function RetirementReport({ content }: RetirementReportProps) {
     },
   ]
 
+  const readingGuide = isGerman
+    ? [
+        {
+          step: 'Schritt 1',
+          title: 'Erfolgsquote prüfen',
+          text: 'Sie zeigt, in wie vielen der Simulationsläufe das Vermögen bis zum Planungsende reicht. Ab 85 % gilt ein Plan üblicherweise als tragfähig.',
+        },
+        {
+          step: 'Schritt 2',
+          title: 'Bandbreite lesen',
+          text: 'Die Grafik in Abschnitt 03 zeigt nicht eine Zukunft, sondern eine Spanne. Entscheidend ist der untere Rand (P10), nicht der Median.',
+        },
+        {
+          step: 'Schritt 3',
+          title: 'Eine Maßnahme wählen',
+          text: 'Abschnitt 05 priorisiert die Hebel nach Wirkung und enthält einen 90-Tage-Plan mit konkreten Beträgen.',
+        },
+      ]
+    : [
+        {
+          step: 'Step 1',
+          title: 'Check the success rate',
+          text: 'It shows how many simulation runs keep capital alive to the planning horizon. Above 85% a plan is usually considered sustainable.',
+        },
+        {
+          step: 'Step 2',
+          title: 'Read the range',
+          text: 'The figure in section 03 shows a spread, not a single future. The lower edge (P10) matters more than the median.',
+        },
+        {
+          step: 'Step 3',
+          title: 'Pick one action',
+          text: 'Section 05 ranks the levers by effect and closes with a 90-day plan carrying concrete amounts.',
+        },
+      ]
+
+  const figureLegend: Array<{
+    label: string
+    text: string
+    color: string
+    kind: 'line' | 'swatch'
+  }> = [
+    {
+      label: isGerman ? 'Blaue Linie' : 'Blue line',
+      text: isGerman ? 'Medianpfad (P50)' : 'median path (P50)',
+      color: tokens.colors.accent[600],
+      kind: 'line',
+    },
+    {
+      label: isGerman ? 'Blaue Fläche' : 'Blue area',
+      text: isGerman ? 'P10–P90-Band, also 80 % aller Läufe' : 'P10–P90 band, i.e. 80% of all runs',
+      color: tokens.colors.accent[100],
+      kind: 'swatch',
+    },
+    {
+      label: isGerman ? 'Gelbe Markierung' : 'Yellow marker',
+      text: isGerman
+        ? 'Lebensphase: Ruhestand und Rentenbeginn'
+        : 'life stage: retirement and state pension',
+      color: tokens.colors.brand.yellow,
+      kind: 'line',
+    },
+    {
+      label: isGerman ? 'Rote Markierung' : 'Red marker',
+      text: isGerman
+        ? 'Kapitalerschöpfung — die einzige Bedeutung von Rot im Bericht'
+        : 'capital depletion — the only meaning red carries in this report',
+      color: tokens.colors.danger[600],
+      kind: 'line',
+    },
+  ]
+
   const frontMatterPages = 2 // cover + TOC page
   const toc = sections.map((section, index) => ({
     ...section,
@@ -538,7 +610,7 @@ export function RetirementReport({ content }: RetirementReportProps) {
           ))}
 
           {/* At a glance strip */}
-          <View style={{ marginTop: 24 }}>
+          <View style={{ marginTop: 20 }}>
             <Text style={[styles.label, { marginBottom: 8 }]}>
               {isGerman ? 'Kurzüberblick' : 'At a Glance'}
             </Text>
@@ -561,6 +633,13 @@ export function RetirementReport({ content }: RetirementReportProps) {
                   {profile.success.label ?? (isGerman ? 'Nicht verfügbar' : 'Not available')}
                 </Text>
               </View>
+              <View style={[styles.cardMuted, { flex: 1, marginRight: 10, marginBottom: 0 }]} wrap={false}>
+                <Text style={styles.kpiLabel}>{isGerman ? 'Jahresbudget' : 'Annual Budget'}</Text>
+                <Text style={styles.kpiValue}>{fmtCurrency(annualSpend, intlLocale)}</Text>
+                <Text style={styles.kpiDescription}>
+                  {isGerman ? 'Ausgaben pro Jahr' : 'Spending per year'}
+                </Text>
+              </View>
               <View style={[styles.cardMuted, { flex: 1, marginBottom: 0 }]} wrap={false}>
                 <Text style={styles.kpiLabel}>{isGerman ? 'Simulationen' : 'Simulations'}</Text>
                 <Text style={styles.kpiValue}>
@@ -570,6 +649,96 @@ export function RetirementReport({ content }: RetirementReportProps) {
                   {isGerman ? 'Monte-Carlo-Läufe' : 'Monte Carlo runs'}
                 </Text>
               </View>
+            </View>
+          </View>
+
+          {/* Reading guide — turns the second page into orientation rather
+              than a mostly empty list of links. */}
+          <View style={{ marginTop: 20 }}>
+            <Text style={[styles.label, { marginBottom: 8 }]}>
+              {isGerman ? 'So lesen Sie diesen Bericht' : 'How to Read This Report'}
+            </Text>
+            <View style={{ flexDirection: 'row' }}>
+              {readingGuide.map((entry, index) => (
+                <View
+                  key={entry.title}
+                  style={[
+                    styles.cardAccent,
+                    {
+                      flex: 1,
+                      marginRight: index < readingGuide.length - 1 ? 10 : 0,
+                      marginBottom: 0,
+                    },
+                  ]}
+                  wrap={false}
+                >
+                  <Text
+                    style={{
+                      fontSize: 6.5,
+                      fontWeight: 600,
+                      letterSpacing: 0.8,
+                      textTransform: 'uppercase',
+                      color: tokens.colors.ink[500],
+                    }}
+                  >
+                    {entry.step}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 9.5,
+                      fontWeight: 600,
+                      color: tokens.colors.ink[900],
+                      marginTop: 4,
+                      marginBottom: 3,
+                    }}
+                  >
+                    {entry.title}
+                  </Text>
+                  <Text style={{ fontSize: 7.5, color: tokens.colors.ink[600], lineHeight: 1.5 }}>
+                    {entry.text}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Figure conventions — one legend for every chart in the report */}
+          <View style={[styles.cardMuted, { marginTop: 16, marginBottom: 0 }]}>
+            <Text style={[styles.cardTitle, { marginBottom: 6 }]}>
+              {isGerman ? 'Farben und Linien in den Grafiken' : 'Colours and Lines in the Figures'}
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+              {figureLegend.map((item, index) => (
+                <View
+                  key={item.label}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    width: '50%',
+                    paddingRight: index % 2 === 0 ? 10 : 0,
+                    marginBottom: 5,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 12,
+                      height: item.kind === 'swatch' ? 7 : 2,
+                      marginTop: item.kind === 'swatch' ? 1.5 : 4,
+                      marginRight: 6,
+                      backgroundColor: item.color,
+                    }}
+                  />
+                  <Text
+                    style={{ flex: 1, fontSize: 7.5, color: tokens.colors.ink[600], lineHeight: 1.4 }}
+                  >
+                    <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
+                      {item.label}
+                    </Text>
+                    {' — '}
+                    {item.text}
+                  </Text>
+                </View>
+              ))}
             </View>
           </View>
         </View>

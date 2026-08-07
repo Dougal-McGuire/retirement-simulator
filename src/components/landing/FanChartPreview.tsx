@@ -275,5 +275,3 @@ export function FanChartPreview() {
     </figure>
   )
 }
-
-export { PREVIEW_RUNS, PREVIEW_SUCCESS_RATE, PREVIEW_TERMINAL }
