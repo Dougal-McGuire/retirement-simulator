@@ -201,6 +201,8 @@ export interface ReportProfile {
     score: number | null
     label: string | null
     reasons: string[]
+    /** Weighted parts the score is composed of, when the payload carries them. */
+    components: Array<{ id: 'success' | 'spending' | 'liquidity'; value: number; weight: number }>
   }
   bridge?: SummaryBridge
   highlights: string[]
@@ -410,6 +412,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
         score: summary?.planHealthScore ?? null,
         label,
         reasons,
+        components: summary?.planHealthComponents ?? [],
       },
       bridge: summary?.bridge,
       highlights,

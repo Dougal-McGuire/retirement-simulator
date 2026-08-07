@@ -123,6 +123,7 @@ export function transformToReportData(
       planHealthLabel: health.label,
       planHealthWhy: health.why,
       planHealthWhyBits: health.whyBits,
+      planHealthComponents: health.components,
       successProbabilityPct: results.successRate,
       bridge: {
         startAge: bridge.startAge,
