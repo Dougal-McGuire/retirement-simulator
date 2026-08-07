@@ -38,10 +38,13 @@ export function computePlanHealthScore(
     Math.min(100, 100 - Math.max(0, withdrawalRateNow - 0.04) * spendPenaltyPerPoint)
   )
   const liquidityScore = 100 // placeholder until explicit liquidity coverage metric is added
+  const components: PlanHealthComponent[] = [
+    { id: 'success', value: results.successRate, weight: weights.success_pct },
+    { id: 'spending', value: spendingScore, weight: weights.spend_rate },
+    { id: 'liquidity', value: liquidityScore, weight: weights.liquidity },
+  ]
   const score = Math.round(
-    weights.success_pct * results.successRate +
-      weights.spend_rate * spendingScore +
-      weights.liquidity * liquidityScore
+    components.reduce((sum, component) => sum + component.weight * component.value, 0)
   )
   const label: PlanHealthLabel =
     score >= defaultPdfConfig.label_bands.strong[0]
@@ -58,5 +61,5 @@ export function computePlanHealthScore(
   if (results.successRate >= 80) whyBits.push('high success probability')
   const finalBits = whyBits.length ? whyBits : ['balanced assumptions']
 
-  return { score, label, why: finalBits.join(' + '), whyBits: finalBits }
+  return { score, label, why: finalBits.join(' + '), whyBits: finalBits, components }
 }

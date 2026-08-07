@@ -99,6 +99,19 @@ export const SummarySchema = z
     planHealthLabel: z.enum(['Strong', 'Moderate', 'Needs Attention']),
     planHealthWhy: z.string().optional(),
     planHealthWhyBits: z.array(z.string()).optional(),
+    /**
+     * Itemised inputs of `planHealthScore`, so the report can show how the
+     * score was reached. Optional: older payloads simply omit the breakdown.
+     */
+    planHealthComponents: z
+      .array(
+        z.object({
+          id: z.enum(['success', 'spending', 'liquidity']),
+          value: z.number().min(0).max(100),
+          weight: z.number().min(0).max(1),
+        })
+      )
+      .optional(),
     successProbabilityPct: z.number().min(0).max(100),
     bridge: z.object({
       startAge: z.number(),
