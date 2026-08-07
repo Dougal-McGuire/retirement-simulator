@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings2, X } from 'lucide-react'
+import { Settings2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import {
@@ -47,16 +47,8 @@ export function HeaderControlsMenu({ className }: HeaderControlsMenuProps) {
         className="w-full border-3 border-neo-black bg-neo-white p-0 shadow-neo sm:w-80"
       >
         <SheetHeader className="border-b-3 border-neo-black px-6 py-5">
-          <SheetTitle className="flex items-center justify-between gap-3 text-base font-black tracking-[0.08em] text-neo-black">
+          <SheetTitle className="pr-10 text-base font-black tracking-[0.08em] text-neo-black">
             {t('title')}
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="border-2 border-neo-black bg-neo-white p-1 text-neo-black transition-neo hover:-translate-y-[1px] hover:bg-neo-red hover:text-neo-white"
-              aria-label={t('close')}
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
           </SheetTitle>
           <SheetDescription className="text-left text-sm font-medium text-muted-foreground">
             {t('description')}
