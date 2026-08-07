@@ -217,46 +217,40 @@ function AppendixSection({
         </View>
       </View>
 
-      <View style={[styles.card, { marginBottom: 10 }]}>
-        <Text style={styles.cardTitle}>
-          {isGerman ? 'Perzentile richtig lesen' : 'How to Read Percentiles'}
-        </Text>
-        <Table>
-          {percentileRows.map((row, index) => (
-            <TableRow key={row.key} alt={index % 2 === 1}>
-              <TableCell width="9%">
-                <Text style={{ fontWeight: 600, color: tokens.colors.accent[700] }}>{row.key}</Text>
-              </TableCell>
-              <TableCell width="91%">
-                <Text style={{ fontSize: 7.5, lineHeight: 1.45 }}>{row.text}</Text>
-              </TableCell>
-            </TableRow>
-          ))}
-        </Table>
-      </View>
+      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+        <View style={[styles.card, { width: '42%', marginRight: 10, marginBottom: 0 }]}>
+          <Text style={styles.cardTitle}>
+            {isGerman ? 'Perzentile richtig lesen' : 'How to Read Percentiles'}
+          </Text>
+          <Table>
+            {percentileRows.map((row, index) => (
+              <TableRow key={row.key} alt={index % 2 === 1}>
+                <TableCell width="20%">
+                  <Text style={{ fontWeight: 600, color: tokens.colors.accent[700] }}>
+                    {row.key}
+                  </Text>
+                </TableCell>
+                <TableCell width="80%">
+                  <Text style={{ fontSize: 7, lineHeight: 1.4 }}>{row.text}</Text>
+                </TableCell>
+              </TableRow>
+            ))}
+          </Table>
+        </View>
 
-      <View style={[styles.card, { marginBottom: 10 }]}>
-        <Text style={styles.cardTitle}>{isGerman ? 'Glossar' : 'Glossary'}</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          {glossary.map((entry, index) => (
-            <View
-              key={entry.term}
-              style={{
-                width: '50%',
-                paddingRight: index % 2 === 0 ? 10 : 0,
-                paddingLeft: index % 2 === 1 ? 10 : 0,
-                marginBottom: 7,
-              }}
-            >
-              <Text style={{ fontSize: 8, fontWeight: 600, color: tokens.colors.ink[900] }}>
+        <View style={[styles.card, { flex: 1, marginBottom: 0 }]}>
+          <Text style={styles.cardTitle}>{isGerman ? 'Glossar' : 'Glossary'}</Text>
+          {glossary.map((entry) => (
+            <View key={entry.term} style={{ marginBottom: 5 }}>
+              <Text style={{ fontSize: 7.5, fontWeight: 600, color: tokens.colors.ink[900] }}>
                 {entry.term}
               </Text>
               <Text
                 style={{
-                  fontSize: 7.5,
+                  fontSize: 7,
                   color: tokens.colors.ink[600],
-                  lineHeight: 1.45,
-                  marginTop: 1.5,
+                  lineHeight: 1.4,
+                  marginTop: 1,
                 }}
               >
                 {entry.text}
