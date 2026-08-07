@@ -81,6 +81,38 @@ export function fmtSuccessMetric(
   return `${fmtNumber(count, { locale })}/${fmtNumber(trials, { locale })} (${percent})`
 }
 
+/**
+ * Compact currency for chart axes and dense labels.
+ * en-US: €1.2M / €450K — de-DE: 1,2 Mio. € / 450.000 €
+ */
+export function fmtCompactCurrency(value: number, locale: string = 'de-DE'): string {
+  const formatted = getNumberFormatter(locale, {
+    style: 'currency',
+    currency: 'EUR',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 0,
+  }).format(value)
+
+  if (locale.startsWith('de')) {
+    return formatted.replace(`${nbsp}€`, `${nnbsp}€`)
+  }
+  return formatted
+}
+
+/**
+ * Long, human-readable date for covers and headers.
+ * en-US: August 7, 2026 — de-DE: 7. August 2026
+ */
+export function fmtDateLong(value: string | Date, locale: string = 'de-DE'): string {
+  const date = value instanceof Date ? value : new Date(value)
+  return getDateFormatter(locale, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date)
+}
+
 export function fmtDate(value: string | Date, locale: string = 'de-DE'): string {
   const date = value instanceof Date ? value : new Date(value)
   return getDateFormatter(locale, {

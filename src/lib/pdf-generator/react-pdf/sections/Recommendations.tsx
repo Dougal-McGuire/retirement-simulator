@@ -1,78 +1,157 @@
 import React from 'react'
 import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
-import { H2, H4 } from '../primitives'
+import { SectionHeader } from '../primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
 
 interface RecommendationsProps {
   content: ReportContent
+  sectionNumber?: string
 }
 
-function impactVisual(impact: string) {
+function impactVisual(impact: string, isGerman: boolean) {
   if (impact === 'High' || impact === 'hoch') {
-    return { color: tokens.colors.danger[600], label: 'H1' }
+    return {
+      color: tokens.colors.danger[600],
+      bg: tokens.colors.danger[50],
+      label: isGerman ? 'Hohe Wirkung' : 'High impact',
+    }
   }
   if (impact === 'Medium' || impact === 'mittel') {
-    return { color: tokens.colors.warning[600], label: 'H2' }
+    return {
+      color: tokens.colors.warning[600],
+      bg: tokens.colors.warning[50],
+      label: isGerman ? 'Mittlere Wirkung' : 'Medium impact',
+    }
   }
-  return { color: tokens.colors.success[600], label: 'H3' }
+  return {
+    color: tokens.colors.success[600],
+    bg: tokens.colors.success[50],
+    label: isGerman ? 'Geringe Wirkung' : 'Low impact',
+  }
 }
 
-export function Recommendations({ content }: RecommendationsProps) {
+export function Recommendations({ content, sectionNumber = '05' }: RecommendationsProps) {
   const { recommendations } = content
   const isGerman = content.locale !== 'en'
 
-  const list = [...recommendations.primary]
+  const list = recommendations.primary.slice(0, 5)
 
   return (
     <View>
-      <View style={{ marginBottom: 12 }}>
-        <H2>{isGerman ? 'Handlungsempfehlungen' : 'Recommended Actions'}</H2>
-        <Text style={styles.sectionLead}>
-          {isGerman
+      <SectionHeader
+        number={sectionNumber}
+        overline={isGerman ? 'Maßnahmen' : 'Actions'}
+        title={isGerman ? 'Handlungsempfehlungen' : 'Recommended Actions'}
+        lead={
+          isGerman
             ? 'Priorisierte Maßnahmen zur Verbesserung der Robustheit Ihres Plans.'
-            : 'Prioritised measures to improve plan robustness.'}
-        </Text>
-      </View>
+            : 'Prioritised measures to improve the robustness of your plan.'
+        }
+      />
 
       {list.length === 0 ? (
         <View style={styles.card}>
-          <Text style={{ fontSize: 10, color: tokens.colors.ink[600] }}>
+          <Text style={{ fontSize: 9, color: tokens.colors.ink[600] }}>
             {isGerman
               ? 'Es wurden keine spezifischen Empfehlungen erzeugt.'
               : 'No specific recommendations were generated.'}
           </Text>
         </View>
       ) : (
-        list.slice(0, 6).map((rec, index) => {
-          const tag = impactVisual(rec.impactLabel ?? rec.impact)
+        list.map((rec, index) => {
+          const tag = impactVisual(rec.impactLabel ?? rec.impact, isGerman)
           return (
-            <View key={`${rec.title}-${index}`} style={[styles.card, { borderLeftWidth: 4, borderLeftColor: tag.color }]} wrap={false}>
-              <View style={{ flexDirection: 'row', marginBottom: 4 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 8, color: tokens.colors.ink[500], marginBottom: 2 }}>
-                    {rec.category}
+            <View
+              key={`${rec.title}-${index}`}
+              style={[
+                styles.card,
+                { borderLeftWidth: 2.5, borderLeftColor: tag.color, marginBottom: 8 },
+              ]}
+              wrap={false}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                {/* Priority number */}
+                <View
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    backgroundColor: tokens.colors.ink[900],
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 9,
+                    marginTop: 1,
+                  }}
+                >
+                  <Text style={{ fontSize: 8.5, fontWeight: 700, color: tokens.colors.white }}>
+                    {index + 1}
                   </Text>
-                  <H4 style={{ marginBottom: 4 }}>{rec.title}</H4>
                 </View>
-                <View style={{ alignSelf: 'flex-start', backgroundColor: tag.color, paddingHorizontal: 6, paddingVertical: 2 }}>
-                  <Text style={{ fontSize: 7, color: tokens.colors.white, fontFamily: 'Helvetica-Bold' }}>
-                    {tag.label}
+
+                <View style={{ flex: 1 }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 3,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 6.5,
+                        fontWeight: 600,
+                        letterSpacing: 0.8,
+                        textTransform: 'uppercase',
+                        color: tokens.colors.ink[500],
+                      }}
+                    >
+                      {rec.category}
+                    </Text>
+                    <View
+                      style={{
+                        backgroundColor: tag.bg,
+                        borderRadius: 2.5,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                      }}
+                    >
+                      <Text style={{ fontSize: 6.5, fontWeight: 600, color: tag.color }}>
+                        {tag.label}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 600,
+                      color: tokens.colors.ink[900],
+                      marginBottom: 3,
+                    }}
+                  >
+                    {rec.title}
+                  </Text>
+                  <Text style={{ fontSize: 8.5, lineHeight: 1.5, color: tokens.colors.ink[700] }}>
+                    {rec.body}
                   </Text>
                 </View>
               </View>
-              <Text style={{ fontSize: 9.5, lineHeight: 1.5, color: tokens.colors.ink[700] }}>{rec.body}</Text>
             </View>
           )
         })
       )}
 
-      <View style={[styles.card, { marginTop: 6, borderLeftWidth: 3, borderLeftColor: tokens.colors.accent[600] }]}>
-        <H4 style={{ marginBottom: 6 }}>{isGerman ? 'Umsetzungsrahmen' : 'Implementation Frame'}</H4>
-        <Text style={{ fontSize: 9.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
+      <View style={[styles.callout, { marginTop: 6 }]}>
+        <Text
+          style={{ fontSize: 8.5, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 3 }}
+        >
+          {isGerman ? 'Umsetzungsrahmen' : 'Implementation Frame'}
+        </Text>
+        <Text style={{ fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
           {isGerman
-            ? 'Empfehlung: Fokus auf 1–2 H1/H2-Maßnahmen in den nächsten 90 Tagen und anschließend erneute Simulation.'
-            : 'Recommendation: focus on 1-2 H1/H2 actions over the next 90 days, then rerun simulation.'}
+            ? 'Empfehlung: Fokussieren Sie sich in den nächsten 90 Tagen auf ein bis zwei Maßnahmen mit hoher Wirkung und führen Sie die Simulation anschließend erneut durch.'
+            : 'Recommendation: focus on one or two high-impact actions over the next 90 days, then rerun the simulation to validate the effect.'}
         </Text>
       </View>
     </View>

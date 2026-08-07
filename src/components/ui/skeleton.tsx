@@ -20,67 +20,67 @@ function Skeleton({ className, shimmer = true, ...props }: SkeletonProps) {
   )
 }
 
-// Chart skeleton loader with enhanced shimmer
+// Chart skeleton loader shaped like the percentile fan chart it stands in for
 function ChartSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn('border-3 border-neo-black bg-neo-white shadow-neo p-6', className)}>
-      <div className="space-y-7">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-5 w-48" />
-          <div className="flex items-center gap-3">
-            <div className="h-3 w-3 border-3 border-neo-black bg-neo-blue animate-pulse" />
-            <Skeleton className="h-3 w-16" />
+      <div className="space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 space-y-2.5">
+            <Skeleton className="h-5 w-56 max-w-full" />
+            <Skeleton className="h-3.5 w-3/4" />
           </div>
-        </div>
-        <Skeleton className="h-4 w-3/4" />
-
-        {/* Chart area with animated bars */}
-        <div className="relative h-64 border-3 border-neo-black bg-neo-white p-4">
-          <div className="absolute inset-[-150%] animate-[shimmer_3s_linear_infinite] bg-[linear-gradient(115deg,transparent_0%,rgb(var(--neo-blue-rgb)_/_0.08)_45%,rgb(var(--neo-yellow-rgb)_/_0.14)_55%,transparent_100%)]" />
-
-          {/* Animated chart lines */}
-          <div className="relative flex h-full items-end justify-between gap-[6px]">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="flex flex-1 flex-col justify-end gap-[6px]">
-                <Skeleton
-                  style={{
-                    height: `${Math.random() * 60 + 20}%`,
-                    animationDelay: `${i * 100}ms`,
-                  }}
-                />
-                <Skeleton
-                  style={{
-                    height: `${Math.random() * 80 + 40}%`,
-                    animationDelay: `${i * 150}ms`,
-                  }}
-                />
-                <Skeleton
-                  style={{
-                    height: `${Math.random() * 40 + 10}%`,
-                    animationDelay: `${i * 200}ms`,
-                  }}
-                />
-              </div>
-            ))}
-          </div>
+          <Skeleton className="h-8 w-24 shrink-0" />
         </div>
 
-        {/* Legend skeleton */}
-        <div className="flex justify-center gap-4 border-3 border-neo-black bg-neo-white p-4">
+        {/* Legend placeholder */}
+        <div className="flex flex-wrap items-center gap-5">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3">
+            <div key={i} className="flex items-center gap-2">
               <div
-                className="h-3 w-3 border-3 border-neo-black animate-pulse"
+                className="h-3 w-4 animate-pulse rounded-[2px]"
                 style={{
-                  backgroundColor:
-                    i === 0 ? 'var(--neo-red)' : i === 1 ? 'var(--neo-blue)' : 'var(--neo-green)',
-                  animationDelay: `${i * 220}ms`,
+                  backgroundColor: `rgb(var(--neo-blue-rgb) / ${0.4 - i * 0.12})`,
+                  animationDelay: `${i * 180}ms`,
                 }}
               />
-              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-20" shimmer={false} />
             </div>
           ))}
         </div>
+
+        {/* Fan-shaped chart placeholder */}
+        <div className="relative h-72 overflow-hidden border border-neo-black/15 bg-neo-white">
+          <div className="pointer-events-none absolute inset-[-150%] animate-[shimmer_2.4s_linear_infinite] bg-[linear-gradient(115deg,transparent_0%,rgb(var(--neo-blue-rgb)_/_0.07)_45%,rgb(var(--neo-blue-rgb)_/_0.1)_55%,transparent_100%)]" />
+          <svg
+            viewBox="0 0 600 240"
+            preserveAspectRatio="none"
+            className="h-full w-full"
+            aria-hidden="true"
+          >
+            {/* Outer band */}
+            <path
+              d="M0,208 C120,196 220,150 340,96 C430,58 530,36 600,28 L600,196 C530,192 430,192 340,196 C220,202 120,208 0,214 Z"
+              fill="rgb(var(--neo-blue-rgb) / 0.08)"
+            />
+            {/* Inner band */}
+            <path
+              d="M0,208 C120,198 230,164 350,120 C440,88 540,70 600,64 L600,164 C540,166 440,172 350,180 C230,190 120,204 0,211 Z"
+              fill="rgb(var(--neo-blue-rgb) / 0.14)"
+            />
+            {/* Median line */}
+            <path
+              d="M0,209 C120,201 240,178 360,150 C450,130 545,118 600,114"
+              fill="none"
+              stroke="rgb(var(--neo-blue-rgb) / 0.45)"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+
+        {/* Brush placeholder */}
+        <Skeleton className="h-5 w-full" shimmer={false} />
       </div>
     </div>
   )

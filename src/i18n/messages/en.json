@@ -1,4 +1,118 @@
 {
+  "landing": {
+    "meta": {
+      "title": "Retirement Simulator — Monte Carlo Retirement Planning",
+      "description": "Stress-test your retirement plan against thousands of simulated market futures. Free, private, and it runs entirely in your browser."
+    },
+    "nav": {
+      "appName": "Retirement Simulator",
+      "launch": "Launch app"
+    },
+    "hero": {
+      "badge": "Monte Carlo engine · runs in your browser",
+      "titleLine1": "Your retirement,",
+      "titleLine2": "simulated 5,000 times.",
+      "subtitle": "One average return tells you nothing. The simulator models market volatility, inflation, pensions, and spending across thousands of futures — so you see the full range of outcomes before betting your retirement on a single guess.",
+      "ctaPrimary": "Start planning — it's free",
+      "ctaSecondary": "Explore the dashboard",
+      "note": "No sign-up. No cloud. Your data never leaves this browser."
+    },
+    "stats": {
+      "scenarios": {
+        "value": "5,000",
+        "label": "Market scenarios per run"
+      },
+      "percentiles": {
+        "value": "P10–P90",
+        "label": "Outcome bands charted"
+      },
+      "speed": {
+        "value": "~100 ms",
+        "label": "To re-run after any change"
+      },
+      "privacy": {
+        "value": "100%",
+        "label": "Local-first, zero data upload"
+      }
+    },
+    "preview": {
+      "eyebrow": "The full picture",
+      "title": "Every outcome, one chart",
+      "subtitle": "Percentile bands show where your plan thrives, holds, or breaks — from the cautious P10 to the optimistic P90.",
+      "windowTitle": "Asset projection · 4,000 runs",
+      "live": "Live",
+      "successLabel": "Plan success",
+      "successValue": "92%",
+      "successCaption": "of scenarios stay funded to age 90",
+      "retirementMarker": "Retirement · 62",
+      "legendMedian": "Median outcome",
+      "legendInner": "Likely range (P25–P75)",
+      "legendOuter": "Full range (P10–P90)",
+      "ageAxisLabel": "Age",
+      "chartAlt": "Fan chart of simulated asset development from age 35 to 90, showing percentile bands widening over time with a retirement marker at age 62."
+    },
+    "features": {
+      "eyebrow": "Built for conviction",
+      "title": "Everything a serious plan needs",
+      "subtitle": "A complete planning engine — no spreadsheet gymnastics required.",
+      "items": {
+        "monteCarlo": {
+          "title": "A real Monte Carlo engine",
+          "body": "Lognormal returns sampled with the Box–Muller transform — thousands of complete market lifetimes, computed in seconds."
+        },
+        "live": {
+          "title": "Instant what-if answers",
+          "body": "Move any slider and the percentiles redraw in about 100 milliseconds. Interrogate every assumption, live."
+        },
+        "phases": {
+          "title": "Both halves of the journey",
+          "body": "Accumulation to drawdown in one model: savings growth, statutory pension, one-time windfalls, and custom expense streams."
+        },
+        "reports": {
+          "title": "Reports worth sharing",
+          "body": "Export a clean, comprehensive PDF of your plan — assumptions, charts, and recommendations included."
+        },
+        "privacy": {
+          "title": "Private by design",
+          "body": "No account and no tracking of your finances. Parameters persist only in your browser's local storage."
+        },
+        "bilingual": {
+          "title": "Bilingual & localized",
+          "body": "Full English and German interfaces with proper currency, number, and date formatting throughout."
+        }
+      }
+    },
+    "how": {
+      "eyebrow": "How it works",
+      "title": "From guess to plan in five minutes",
+      "steps": {
+        "step1": {
+          "title": "Describe your plan",
+          "body": "Ages, assets, savings, pension, and spending — a guided setup that takes about five minutes."
+        },
+        "step2": {
+          "title": "Run thousands of futures",
+          "body": "The engine replays your entire financial life through simulated markets — good decades and bad."
+        },
+        "step3": {
+          "title": "Stress-test and refine",
+          "body": "Tune assumptions live, watch the bands respond, and export the PDF once the plan holds."
+        }
+      }
+    },
+    "cta": {
+      "title": "Know where you stand.",
+      "subtitle": "Five minutes of setup. A lifetime of clarity.",
+      "button": "Build your plan now",
+      "secondary": "or explore the live dashboard"
+    },
+    "footer": {
+      "tagline": "Monte Carlo retirement planning — free, open, private.",
+      "setup": "Guided setup",
+      "simulation": "Simulation dashboard",
+      "copyright": "© {year} Retirement Simulator. Runs entirely on your device."
+    }
+  },
   "layout": {
     "skipLinks": {
       "main": "Skip to main content",
@@ -50,12 +164,27 @@
       "percentComplete": "{percent}% complete",
       "autosave": "Progress auto-saves locally",
       "stepsLabel": "Setup steps",
-      "timeRemaining": "Time remaining"
+      "timeRemaining": "Time remaining",
+      "minutesRemaining": "~{minutes} min"
     },
     "buttons": {
       "back": "Back",
       "next": "Next",
-      "complete": "Complete Setup"
+      "complete": "Complete Setup",
+      "upNext": "Up next: {step}"
+    },
+    "validation": {
+      "ageRange": "Enter an age between {min} and {max}.",
+      "nonNegative": "This value cannot be negative.",
+      "typicalBetween": "Unusual value — typical entries fall between {min} and {max}.",
+      "retirementAfterCurrent": "Your intended retirement age should be later than your current age.",
+      "horizonAfterRetirement": "Your planning horizon should extend beyond your retirement age."
+    },
+    "units": {
+      "currency": "€",
+      "percent": "%",
+      "percentPerYear": "%/yr",
+      "years": "yrs"
     },
     "steps": {
       "personal": {
@@ -98,24 +227,25 @@
           "tooltip": "Plan until what age? (typically 85-95)",
           "help": "How long your retirement plan should run. Use life expectancy plus a safety margin."
         }
-      }
+      },
+      "timeline": "{workingYears, plural, one {# working year} other {# working years}} until retirement · {retirementYears, plural, one {# year} other {# years}} of retirement to fund"
     },
     "assets": {
       "fields": {
         "currentAssets": {
-          "label": "Current Assets (€)",
+          "label": "Current Assets",
           "help": "Total value of your current investments and savings"
         },
         "annualSavings": {
-          "label": "Annual Savings (€)",
+          "label": "Annual Savings",
           "help": "How much do you save per year until retirement?"
         },
         "annualSavingsGrowthRate": {
-          "label": "Savings Growth Rate (%/year)",
+          "label": "Savings Growth Rate",
           "help": "Expected yearly increase in annual savings as income grows."
         },
         "monthlyPension": {
-          "label": "Monthly Pension (€)",
+          "label": "Monthly Pension",
           "help": "Expected monthly pension from legal retirement age"
         }
       },
@@ -169,6 +299,7 @@
       }
     },
     "market": {
+      "realReturn": "Implied real return after inflation",
       "averageROI": {
         "label": "Average ROI (Return on Investment)",
         "help": "Expected average annual return on your investments"
@@ -535,7 +666,11 @@
       "moderate": "Moderate",
       "needsAttention": "Needs attention"
     },
-    "success": { "label": "Success rate", "detail": "{runs} simulation runs" },
+    "success": {
+      "label": "Success rate",
+      "detail": "{runs} simulation runs",
+      "caption": "Share of simulated futures in which your money lasts through the whole plan."
+    },
     "lasts": {
       "label": "Assets last",
       "toAge": "to age {age}",
@@ -665,13 +800,17 @@
     "title": "Asset Projections Over Time",
     "liveData": "Live Data",
     "reset": "Reset Zoom",
-    "description": "This chart shows projected asset values over time using Monte Carlo simulation. The three lines represent optimistic (90th percentile), median (50th percentile), and pessimistic (10th percentile) scenarios.",
+    "description": "Projected portfolio value from Monte Carlo simulation. The solid line is the median outcome; the shaded bands show where most simulated futures land.",
     "axis": {
       "age": "Age",
       "assets": "Assets (€)",
       "monthlySavings": "Monthly Savings (€)"
     },
     "legend": {
+      "median": "Median outcome",
+      "likelyRange": "Likely range (P20–P80)",
+      "fullRange": "Full range (P10–P90)",
+      "events": "Plan milestones",
       "band": "P20–P80 Band",
       "title": "Chart legend",
       "p10": "10th Percentile (Pessimistic)",
@@ -682,7 +821,13 @@
       "monthlySavings": "Monthly savings"
     },
     "tooltip": {
-      "label": "Age: {age}"
+      "label": "Age {age}",
+      "p90": "90th percentile",
+      "p80": "80th percentile",
+      "median": "Median",
+      "p20": "20th percentile",
+      "p10": "10th percentile",
+      "savings": "Monthly savings"
     },
     "markers": {
       "retirement": "Retirement",
@@ -695,7 +840,7 @@
       "zoomed": "Zoomed view active"
     },
     "aria": {
-      "description": "Asset projection chart showing three scenarios: worst case (10th percentile) in red, median (50th percentile) in blue, and best case (90th percentile) in green.",
+      "description": "Asset projection fan chart: the median outcome is drawn as a solid line, surrounded by a likely range (20th to 80th percentile) and a full range (10th to 90th percentile) band.",
       "controls": "Use arrow keys to navigate chart data points. Press R to reset zoom. Drag across the chart to zoom into a time range."
     }
   },
@@ -713,7 +858,7 @@
     "explanation": {
       "strategyLabel": "Spending rule",
       "readingLabel": "How to read it",
-      "reading": "Lines show monthly allowance after strategy rules: yellow is P10, blue is median, and red is P90. The black line is the median portfolio-funded withdrawal rate after pension offsets.",
+      "reading": "The solid line is the median monthly allowance after strategy rules; the shaded band spans the 10th to 90th percentile of outcomes. Hover any age to also see the median portfolio-funded withdrawal rate after pension offsets.",
       "dynamic": {
         "summary": "Vanguard DS starts from the planned first retirement-year budget. Later years target {withdrawalRate} of the prior year-end portfolio, capped to {ceiling} above and {floor} below last year’s inflation-adjusted spending."
       },
@@ -727,15 +872,20 @@
       "withdrawalRate": "Portfolio-Funded Rate (%)"
     },
     "tooltip": {
-      "label": "Age: {age}"
+      "label": "Age {age}",
+      "p90": "90th percentile",
+      "median": "Median",
+      "p10": "10th percentile"
     },
     "legend": {
       "title": "Chart legend",
+      "median": "Median allowance",
+      "band": "Range of outcomes (P10–P90)",
       "p10": "10th Percentile",
       "p50": "50th Percentile",
       "p90": "90th Percentile",
       "withdrawalRate": "Portfolio-funded withdrawal rate",
-      "note": "Allowance lines show spending before pension offsets; the withdrawal-rate line uses only the portfolio-funded median amount."
+      "note": "Spending is shown before pension offsets; the withdrawal rate in the tooltip uses only the portfolio-funded median amount."
     },
     "markers": {
       "retirement": "Retirement"
@@ -745,7 +895,7 @@
       "zoomed": "Zoomed view active"
     },
     "aria": {
-      "description": "Monthly spending chart showing spending patterns from retirement age {retirementAge} onwards across P10, median, and P90 lines, plus a line for the median portfolio-funded withdrawal rate.",
+      "description": "Monthly spending chart from retirement age {retirementAge} onwards: a solid median line inside a shaded band spanning the 10th to 90th percentile of outcomes.",
       "controls": "Use arrow keys to navigate spending data. Press R to reset zoom. Drag across the chart to zoom into a time range."
     }
   },

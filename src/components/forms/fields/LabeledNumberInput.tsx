@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { HelpCircle, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react'
+import { HelpCircle, AlertTriangle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface ValidationRule {
@@ -26,11 +26,52 @@ interface LabeledNumberInputProps {
   className?: string
   helpText?: string
   tooltip?: string
+  /** Accessible label for the tooltip trigger (defaults to the field label). */
+  tooltipAriaLabel?: string
+  /** Short unit adornment rendered inside the input, e.g. "€" or "%/yr". */
+  unit?: string
   validation?: ValidationRule
   formatValue?: (value: number) => string
 }
 
-type ValidationState = 'valid' | 'warning' | 'error' | 'neutral'
+type ValidationState = 'error' | 'warning' | 'neutral'
+
+function resolveValidation(
+  value: number,
+  validation?: ValidationRule
+): { state: ValidationState; message: string } {
+  if (!validation) return { state: 'neutral', message: '' }
+
+  if (validation.min !== undefined && value < validation.min) {
+    return {
+      state: 'error',
+      message: validation.errorMessage || `Value must be at least ${validation.min}`,
+    }
+  }
+  if (validation.max !== undefined && value > validation.max) {
+    return {
+      state: 'error',
+      message: validation.errorMessage || `Value must be at most ${validation.max}`,
+    }
+  }
+  if (validation.typicalMin !== undefined && value < validation.typicalMin) {
+    return {
+      state: 'warning',
+      message:
+        validation.warningMessage ||
+        `Unusual: typical range is ${validation.typicalMin} - ${validation.typicalMax ?? '∞'}`,
+    }
+  }
+  if (validation.typicalMax !== undefined && value > validation.typicalMax) {
+    return {
+      state: 'warning',
+      message:
+        validation.warningMessage ||
+        `Unusual: typical range is ${validation.typicalMin ?? 0} - ${validation.typicalMax}`,
+    }
+  }
+  return { state: 'neutral', message: '' }
+}
 
 export function LabeledNumberInput({
   id,
@@ -42,77 +83,34 @@ export function LabeledNumberInput({
   className,
   helpText,
   tooltip,
+  tooltipAriaLabel,
+  unit,
   validation,
   formatValue,
 }: LabeledNumberInputProps) {
-  const [validationState, setValidationState] = useState<ValidationState>('neutral')
-  const [validationMessage, setValidationMessage] = useState<string>('')
   const [touched, setTouched] = useState(false)
   const [draftValue, setDraftValue] = useState(() => String(value))
   const [isEditing, setIsEditing] = useState(false)
 
-  useEffect(() => {
-    if (!isEditing) {
-      setDraftValue(String(value))
-    }
-  }, [isEditing, value])
+  const displayValue = isEditing ? draftValue : String(value)
 
-  // Validate value
-  useEffect(() => {
-    if (!touched && validationState === 'neutral') return
+  const { state: validationState, message: validationMessage } = useMemo(
+    () => resolveValidation(value, validation),
+    [value, validation]
+  )
 
-    if (validation) {
-      // Check for errors (hard limits)
-      if (validation.min !== undefined && value < validation.min) {
-        setValidationState('error')
-        setValidationMessage(validation.errorMessage || `Value must be at least ${validation.min}`)
-        return
-      }
-      if (validation.max !== undefined && value > validation.max) {
-        setValidationState('error')
-        setValidationMessage(validation.errorMessage || `Value must be at most ${validation.max}`)
-        return
-      }
-
-      // Check for warnings (typical ranges)
-      if (validation.typicalMin !== undefined && value < validation.typicalMin) {
-        setValidationState('warning')
-        setValidationMessage(
-          validation.warningMessage ||
-            `Unusual: Typical range is ${validation.typicalMin} - ${validation.typicalMax ?? '∞'}`
-        )
-        return
-      }
-      if (validation.typicalMax !== undefined && value > validation.typicalMax) {
-        setValidationState('warning')
-        setValidationMessage(
-          validation.warningMessage ||
-            `Unusual: Typical range is ${validation.typicalMin ?? '0'} - ${validation.typicalMax}`
-        )
-        return
-      }
-    }
-
-    // All good
-    setValidationState('valid')
-    setValidationMessage('')
-  }, [value, validation, touched, validationState])
+  // Reward early, punish late: surface issues only after first blur.
+  const showValidation = touched && validationState !== 'neutral'
 
   const handleBlur = () => {
     setTouched(true)
     setIsEditing(false)
 
     const trimmedValue = draftValue.trim()
-    if (!trimmedValue) {
-      setDraftValue(String(value))
-      return
-    }
+    if (!trimmedValue) return
 
     const parsedValue = Number(trimmedValue)
-    if (!Number.isFinite(parsedValue)) {
-      setDraftValue(String(value))
-      return
-    }
+    if (!Number.isFinite(parsedValue)) return
 
     // Clamp value to min/max constraints on blur
     let clampedValue = parsedValue
@@ -123,37 +121,8 @@ export function LabeledNumberInput({
       clampedValue = max
     }
 
-    // Only update if value changed
     if (clampedValue !== value) {
       onChange(clampedValue)
-    }
-    setDraftValue(String(clampedValue))
-  }
-
-  const getValidationIcon = () => {
-    switch (validationState) {
-      case 'error':
-        return <AlertCircle className="h-4 w-4 text-neo-red" />
-      case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600" />
-      case 'valid':
-        return <CheckCircle className="h-4 w-4 text-green-600" />
-      default:
-        return null
-    }
-  }
-
-  const getInputBorderClass = () => {
-    if (!touched) return 'border-neo-black'
-    switch (validationState) {
-      case 'error':
-        return 'border-neo-red border-3'
-      case 'warning':
-        return 'border-yellow-600 border-3'
-      case 'valid':
-        return 'border-green-600 border-3'
-      default:
-        return 'border-neo-black'
     }
   }
 
@@ -161,17 +130,14 @@ export function LabeledNumberInput({
   if (helpText) {
     descriptionIds.push(`${id}-help`)
   }
-  if (touched && validationMessage) {
+  if (showValidation) {
     descriptionIds.push(`${id}-validation-message`)
-  }
-  if (validation && (validation.typicalMin !== undefined || validation.typicalMax !== undefined)) {
-    descriptionIds.push(`${id}-typical-range`)
   }
   const describedBy = descriptionIds.length > 0 ? descriptionIds.join(' ') : undefined
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <Label
           htmlFor={id}
           className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-neo-black"
@@ -179,24 +145,22 @@ export function LabeledNumberInput({
           {label}
         </Label>
         {tooltip && (
-          <TooltipProvider>
+          <TooltipProvider delayDuration={150}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  className="cursor-help focus:outline-none focus:ring-2 focus:ring-neo-blue focus:ring-offset-2 rounded-full"
-                  aria-label={`More information about ${label}`}
+                  className="cursor-help rounded-full focus:outline-none focus:ring-2 focus:ring-neo-blue focus:ring-offset-2"
+                  aria-label={tooltipAriaLabel ?? label}
                 >
                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/70 transition-colors hover:text-neo-black" />
                 </button>
               </TooltipTrigger>
               <TooltipContent
-                side="right"
-                className="max-w-xs border-4 border-neo-black bg-neo-white px-3 py-2 text-neo-black shadow-neo"
+                side="top"
+                className="max-w-xs border-2 border-neo-black bg-neo-white px-3 py-2 text-neo-black shadow-neo-sm"
               >
-                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] leading-relaxed">
-                  {tooltip}
-                </p>
+                <p className="text-xs font-medium normal-case leading-relaxed">{tooltip}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -206,8 +170,12 @@ export function LabeledNumberInput({
         <Input
           id={id}
           type="number"
-          value={draftValue}
-          onFocus={() => setIsEditing(true)}
+          inputMode="decimal"
+          value={displayValue}
+          onFocus={() => {
+            setDraftValue(String(value))
+            setIsEditing(true)
+          }}
           onChange={(e) => {
             const raw = e.target.value
             setDraftValue(raw)
@@ -218,60 +186,67 @@ export function LabeledNumberInput({
             onChange(nextValue)
           }}
           onBlur={handleBlur}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.currentTarget.blur()
+            }
+          }}
           aria-describedby={describedBy}
-          aria-invalid={validationState === 'error' ? true : undefined}
+          aria-invalid={showValidation && validationState === 'error' ? true : undefined}
           className={cn(
-            'h-11 border-2 font-semibold uppercase tracking-[0.12em] pr-10',
-            getInputBorderClass(),
+            'h-11 border-2 text-sm font-semibold tabular-nums',
+            unit && 'pr-12',
+            showValidation && validationState === 'error' && 'border-neo-red',
+            showValidation && validationState === 'warning' && 'border-neo-orange',
             className
           )}
         />
-        {touched && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">{getValidationIcon()}</div>
+        {unit && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground"
+          >
+            {unit}
+          </span>
         )}
       </div>
 
       {/* Validation message */}
-      {touched && validationMessage && (
+      {showValidation && (
         <div
           id={`${id}-validation-message`}
+          role={validationState === 'error' ? 'alert' : 'status'}
           className={cn(
-            'flex items-start gap-2 rounded-none border-2 px-3 py-2 text-[0.62rem] font-semibold uppercase tracking-[0.1em]',
-            validationState === 'error' && 'border-neo-red bg-neo-red/10 text-neo-red',
-            validationState === 'warning' && 'border-yellow-600 bg-yellow-50 text-yellow-800'
+            'flex items-start gap-2 border-2 px-3 py-2 text-xs font-medium leading-relaxed',
+            validationState === 'error' && 'border-neo-red/60 bg-neo-red/10 text-neo-red',
+            validationState === 'warning' &&
+              'border-neo-orange/60 bg-neo-orange/10 text-neo-black'
           )}
         >
-          <span className="flex-shrink-0 mt-0.5">
+          <span className="mt-0.5 flex-shrink-0">
             {validationState === 'error' ? (
               <AlertCircle className="h-3.5 w-3.5" />
             ) : (
-              <AlertTriangle className="h-3.5 w-3.5" />
+              <AlertTriangle className="h-3.5 w-3.5 text-neo-orange" />
             )}
           </span>
-          <span className="flex-1">{validationMessage}</span>
+          <span className="flex-1">
+            {validationMessage}
+            {formatValue &&
+              validation &&
+              validation.typicalMin !== undefined &&
+              validation.typicalMax !== undefined && (
+                <span className="mt-0.5 block text-muted-foreground">
+                  {formatValue(validation.typicalMin)} – {formatValue(validation.typicalMax)}
+                </span>
+              )}
+          </span>
         </div>
       )}
 
-      {/* Typical range hint */}
-      {validation &&
-        (validation.typicalMin !== undefined || validation.typicalMax !== undefined) && (
-          <p
-            id={`${id}-typical-range`}
-            className="text-[0.62rem] font-medium uppercase tracking-[0.1em] text-muted-foreground"
-          >
-            Typical range:{' '}
-            {formatValue
-              ? `${formatValue(validation.typicalMin ?? 0)} - ${formatValue(validation.typicalMax ?? 0)}`
-              : `${validation.typicalMin ?? 0} - ${validation.typicalMax ?? '∞'}`}
-          </p>
-        )}
-
       {/* Help text */}
       {helpText && (
-        <p
-          id={`${id}-help`}
-          className="text-[0.65rem] font-medium uppercase tracking-[0.12em] text-muted-foreground"
-        >
+        <p id={`${id}-help`} className="text-xs font-medium leading-relaxed text-muted-foreground">
           {helpText}
         </p>
       )}

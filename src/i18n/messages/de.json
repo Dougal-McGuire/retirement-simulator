@@ -1,4 +1,118 @@
 {
+  "landing": {
+    "meta": {
+      "title": "Ruhestandssimulator — Monte-Carlo-Ruhestandsplanung",
+      "description": "Testen Sie Ihren Ruhestandsplan gegen Tausende simulierte Marktverläufe. Kostenlos, privat und vollständig im Browser."
+    },
+    "nav": {
+      "appName": "Ruhestandssimulator",
+      "launch": "App starten"
+    },
+    "hero": {
+      "badge": "Monte-Carlo-Engine · läuft in Ihrem Browser",
+      "titleLine1": "Ihr Ruhestand,",
+      "titleLine2": "5.000-mal simuliert.",
+      "subtitle": "Eine Durchschnittsrendite sagt wenig. Der Simulator modelliert Marktschwankungen, Inflation, Rente und Ausgaben über Tausende von Zukünften — damit Sie die ganze Bandbreite der Ergebnisse sehen, bevor Sie Ihren Ruhestand auf eine einzige Annahme setzen.",
+      "ctaPrimary": "Jetzt planen — kostenlos",
+      "ctaSecondary": "Dashboard erkunden",
+      "note": "Keine Registrierung. Keine Cloud. Ihre Daten verlassen nie diesen Browser."
+    },
+    "stats": {
+      "scenarios": {
+        "value": "5.000",
+        "label": "Marktszenarien pro Lauf"
+      },
+      "percentiles": {
+        "value": "P10–P90",
+        "label": "Ergebnisbänder im Chart"
+      },
+      "speed": {
+        "value": "~100 ms",
+        "label": "Bis zur Neuberechnung"
+      },
+      "privacy": {
+        "value": "100%",
+        "label": "Lokal, kein Daten-Upload"
+      }
+    },
+    "preview": {
+      "eyebrow": "Das ganze Bild",
+      "title": "Jedes Ergebnis, ein Chart",
+      "subtitle": "Perzentilbänder zeigen, wo Ihr Plan trägt, wackelt oder bricht — vom vorsichtigen P10 bis zum optimistischen P90.",
+      "windowTitle": "Vermögensprojektion · 4.000 Läufe",
+      "live": "Live",
+      "successLabel": "Planerfolg",
+      "successValue": "92%",
+      "successCaption": "der Szenarien bleiben bis Alter 90 finanziert",
+      "retirementMarker": "Ruhestand · 62",
+      "legendMedian": "Medianverlauf",
+      "legendInner": "Wahrscheinlicher Bereich (P25–P75)",
+      "legendOuter": "Gesamter Bereich (P10–P90)",
+      "ageAxisLabel": "Alter",
+      "chartAlt": "Fächerdiagramm der simulierten Vermögensentwicklung von Alter 35 bis 90 mit Perzentilbändern und Ruhestandsmarkierung bei Alter 62."
+    },
+    "features": {
+      "eyebrow": "Für Überzeugung gebaut",
+      "title": "Alles, was ein ernsthafter Plan braucht",
+      "subtitle": "Eine vollständige Planungs-Engine — ganz ohne Tabellenakrobatik.",
+      "items": {
+        "monteCarlo": {
+          "title": "Eine echte Monte-Carlo-Engine",
+          "body": "Lognormale Renditen per Box-Muller-Transformation — Tausende vollständige Marktleben, berechnet in Sekunden."
+        },
+        "live": {
+          "title": "Sofortige Was-wäre-wenn-Antworten",
+          "body": "Bewegen Sie einen Regler und die Perzentile zeichnen sich in rund 100 Millisekunden neu. Hinterfragen Sie jede Annahme — live."
+        },
+        "phases": {
+          "title": "Beide Hälften der Reise",
+          "body": "Aufbau- und Entnahmephase in einem Modell: Sparratenwachstum, gesetzliche Rente, Einmalzahlungen und individuelle Ausgaben."
+        },
+        "reports": {
+          "title": "Berichte zum Teilen",
+          "body": "Exportieren Sie einen sauberen, umfassenden PDF-Bericht Ihres Plans — inklusive Annahmen, Charts und Empfehlungen."
+        },
+        "privacy": {
+          "title": "Privat von Grund auf",
+          "body": "Kein Konto und kein Tracking Ihrer Finanzen. Parameter bleiben ausschließlich im lokalen Speicher Ihres Browsers."
+        },
+        "bilingual": {
+          "title": "Zweisprachig & lokalisiert",
+          "body": "Vollständige Oberfläche auf Deutsch und Englisch — mit korrekter Währungs-, Zahlen- und Datumsformatierung."
+        }
+      }
+    },
+    "how": {
+      "eyebrow": "So funktioniert es",
+      "title": "Vom Bauchgefühl zum Plan in fünf Minuten",
+      "steps": {
+        "step1": {
+          "title": "Plan beschreiben",
+          "body": "Alter, Vermögen, Sparraten, Rente und Ausgaben — ein geführtes Setup in etwa fünf Minuten."
+        },
+        "step2": {
+          "title": "Tausende Zukünfte durchrechnen",
+          "body": "Die Engine spielt Ihr gesamtes Finanzleben durch simulierte Märkte — gute wie schlechte Jahrzehnte."
+        },
+        "step3": {
+          "title": "Testen und verfeinern",
+          "body": "Justieren Sie Annahmen live, beobachten Sie die Bänder und exportieren Sie das PDF, sobald der Plan trägt."
+        }
+      }
+    },
+    "cta": {
+      "title": "Wissen, wo Sie stehen.",
+      "subtitle": "Fünf Minuten Setup. Ein Leben lang Klarheit.",
+      "button": "Jetzt Plan erstellen",
+      "secondary": "oder das Live-Dashboard erkunden"
+    },
+    "footer": {
+      "tagline": "Monte-Carlo-Ruhestandsplanung — kostenlos, offen, privat.",
+      "setup": "Geführtes Setup",
+      "simulation": "Simulations-Dashboard",
+      "copyright": "© {year} Ruhestandssimulator. Läuft vollständig auf Ihrem Gerät."
+    }
+  },
   "layout": {
     "skipLinks": {
       "main": "Zum Hauptinhalt springen",
@@ -50,12 +164,27 @@
       "percentComplete": "{percent}% abgeschlossen",
       "autosave": "Fortschritt wird lokal automatisch gespeichert",
       "stepsLabel": "Setup-Schritte",
-      "timeRemaining": "Verbleibende Zeit"
+      "timeRemaining": "Verbleibende Zeit",
+      "minutesRemaining": "~{minutes} Min."
     },
     "buttons": {
       "back": "Zurück",
       "next": "Weiter",
-      "complete": "Setup abschließen"
+      "complete": "Setup abschließen",
+      "upNext": "Als Nächstes: {step}"
+    },
+    "validation": {
+      "ageRange": "Geben Sie ein Alter zwischen {min} und {max} ein.",
+      "nonNegative": "Dieser Wert darf nicht negativ sein.",
+      "typicalBetween": "Ungewöhnlicher Wert — typische Angaben liegen zwischen {min} und {max}.",
+      "retirementAfterCurrent": "Ihr geplantes Renteneintrittsalter sollte über Ihrem aktuellen Alter liegen.",
+      "horizonAfterRetirement": "Ihr Planungshorizont sollte über das Renteneintrittsalter hinausgehen."
+    },
+    "units": {
+      "currency": "€",
+      "percent": "%",
+      "percentPerYear": "%/Jahr",
+      "years": "J."
     },
     "steps": {
       "personal": {
@@ -98,24 +227,25 @@
           "tooltip": "Bis zu welchem Alter soll geplant werden? (meist 85–95)",
           "help": "Zeitraum, den der Plan abdecken soll. Wählen Sie Lebenserwartung plus Sicherheitsreserve."
         }
-      }
+      },
+      "timeline": "{workingYears, plural, one {# Arbeitsjahr} other {# Arbeitsjahre}} bis zur Rente · {retirementYears, plural, one {# Jahr} other {# Jahre}} Ruhestand zu finanzieren"
     },
     "assets": {
       "fields": {
         "currentAssets": {
-          "label": "Aktuelles Vermögen (€)",
+          "label": "Aktuelles Vermögen",
           "help": "Gesamter Wert Ihrer derzeitigen Anlagen und Ersparnisse"
         },
         "annualSavings": {
-          "label": "Jährliche Sparrate (€)",
+          "label": "Jährliche Sparrate",
           "help": "Wie viel können Sie bis zum Ruhestand pro Jahr zurücklegen?"
         },
         "annualSavingsGrowthRate": {
-          "label": "Sparratenwachstum (%/Jahr)",
+          "label": "Sparratenwachstum",
           "help": "Erwartete jährliche Steigerung Ihrer Sparrate mit wachsendem Einkommen."
         },
         "monthlyPension": {
-          "label": "Monatliche Rente (€)",
+          "label": "Monatliche Rente",
           "help": "Erwartete gesetzliche Rente ab dem gesetzlichen Rentenalter"
         }
       },
@@ -169,6 +299,7 @@
       }
     },
     "market": {
+      "realReturn": "Implizite Realrendite nach Inflation",
       "averageROI": {
         "label": "Durchschnittliche Rendite",
         "help": "Erwartete durchschnittliche jährliche Rendite Ihrer Anlagen"
@@ -535,7 +666,11 @@
       "moderate": "Solide",
       "needsAttention": "Handlungsbedarf"
     },
-    "success": { "label": "Erfolgsquote", "detail": "{runs} Simulationsläufe" },
+    "success": {
+      "label": "Erfolgsquote",
+      "detail": "{runs} Simulationsläufe",
+      "caption": "Anteil der simulierten Verläufe, in denen das Vermögen bis zum Planende reicht."
+    },
     "lasts": {
       "label": "Vermögen reicht",
       "toAge": "bis Alter {age}",
@@ -665,13 +800,17 @@
     "title": "Vermögensentwicklung im Zeitverlauf",
     "liveData": "Live-Daten",
     "reset": "Zoom zurücksetzen",
-    "description": "Diagramm der prognostizierten Vermögenswerte auf Basis einer Monte-Carlo-Simulation. Die Linien zeigen optimistisches (90. Perzentil), medianes (50. Perzentil) und pessimistisches (10. Perzentil) Szenario.",
+    "description": "Prognostizierter Portfoliowert aus der Monte-Carlo-Simulation. Die durchgezogene Linie ist der Median; die schattierten Bänder zeigen, wo die meisten simulierten Verläufe landen.",
     "axis": {
       "age": "Alter",
       "assets": "Vermögen (€)",
       "monthlySavings": "Monatliche Sparrate (€)"
     },
     "legend": {
+      "median": "Medianverlauf",
+      "likelyRange": "Wahrscheinlicher Bereich (P20–P80)",
+      "fullRange": "Gesamter Bereich (P10–P90)",
+      "events": "Plan-Meilensteine",
       "band": "P20–P80 Band",
       "title": "Legende",
       "p10": "10. Perzentil (pessimistisch)",
@@ -682,7 +821,13 @@
       "monthlySavings": "Monatliche Sparrate"
     },
     "tooltip": {
-      "label": "Alter: {age}"
+      "label": "Alter {age}",
+      "p90": "90. Perzentil",
+      "p80": "80. Perzentil",
+      "median": "Median",
+      "p20": "20. Perzentil",
+      "p10": "10. Perzentil",
+      "savings": "Monatliche Sparrate"
     },
     "markers": {
       "retirement": "Ruhestand",
@@ -695,7 +840,7 @@
       "zoomed": "Zoomansicht aktiv"
     },
     "aria": {
-      "description": "Vermögensdiagramm mit drei Szenarien: schlechtester Fall (10. Perzentil) in Rot, Median (50. Perzentil) in Blau und bester Fall (90. Perzentil) in Grün.",
+      "description": "Vermögens-Fächerdiagramm: Der Medianverlauf ist als durchgezogene Linie dargestellt, umgeben von einem wahrscheinlichen Bereich (20.–80. Perzentil) und einem Gesamtbereich (10.–90. Perzentil).",
       "controls": "Verwenden Sie die Pfeiltasten, um durch die Diagrammdaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen."
     }
   },
@@ -713,7 +858,7 @@
     "explanation": {
       "strategyLabel": "Ausgabenregel",
       "readingLabel": "Lesart",
-      "reading": "Die Linien zeigen den monatlichen Ausgabenrahmen nach Strategieregeln: Gelb ist P10, Blau der Median und Rot P90. Die schwarze Linie ist die mediane portfoliofinanzierte Entnahmerate nach Rentenverrechnung.",
+      "reading": "Die durchgezogene Linie ist der mediane monatliche Ausgabenrahmen nach Strategieregeln; das schattierte Band umfasst das 10. bis 90. Perzentil der Ergebnisse. Beim Überfahren eines Alters erscheint zusätzlich die mediane portfoliofinanzierte Entnahmerate nach Rentenverrechnung.",
       "dynamic": {
         "summary": "Vanguard DS startet mit dem geplanten Budget im ersten Ruhestandsjahr. Danach liegt das Ziel bei {withdrawalRate} des Portfolios zum Ende des Vorjahres, begrenzt auf {ceiling} nach oben und {floor} nach unten gegenüber den inflationsbereinigten Vorjahresausgaben."
       },
@@ -727,15 +872,20 @@
       "withdrawalRate": "Portfoliofinanzierte Rate (%)"
     },
     "tooltip": {
-      "label": "Alter: {age}"
+      "label": "Alter {age}",
+      "p90": "90. Perzentil",
+      "median": "Median",
+      "p10": "10. Perzentil"
     },
     "legend": {
       "title": "Legende",
+      "median": "Medianer Ausgabenrahmen",
+      "band": "Ergebnisbereich (P10–P90)",
       "p10": "10. Perzentil",
       "p50": "50. Perzentil",
       "p90": "90. Perzentil",
       "withdrawalRate": "Portfoliofinanzierte Entnahmerate",
-      "note": "Die Ausgabenlinien zeigen den Rahmen vor Rentenverrechnung; die Entnahmeratenlinie nutzt nur den portfoliofinanzierten Medianbetrag."
+      "note": "Ausgaben werden vor Rentenverrechnung gezeigt; die Entnahmerate im Tooltip nutzt nur den portfoliofinanzierten Medianbetrag."
     },
     "markers": {
       "retirement": "Ruhestand"
@@ -745,7 +895,7 @@
       "zoomed": "Zoomansicht aktiv"
     },
     "aria": {
-      "description": "Diagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge} mit P10-, Median- und P90-Linien sowie einer Linie für die mediane portfoliofinanzierte Entnahmerate.",
+      "description": "Diagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge}: eine durchgezogene Medianlinie in einem schattierten Band vom 10. bis 90. Perzentil der Ergebnisse.",
       "controls": "Verwenden Sie die Pfeiltasten, um durch die Ausgabendaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen."
     }
   },

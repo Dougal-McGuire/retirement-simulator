@@ -30,10 +30,61 @@ const scoreTones: Record<PlanHealthLabel, string> = {
   'Needs Attention': 'text-neo-red',
 }
 
-function successTone(rate: number) {
+function successToneClass(rate: number) {
   if (rate >= 90) return 'text-neo-green'
   if (rate >= 75) return 'text-warning-600'
   return 'text-neo-red'
+}
+
+function successStroke(rate: number) {
+  if (rate >= 90) return 'var(--neo-green)'
+  if (rate >= 75) return '#d97706'
+  return 'var(--neo-red)'
+}
+
+function SuccessGauge({ rate }: { rate: number }) {
+  const radius = 52
+  const circumference = 2 * Math.PI * radius
+  const clamped = Math.max(0, Math.min(100, rate))
+
+  return (
+    <div className="relative h-36 w-36 shrink-0 sm:h-40 sm:w-40">
+      <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
+        <circle
+          cx="60"
+          cy="60"
+          r={radius}
+          fill="none"
+          stroke="rgb(var(--neo-black-rgb) / 0.08)"
+          strokeWidth="9"
+        />
+        <circle
+          cx="60"
+          cy="60"
+          r={radius}
+          fill="none"
+          stroke={successStroke(clamped)}
+          strokeWidth="9"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - clamped / 100)}
+          className="transition-[stroke-dashoffset,stroke] duration-700 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <AnimatedCounter
+          end={clamped}
+          duration={1.2}
+          decimals={clamped >= 99.95 ? 0 : 1}
+          suffix="%"
+          className={cn(
+            'whitespace-nowrap text-2xl font-black leading-none tabular-nums sm:text-[1.6rem]',
+            successToneClass(clamped)
+          )}
+        />
+      </div>
+    </div>
+  )
 }
 
 export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroProps) {
@@ -94,18 +145,6 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
       detail: health ? t(`score.${scoreLabelKeys[health.label]}`) : '',
     },
     {
-      key: 'success',
-      label: t('success.label'),
-      value: results ? (
-        <span className={cn(successTone(results.successRate))}>
-          <AnimatedCounter end={results.successRate} duration={1.5} decimals={1} suffix="%" />
-        </span>
-      ) : (
-        t('notAvailable')
-      ),
-      detail: results ? t('success.detail', { runs: format.number(params.simulationRuns) }) : '',
-    },
-    {
       key: 'lasts',
       label: t('lasts.label'),
       value: results
@@ -140,18 +179,52 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
     <Card className="overflow-hidden border-3 border-neo-black">
       <CardContent className={cn('bg-neo-white p-5', isLoading && 'animate-pulse opacity-70')}>
         <h2 className="sr-only">{t('title')}</h2>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-          {tiles.map((tile) => (
-            <div key={tile.key} className="border-2 border-neo-black bg-background p-4 shadow-neo-sm">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
+          {/* Success rate hero */}
+          <div className="flex items-center gap-5 border-2 border-neo-black bg-background p-4 shadow-neo-sm lg:max-w-[21rem] lg:shrink-0">
+            {results ? (
+              <SuccessGauge rate={results.successRate} />
+            ) : (
+              <div className="flex h-36 w-36 shrink-0 items-center justify-center sm:h-40 sm:w-40">
+                <span className="text-3xl font-black text-muted-foreground">
+                  {t('notAvailable')}
+                </span>
+              </div>
+            )}
+            <div className="min-w-0">
               <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                {tile.label}
+                {t('success.label')}
               </span>
-              <div className="mt-2 text-2xl font-black text-neo-black">{tile.value}</div>
-              {tile.detail && (
-                <p className="mt-1 text-xs font-medium text-muted-foreground">{tile.detail}</p>
+              <p className="mt-1.5 text-xs font-medium leading-relaxed text-foreground/80">
+                {t('success.caption')}
+              </p>
+              {results && (
+                <p className="mt-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                  {t('success.detail', { runs: format.number(params.simulationRuns) })}
+                </p>
               )}
             </div>
-          ))}
+          </div>
+
+          {/* Supporting stats */}
+          <div className="grid flex-1 grid-cols-2 gap-4">
+            {tiles.map((tile) => (
+              <div
+                key={tile.key}
+                className="border-2 border-neo-black bg-background p-4 shadow-neo-sm"
+              >
+                <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  {tile.label}
+                </span>
+                <div className="mt-2 text-xl font-black text-neo-black sm:text-2xl">
+                  {tile.value}
+                </div>
+                {tile.detail && (
+                  <p className="mt-1 text-xs font-medium text-muted-foreground">{tile.detail}</p>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {warnings.length > 0 && (
@@ -159,7 +232,7 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
             {warnings.map((warning) => (
               <li
                 key={warning.id}
-                className="flex items-start gap-3 border-2 border-neo-red bg-red-50 px-4 py-3 text-sm font-semibold text-neo-red"
+                className="flex items-start gap-3 border-2 border-neo-red/70 bg-neo-red/10 px-4 py-3 text-sm font-semibold text-neo-red"
               >
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 {warningText(warning)}

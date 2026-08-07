@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import { Plus_Jakarta_Sans, Sora } from 'next/font/google'
-import { DEFAULT_THEME_ID, THEME_STORAGE_KEY } from '@/lib/themes'
+import { DEFAULT_THEME_ID, THEME_IDS, THEME_STORAGE_KEY } from '@/lib/themes'
 import './globals.css'
 
 const jakarta = Plus_Jakarta_Sans({
@@ -30,13 +30,15 @@ export const metadata: Metadata = {
 const themeInitScript = `
 (() => {
   const defaultTheme = ${JSON.stringify(DEFAULT_THEME_ID)};
-  document.documentElement.dataset.theme = defaultTheme;
+  const validThemes = ${JSON.stringify(THEME_IDS)};
+  let theme = defaultTheme;
   try {
-    const storageKey = ${JSON.stringify(THEME_STORAGE_KEY)};
-    window.localStorage.setItem(storageKey, defaultTheme);
-  } catch {
-    document.documentElement.dataset.theme = defaultTheme;
-  }
+    const stored = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
+    if (stored && validThemes.includes(stored)) {
+      theme = stored;
+    }
+  } catch {}
+  document.documentElement.dataset.theme = theme;
 })();
 `
 

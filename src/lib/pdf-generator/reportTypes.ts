@@ -226,7 +226,7 @@ export interface ReportFinances {
 }
 
 export interface ReportProjections {
-  milestones: Array<Pick<Milestone, 'age' | 'p10' | 'p50' | 'p90'>>
+  milestones: Array<Pick<Milestone, 'age' | 'p10' | 'p20' | 'p50' | 'p80' | 'p90'>>
   exhaustionAge?: number
 }
 
@@ -309,7 +309,9 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
   const pickMilestones = data.projections.milestones.map((m) => ({
     age: m.age,
     p10: m.p10,
+    p20: m.p20,
     p50: m.p50,
+    p80: m.p80,
     p90: m.p90,
   }))
 

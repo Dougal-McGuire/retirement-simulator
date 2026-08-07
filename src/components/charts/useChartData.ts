@@ -50,13 +50,17 @@ export function useChartData(results: SimulationResults) {
         ...d,
         assets_band_lower: d.assets_p20,
         assets_band_height: Math.max(0, d.assets_p80 - d.assets_p20),
+        assets_outer_lower: d.assets_p10,
+        assets_outer_height: Math.max(0, d.assets_p90 - d.assets_p10),
+        spending_band_lower: d.spending_p10,
+        spending_band_height: Math.max(0, d.spending_p90 - d.spending_p10),
       })),
     [chartData]
   )
 
   const spendingData = useMemo(
-    () => chartData.filter((d) => d.age >= results.params.retirementAge),
-    [chartData, results.params.retirementAge]
+    () => chartDataWithBand.filter((d) => d.age >= results.params.retirementAge),
+    [chartDataWithBand, results.params.retirementAge]
   )
 
   const milestoneRows = useMemo(

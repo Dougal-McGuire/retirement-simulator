@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('i18n routing', () => {
-  test('redirects root to default locale', async ({ page }) => {
+  test('redirects root to default locale landing page', async ({ page }) => {
     await page.goto('/')
-    await page.waitForURL((url) => url.pathname === '/en/setup', { timeout: 5000 })
-    await expect(page.getByRole('heading', { level: 1, name: 'Setup' })).toBeVisible()
+    await page.waitForURL((url) => url.pathname === '/en', { timeout: 5000 })
+    await expect(
+      page.getByRole('heading', { level: 1, name: /simulated 5,000 times/i })
+    ).toBeVisible()
   })
 
   test('renders German translations on simulation page', async ({ page }) => {
@@ -13,7 +15,9 @@ test.describe('i18n routing', () => {
       page.getByRole('heading', { level: 1, name: 'Ruhestandssimulation' })
     ).toBeVisible()
     await expect(
-      page.getByText('Planen, justieren und überwachen Sie Ihren Ruhestand mit Live-Monte-Carlo-Ergebnissen.')
+      page.getByText(
+        'Planen, justieren und überwachen Sie Ihren Ruhestand mit Live-Monte-Carlo-Ergebnissen.'
+      )
     ).toBeVisible()
     await expect(page.getByRole('button', { name: 'Keine Daten' })).toBeVisible()
   })
