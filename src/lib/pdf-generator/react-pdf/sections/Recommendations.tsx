@@ -37,7 +37,10 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
   const isGerman = content.locale !== 'en'
   const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
 
-  const list = recommendations.primary.slice(0, 4)
+  // The section is a single page by design: the levers table and the 90-day
+  // plan below always fit, so the card list is capped to what is left over.
+  const maxCards = recommendations.primary.length >= 4 ? 3 : 5
+  const list = recommendations.primary.slice(0, maxCards)
   const hiddenCount = Math.max(0, recommendations.primary.length - list.length)
   const uplifts = recommendations.uplifts.slice(0, 3)
 
@@ -149,7 +152,7 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
         >
           {isGerman ? 'Worauf es zuerst ankommt' : 'What Matters First'}
         </Text>
-        <Text style={{ fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
+        <Text style={{ fontSize: 8, color: tokens.colors.ink[700], lineHeight: 1.45 }}>
           {projections.exhaustionAge
             ? isGerman
               ? `Das Stressszenario läuft ab Alter ${fmtNumber(projections.exhaustionAge, { locale })} leer. Die wirksamsten Hebel sind ein späterer Ruhestandsbeginn als ${person.retireAge} und eine Senkung des Jahresbudgets von ${fmtCurrency(annualSpend, locale)}; beides wirkt direkt auf die Entnahmerate.`
@@ -336,7 +339,9 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
           {levers.map((lever, index) => (
             <TableRow key={lever.lever} alt={index % 2 === 1}>
               <TableCell width="42%">
-                <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>{lever.lever}</Text>
+                <Text style={{ fontSize: 7.5, fontWeight: 600, color: tokens.colors.ink[900] }}>
+                  {lever.lever}
+                </Text>
               </TableCell>
               <TableCell width="32%" align="right">
                 <Text style={{ fontSize: 7.5 }}>{lever.gap}</Text>
@@ -373,12 +378,12 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
                 </Text>
               </TableCell>
               <TableCell width="30%">
-                <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
+                <Text style={{ fontSize: 7.5, fontWeight: 600, color: tokens.colors.ink[900] }}>
                   {checkpoint.what}
                 </Text>
               </TableCell>
               <TableCell width="52%">
-                <Text style={{ fontSize: 7.5, lineHeight: 1.45 }}>{checkpoint.detail}</Text>
+                <Text style={{ fontSize: 7, lineHeight: 1.4 }}>{checkpoint.detail}</Text>
               </TableCell>
             </TableRow>
           ))}
