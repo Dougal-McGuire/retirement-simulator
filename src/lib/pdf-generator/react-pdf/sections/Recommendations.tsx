@@ -43,6 +43,10 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
   const list = recommendations.primary.slice(0, maxCards)
   const hiddenCount = Math.max(0, recommendations.primary.length - list.length)
   const uplifts = recommendations.uplifts.slice(0, 3)
+  // The uplift table and the lever table answer the same question ("what
+  // changes if I act"), so only one of them is ever shown: the modelled uplift
+  // when the payload carries it, the arithmetic levers otherwise.
+  const showLevers = uplifts.length === 0
 
   const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
   const { person } = profile
@@ -300,13 +304,15 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
                   <TableCell width="58%">{uplift.title}</TableCell>
                   <TableCell width="20%" align="right">
                     <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
-                      +{fmtNumber(uplift.upliftMin, { locale })}–{fmtNumber(uplift.upliftMax, { locale })} pp
+                      {uplift.upliftMin === uplift.upliftMax
+                        ? `+${fmtNumber(uplift.upliftMin, { locale })} pp`
+                        : `+${fmtNumber(uplift.upliftMin, { locale })}–${fmtNumber(uplift.upliftMax, { locale })} pp`}
                     </Text>
                   </TableCell>
                   <TableCell width="22%" align="right">
-                    {fmtNumber(low, { locale, maximumFractionDigits: 0 })}–
-                    {fmtNumber(high, { locale, maximumFractionDigits: 0 })}
-                    {isGerman ? ' %' : '%'}
+                    {low === high
+                      ? `${fmtNumber(low, { locale, maximumFractionDigits: 0 })}${isGerman ? ' %' : '%'}`
+                      : `${fmtNumber(low, { locale, maximumFractionDigits: 0 })}–${fmtNumber(high, { locale, maximumFractionDigits: 0 })}${isGerman ? ' %' : '%'}`}
                   </TableCell>
                 </TableRow>
               )
@@ -315,6 +321,7 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
         </View>
       )}
 
+      {showLevers && (
       <View style={[styles.card, { marginTop: 4, marginBottom: 8 }]}>
         <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
           {isGerman ? 'Wirkung der wichtigsten Hebel' : 'Effect of the Main Levers'}
@@ -353,6 +360,7 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
           ))}
         </Table>
       </View>
+      )}
 
       <View style={[styles.card, { marginTop: 0, marginBottom: 8 }]}>
         <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
