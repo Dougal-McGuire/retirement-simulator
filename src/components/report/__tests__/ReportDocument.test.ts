@@ -32,6 +32,11 @@ const englishReportContent = {
       score: 82,
       label: 'Strong',
       reasons: ['Balanced assumptions'],
+      components: [
+        { id: 'success', value: 85, weight: 0.6 },
+        { id: 'spending', value: 100, weight: 0.25 },
+        { id: 'liquidity', value: 100, weight: 0.15 },
+      ],
     },
     highlights: ['Keep current plan on track'],
   },
@@ -105,6 +110,7 @@ const englishReportContent = {
   scenarios: [],
   recommendations: {
     primary: [],
+    uplifts: [],
   },
   locale: 'en',
 } satisfies ReportContent
