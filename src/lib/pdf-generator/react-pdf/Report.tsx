@@ -456,13 +456,18 @@ export function RetirementReport({ content }: RetirementReportProps) {
         ]}
         hero={
           milestones.length >= 2 ? (
-            <CoverSparkline data={milestones} locale={content.locale} />
+            <CoverSparkline
+              data={milestones}
+              locale={content.locale}
+              retireAge={profile.person.retireAge}
+              pensionAge={profile.person.pensionAge}
+            />
           ) : undefined
         }
         heroCaption={
           isGerman
-            ? 'Medianpfad des Vermögens mit P10–P90-Band über den Planungshorizont'
-            : 'Median asset path with P10–P90 band across the planning horizon'
+            ? `Medianpfad des Vermögens mit P10–P90-Band, Alter ${profile.person.currentAge} bis ${profile.person.horizonAge} · Detailgrafik in Abschnitt 03`
+            : `Median asset path with P10–P90 band, age ${profile.person.currentAge} to ${profile.person.horizonAge} · detailed chart in section 03`
         }
         metadata={[
           { label: isGerman ? 'Berichts-ID' : 'Report ID', value: metadata.id },

@@ -45,13 +45,19 @@ function percentFor(age: number) {
 
 function linePath(series: readonly number[]) {
   return series
-    .map((value, i) => `${i === 0 ? 'M' : 'L'}${xFor(PREVIEW_AGES[i]).toFixed(1)},${yFor(value).toFixed(1)}`)
+    .map(
+      (value, i) =>
+        `${i === 0 ? 'M' : 'L'}${xFor(PREVIEW_AGES[i]).toFixed(1)},${yFor(value).toFixed(1)}`
+    )
     .join(' ')
 }
 
 function bandPath(upper: readonly number[], lower: readonly number[]) {
   const up = upper
-    .map((value, i) => `${i === 0 ? 'M' : 'L'}${xFor(PREVIEW_AGES[i]).toFixed(1)},${yFor(value).toFixed(1)}`)
+    .map(
+      (value, i) =>
+        `${i === 0 ? 'M' : 'L'}${xFor(PREVIEW_AGES[i]).toFixed(1)},${yFor(value).toFixed(1)}`
+    )
     .join(' ')
   const down = lower
     .map(
@@ -243,7 +249,10 @@ export function FanChartPreview() {
         {/* Readout: the same numbers the dashboard reports */}
         <div className="grid grid-cols-3 border-t-3 border-neo-black bg-[var(--neo-surface-muted)] divide-x-[3px] divide-neo-black">
           {outcomes.map(({ key, value, tone }) => (
-            <div key={key} className="flex h-full min-w-0 flex-col justify-between px-2 py-3 sm:px-4">
+            <div
+              key={key}
+              className="flex h-full min-w-0 flex-col justify-between px-2 py-3 sm:px-4"
+            >
               <span className="landing-label flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.5rem] font-semibold text-muted-foreground sm:text-[0.55rem]">
                 <span className={`h-2 w-4 ${tone}`} aria-hidden="true" />
                 {t(`outcomes.${key}`)}

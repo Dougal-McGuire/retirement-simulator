@@ -147,13 +147,22 @@ export function LandingPage() {
               </p>
 
               <div className="animate-fade-in-delayed mt-7 flex w-full flex-col flex-wrap gap-3 sm:flex-row sm:items-center">
-                <Button size="lg" asChild className="landing-label h-auto w-full whitespace-normal py-3 text-center leading-tight sm:w-auto lg:w-full lg:max-w-[21rem]">
+                <Button
+                  size="lg"
+                  asChild
+                  className="landing-label h-auto w-full whitespace-normal py-3 text-center leading-tight sm:w-auto lg:w-full lg:max-w-[21rem]"
+                >
                   <Link href="/setup">
                     {t('hero.ctaPrimary')}
                     <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
                   </Link>
                 </Button>
-                <Button variant="outline" size="lg" asChild className="landing-label h-auto w-full whitespace-normal py-3 text-center leading-tight sm:w-auto lg:w-full lg:max-w-[21rem]">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  asChild
+                  className="landing-label h-auto w-full whitespace-normal py-3 text-center leading-tight sm:w-auto lg:w-full lg:max-w-[21rem]"
+                >
                   <Link href="/simulation">{t('hero.ctaSecondary')}</Link>
                 </Button>
               </div>
@@ -314,7 +323,11 @@ export function LandingPage() {
             <p className="landing-cta-sub landing-body mt-4 text-sm font-semibold">
               {t('cta.subtitle')}
             </p>
-            <Button size="lg" asChild className="landing-label mt-10 h-auto w-full max-w-[20rem] whitespace-normal py-3 leading-tight sm:min-w-[16rem]">
+            <Button
+              size="lg"
+              asChild
+              className="landing-label mt-10 h-auto w-full max-w-[20rem] whitespace-normal py-3 leading-tight sm:min-w-[16rem]"
+            >
               <Link href="/setup">
                 {t('cta.button')}
                 <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />

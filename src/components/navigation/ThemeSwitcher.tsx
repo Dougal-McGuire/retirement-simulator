@@ -83,9 +83,7 @@ export function ThemeSwitcher({ className, size = 'sm' }: ThemeSwitcherProps) {
                 />
               ))}
             </span>
-            <span className="whitespace-nowrap">
-              {t(`options.${activeOption.translationKey}`)}
-            </span>
+            <span className="whitespace-nowrap">{t(`options.${activeOption.translationKey}`)}</span>
           </span>
         </SelectValue>
       </SelectTrigger>
