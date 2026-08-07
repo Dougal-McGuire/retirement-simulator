@@ -33,10 +33,59 @@ function impactVisual(impact: string, isGerman: boolean) {
 }
 
 export function Recommendations({ content, sectionNumber = '05' }: RecommendationsProps) {
-  const { recommendations } = content
+  const { recommendations, profile, expenses, finances, projections } = content
   const isGerman = content.locale !== 'en'
+  const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
 
   const list = recommendations.primary.slice(0, 5)
+  const uplifts = recommendations.uplifts.slice(0, 3)
+
+  const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
+  const { person } = profile
+  const bridgeYears = Math.max(0, person.pensionAge - person.retireAge)
+
+  /**
+   * A short, concrete review agenda. Every row is derived from this plan's own
+   * numbers so the reader leaves with dates and amounts, not platitudes.
+   */
+  const checkpoints: Array<{ when: string; what: string; detail: string }> = [
+    {
+      when: isGerman ? '0–30 Tage' : 'Days 0–30',
+      what: isGerman ? 'Liquiditätspuffer festlegen' : 'Set the cash buffer',
+      detail: profile.bridge
+        ? isGerman
+          ? `${fmtCurrency(profile.bridge.cashNeedEUR, locale)} für ${fmtNumber(bridgeYears, { locale })} Überbrückungsjahre einplanen; die ersten ${fmtNumber(profile.bridge.cashBucketYears ?? 2, { locale })} Jahre schwankungsarm halten.`
+          : `Earmark ${fmtCurrency(profile.bridge.cashNeedEUR, locale)} for ${fmtNumber(bridgeYears, { locale })} bridge years; hold the first ${fmtNumber(profile.bridge.cashBucketYears ?? 2, { locale })} years in low-volatility assets.`
+        : isGerman
+          ? `Zwölf Monatsausgaben (${fmtCurrency(annualSpend, locale)} p.a.) als Puffer bereitstellen.`
+          : `Hold twelve months of spending (${fmtCurrency(annualSpend, locale)} p.a.) as a buffer.`,
+    },
+    {
+      when: isGerman ? '30–60 Tage' : 'Days 30–60',
+      what: isGerman ? 'Eine Maßnahme mit hoher Wirkung umsetzen' : 'Implement one high-impact action',
+      detail: list[0]
+        ? isGerman
+          ? `Beginnen Sie mit „${list[0].title}“ — die Maßnahme mit der größten erwarteten Wirkung.`
+          : `Start with "${list[0].title}" — the action with the largest expected effect.`
+        : isGerman
+          ? 'Priorisieren Sie die Maßnahme mit dem größten Hebel auf die Erfolgsquote.'
+          : 'Prioritise the action with the largest leverage on the success rate.',
+    },
+    {
+      when: isGerman ? '60–90 Tage' : 'Days 60–90',
+      what: isGerman ? 'Simulation erneut laufen lassen' : 'Rerun the simulation',
+      detail: isGerman
+        ? `Vergleichen Sie die neue Erfolgsquote mit den heutigen ${fmtPercent(profile.success.successRate, 1, locale)}.`
+        : `Compare the new success rate against today's ${fmtPercent(profile.success.successRate, 1, locale)}.`,
+    },
+    {
+      when: isGerman ? 'Jährlich' : 'Annually',
+      what: isGerman ? 'Annahmen nachziehen' : 'Refresh the assumptions',
+      detail: isGerman
+        ? `Rentenbescheid, Ausgabenliste (${fmtCurrency(finances.monthlyPension, locale)} monatliche Rente heute) und Planungshorizont bis ${person.horizonAge} überprüfen.`
+        : `Revisit the pension statement, the expense list (${fmtCurrency(finances.monthlyPension, locale)} monthly pension today) and the horizon at age ${person.horizonAge}.`,
+    },
+  ]
 
   return (
     <View>
@@ -143,16 +192,107 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
         })
       )}
 
-      <View style={[styles.callout, { marginTop: 6 }]}>
+      {uplifts.length > 0 && (
+        <View style={[styles.card, { marginTop: 4, marginBottom: 8 }]}>
+          <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
+            {isGerman ? 'Erwartete Wirkung auf die Erfolgsquote' : 'Expected Effect on the Success Rate'}
+          </Text>
+          <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 4 }}>
+            {isGerman
+              ? `Modellschätzung in Prozentpunkten, ausgehend von heute ${fmtPercent(profile.success.successRate, 1, locale)}.`
+              : `Model estimate in percentage points, starting from today's ${fmtPercent(profile.success.successRate, 1, locale)}.`}
+          </Text>
+          <Table>
+            <TableRow header>
+              <TableCell header width="58%">
+                {isGerman ? 'Maßnahme' : 'Action'}
+              </TableCell>
+              <TableCell header width="20%" align="right">
+                {isGerman ? 'Wirkung' : 'Uplift'}
+              </TableCell>
+              <TableCell header width="22%" align="right">
+                {isGerman ? 'Neue Quote' : 'Resulting rate'}
+              </TableCell>
+            </TableRow>
+            {uplifts.map((uplift, index) => {
+              const base = profile.success.successRate * 100
+              const low = Math.min(100, base + uplift.upliftMin)
+              const high = Math.min(100, base + uplift.upliftMax)
+              return (
+                <TableRow key={`${uplift.title}-${index}`} alt={index % 2 === 1}>
+                  <TableCell width="58%">{uplift.title}</TableCell>
+                  <TableCell width="20%" align="right">
+                    <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
+                      +{fmtNumber(uplift.upliftMin, { locale })}–{fmtNumber(uplift.upliftMax, { locale })} pp
+                    </Text>
+                  </TableCell>
+                  <TableCell width="22%" align="right">
+                    {fmtNumber(low, { locale, maximumFractionDigits: 0 })}–
+                    {fmtNumber(high, { locale, maximumFractionDigits: 0 })}
+                    {isGerman ? ' %' : '%'}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </Table>
+        </View>
+      )}
+
+      <View style={[styles.card, { marginTop: 0, marginBottom: 8 }]}>
+        <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
+          {isGerman ? '90-Tage-Umsetzungsplan' : '90-Day Implementation Plan'}
+        </Text>
+        <Table>
+          <TableRow header>
+            <TableCell header width="18%">
+              {isGerman ? 'Zeitraum' : 'Window'}
+            </TableCell>
+            <TableCell header width="30%">
+              {isGerman ? 'Schritt' : 'Step'}
+            </TableCell>
+            <TableCell header width="52%">
+              {isGerman ? 'Konkret' : 'Specifically'}
+            </TableCell>
+          </TableRow>
+          {checkpoints.map((checkpoint, index) => (
+            <TableRow key={checkpoint.when} alt={index % 2 === 1}>
+              <TableCell width="18%">
+                <Text style={{ fontSize: 7.5, fontWeight: 600, color: tokens.colors.accent[700] }}>
+                  {checkpoint.when}
+                </Text>
+              </TableCell>
+              <TableCell width="30%">
+                <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
+                  {checkpoint.what}
+                </Text>
+              </TableCell>
+              <TableCell width="52%">
+                <Text style={{ fontSize: 7.5, lineHeight: 1.45 }}>{checkpoint.detail}</Text>
+              </TableCell>
+            </TableRow>
+          ))}
+        </Table>
+      </View>
+
+      <View
+        style={[
+          styles.callout,
+          projections.exhaustionAge ? styles.calloutWarning : styles.calloutSuccess,
+        ]}
+      >
         <Text
           style={{ fontSize: 8.5, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 3 }}
         >
-          {isGerman ? 'Umsetzungsrahmen' : 'Implementation Frame'}
+          {isGerman ? 'Worauf es zuerst ankommt' : 'What Matters First'}
         </Text>
         <Text style={{ fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
-          {isGerman
-            ? 'Empfehlung: Fokussieren Sie sich in den nächsten 90 Tagen auf ein bis zwei Maßnahmen mit hoher Wirkung und führen Sie die Simulation anschließend erneut durch.'
-            : 'Recommendation: focus on one or two high-impact actions over the next 90 days, then rerun the simulation to validate the effect.'}
+          {projections.exhaustionAge
+            ? isGerman
+              ? `Das Stressszenario läuft ab Alter ${fmtNumber(projections.exhaustionAge, { locale })} leer. Die wirksamsten Hebel sind ein späterer Ruhestandsbeginn als ${person.retireAge} und eine Senkung des Jahresbudgets von ${fmtCurrency(annualSpend, locale)}; beides wirkt direkt auf die Entnahmerate.`
+              : `The stress scenario runs dry from age ${fmtNumber(projections.exhaustionAge, { locale })}. The strongest levers are retiring later than ${person.retireAge} and trimming the ${fmtCurrency(annualSpend, locale)} annual budget; both act directly on the withdrawal rate.`
+            : isGerman
+              ? `Der Plan trägt auch im Stressszenario bis Alter ${person.horizonAge}. Der Fokus liegt daher auf Absicherung: Liquiditätspuffer für die Überbrückungsjahre und regelmäßige Überprüfung der Annahmen.`
+              : `The plan holds to age ${person.horizonAge} even under stress. The focus is therefore protective: keep the bridge-year liquidity buffer and revisit the assumptions regularly.`}
         </Text>
       </View>
     </View>
