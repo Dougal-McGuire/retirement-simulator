@@ -195,20 +195,99 @@ function AppendixSection({
         </Text>
       </View>
 
-      <View style={[styles.card, { marginBottom: 12 }]}>
-        <Text style={styles.cardTitle}>
-          {isGerman ? 'Perzentile richtig lesen' : 'How to Read Percentiles'}
-        </Text>
-        <Table>
-          {percentileRows.map((row, index) => (
-            <TableRow key={row.key} alt={index % 2 === 1}>
-              <TableCell width="12%">
-                <Text style={{ fontWeight: 600, color: tokens.colors.accent[700] }}>{row.key}</Text>
-              </TableCell>
-              <TableCell width="88%">{row.text}</TableCell>
-            </TableRow>
+      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+        <View style={[styles.card, { width: '54%', marginRight: 10, marginBottom: 0 }]}>
+          <Text style={styles.cardTitle}>
+            {isGerman ? 'Perzentile richtig lesen' : 'How to Read Percentiles'}
+          </Text>
+          <Table>
+            {percentileRows.map((row, index) => (
+              <TableRow key={row.key} alt={index % 2 === 1}>
+                <TableCell width="16%">
+                  <Text style={{ fontWeight: 600, color: tokens.colors.accent[700] }}>
+                    {row.key}
+                  </Text>
+                </TableCell>
+                <TableCell width="84%">
+                  <Text style={{ fontSize: 7.5, lineHeight: 1.45 }}>{row.text}</Text>
+                </TableCell>
+              </TableRow>
+            ))}
+          </Table>
+        </View>
+
+        <View style={[styles.card, { flex: 1, marginBottom: 0 }]}>
+          <Text style={styles.cardTitle}>
+            {isGerman ? 'Verwendete Parameter' : 'Parameters Used'}
+          </Text>
+          <Table>
+            {parameterRecap.map((row, index) => (
+              <TableRow key={row.label} alt={index % 2 === 1}>
+                <TableCell width="60%">
+                  <Text style={{ fontSize: 7.5, lineHeight: 1.4 }}>{row.label}</Text>
+                </TableCell>
+                <TableCell width="40%" align="right">
+                  <Text style={{ fontSize: 7.5, fontWeight: 600, color: tokens.colors.ink[900] }}>
+                    {row.value}
+                  </Text>
+                </TableCell>
+              </TableRow>
+            ))}
+          </Table>
+        </View>
+      </View>
+
+      <View style={[styles.card, { marginBottom: 10 }]}>
+        <Text style={styles.cardTitle}>{isGerman ? 'Glossar' : 'Glossary'}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          {glossary.map((entry, index) => (
+            <View
+              key={entry.term}
+              style={{
+                width: '50%',
+                paddingRight: index % 2 === 0 ? 10 : 0,
+                paddingLeft: index % 2 === 1 ? 10 : 0,
+                marginBottom: 7,
+              }}
+            >
+              <Text style={{ fontSize: 8, fontWeight: 600, color: tokens.colors.ink[900] }}>
+                {entry.term}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 7.5,
+                  color: tokens.colors.ink[600],
+                  lineHeight: 1.45,
+                  marginTop: 1.5,
+                }}
+              >
+                {entry.text}
+              </Text>
+            </View>
           ))}
-        </Table>
+        </View>
+      </View>
+
+      <View style={[styles.card, { marginBottom: 10 }]}>
+        <Text style={[styles.cardTitle, { marginBottom: 5 }]}>
+          {isGerman ? 'Grenzen des Modells' : 'Limits of the Model'}
+        </Text>
+        {limitations.map((limitation) => (
+          <View key={limitation} style={{ flexDirection: 'row', marginBottom: 4 }}>
+            <View
+              style={{
+                width: 4,
+                height: 4,
+                backgroundColor: tokens.colors.brand.yellow,
+                marginTop: 3.5,
+                marginRight: 6,
+              }}
+            />
+            <Text style={{ flex: 1, fontSize: 8, color: tokens.colors.ink[600], lineHeight: 1.5 }}>
+              {limitation}
+            </Text>
+          </View>
+        ))}
       </View>
 
       <View style={[styles.callout, { borderLeftColor: tokens.colors.ink[400] }]}>

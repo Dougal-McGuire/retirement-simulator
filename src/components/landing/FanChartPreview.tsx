@@ -148,7 +148,7 @@ export function FanChartPreview() {
                   x2={PENSION_X}
                   y1={10}
                   y2={VIEW_H}
-                  className="stroke-chart-4"
+                  className="hidden stroke-chart-4 sm:block"
                   strokeWidth={2}
                   strokeDasharray="5 7"
                 />
@@ -202,7 +202,7 @@ export function FanChartPreview() {
 
               {/* Phase markers */}
               <div
-                className="pointer-events-none absolute -top-1 hidden -translate-x-1/2 sm:block"
+                className="pointer-events-none absolute -top-1 -translate-x-1/2"
                 style={{ left: `${percentFor(PREVIEW_PLAN.retirementAge)}%` }}
               >
                 <span className="landing-label border-2 border-neo-black bg-neo-white px-2 py-0.5 text-[0.55rem] font-bold text-neo-black shadow-neo-xs">
@@ -210,7 +210,7 @@ export function FanChartPreview() {
                 </span>
               </div>
               <div
-                className="pointer-events-none absolute -top-1 hidden -translate-x-1/2 lg:block"
+                className="pointer-events-none absolute -top-1 hidden -translate-x-1/2 sm:block"
                 style={{ left: `${percentFor(PREVIEW_PLAN.legalRetirementAge)}%` }}
               >
                 <span className="landing-label border-2 border-neo-black bg-neo-white px-2 py-0.5 text-[0.55rem] font-bold text-neo-black shadow-neo-xs">
@@ -243,7 +243,7 @@ export function FanChartPreview() {
         {/* Readout: the same numbers the dashboard reports */}
         <div className="grid grid-cols-3 border-t-3 border-neo-black bg-[var(--neo-surface-muted)] divide-x-[3px] divide-neo-black">
           {outcomes.map(({ key, value, tone }) => (
-            <div key={key} className="min-w-0 px-2 py-3 sm:px-4">
+            <div key={key} className="flex h-full min-w-0 flex-col justify-between px-2 py-3 sm:px-4">
               <span className="landing-label flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.5rem] font-semibold text-muted-foreground sm:text-[0.55rem]">
                 <span className={`h-2 w-4 ${tone}`} aria-hidden="true" />
                 {t(`outcomes.${key}`)}
