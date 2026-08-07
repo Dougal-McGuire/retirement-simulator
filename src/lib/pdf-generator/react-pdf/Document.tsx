@@ -173,8 +173,7 @@ export function CoverPage({
               style={{
                 width: 8,
                 height: 8,
-                backgroundColor: '#7fc4d8',
-                borderRadius: 1.5,
+                backgroundColor: tokens.colors.brand.yellow,
                 marginRight: 6,
               }}
             />
@@ -196,7 +195,7 @@ export function CoverPage({
                 fontSize: 7,
                 letterSpacing: 1.2,
                 textTransform: 'uppercase',
-                color: '#9ec7d6',
+                color: 'rgba(255, 255, 255, 0.55)',
               }}
             >
               {classification}
@@ -211,7 +210,7 @@ export function CoverPage({
               fontWeight: 600,
               letterSpacing: 1.8,
               textTransform: 'uppercase',
-              color: '#7fc4d8',
+              color: tokens.colors.brand.yellow,
               marginBottom: 10,
             }}
           >
@@ -237,7 +236,7 @@ export function CoverPage({
             style={{
               maxWidth: 400,
               fontSize: 9.5,
-              color: '#c3dde8',
+              color: 'rgba(255, 255, 255, 0.72)',
               lineHeight: 1.55,
               marginBottom: badge ? 16 : 0,
             }}
@@ -253,7 +252,7 @@ export function CoverPage({
               flexDirection: 'row',
               alignItems: 'center',
               borderWidth: 1,
-              borderColor: '#4a7f97',
+              borderColor: 'rgba(255, 255, 255, 0.35)',
               borderRadius: 3,
               paddingVertical: 4,
               paddingHorizontal: 9,
@@ -297,7 +296,7 @@ export function CoverPage({
                   borderColor: tokens.colors.ink[200],
                   borderRadius: tokens.radius.md,
                   borderTopWidth: 2,
-                  borderTopColor: tokens.colors.accent[600],
+                  borderTopColor: tokens.colors.brand.yellow,
                   paddingVertical: 10,
                   paddingHorizontal: 10,
                 }}
