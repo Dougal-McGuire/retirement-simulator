@@ -3,14 +3,16 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, Landmark } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import type { SimulationParams, SimulationResults } from '@/types'
+import { MAX_PLANS, type SimulationParams, type SimulationResults } from '@/types'
 import {
   areSimulationParamsEqual,
   buildScenarioParams,
   getPlanHealth,
   type PlanHealth,
 } from '@/lib/simulation/planInsights'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { useCreatePlan, usePlans } from '@/lib/stores/simulationStore'
 import { cn } from '@/lib/utils'
 
 interface ScenarioListProps {
@@ -35,6 +37,23 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
   const t = useTranslations('planDashboard')
   const [scenarios, setScenarios] = useState<ScenarioResult[]>([])
   const [scenarioStatus, setScenarioStatus] = useState<'idle' | 'loading' | 'ready'>('idle')
+  const createPlan = useCreatePlan()
+  const plans = usePlans()
+  const atPlanLimit = plans.length >= MAX_PLANS
+
+  /**
+   * Turns a stress lever into a real plan: the same tweak, but at the plan's
+   * full run count rather than the cheap preview count.
+   */
+  const saveScenarioAsPlan = (scenarioId: string) => {
+    const scenario = buildScenarioParams(params).find((entry) => entry.id === scenarioId)
+    if (!scenario) return
+
+    createPlan(t(`scenarios.items.${scenarioId}.name`), {
+      ...scenario.params,
+      simulationRuns: params.simulationRuns,
+    })
+  }
 
   useEffect(() => {
     if (!results || isLoading || !areSimulationParamsEqual(params, results.params)) {
@@ -102,7 +121,8 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
               return (
                 <div
                   key={scenario.id}
-                  className="grid grid-cols-[1fr_auto] items-center gap-4 border-2 border-neo-black bg-neo-white px-4 py-3"
+                  data-testid="stress-lever"
+                  className="flex flex-col gap-3 border-2 border-neo-black bg-neo-white px-4 py-3 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-neo-black">
@@ -112,7 +132,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
                       {t(`scenarios.items.${scenario.id}.description`)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 text-right">
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:text-right">
                     {isResolved ? (
                       <>
                         <span
@@ -132,6 +152,17 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
                     ) : (
                       <span className="h-7 w-24 animate-pulse border-2 border-neo-black bg-muted" />
                     )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-3 text-[0.6rem]"
+                      disabled={atPlanLimit}
+                      title={t('scenarios.savedHint')}
+                      onClick={() => saveScenarioAsPlan(scenario.id)}
+                      data-testid="stress-lever-save"
+                    >
+                      {t('scenarios.saveAsPlan')}
+                    </Button>
                   </div>
                 </div>
               )

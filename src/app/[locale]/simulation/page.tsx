@@ -19,7 +19,10 @@ import { CashflowCard } from '@/components/charts/CashflowCard'
 import { ScenarioList } from '@/components/charts/ScenarioList'
 import { RecommendationList } from '@/components/charts/RecommendationList'
 import { ChartEmptyState } from '@/components/charts/ChartEmptyState'
+import { PlanSwitcher } from '@/components/plans/PlanSwitcher'
+import { PlanComparison } from '@/components/plans/PlanComparison'
 import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
+import { AuthMenu } from '@/components/auth/AuthMenu'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { MobileMenu } from '@/components/navigation/MobileMenu'
 import { VersionInfo } from '@/components/navigation/VersionInfo'
@@ -108,10 +111,12 @@ export default function SimulationPage() {
                       </span>
                     )}
                   </div>
+                  <PlanSwitcher className="max-w-xl" />
                 </div>
 
                 {/* Desktop Actions */}
                 <div className="theme-action-strip hidden lg:flex lg:flex-col lg:gap-3">
+                  <AuthMenu className="w-48" />
                   <LocaleSwitcher className="w-48" />
                   <GenerateReportButton
                     results={results}
@@ -128,6 +133,7 @@ export default function SimulationPage() {
 
                 {/* Mobile Actions */}
                 <div className="theme-mobile-actions flex items-center gap-3 lg:hidden">
+                  <AuthMenu compact />
                   <GenerateReportButton
                     results={results}
                     params={params}
@@ -201,6 +207,7 @@ export default function SimulationPage() {
                 forceMount
                 className="mt-6 space-y-6 data-[state=inactive]:hidden"
               >
+                <PlanComparison />
                 <ScenarioList params={params} results={results} isLoading={isLoading} />
                 <RecommendationList params={params} results={results} />
               </TabsContent>

@@ -58,14 +58,36 @@ export function ThemeSwitcher({ className, size = 'sm' }: ThemeSwitcherProps) {
     applyTheme(value)
   }, [])
 
+  const activeOption = THEME_OPTIONS.find((option) => option.id === theme) ?? THEME_OPTIONS[0]
+
   return (
     <Select value={theme} onValueChange={handleChange}>
       <SelectTrigger
         aria-label={t('label')}
         size={size}
-        className={cn('w-56 justify-between', className)}
+        className={cn(
+          // Auto width + tightened tracking so the full theme name always fits
+          // instead of collapsing to "AURORA…" in narrow header slots.
+          'w-auto min-w-0 shrink-0 justify-between gap-2 whitespace-nowrap px-3 tracking-[0.08em]',
+          className
+        )}
       >
-        <SelectValue placeholder={t(`options.${theme}`)} />
+        <SelectValue placeholder={t(`options.${activeOption.translationKey}`)}>
+          <span className="flex items-center gap-2 whitespace-nowrap">
+            <span className="flex flex-shrink-0 items-center gap-0.5" aria-hidden="true">
+              {activeOption.swatches.slice(0, 3).map((swatch) => (
+                <span
+                  key={`trigger-${activeOption.id}-${swatch}`}
+                  className="h-3 w-2.5 border border-neo-black"
+                  style={{ backgroundColor: swatch }}
+                />
+              ))}
+            </span>
+            <span className="whitespace-nowrap">
+              {t(`options.${activeOption.translationKey}`)}
+            </span>
+          </span>
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {THEME_OPTIONS.map((option) => (

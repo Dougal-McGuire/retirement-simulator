@@ -6,14 +6,45 @@ import {
   SimulationStore,
   SavedSetup,
   DEFAULT_PARAMS,
+  MAX_PLANS,
   OneTimeIncome,
   CustomExpense,
   isWithdrawalStrategy,
+  type Plan,
 } from '@/types'
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
+import {
+  bootstrapPlans,
+  createPlanId,
+  DEFAULT_PLAN_ID,
+  DEFAULT_PLAN_NAME,
+  DEFAULT_PLAN_NAME_KEY,
+  makePlan,
+  plansToSavedSetups,
+  uniquePlanName,
+} from '@/lib/stores/plans'
+import {
+  BASE_PARAMS_KEY,
+  BASE_SAVED_SETUPS_KEY,
+  BASE_STORE_KEY,
+  storageKey,
+} from '@/lib/stores/persistenceKey'
 
-const STORAGE_KEY = 'retirement-simulator-params'
-const SAVED_SETUPS_KEY = 'retirement-simulator-saved-setups'
+// Resolved lazily: when a Google account is signed in these keys gain a
+// per-user suffix so several accounts can share one browser without seeing
+// each other's plans. Signed out they resolve to the original key names, so
+// existing local data is untouched. See `./persistenceKey`.
+const STORAGE_KEY = () => storageKey(BASE_PARAMS_KEY)
+const SAVED_SETUPS_KEY = () => storageKey(BASE_SAVED_SETUPS_KEY)
+
+/** v0: params + savedSetups. v1: first-class plans. */
+const STORE_VERSION = 1
+
+/**
+ * Marks that pre-plan saved setups have been imported as plans, so the one-time
+ * migration never resurrects plans the user deleted afterwards.
+ */
+const BASE_PLANS_IMPORTED_KEY = 'retirement-simulator-plans-imported'
 
 type NumericParamKey = keyof Omit<
   SimulationParams,
@@ -273,15 +304,150 @@ export const useSimulationStore = create<SimulationStore>()(
         }, delay)
       }
 
+      /**
+       * Plans are the single source of truth for parameter sets. `savedSetups`
+       * is kept as a mirror so the legacy save/load controls keep working.
+       */
+      const commitPlans = (plans: Plan[]) => {
+        set({ plans, savedSetups: plansToSavedSetups(plans) })
+      }
+
+      /** Applies params to the store and mirrors them into the active plan. */
+      const applyParams = (nextParams: SimulationParams) => {
+        const { plans, activePlanId } = get()
+        const timestamp = Date.now()
+        const nextPlans = plans.map((plan) =>
+          plan.id === activePlanId ? { ...plan, params: nextParams, updatedAt: timestamp } : plan
+        )
+
+        set({
+          params: nextParams,
+          error: null,
+          plans: nextPlans,
+          savedSetups: plansToSavedSetups(nextPlans),
+        })
+      }
+
+      /** Runs (or queues) a simulation after a plan-level change. */
+      const requestRun = () => {
+        if (get().autoRunSuspended) {
+          set({ pendingRun: true })
+          return
+        }
+        scheduleSimulation(0)
+      }
+
+      const defaultPlan = makePlan({
+        id: DEFAULT_PLAN_ID,
+        name: DEFAULT_PLAN_NAME,
+        nameKey: DEFAULT_PLAN_NAME_KEY,
+        params: DEFAULT_PARAMS,
+        createdAt: 0,
+      })
+
       return {
         params: DEFAULT_PARAMS,
         results: null,
         isLoading: false,
         error: null,
-        savedSetups: [],
+        savedSetups: plansToSavedSetups([defaultPlan]),
+        plans: [defaultPlan],
+        activePlanId: DEFAULT_PLAN_ID,
         // Auto-run control
         autoRunSuspended: false,
         pendingRun: false,
+
+        createPlan: (name: string, params?: SimulationParams) => {
+          const { plans, params: currentParams } = get()
+          if (plans.length >= MAX_PLANS) {
+            set({ error: 'planLimitReached' })
+            return null
+          }
+
+          const plan = makePlan({
+            id: createPlanId(plans),
+            name: uniquePlanName(name, plans),
+            params: normalizePersistedParams(params ?? currentParams),
+          })
+
+          commitPlans([...plans, plan])
+          set({ activePlanId: plan.id, params: plan.params, error: null })
+          requestRun()
+
+          return plan.id
+        },
+
+        duplicatePlan: (id: string, name?: string) => {
+          const { plans } = get()
+          const source = plans.find((plan) => plan.id === id)
+          if (!source) return null
+          if (plans.length >= MAX_PLANS) {
+            set({ error: 'planLimitReached' })
+            return null
+          }
+
+          const copy = makePlan({
+            id: createPlanId(plans),
+            name: uniquePlanName(name ?? source.name, plans),
+            params: source.params,
+          })
+
+          commitPlans([...plans, copy])
+          set({ activePlanId: copy.id, params: copy.params, error: null })
+          requestRun()
+
+          return copy.id
+        },
+
+        renamePlan: (id: string, name: string) => {
+          const { plans } = get()
+          const trimmed = name.trim()
+          if (!trimmed) return
+
+          commitPlans(
+            plans.map((plan) =>
+              plan.id === id
+                ? {
+                    ...plan,
+                    name: uniquePlanName(trimmed, plans, id),
+                    nameKey: undefined,
+                    updatedAt: Date.now(),
+                  }
+                : plan
+            )
+          )
+        },
+
+        deletePlan: (id: string) => {
+          const { plans, activePlanId } = get()
+          if (plans.length <= 1) return
+          if (!plans.some((plan) => plan.id === id)) return
+
+          const nextPlans = plans.filter((plan) => plan.id !== id)
+          commitPlans(nextPlans)
+
+          if (activePlanId === id) {
+            const nextActive = nextPlans[0]
+            set({ activePlanId: nextActive.id, params: nextActive.params, error: null })
+            requestRun()
+          }
+        },
+
+        setActivePlan: (id: string) => {
+          const { plans, activePlanId } = get()
+          if (id === activePlanId) return
+
+          const plan = plans.find((entry) => entry.id === id)
+          if (!plan) return
+
+          set({ activePlanId: plan.id, params: plan.params, error: null })
+          requestRun()
+        },
+
+        getActivePlan: () => {
+          const { plans, activePlanId } = get()
+          return plans.find((plan) => plan.id === activePlanId)
+        },
 
         updateParams: (partial: Partial<SimulationParams>) => {
           const currentParams = get().params
@@ -297,10 +463,7 @@ export const useSimulationStore = create<SimulationStore>()(
             oneTimeIncomes: nextOneTimeIncomes,
           }
 
-          set({
-            params: newParams,
-            error: null,
-          })
+          applyParams(newParams)
 
           // Auto-run simulation after parameter update unless suspended
           if (!get().autoRunSuspended) {
@@ -381,7 +544,7 @@ export const useSimulationStore = create<SimulationStore>()(
         saveToStorage: () => {
           const { params } = get()
           try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(params))
+            localStorage.setItem(STORAGE_KEY(), JSON.stringify(params))
           } catch (error) {
             console.error('Failed to save parameters:', error)
             set({ error: 'Failed to save parameters' })
@@ -390,12 +553,9 @@ export const useSimulationStore = create<SimulationStore>()(
 
         loadFromStorage: () => {
           try {
-            const stored = localStorage.getItem(STORAGE_KEY)
+            const stored = localStorage.getItem(STORAGE_KEY())
             if (stored) {
-              set({
-                params: normalizePersistedParams(JSON.parse(stored) as unknown),
-                error: null,
-              })
+              applyParams(normalizePersistedParams(JSON.parse(stored) as unknown))
               // Run simulation with loaded parameters
               get().runSimulation()
             }
@@ -405,53 +565,38 @@ export const useSimulationStore = create<SimulationStore>()(
           }
         },
 
+        // Legacy setup actions, now expressed in terms of plans so both entry
+        // points (sidebar "save as" and the plan switcher) stay in sync.
         saveSetup: (name: string) => {
-          const { params, savedSetups } = get()
-          try {
-            const newSetup: SavedSetup = {
-              id: Date.now().toString(),
-              name,
-              timestamp: Date.now(),
-              params: {
-                ...DEFAULT_PARAMS,
-                ...params,
-                oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
-              },
-            }
-
-            const updatedSetups = [newSetup, ...savedSetups].slice(0, 10) // Keep only last 10
-
-            set({ savedSetups: updatedSetups })
-            localStorage.setItem(SAVED_SETUPS_KEY, JSON.stringify(updatedSetups))
-          } catch (error) {
-            console.error('Failed to save setup:', error)
-            set({ error: 'Failed to save setup' })
-          }
+          get().createPlan(name)
         },
 
         loadSetup: (id: string) => {
-          const { savedSetups } = get()
-          const setup = savedSetups.find((s) => s.id === id)
+          const { plans, savedSetups } = get()
+
+          if (plans.some((plan) => plan.id === id)) {
+            get().setActivePlan(id)
+            return
+          }
+
+          // Pre-plan snapshot that was never migrated: import its params into
+          // the active plan rather than dropping the user's data.
+          const setup = savedSetups.find((entry) => entry.id === id)
           if (setup) {
-            set({
-              params: normalizePersistedParams(setup.params),
-              error: null,
-            })
-            // Run simulation with loaded parameters
+            applyParams(normalizePersistedParams(setup.params))
             get().runSimulation()
           }
         },
 
         deleteSetup: (id: string) => {
-          const { savedSetups } = get()
-          try {
-            const updatedSetups = savedSetups.filter((s) => s.id !== id)
-            set({ savedSetups: updatedSetups })
-            localStorage.setItem(SAVED_SETUPS_KEY, JSON.stringify(updatedSetups))
-          } catch (error) {
-            console.error('Failed to delete setup:', error)
-            set({ error: 'Failed to delete setup' })
+          const { plans, savedSetups } = get()
+
+          if (plans.some((plan) => plan.id === id)) {
+            get().deletePlan(id)
+            return
           }
+
+          set({ savedSetups: savedSetups.filter((entry) => entry.id !== id) })
         },
 
         getSavedSetups: () => {
@@ -468,11 +613,24 @@ export const useSimulationStore = create<SimulationStore>()(
       }
     },
     {
-      name: 'retirement-simulator-store',
+      name: BASE_STORE_KEY,
+      version: STORE_VERSION,
+      // v0 state has no plans. Clearing the field here stops the shallow merge
+      // from keeping the store's default plan around; onRehydrateStorage then
+      // rebuilds plans from the persisted params and saved setups (which may
+      // also live in the legacy standalone storage key).
+      migrate: (persistedState, version) => {
+        const state = (isRecord(persistedState) ? persistedState : {}) as Partial<SimulationStore>
+        if (version < 1) {
+          return { ...state, plans: [], activePlanId: '' } as SimulationStore
+        }
+        return state as SimulationStore
+      },
       partialize: (state) => ({
         params: state.params,
         results: state.results, // Persist results to avoid re-running simulation on every page load
-        savedSetups: state.savedSetups,
+        plans: state.plans,
+        activePlanId: state.activePlanId,
       }),
       onRehydrateStorage: () => {
         return (state) => {
@@ -481,7 +639,7 @@ export const useSimulationStore = create<SimulationStore>()(
 
             // Load saved setups from separate storage
             try {
-              const stored = localStorage.getItem(SAVED_SETUPS_KEY)
+              const stored = localStorage.getItem(SAVED_SETUPS_KEY())
               if (stored) {
                 state.savedSetups = normalizeSavedSetups(JSON.parse(stored) as unknown)
               }
@@ -490,6 +648,48 @@ export const useSimulationStore = create<SimulationStore>()(
             }
             if (state.params) {
               state.params = normalizePersistedParams(state.params)
+            }
+
+            // Upgrade any persisted shape to the plan model. Pre-plan state
+            // becomes a "Base plan" plus one plan per saved setup; nothing the
+            // user stored is discarded. The import runs at most once (guarded
+            // by a marker key) so plans deleted later never reappear.
+            let legacyImportDone = false
+            try {
+              legacyImportDone = localStorage.getItem(storageKey(BASE_PLANS_IMPORTED_KEY)) === '1'
+            } catch {
+              legacyImportDone = false
+            }
+
+            const bootstrapped = bootstrapPlans(
+              {
+                plans: state.plans,
+                params: state.params ?? DEFAULT_PARAMS,
+                savedSetups: state.savedSetups,
+                activePlanId: state.activePlanId,
+                allowLegacyImport: !legacyImportDone,
+              },
+              normalizePersistedParams
+            )
+
+            if (!legacyImportDone) {
+              try {
+                localStorage.setItem(storageKey(BASE_PLANS_IMPORTED_KEY), '1')
+              } catch {
+                // Storage full or unavailable: the import stays idempotent
+                // because imported plans keep their original setup ids.
+              }
+            }
+
+            state.plans = bootstrapped.plans
+            state.activePlanId = bootstrapped.activePlanId
+            state.savedSetups = plansToSavedSetups(bootstrapped.plans)
+
+            const activePlan = bootstrapped.plans.find(
+              (plan) => plan.id === bootstrapped.activePlanId
+            )
+            if (activePlan) {
+              state.params = activePlan.params
             }
 
             // Validate that persisted results match current params
@@ -527,3 +727,12 @@ export const useDeleteSetup = () => useSimulationStore((state) => state.deleteSe
 export const useSavedSetups = () => useSimulationStore((state) => state.savedSetups)
 export const useClearResults = () => useSimulationStore((state) => state.clearResults)
 export const useSetAutoRunSuspended = () => useSimulationStore((state) => state.setAutoRunSuspended)
+
+// Plan helpers
+export const usePlans = () => useSimulationStore((state) => state.plans)
+export const useActivePlanId = () => useSimulationStore((state) => state.activePlanId)
+export const useCreatePlan = () => useSimulationStore((state) => state.createPlan)
+export const useRenamePlan = () => useSimulationStore((state) => state.renamePlan)
+export const useDuplicatePlan = () => useSimulationStore((state) => state.duplicatePlan)
+export const useDeletePlan = () => useSimulationStore((state) => state.deletePlan)
+export const useSetActivePlan = () => useSimulationStore((state) => state.setActivePlan)

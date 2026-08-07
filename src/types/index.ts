@@ -91,13 +91,36 @@ export interface MarketAssumptionsStep {
   simulationRuns: number
 }
 
-// Saved setup interface
+// Saved setup interface (legacy snapshot shape, kept as a view over plans)
 export interface SavedSetup {
   id: string
   name: string
   timestamp: number
   params: SimulationParams
 }
+
+/**
+ * A first-class, named plan. Every plan owns a full parameter set; the active
+ * plan is the one the dashboard renders and the parameter controls edit.
+ */
+export interface Plan {
+  id: string
+  name: string
+  /**
+   * Translation key for built-in plan names (e.g. the migrated "Base plan").
+   * Cleared as soon as the user renames the plan, so user text always wins.
+   */
+  nameKey?: string
+  params: SimulationParams
+  createdAt: number
+  updatedAt: number
+}
+
+/** Upper bound on stored plans (10 legacy setups + base plan + headroom). */
+export const MAX_PLANS = 12
+
+/** Maximum number of plans that can be compared side by side. */
+export const MAX_COMPARISON_PLANS = 3
 
 // State management interfaces
 export interface SimulationStore {
@@ -106,8 +129,20 @@ export interface SimulationStore {
   isLoading: boolean
   error: string | null
   savedSetups: SavedSetup[]
+  plans: Plan[]
+  activePlanId: string
   autoRunSuspended: boolean
   pendingRun: boolean
+
+  // Plan actions
+  /** Creates a plan from `params` (defaults to the current params) and activates it. */
+  createPlan: (name: string, params?: SimulationParams) => string | null
+  renamePlan: (id: string, name: string) => void
+  /** Copies a plan (params included) under a new name and activates the copy. */
+  duplicatePlan: (id: string, name?: string) => string | null
+  deletePlan: (id: string) => void
+  setActivePlan: (id: string) => void
+  getActivePlan: () => Plan | undefined
 
   // Actions
   updateParams: (partial: Partial<SimulationParams>) => void

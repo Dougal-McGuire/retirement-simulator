@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Trash2, Edit2, Check, X } from 'lucide-react'
+import { Trash2, Edit2, Check, X, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { OneTimeIncome } from '@/types'
+import { useGroupedNumber } from './useGroupedNumber'
+import { cn } from '@/lib/utils'
 
 interface OneTimeIncomeListStrings {
   addButton: string
@@ -21,6 +23,8 @@ interface OneTimeIncomeListStrings {
   save: string
   cancel: string
   summaryLabel: string
+  /** Hint explaining why the add button is disabled. */
+  addHint?: string
   tableHeaders: {
     name: string
     age: string
@@ -61,6 +65,8 @@ export function OneTimeIncomeList({
   const [editName, setEditName] = useState<string>('')
   const [editAge, setEditAge] = useState<string>(String(defaultAge))
   const [editAmount, setEditAmount] = useState<string>('')
+  const draftAmountField = useGroupedNumber(0)
+  const editAmountField = useGroupedNumber(0)
 
   useEffect(() => {
     setDraftAge(String(defaultAge))
@@ -85,8 +91,9 @@ export function OneTimeIncomeList({
     () => incomes.reduce((sum, income) => sum + income.amount, 0),
     [incomes]
   )
+  const isEmpty = orderedIncomes.length === 0
   const trimmedDraftName = draftName.trim()
-  const parsedDraftAmount = Number(draftAmount)
+  const parsedDraftAmount = draftAmountField.parse(draftAmount)
   const sanitizedDraftAmount = Number.isFinite(parsedDraftAmount)
     ? Math.max(0, Math.round(parsedDraftAmount))
     : 0
@@ -113,7 +120,7 @@ export function OneTimeIncomeList({
     setEditingIndex(income.index)
     setEditName(income.name)
     setEditAge(String(income.age))
-    setEditAmount(String(income.amount))
+    setEditAmount(editAmountField.format(income.amount))
   }
 
   const handleSaveEdit = () => {
@@ -122,7 +129,7 @@ export function OneTimeIncomeList({
     if (!trimmedName) return // Name is required
 
     const parsedAge = Number(editAge)
-    const parsedAmount = Number(editAmount)
+    const parsedAmount = editAmountField.parse(editAmount)
     const nextAge = clamp(Math.round(parsedAge), minAge, maxAge)
     const nextAmount = Math.max(0, Math.round(parsedAmount))
     if (!Number.isFinite(nextAge) || !Number.isFinite(nextAmount)) return
@@ -191,16 +198,19 @@ export function OneTimeIncomeList({
           </td>
           <td className="px-4 py-3">
             <Input
-              type="number"
+              ref={editAmountField.inputRef}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
               value={editAmount}
               onChange={(e) => {
-                setEditAmount(e.target.value)
+                setEditAmount(editAmountField.handleChange(e).display)
               }}
               onBlur={() => {
                 if (!editAmount.trim()) return
-                const clamped = Math.max(0, Math.round(Number(editAmount)))
+                const clamped = Math.max(0, Math.round(editAmountField.parse(editAmount)))
                 if (Number.isFinite(clamped)) {
-                  setEditAmount(String(clamped))
+                  setEditAmount(editAmountField.format(clamped))
                 }
               }}
               className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase text-right"
@@ -282,33 +292,7 @@ export function OneTimeIncomeList({
 
   return (
     <div className="space-y-4">
-      {orderedIncomes.length === 0 ? (
-        <div className="rounded-none border-3 border-neo-black bg-gradient-to-br from-neo-blue/5 to-neo-yellow/5 p-6 shadow-neo-sm">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <div className="rounded-full border-3 border-neo-black bg-neo-yellow p-3 shadow-neo">
-              <svg
-                className="h-6 w-6 text-neo-black"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 6v12m6-6H6"
-                />
-              </svg>
-            </div>
-            <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
-              {strings.empty}
-            </p>
-            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground max-w-md">
-              {strings.emptyHint ?? 'Add expected windfalls like inheritances, insurance payouts, property sales, or bonus payments'}
-            </p>
-          </div>
-        </div>
-      ) : (
+      {!isEmpty && (
         <div className="overflow-hidden border-3 border-neo-black bg-neo-white shadow-neo-sm">
           <table className="w-full">
             <thead className="border-b-3 border-neo-black bg-neo-black">
@@ -331,7 +315,28 @@ export function OneTimeIncomeList({
         </div>
       )}
 
-      <div className="border-3 border-neo-black bg-neo-white px-4 py-5 shadow-neo-sm">
+      <div
+        className={cn(
+          'border-3 border-neo-black px-4 py-5 shadow-neo-sm',
+          isEmpty ? 'bg-gradient-to-br from-neo-blue/5 to-neo-yellow/5' : 'bg-neo-white'
+        )}
+      >
+        {isEmpty && (
+          <div className="mb-5 flex items-start gap-3 border-b-3 border-dashed border-neo-black pb-4">
+            <span className="rounded-full border-3 border-neo-black bg-neo-yellow p-2 shadow-neo-xs">
+              <Plus className="h-4 w-4 text-neo-black" strokeWidth={3} aria-hidden="true" />
+            </span>
+            <div className="space-y-1">
+              <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+                {strings.empty}
+              </p>
+              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                {strings.emptyHint ??
+                  'Add expected windfalls like inheritances, insurance payouts, property sales, or bonus payments'}
+              </p>
+            </div>
+          </div>
+        )}
         <form
           className="grid grid-cols-1 gap-4"
           onSubmit={handleDraftSubmit}
@@ -389,16 +394,19 @@ export function OneTimeIncomeList({
               </Label>
               <Input
                 id="one-time-income-amount"
-                type="number"
+                ref={draftAmountField.inputRef}
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
                 value={draftAmount}
                 onChange={(event) => {
-                  setDraftAmount(event.target.value)
+                  setDraftAmount(draftAmountField.handleChange(event).display)
                 }}
                 onBlur={() => {
                   if (!draftAmount.trim()) return
-                  const clamped = Math.max(0, Math.round(Number(draftAmount)))
+                  const clamped = Math.max(0, Math.round(draftAmountField.parse(draftAmount)))
                   if (Number.isFinite(clamped)) {
-                    setDraftAmount(String(clamped))
+                    setDraftAmount(draftAmountField.format(clamped))
                   }
                 }}
                 className="h-11 w-full border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
@@ -406,16 +414,25 @@ export function OneTimeIncomeList({
             </div>
           </div>
 
-          <div className="flex items-center justify-start">
+          <div className="flex flex-col gap-2">
             <Button
               type="submit"
               variant="secondary"
               size="sm"
-              className="h-11 w-full px-6"
+              className="h-11 w-full px-6 disabled:border-neo-black/40 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
               disabled={!canAddDraft}
+              aria-describedby={!canAddDraft && strings.addHint ? 'one-time-income-add-hint' : undefined}
             >
               {strings.addButton}
             </Button>
+            {!canAddDraft && strings.addHint && (
+              <p
+                id="one-time-income-add-hint"
+                className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
+              >
+                {strings.addHint}
+              </p>
+            )}
           </div>
         </form>
         <div className="mt-4 border-t-3 border-dashed border-neo-black pt-4 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">

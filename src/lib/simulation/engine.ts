@@ -6,28 +6,95 @@ import {
 } from '@/types'
 
 /**
+ * Uniform [0,1) source. Defaults to `Math.random` so callers that do not care
+ * about reproducibility keep the previous behaviour.
+ */
+export type RandomSource = () => number
+
+/**
+ * Small, fast, well-distributed PRNG (mulberry32). Used to make a simulation
+ * run deterministic for a given set of parameters: the same inputs always
+ * produce the same headline numbers instead of jittering by ±1-2pp per mount.
+ */
+export function mulberry32(seed: number): RandomSource {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), 1 | t)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/**
+ * FNV-1a hash of a string, returned as an unsigned 32-bit integer.
+ */
+export function hashString(value: string): number {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return hash >>> 0
+}
+
+/**
+ * Derive a stable seed from the simulation inputs so identical parameters
+ * always replay the same market paths.
+ */
+export function hashSimulationParams(params: SimulationParams): number {
+  const shape = {
+    currentAge: params.currentAge,
+    retirementAge: params.retirementAge,
+    legalRetirementAge: params.legalRetirementAge,
+    endAge: params.endAge,
+    currentAssets: params.currentAssets,
+    annualSavings: params.annualSavings,
+    annualSavingsGrowthRate: params.annualSavingsGrowthRate,
+    monthlyPension: params.monthlyPension,
+    averageROI: params.averageROI,
+    roiVolatility: params.roiVolatility,
+    averageInflation: params.averageInflation,
+    inflationVolatility: params.inflationVolatility,
+    capitalGainsTax: params.capitalGainsTax,
+    withdrawalStrategy: params.withdrawalStrategy,
+    dsWithdrawalRate: params.dsWithdrawalRate,
+    dsCeilingRate: params.dsCeilingRate,
+    dsFloorRate: params.dsFloorRate,
+    simulationRuns: params.simulationRuns,
+    customExpenses: (params.customExpenses ?? []).map((expense) => [
+      expense.interval,
+      expense.amount,
+    ]),
+    oneTimeIncomes: (params.oneTimeIncomes ?? []).map((income) => [income.age, income.amount]),
+  }
+  return hashString(JSON.stringify(shape))
+}
+
+/**
  * Box-Muller transform for generating normally distributed random numbers
  * @param mean - The mean of the normal distribution
  * @param stdDev - The standard deviation of the normal distribution
+ * @param random - Uniform [0,1) source (defaults to Math.random)
  * @returns A normally distributed random number
  */
-export function boxMullerTransform(mean: number, stdDev: number): number {
-  let u = 0,
-    v = 0
-  while (u === 0) u = Math.random() // Converting [0,1) to (0,1)
-  while (v === 0) v = Math.random()
-  const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
-  return mean + stdDev * z
+export function boxMullerTransform(
+  mean: number,
+  stdDev: number,
+  random: RandomSource = Math.random
+): number {
+  return mean + stdDev * sampleStandardNormal(random)
 }
 
 /**
  * Sample a standard normal random variate using Box-Muller.
  */
-export function sampleStandardNormal(): number {
+export function sampleStandardNormal(random: RandomSource = Math.random): number {
   let u = 0,
     v = 0
-  while (u === 0) u = Math.random()
-  while (v === 0) v = Math.random()
+  while (u === 0) u = random() // Converting [0,1) to (0,1)
+  while (v === 0) v = random()
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
 }
 
@@ -52,9 +119,13 @@ export function lognormalParamsFromArithmetic(
  * Sample a multiplicative lognormal factor given arithmetic mean and stdev of r where X = 1 + r.
  * Returns X such that r = X - 1.
  */
-export function sampleLognormalFactorFromArithmetic(mean: number, stdev: number): number {
+export function sampleLognormalFactorFromArithmetic(
+  mean: number,
+  stdev: number,
+  random: RandomSource = Math.random
+): number {
   const params = lognormalParamsFromArithmetic(mean, stdev)
-  return sampleLognormalFactor(params)
+  return sampleLognormalFactor(params, random)
 }
 
 type LognormalParams = ReturnType<typeof lognormalParamsFromArithmetic>
@@ -64,8 +135,11 @@ type SimulationDistributions = {
   inflation: LognormalParams
 }
 
-function sampleLognormalFactor({ mu, sigma }: LognormalParams): number {
-  const z = sampleStandardNormal()
+function sampleLognormalFactor(
+  { mu, sigma }: LognormalParams,
+  random: RandomSource = Math.random
+): number {
+  const z = sampleStandardNormal(random)
   return Math.exp(mu + sigma * z)
 }
 
@@ -266,7 +340,8 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
  */
 function runSingleSimulation(
   params: SimulationParams,
-  distributions: SimulationDistributions
+  distributions: SimulationDistributions,
+  random: RandomSource
 ): {
   assetHistory: number[]
   spendingHistory: number[]
@@ -322,7 +397,7 @@ function runSingleSimulation(
 
     if (age < effectiveRetirementAge) {
       // Accumulation phase (working years)
-      const roiFactor = sampleLognormalFactor(distributions.roi)
+      const roiFactor = sampleLognormalFactor(distributions.roi, random)
 
       // During accumulation, assume reinvestment without realizing gains
       currentAssets = currentAssets * roiFactor + currentAnnualSavings
@@ -330,7 +405,7 @@ function runSingleSimulation(
       spendingHistory.push(0) // No spending during accumulation for visualization
 
       // Inflate expenses so that retirement starts with age-adjusted spending
-      const inflationFactor = sampleLognormalFactor(distributions.inflation)
+      const inflationFactor = sampleLognormalFactor(distributions.inflation, random)
       currentMonthlyExpense *= inflationFactor
       currentAnnualExpense *= inflationFactor
 
@@ -362,7 +437,7 @@ function runSingleSimulation(
       const netNeeded = totalAnnualExpenseThisYear - annualIncome
 
       // Apply investment growth first
-      const roiFactor = sampleLognormalFactor(distributions.roi)
+      const roiFactor = sampleLognormalFactor(distributions.roi, random)
       currentAssets = Math.max(0, currentAssets * roiFactor)
 
       if (netNeeded > 0) {
@@ -395,7 +470,7 @@ function runSingleSimulation(
       spendingHistory.push(monthlyEquivalentSpending)
 
       // Apply inflation to expenses for next year
-      const inflationFactor = sampleLognormalFactor(distributions.inflation)
+      const inflationFactor = sampleLognormalFactor(distributions.inflation, random)
       currentMonthlyExpense *= inflationFactor
       currentAnnualExpense *= inflationFactor
       if (usesDynamicSpending) {
@@ -430,8 +505,14 @@ function runSingleSimulation(
  * @param params - Simulation parameters
  * @returns Complete simulation results including percentiles and success rate
  */
-export function runMonteCarloSimulation(params: SimulationParams): SimulationResults {
+export function runMonteCarloSimulation(
+  params: SimulationParams,
+  options: { random?: RandomSource } = {}
+): SimulationResults {
   const normalizedParams = normalizeSimulationParams(params)
+  // Deterministic by default: the same parameters always replay the same market
+  // paths, so the headline success rate no longer jitters between mounts.
+  const random = options.random ?? mulberry32(hashSimulationParams(normalizedParams))
   const distributions: SimulationDistributions = {
     roi: lognormalParamsFromArithmetic(normalizedParams.averageROI, normalizedParams.roiVolatility),
     inflation: lognormalParamsFromArithmetic(
@@ -453,7 +534,7 @@ export function runMonteCarloSimulation(params: SimulationParams): SimulationRes
 
   // Run all simulations
   for (let run = 0; run < normalizedParams.simulationRuns; run++) {
-    const result = runSingleSimulation(normalizedParams, distributions)
+    const result = runSingleSimulation(normalizedParams, distributions, random)
 
     if (!result.failed) {
       successfulRuns++

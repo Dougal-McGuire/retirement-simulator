@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { HelpCircle, AlertTriangle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useGroupedNumber } from './useGroupedNumber'
 
 export interface ValidationRule {
   min?: number
@@ -30,6 +31,11 @@ interface LabeledNumberInputProps {
   tooltipAriaLabel?: string
   /** Short unit adornment rendered inside the input, e.g. "€" or "%/yr". */
   unit?: string
+  /**
+   * Show locale-aware thousands grouping while typing (630.000 / 630,000).
+   * The value handed to `onChange` stays a plain number.
+   */
+  groupThousands?: boolean
   validation?: ValidationRule
   formatValue?: (value: number) => string
 }
@@ -85,14 +91,17 @@ export function LabeledNumberInput({
   tooltip,
   tooltipAriaLabel,
   unit,
+  groupThousands = false,
   validation,
   formatValue,
 }: LabeledNumberInputProps) {
   const [touched, setTouched] = useState(false)
   const [draftValue, setDraftValue] = useState(() => String(value))
   const [isEditing, setIsEditing] = useState(false)
+  const grouped = useGroupedNumber(0)
 
-  const displayValue = isEditing ? draftValue : String(value)
+  const restValue = groupThousands ? grouped.format(value) : String(value)
+  const displayValue = isEditing ? draftValue : restValue
 
   const { state: validationState, message: validationMessage } = useMemo(
     () => resolveValidation(value, validation),
@@ -109,7 +118,7 @@ export function LabeledNumberInput({
     const trimmedValue = draftValue.trim()
     if (!trimmedValue) return
 
-    const parsedValue = Number(trimmedValue)
+    const parsedValue = groupThousands ? grouped.parse(trimmedValue) : Number(trimmedValue)
     if (!Number.isFinite(parsedValue)) return
 
     // Clamp value to min/max constraints on blur
@@ -169,14 +178,23 @@ export function LabeledNumberInput({
       <div className="relative">
         <Input
           id={id}
-          type="number"
-          inputMode="decimal"
+          ref={groupThousands ? grouped.inputRef : undefined}
+          type={groupThousands ? 'text' : 'number'}
+          inputMode={groupThousands ? 'numeric' : 'decimal'}
+          autoComplete="off"
           value={displayValue}
           onFocus={() => {
-            setDraftValue(String(value))
+            setDraftValue(restValue)
             setIsEditing(true)
           }}
           onChange={(e) => {
+            if (groupThousands) {
+              const { display, numeric } = grouped.handleChange(e)
+              setDraftValue(display)
+              if (Number.isFinite(numeric)) onChange(numeric)
+              return
+            }
+
             const raw = e.target.value
             setDraftValue(raw)
             if (raw.trim() === '' || raw === '-' || raw === '.' || raw === '-.') return

@@ -1,4 +1,9 @@
-import { DEFAULT_PARAMS, type SimulationParams, type SimulationResults } from '@/types'
+import {
+  DEFAULT_PARAMS,
+  MAX_PLANS,
+  type SimulationParams,
+  type SimulationResults,
+} from '@/types'
 
 type StoreModule = typeof import('../simulationStore')
 
@@ -338,19 +343,29 @@ describe('simulationStore', () => {
       ]),
     })
 
-    expect(useSimulationStore.getState().savedSetups).toEqual([
-      {
-        id: 'saved-valid',
-        name: 'Recovered setup',
-        timestamp: 1710000000000,
-        params: {
-          ...DEFAULT_PARAMS,
-          currentAge: 62,
-          currentAssets: DEFAULT_PARAMS.currentAssets,
-          withdrawalStrategy: 'fixedReal',
-        },
+    // Saved setups are imported as plans; `savedSetups` is now a mirror of them.
+    const { plans, savedSetups } = useSimulationStore.getState()
+
+    expect(plans.map((plan) => plan.id)).toEqual(['plan-base', 'saved-valid'])
+    expect(plans[1]).toMatchObject({
+      id: 'saved-valid',
+      name: 'Recovered setup',
+      updatedAt: 1710000000000,
+      params: {
+        ...DEFAULT_PARAMS,
+        currentAge: 62,
+        currentAssets: DEFAULT_PARAMS.currentAssets,
+        withdrawalStrategy: 'fixedReal',
       },
-    ])
+    })
+    expect(savedSetups).toEqual(
+      plans.map((plan) => ({
+        id: plan.id,
+        name: plan.name,
+        timestamp: plan.updatedAt,
+        params: plan.params,
+      }))
+    )
   })
 
   it('drops malformed saved setups from the main persisted store', () => {
@@ -383,18 +398,18 @@ describe('simulationStore', () => {
       }),
     })
 
-    expect(useSimulationStore.getState().savedSetups).toEqual([
-      {
-        id: 'persisted-valid',
-        name: 'Persisted setup',
-        timestamp: 1710000000002,
-        params: {
-          ...DEFAULT_PARAMS,
-          currentAge: 61,
-          simulationRuns: 1200,
-        },
+    const { plans } = useSimulationStore.getState()
+
+    expect(plans.map((plan) => plan.id)).toEqual(['plan-base', 'persisted-valid'])
+    expect(plans[1]).toMatchObject({
+      name: 'Persisted setup',
+      updatedAt: 1710000000002,
+      params: {
+        ...DEFAULT_PARAMS,
+        currentAge: 61,
+        simulationRuns: 1200,
       },
-    ])
+    })
   })
 
   it('sanitizes invalid scalar params when loading params from storage', () => {
@@ -506,5 +521,230 @@ describe('simulationStore', () => {
         interval: 'annual',
       },
     ])
+  })
+
+  describe('plans', () => {
+    const setupStore = () => {
+      const { useSimulationStore } = loadStore()
+      const runSimulation = jest.fn(async () => {
+        useSimulationStore.setState({
+          results: createResults(useSimulationStore.getState().params),
+          isLoading: false,
+          error: null,
+          pendingRun: false,
+        })
+      })
+      useSimulationStore.setState({ runSimulation })
+      return { useSimulationStore, runSimulation }
+    }
+
+    it('starts with a single active base plan holding the current params', () => {
+      const { useSimulationStore } = setupStore()
+      const { plans, activePlanId, params, savedSetups } = useSimulationStore.getState()
+
+      expect(plans).toHaveLength(1)
+      expect(plans[0].nameKey).toBe('base')
+      expect(activePlanId).toBe(plans[0].id)
+      expect(plans[0].params).toEqual(params)
+      expect(savedSetups.map((setup) => setup.id)).toEqual([plans[0].id])
+    })
+
+    it('creates a plan from the current params, activates it and runs once', async () => {
+      const { useSimulationStore, runSimulation } = setupStore()
+
+      useSimulationStore.getState().updateParams({ retirementAge: 63 })
+      await flushSimulationQueue()
+      runSimulation.mockClear()
+
+      const id = useSimulationStore.getState().createPlan('Retire at 60')
+      await flushSimulationQueue()
+
+      const { plans, activePlanId, params } = useSimulationStore.getState()
+      expect(id).toBeTruthy()
+      expect(plans).toHaveLength(2)
+      expect(activePlanId).toBe(id)
+      expect(params.retirementAge).toBe(63)
+      expect(runSimulation).toHaveBeenCalledTimes(1)
+    })
+
+    it('creates a plan from explicit params (stress-test levers)', async () => {
+      const { useSimulationStore } = setupStore()
+
+      const id = useSimulationStore
+        .getState()
+        .createPlan('Spend 10% less', { ...DEFAULT_PARAMS, annualSavings: 61000 })
+      await flushSimulationQueue()
+
+      const plan = useSimulationStore.getState().plans.find((entry) => entry.id === id)
+      expect(plan?.params.annualSavings).toBe(61000)
+      expect(useSimulationStore.getState().params.annualSavings).toBe(61000)
+    })
+
+    it('writes parameter edits through to the active plan only', async () => {
+      const { useSimulationStore } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+
+      const otherId = useSimulationStore.getState().createPlan('Barista FIRE')
+      await flushSimulationQueue()
+
+      useSimulationStore.getState().updateParams({ monthlyPension: 1234 })
+      await flushSimulationQueue()
+
+      const { plans } = useSimulationStore.getState()
+      expect(plans.find((plan) => plan.id === otherId)?.params.monthlyPension).toBe(1234)
+      expect(plans.find((plan) => plan.id === baseId)?.params.monthlyPension).toBe(
+        DEFAULT_PARAMS.monthlyPension
+      )
+    })
+
+    it('switches the active plan, swapping params and scheduling one run', async () => {
+      const { useSimulationStore, runSimulation } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+
+      useSimulationStore.getState().createPlan('Retire at 60')
+      await flushSimulationQueue()
+      useSimulationStore.getState().updateParams({ retirementAge: 60 })
+      await flushSimulationQueue()
+      runSimulation.mockClear()
+
+      useSimulationStore.getState().setActivePlan(baseId)
+      await flushSimulationQueue()
+
+      expect(useSimulationStore.getState().activePlanId).toBe(baseId)
+      expect(useSimulationStore.getState().params.retirementAge).toBe(DEFAULT_PARAMS.retirementAge)
+      expect(runSimulation).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not re-run when the active plan is re-selected', async () => {
+      const { useSimulationStore, runSimulation } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+      runSimulation.mockClear()
+
+      useSimulationStore.getState().setActivePlan(baseId)
+      await flushSimulationQueue()
+
+      expect(runSimulation).not.toHaveBeenCalled()
+    })
+
+    it('queues the run instead of firing it while auto-run is suspended', async () => {
+      const { useSimulationStore, runSimulation } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+
+      useSimulationStore.getState().createPlan('Retire at 60')
+      await flushSimulationQueue()
+      runSimulation.mockClear()
+
+      useSimulationStore.getState().setAutoRunSuspended(true)
+      useSimulationStore.getState().setActivePlan(baseId)
+      jest.advanceTimersByTime(200)
+      await Promise.resolve()
+
+      expect(runSimulation).not.toHaveBeenCalled()
+      expect(useSimulationStore.getState().pendingRun).toBe(true)
+
+      useSimulationStore.getState().setAutoRunSuspended(false)
+      await flushSimulationQueue()
+
+      expect(runSimulation).toHaveBeenCalledTimes(1)
+    })
+
+    it('duplicates a plan with its params and activates the copy', async () => {
+      const { useSimulationStore } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+
+      useSimulationStore.getState().updateParams({ currentAssets: 999000 })
+      await flushSimulationQueue()
+
+      const copyId = useSimulationStore.getState().duplicatePlan(baseId)
+      await flushSimulationQueue()
+
+      const { plans, activePlanId } = useSimulationStore.getState()
+      const copy = plans.find((plan) => plan.id === copyId)
+      expect(plans).toHaveLength(2)
+      expect(activePlanId).toBe(copyId)
+      expect(copy?.params.currentAssets).toBe(999000)
+      expect(copy?.name).not.toBe(plans[0].name)
+    })
+
+    it('renames a plan, drops its built-in name key and keeps names unique', async () => {
+      const { useSimulationStore } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+
+      const otherId = useSimulationStore.getState().createPlan('Retire at 60')
+      await flushSimulationQueue()
+
+      useSimulationStore.getState().renamePlan(baseId, '  Coast FIRE  ')
+      useSimulationStore.getState().renamePlan(otherId!, 'Coast FIRE')
+
+      const { plans } = useSimulationStore.getState()
+      const base = plans.find((plan) => plan.id === baseId)
+      const other = plans.find((plan) => plan.id === otherId)
+      expect(base?.name).toBe('Coast FIRE')
+      expect(base?.nameKey).toBeUndefined()
+      expect(other?.name).toBe('Coast FIRE (2)')
+    })
+
+    it('ignores empty rename input', async () => {
+      const { useSimulationStore } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+      const before = useSimulationStore.getState().plans[0].name
+
+      useSimulationStore.getState().renamePlan(baseId, '   ')
+
+      expect(useSimulationStore.getState().plans[0].name).toBe(before)
+    })
+
+    it('deletes a plan and falls back to another when the active one goes', async () => {
+      const { useSimulationStore, runSimulation } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+
+      const otherId = useSimulationStore.getState().createPlan('Retire at 60')
+      await flushSimulationQueue()
+      runSimulation.mockClear()
+
+      useSimulationStore.getState().deletePlan(otherId!)
+      await flushSimulationQueue()
+
+      const { plans, activePlanId } = useSimulationStore.getState()
+      expect(plans.map((plan) => plan.id)).toEqual([baseId])
+      expect(activePlanId).toBe(baseId)
+      expect(runSimulation).toHaveBeenCalledTimes(1)
+    })
+
+    it('refuses to delete the last remaining plan', () => {
+      const { useSimulationStore } = setupStore()
+
+      useSimulationStore.getState().deletePlan(useSimulationStore.getState().activePlanId)
+
+      expect(useSimulationStore.getState().plans).toHaveLength(1)
+    })
+
+    it('enforces the plan limit', async () => {
+      const { useSimulationStore } = setupStore()
+
+      for (let index = 0; index < MAX_PLANS + 2; index += 1) {
+        useSimulationStore.getState().createPlan(`Plan ${index}`)
+        await flushSimulationQueue()
+      }
+
+      expect(useSimulationStore.getState().plans).toHaveLength(MAX_PLANS)
+      expect(useSimulationStore.getState().error).toBe('planLimitReached')
+    })
+
+    it('routes the legacy setup actions through plans', async () => {
+      const { useSimulationStore } = setupStore()
+
+      useSimulationStore.getState().saveSetup('Legacy save')
+      await flushSimulationQueue()
+
+      const created = useSimulationStore.getState().plans.find((plan) => plan.name === 'Legacy save')
+      expect(created).toBeDefined()
+      expect(useSimulationStore.getState().savedSetups.map((setup) => setup.id)).toEqual(
+        useSimulationStore.getState().plans.map((plan) => plan.id)
+      )
+
+      useSimulationStore.getState().deleteSetup(created!.id)
+      expect(useSimulationStore.getState().plans.some((plan) => plan.id === created!.id)).toBe(false)
+    })
   })
 })

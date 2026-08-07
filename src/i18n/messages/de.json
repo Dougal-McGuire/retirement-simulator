@@ -1,4 +1,13 @@
 {
+  "auth": {
+    "signIn": "Mit Google anmelden",
+    "signOut": "Abmelden",
+    "signOutFrom": "{name} abmelden",
+    "signedIn": "Angemeldet",
+    "notConfigured": "Anmeldung nicht konfiguriert",
+    "loading": "Konto wird geladen",
+    "accountFallbackName": "Google-Konto"
+  },
   "landing": {
     "meta": {
       "title": "Ruhestandssimulator — Monte-Carlo-Ruhestandsplanung",
@@ -11,45 +20,42 @@
     "hero": {
       "badge": "Monte-Carlo-Engine · läuft in Ihrem Browser",
       "titleLine1": "Ihr Ruhestand,",
-      "titleLine2": "5.000-mal simuliert.",
-      "subtitle": "Eine Durchschnittsrendite sagt wenig. Der Simulator modelliert Marktschwankungen, Inflation, Rente und Ausgaben über Tausende von Zukünften — damit Sie die ganze Bandbreite der Ergebnisse sehen, bevor Sie Ihren Ruhestand auf eine einzige Annahme setzen.",
+      "titleLine2": "{runs}-mal simuliert.",
+      "subtitle": "Die Engine spielt Ihr gesamtes Finanzleben durch Tausende simulierte Märkte — Schwankungen, Inflation, Rente und Ausgaben — damit Sie die ganze Bandbreite der Ergebnisse sehen, bevor Sie Ihren Ruhestand auf eine einzige Annahme setzen.",
       "ctaPrimary": "Jetzt planen — kostenlos",
       "ctaSecondary": "Dashboard erkunden",
-      "note": "Keine Registrierung. Keine Cloud. Ihre Daten verlassen nie diesen Browser."
+      "note": "Keine Registrierung. Keine Cloud. Ihre Daten verlassen nie diesen Browser.",
+      "lede": "Eine Durchschnittsrendite sagt Ihnen nichts."
     },
     "stats": {
       "scenarios": {
-        "value": "5.000",
-        "label": "Marktszenarien pro Lauf"
+        "label": "Marktpfade hinter dem Chart oben"
       },
       "percentiles": {
         "value": "P10–P90",
         "label": "Ergebnisbänder im Chart"
       },
-      "speed": {
-        "value": "~100 ms",
-        "label": "Bis zur Neuberechnung"
-      },
       "privacy": {
-        "value": "100%",
-        "label": "Lokal, kein Daten-Upload"
+        "value": "0",
+        "label": "Bytes Ihrer Daten verlassen den Browser"
+      },
+      "years": {
+        "label": "Jahre, Jahr für Jahr modelliert"
       }
     },
     "preview": {
-      "eyebrow": "Das ganze Bild",
-      "title": "Jedes Ergebnis, ein Chart",
-      "subtitle": "Perzentilbänder zeigen, wo Ihr Plan trägt, wackelt oder bricht — vom vorsichtigen P10 bis zum optimistischen P90.",
-      "windowTitle": "Vermögensprojektion · 4.000 Läufe",
-      "live": "Live",
-      "successLabel": "Planerfolg",
-      "successValue": "92%",
-      "successCaption": "der Szenarien bleiben bis Alter 90 finanziert",
-      "retirementMarker": "Ruhestand · 62",
-      "legendMedian": "Medianverlauf",
-      "legendInner": "Wahrscheinlicher Bereich (P25–P75)",
-      "legendOuter": "Gesamter Bereich (P10–P90)",
+      "windowTitle": "Vermögensprojektion · Beispielplan",
+      "retirementMarker": "Ruhestand · {age}",
       "ageAxisLabel": "Alter",
-      "chartAlt": "Fächerdiagramm der simulierten Vermögensentwicklung von Alter 35 bis 90 mit Perzentilbändern und Ruhestandsmarkierung bei Alter 62."
+      "chartAlt": "Fächerdiagramm des simulierten Vermögens von Alter {startAge} bis {endAge}, aus {runs} Monte-Carlo-Läufen. Das Perzentilband weitet sich nach dem Ruhestand deutlich.",
+      "runsChip": "{runs} Läufe",
+      "pensionMarker": "Rente · {age}",
+      "outcomes": {
+        "low": "Schlechteste 10%",
+        "median": "Median",
+        "high": "Beste 10%"
+      },
+      "caption": "Echte Ausgabe der eingebauten Engine: {runs} Simulationen des Standardplans der App. {successRate} davon blieben bis Alter {endAge} finanziert."
     },
     "features": {
       "eyebrow": "Für Überzeugung gebaut",
@@ -111,6 +117,26 @@
       "setup": "Geführtes Setup",
       "simulation": "Simulations-Dashboard",
       "copyright": "© {year} Ruhestandssimulator. Läuft vollständig auf Ihrem Gerät."
+    },
+    "spread": {
+      "eyebrow": "Warum eine Zahl täuscht",
+      "title": "Gleicher Plan. Gleiche Durchschnittsrendite. Drei sehr verschiedene Zukünfte.",
+      "body": "So viel Vermögen bleibt im Beispielplan oben mit Alter {endAge} übrig. Verändert hat sich nur die Reihenfolge der Marktrenditen — und allein sie entscheidet, ob der Plan komfortabel oder knapp endet.",
+      "footnote": "{runs} Läufe des Standardplans · {successRate} blieben bis Alter {endAge} finanziert. Ändern Sie eine Annahme und die gesamte Bandbreite zeichnet sich neu.",
+      "items": {
+        "low": {
+          "label": "Schlechteste 10% der Läufe",
+          "body": "Ein schwaches erstes Jahrzehnt. Der Plan trägt noch, lässt aber kaum Spielraum für Überraschungen."
+        },
+        "median": {
+          "label": "Mittlerer Lauf",
+          "body": "Das mittlere Ergebnis — genau die eine Zahl, die eine Tabellenkalkulation allein gezeigt hätte."
+        },
+        "high": {
+          "label": "Beste 10% der Läufe",
+          "body": "Ein freundlicher Markt. Zehnmal so viel Endvermögen wie im Pechfall — bei identischen Eingaben."
+        }
+      }
     }
   },
   "layout": {
@@ -269,7 +295,8 @@
           "amount": "Betrag (€)",
           "actions": "Aktionen"
         },
-        "summary": "Geplante Gesamtsumme"
+        "summary": "Geplante Gesamtsumme",
+        "addHint": "Name und Betrag oben eingeben, um die Schaltfläche zu aktivieren."
       }
     },
     "expenses": {
@@ -296,7 +323,8 @@
       },
       "templates": {
         "label": "Schnellstart-Vorlagen (beliebige zum Hinzufügen klicken):"
-      }
+      },
+      "addHint": "Name und Betrag oben eingeben, um die Schaltfläche zu aktivieren."
     },
     "market": {
       "realReturn": "Implizite Realrendite nach Inflation",
@@ -374,10 +402,10 @@
     "agesRange": "Alter {start}–{end}",
     "retirementYears": "Ruhestand: {years}J",
     "currentlyLoaded": "Aktuell geladen",
-    "noSavedSetups": "Keine Setups",
+    "noSavedSetups": "Noch keine Pläne",
     "saveParametersHint": "Speichern Sie Ihre Parameter oben",
-    "noSetupsYet": "Noch keine Setups gespeichert",
-    "saveAsHint": "Verwenden Sie \"Speichern unter\", um Konfigurationen zu sichern",
+    "noSetupsYet": "Noch keine Pläne",
+    "saveAsHint": "Nutze „Als neuen Plan speichern“, um eine Konfiguration zu sichern",
     "presets": {
       "investment": {
         "title": "Anlageperformance",
@@ -625,21 +653,21 @@
       }
     },
     "saved": {
-      "title": "Gespeicherte Setups",
-      "empty": "Keine gespeicherten Setups",
+      "title": "Pläne",
+      "empty": "Noch keine Pläne",
       "actions": {
-        "saveAs": "Speichern unter…",
-        "loadPlaceholder": "Setup laden…",
+        "saveAs": "Als neuen Plan speichern",
+        "loadPlaceholder": "Plan wechseln",
         "delete": "{name} löschen",
         "reset": "Auf Standardwerte zurücksetzen"
       },
       "dialog": {
-        "title": "Setup speichern",
-        "description": "Vergeben Sie einen Namen, um die aktuellen Parameter später wiederzufinden.",
-        "nameLabel": "Name",
-        "placeholder": "z. B. Konservativ, Wachstumsfokus",
+        "title": "Als neuen Plan speichern",
+        "description": "Benenne deine aktuellen Parameter. Daraus wird ein Plan, zu dem du wechseln und den du vergleichen kannst.",
+        "nameLabel": "Planname",
+        "placeholder": "z. B. Rente mit 60, Barista FIRE",
         "cancel": "Abbrechen",
-        "confirm": "Setup speichern"
+        "confirm": "Plan erstellen"
       }
     }
   },
@@ -721,7 +749,9 @@
           "name": "10% weniger ausgeben",
           "description": "Reduziert alle wiederkehrenden Ausgabenposten im Ruhestand."
         }
-      }
+      },
+      "saveAsPlan": "Als neuen Plan speichern",
+      "savedHint": "Legt einen Plan mit diesen Stress-Parametern an und wechselt zu ihm."
     }
   },
   "recommendations": {
@@ -729,7 +759,11 @@
     "subtitle": "Regelbasierte Vorschläge aus Ihrem Plan – geschätzter Zugewinn in Erfolgsquoten-Punkten",
     "empty": "Führen Sie die Simulation aus, um Empfehlungen zu sehen.",
     "uplift": "+{min}–{max} Pkt.",
-    "impact": { "high": "Hohe Wirkung", "medium": "Mittlere Wirkung", "low": "Geringe Wirkung" },
+    "impact": {
+      "high": "Hohe Wirkung",
+      "medium": "Mittlere Wirkung",
+      "low": "Geringe Wirkung"
+    },
     "items": {
       "increaseSavings": {
         "title": "Sparrate erhöhen",
@@ -838,6 +872,12 @@
     "hint": {
       "dragToZoom": "Ziehen zum Zoomen",
       "zoomed": "Zoomansicht aktiv"
+    },
+    "scale": {
+      "label": "Skalierung der Werteachse",
+      "focus": "Median im Fokus",
+      "full": "Gesamtbereich",
+      "clipped": "Achse auf den wahrscheinlichen Bereich fokussiert — der optimistische Ausläufer reicht bis {value}"
     },
     "aria": {
       "description": "Vermögens-Fächerdiagramm: Der Medianverlauf ist als durchgezogene Linie dargestellt, umgeben von einem wahrscheinlichen Bereich (20.–80. Perzentil) und einem Gesamtbereich (10.–90. Perzentil).",
@@ -1650,5 +1690,89 @@
         }
       }
     }
+  },
+  "plans": {
+    "label": "Plan",
+    "switcher": {
+      "ariaLabel": "Aktiver Plan",
+      "count": "{count} von {max} Plänen",
+      "limit": "Planlimit erreicht ({max}). Lösche einen Plan, um einen neuen anzulegen."
+    },
+    "defaultNames": {
+      "base": "Basisplan"
+    },
+    "copySuffix": "Kopie",
+    "actions": {
+      "new": "Neuer Plan",
+      "rename": "Umbenennen",
+      "duplicate": "Duplizieren",
+      "delete": "Löschen",
+      "cancel": "Abbrechen",
+      "create": "Plan erstellen",
+      "save": "Speichern",
+      "confirmDelete": "Plan löschen"
+    },
+    "dialogs": {
+      "new": {
+        "title": "Neuer Plan",
+        "description": "Startet mit deinen aktuellen Parametern. Änderungen betreffen nur diesen Plan.",
+        "label": "Planname",
+        "placeholder": "z. B. Rente mit 60"
+      },
+      "rename": {
+        "title": "Plan umbenennen",
+        "description": "Gib dem Plan einen Namen, den du später wiedererkennst.",
+        "label": "Planname",
+        "placeholder": "z. B. Barista FIRE"
+      },
+      "delete": {
+        "title": "Diesen Plan löschen?",
+        "description": "„{name}“ und seine Parameter werden entfernt. Das lässt sich nicht rückgängig machen."
+      },
+      "wizard": {
+        "title": "Plan speichern",
+        "description": "Benenne deine Konfiguration, um sie später mit anderen Plänen zu vergleichen.",
+        "label": "Planname",
+        "placeholder": "z. B. Basisplan",
+        "save": "Als neuen Plan speichern",
+        "skip": "Aktuellen Plan aktualisieren"
+      }
+    },
+    "comparison": {
+      "title": "Pläne vergleichen",
+      "subtitle": "Vergleiche zwei oder drei Pläne direkt nebeneinander und sieh, was jede Entscheidung kostet.",
+      "select": "Zu vergleichende Pläne",
+      "hint": "Wähle {min}–{max} Pläne und starte den Vergleich.",
+      "run": "Vergleich starten",
+      "rerun": "Erneut berechnen",
+      "running": "Berechnung läuft…",
+      "needMorePlans": "Lege einen zweiten Plan an, um den Vergleich zu nutzen.",
+      "empty": "Noch kein Vergleich — wähle Pläne aus und starte die Berechnung.",
+      "error": "Der Vergleich konnte nicht abgeschlossen werden. Bitte erneut versuchen.",
+      "runsNote": "Der Vergleich nutzt bis zu {runs} Läufe pro Plan und rechnet nicht bei jeder Parameteränderung neu.",
+      "active": "Aktiv",
+      "best": "Bester",
+      "never": "Nie",
+      "columns": {
+        "plan": "Plan",
+        "successRate": "Erfolgsquote",
+        "medianEnd": "Median-Vermögen am Ende",
+        "depletionRisk": "Erschöpfungsrisiko",
+        "shortfallAge": "Erste Lücke (P10)"
+      },
+      "chart": {
+        "title": "Median-Vermögen nach Alter",
+        "description": "Der P50-Pfad jedes verglichenen Plans auf einer gemeinsamen Skala.",
+        "aria": "Liniendiagramm, das den Median-Vermögenspfad jedes verglichenen Plans nach Alter überlagert.",
+        "tooltip": "Alter {age}"
+      },
+      "stale": "Parameter haben sich seit dem Vergleich geändert — bitte erneut berechnen."
+    }
+  },
+  "headerControls": {
+    "trigger": "Sprache und Theme",
+    "title": "Darstellung",
+    "description": "Sprache der Oberfläche wechseln oder ein anderes Theme wählen.",
+    "close": "Schließen"
   }
 }

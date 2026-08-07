@@ -1,4 +1,13 @@
 {
+  "auth": {
+    "signIn": "Sign in with Google",
+    "signOut": "Sign out",
+    "signOutFrom": "Sign out {name}",
+    "signedIn": "Signed in",
+    "notConfigured": "Sign-in not configured",
+    "loading": "Loading account",
+    "accountFallbackName": "Google account"
+  },
   "landing": {
     "meta": {
       "title": "Retirement Simulator — Monte Carlo Retirement Planning",
@@ -11,45 +20,42 @@
     "hero": {
       "badge": "Monte Carlo engine · runs in your browser",
       "titleLine1": "Your retirement,",
-      "titleLine2": "simulated 5,000 times.",
-      "subtitle": "One average return tells you nothing. The simulator models market volatility, inflation, pensions, and spending across thousands of futures — so you see the full range of outcomes before betting your retirement on a single guess.",
+      "titleLine2": "simulated {runs} times.",
+      "subtitle": "The engine replays your whole financial life through thousands of simulated markets — volatility, inflation, pension, and spending — so you see the full range of outcomes before you bet your retirement on a single guess.",
       "ctaPrimary": "Start planning — it's free",
       "ctaSecondary": "Explore the dashboard",
-      "note": "No sign-up. No cloud. Your data never leaves this browser."
+      "note": "No sign-up. No cloud. Your data never leaves this browser.",
+      "lede": "One average return tells you nothing."
     },
     "stats": {
       "scenarios": {
-        "value": "5,000",
-        "label": "Market scenarios per run"
+        "label": "Market paths behind the chart above"
       },
       "percentiles": {
         "value": "P10–P90",
         "label": "Outcome bands charted"
       },
-      "speed": {
-        "value": "~100 ms",
-        "label": "To re-run after any change"
-      },
       "privacy": {
-        "value": "100%",
-        "label": "Local-first, zero data upload"
+        "value": "0",
+        "label": "Bytes of your plan sent anywhere"
+      },
+      "years": {
+        "label": "Years modelled, one year at a time"
       }
     },
     "preview": {
-      "eyebrow": "The full picture",
-      "title": "Every outcome, one chart",
-      "subtitle": "Percentile bands show where your plan thrives, holds, or breaks — from the cautious P10 to the optimistic P90.",
-      "windowTitle": "Asset projection · 4,000 runs",
-      "live": "Live",
-      "successLabel": "Plan success",
-      "successValue": "92%",
-      "successCaption": "of scenarios stay funded to age 90",
-      "retirementMarker": "Retirement · 62",
-      "legendMedian": "Median outcome",
-      "legendInner": "Likely range (P25–P75)",
-      "legendOuter": "Full range (P10–P90)",
+      "windowTitle": "Asset projection · sample plan",
+      "retirementMarker": "Retire · {age}",
       "ageAxisLabel": "Age",
-      "chartAlt": "Fan chart of simulated asset development from age 35 to 90, showing percentile bands widening over time with a retirement marker at age 62."
+      "chartAlt": "Fan chart of simulated retirement assets from age {startAge} to {endAge}, built from {runs} Monte Carlo runs. The percentile band widens sharply after retirement.",
+      "runsChip": "{runs} runs",
+      "pensionMarker": "Pension · {age}",
+      "outcomes": {
+        "low": "Worst 10%",
+        "median": "Median",
+        "high": "Best 10%"
+      },
+      "caption": "Real output of the built-in engine: {runs} simulations of the app's default plan. {successRate} of them stayed funded through age {endAge}."
     },
     "features": {
       "eyebrow": "Built for conviction",
@@ -111,6 +117,26 @@
       "setup": "Guided setup",
       "simulation": "Simulation dashboard",
       "copyright": "© {year} Retirement Simulator. Runs entirely on your device."
+    },
+    "spread": {
+      "eyebrow": "Why one number lies",
+      "title": "Same plan. Same average return. Three very different futures.",
+      "body": "These are the assets left at age {endAge} in the sample plan above. Nothing changed but the order in which the market delivered its returns — and that alone decides whether the plan ends comfortable or uncomfortably thin.",
+      "footnote": "{runs} runs of the default plan · {successRate} stayed funded to age {endAge}. Change any assumption and the whole spread redraws.",
+      "items": {
+        "low": {
+          "label": "Worst 10% of runs",
+          "body": "A bad first decade. The plan still holds, but there is far less room for a surprise."
+        },
+        "median": {
+          "label": "Median run",
+          "body": "The middle outcome — the single number a spreadsheet would have shown you on its own."
+        },
+        "high": {
+          "label": "Best 10% of runs",
+          "body": "A kind market. Ten times the ending balance of the unlucky case, from the same inputs."
+        }
+      }
     }
   },
   "layout": {
@@ -269,7 +295,8 @@
           "amount": "Amount (€)",
           "actions": "Actions"
         },
-        "summary": "Total scheduled"
+        "summary": "Total scheduled",
+        "addHint": "Enter a name and an amount above to enable this button."
       }
     },
     "expenses": {
@@ -296,7 +323,8 @@
       },
       "templates": {
         "label": "Quick Start Templates (click any to add):"
-      }
+      },
+      "addHint": "Enter a name and an amount above to enable this button."
     },
     "market": {
       "realReturn": "Implied real return after inflation",
@@ -374,10 +402,10 @@
     "agesRange": "Ages {start}–{end}",
     "retirementYears": "Retirement: {years}y",
     "currentlyLoaded": "Currently Loaded",
-    "noSavedSetups": "No Saved Setups",
+    "noSavedSetups": "No plans yet",
     "saveParametersHint": "Save your current parameters above",
-    "noSetupsYet": "No saved setups yet",
-    "saveAsHint": "Use \"Save As\" to store configurations",
+    "noSetupsYet": "No plans yet",
+    "saveAsHint": "Use \"Save as new plan\" to store a configuration",
     "presets": {
       "investment": {
         "title": "Investment Performance",
@@ -625,21 +653,21 @@
       }
     },
     "saved": {
-      "title": "Saved Setups",
-      "empty": "No saved setups",
+      "title": "Plans",
+      "empty": "No plans yet",
       "actions": {
-        "saveAs": "Save As…",
-        "loadPlaceholder": "Load setup…",
+        "saveAs": "Save as new plan",
+        "loadPlaceholder": "Switch plan",
         "delete": "Delete {name}",
         "reset": "Reset to Defaults"
       },
       "dialog": {
-        "title": "Save Setup",
-        "description": "Give your current parameters a name for easy access later.",
-        "nameLabel": "Setup Name",
-        "placeholder": "e.g., Conservative Plan, Aggressive Growth",
+        "title": "Save as new plan",
+        "description": "Give your current parameters a name. It becomes a plan you can switch to and compare.",
+        "nameLabel": "Plan name",
+        "placeholder": "e.g. Retire at 60, Barista FIRE",
         "cancel": "Cancel",
-        "confirm": "Save Setup"
+        "confirm": "Create plan"
       }
     }
   },
@@ -721,7 +749,9 @@
           "name": "Spend 10% less",
           "description": "Reduces every recurring retirement expense item."
         }
-      }
+      },
+      "saveAsPlan": "Save as new plan",
+      "savedHint": "Creates a plan with these stressed parameters and switches to it."
     }
   },
   "recommendations": {
@@ -729,7 +759,11 @@
     "subtitle": "Rule-based suggestions derived from your plan — estimated uplift in success-rate points",
     "empty": "Run the simulation to see recommendations.",
     "uplift": "+{min}–{max} pts",
-    "impact": { "high": "High impact", "medium": "Medium impact", "low": "Low impact" },
+    "impact": {
+      "high": "High impact",
+      "medium": "Medium impact",
+      "low": "Low impact"
+    },
     "items": {
       "increaseSavings": {
         "title": "Increase savings rate",
@@ -838,6 +872,12 @@
     "hint": {
       "dragToZoom": "Drag to zoom",
       "zoomed": "Zoomed view active"
+    },
+    "scale": {
+      "label": "Value axis scale",
+      "focus": "Focus median",
+      "full": "Full range",
+      "clipped": "Axis focused on the likely range — the optimistic tail reaches {value}"
     },
     "aria": {
       "description": "Asset projection fan chart: the median outcome is drawn as a solid line, surrounded by a likely range (20th to 80th percentile) and a full range (10th to 90th percentile) band.",
@@ -1650,5 +1690,89 @@
         }
       }
     }
+  },
+  "plans": {
+    "label": "Plan",
+    "switcher": {
+      "ariaLabel": "Active plan",
+      "count": "{count} of {max} plans",
+      "limit": "Plan limit reached ({max}). Delete a plan to add another."
+    },
+    "defaultNames": {
+      "base": "Base plan"
+    },
+    "copySuffix": "copy",
+    "actions": {
+      "new": "New plan",
+      "rename": "Rename",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "create": "Create plan",
+      "save": "Save",
+      "confirmDelete": "Delete plan"
+    },
+    "dialogs": {
+      "new": {
+        "title": "New plan",
+        "description": "Starts from your current parameters. Edit it without touching your other plans.",
+        "label": "Plan name",
+        "placeholder": "e.g. Retire at 60"
+      },
+      "rename": {
+        "title": "Rename plan",
+        "description": "Give this plan a name you will recognise later.",
+        "label": "Plan name",
+        "placeholder": "e.g. Barista FIRE"
+      },
+      "delete": {
+        "title": "Delete this plan?",
+        "description": "“{name}” and its parameters will be removed. This cannot be undone."
+      },
+      "wizard": {
+        "title": "Save this plan",
+        "description": "Name what you just configured so you can compare it against other plans later.",
+        "label": "Plan name",
+        "placeholder": "e.g. Base plan",
+        "save": "Save as new plan",
+        "skip": "Update current plan"
+      }
+    },
+    "comparison": {
+      "title": "Compare plans",
+      "subtitle": "Run two or three plans side by side to see what each choice really costs.",
+      "select": "Plans to compare",
+      "hint": "Select {min}–{max} plans, then run the comparison.",
+      "run": "Run comparison",
+      "rerun": "Run again",
+      "running": "Running…",
+      "needMorePlans": "Create a second plan to unlock side-by-side comparison.",
+      "empty": "No comparison yet — pick your plans and press run.",
+      "error": "Comparison could not be completed. Please try again.",
+      "runsNote": "Comparison uses up to {runs} runs per plan and never re-runs on parameter changes.",
+      "active": "Active",
+      "best": "Best",
+      "never": "Never",
+      "columns": {
+        "plan": "Plan",
+        "successRate": "Success rate",
+        "medianEnd": "Median assets at end",
+        "depletionRisk": "Depletion risk",
+        "shortfallAge": "First shortfall (P10)"
+      },
+      "chart": {
+        "title": "Median assets by age",
+        "description": "The P50 path of each compared plan, drawn on one scale.",
+        "aria": "Line chart overlaying the median asset path of each compared plan by age.",
+        "tooltip": "Age {age}"
+      },
+      "stale": "Parameters changed since this comparison ran — run it again for current numbers."
+    }
+  },
+  "headerControls": {
+    "trigger": "Language and theme",
+    "title": "Display settings",
+    "description": "Switch the interface language or pick a different visual theme.",
+    "close": "Close"
   }
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ComposedChart,
   Area,
@@ -18,13 +18,17 @@ import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/lib/hooks/useMediaQuery'
 import {
   axisTick,
+  brushChrome,
   chartInk,
   ChartLegend,
   ChartTooltipCard,
+  fanDomainMax,
   fanHue,
+  measureAxisWidth,
   withAlpha,
   type TooltipRow,
 } from '@/components/charts/chartTheme'
+import { cn } from '@/lib/utils'
 
 export type BandPoint = ChartDataPoint & {
   assets_band_lower: number
@@ -95,6 +99,39 @@ export function AssetsChart({
   const handleBrushChange = (range: { startIndex?: number; endIndex?: number }) => {
     onBrushChange(range)
   }
+
+  // Axis scaling: a handful of very optimistic P90 paths would otherwise push
+  // the axis to several times the median and squash the whole likely range into
+  // the bottom quarter of the plot. "Focus" scales to P20–P80 with headroom.
+  const [focusMedian, setFocusMedian] = useState(true)
+
+  const visible = useMemo(() => {
+    const start = Math.max(0, Math.min(indexRange.startIndex, data.length - 1))
+    const end = Math.max(start, Math.min(indexRange.endIndex, data.length - 1))
+    return data.slice(start, end + 1)
+  }, [data, indexRange.startIndex, indexRange.endIndex])
+
+  const { medianMax, innerMax, outerMax } = useMemo(
+    () =>
+      visible.reduce(
+        (acc, point) => ({
+          medianMax: Math.max(acc.medianMax, point.assets_p50),
+          innerMax: Math.max(acc.innerMax, point.assets_p80),
+          outerMax: Math.max(acc.outerMax, point.assets_p90),
+        }),
+        { medianMax: 0, innerMax: 0, outerMax: 0 }
+      ),
+    [visible]
+  )
+
+  const domainMax = fanDomainMax(medianMax, innerMax, outerMax, focusMedian)
+  const isClipped = domainMax != null && outerMax > domainMax * 1.001
+
+  const axisWidth = useMemo(() => {
+    const top = domainMax ?? outerMax
+    const samples = [top, top * 0.75, top * 0.5, top * 0.25, 0].map(formatCurrencyShort)
+    return measureAxisWidth(samples, isMobile)
+  }, [domainMax, outerMax, formatCurrencyShort, isMobile])
 
   const hue = fanHue.assets
   const markerLabelStyle = {
@@ -183,17 +220,46 @@ export function AssetsChart({
             {t('description')}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onResetZoom}
-          aria-label={t('reset')}
-          className="shrink-0 px-3 py-1 text-[0.7rem] sm:px-4"
-          disabled={!isZoomed}
-        >
-          {t('reset')}
-        </Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div
+            role="group"
+            aria-label={t('scale.label')}
+            className="flex items-center border-2 border-neo-black bg-neo-white"
+          >
+            {(
+              [
+                { key: 'focus', label: t('scale.focus'), active: focusMedian },
+                { key: 'full', label: t('scale.full'), active: !focusMedian },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setFocusMedian(option.key === 'focus')}
+                aria-pressed={option.active}
+                className={cn(
+                  'px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.12em] transition-neo',
+                  option.active
+                    ? 'bg-neo-black text-neo-white'
+                    : 'bg-neo-white text-muted-foreground hover:text-neo-black'
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onResetZoom}
+            aria-label={t('reset')}
+            className="shrink-0 px-3 py-1 text-[0.7rem] sm:px-4"
+            disabled={!isZoomed}
+          >
+            {t('reset')}
+          </Button>
+        </div>
       </div>
 
       <ChartLegend
@@ -255,12 +321,14 @@ export function AssetsChart({
             />
             <YAxis
               yAxisId="assets"
-              width={isMobile ? 46 : 58}
+              width={axisWidth}
               tick={axisTick(isMobile)}
               tickLine={false}
               tickMargin={6}
               axisLine={false}
               tickFormatter={formatCurrencyShort}
+              domain={[0, domainMax ?? 'auto']}
+              allowDataOverflow={domainMax != null}
             />
             {/* Full range: P10–P90 fan */}
             <Area
@@ -414,10 +482,7 @@ export function AssetsChart({
             />
             <Brush
               dataKey="age"
-              height={isMobile ? 20 : 24}
-              stroke={chartInk.brushStroke}
-              fill={chartInk.brushFill}
-              travellerWidth={isMobile ? 6 : 8}
+              {...brushChrome(isMobile)}
               startIndex={indexRange.startIndex}
               endIndex={indexRange.endIndex}
               onChange={handleBrushChange}
@@ -435,9 +500,12 @@ export function AssetsChart({
         {t('aria.controls')}
       </div>
 
-      <p className="text-right text-[0.62rem] font-medium tracking-[0.04em] text-muted-foreground">
-        {isZoomed ? t('hint.zoomed') : t('hint.dragToZoom')}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[0.62rem] font-medium tracking-[0.04em] text-muted-foreground">
+        <p className="m-0">
+          {isClipped ? t('scale.clipped', { value: formatCurrencyShort(outerMax) }) : ''}
+        </p>
+        <p className="m-0">{isZoomed ? t('hint.zoomed') : t('hint.dragToZoom')}</p>
+      </div>
     </div>
   )
 }

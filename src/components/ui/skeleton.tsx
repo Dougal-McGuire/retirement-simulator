@@ -14,7 +14,7 @@ function Skeleton({ className, shimmer = true, ...props }: SkeletonProps) {
       {...props}
     >
       {shimmer && (
-        <div className="pointer-events-none absolute inset-[-120%] animate-[shimmer_2s_linear_infinite] bg-[linear-gradient(120deg,transparent_0%,rgb(var(--neo-blue-rgb)_/_0.12)_40%,rgb(var(--neo-blue-rgb)_/_0.12)_60%,transparent_100%)]" />
+        <div className="skeleton-sweep pointer-events-none absolute inset-[-120%]" />
       )}
     </div>
   )
@@ -51,7 +51,7 @@ function ChartSkeleton({ className }: { className?: string }) {
 
         {/* Fan-shaped chart placeholder */}
         <div className="relative h-72 overflow-hidden border border-neo-black/15 bg-neo-white">
-          <div className="pointer-events-none absolute inset-[-150%] animate-[shimmer_2.4s_linear_infinite] bg-[linear-gradient(115deg,transparent_0%,rgb(var(--neo-blue-rgb)_/_0.07)_45%,rgb(var(--neo-blue-rgb)_/_0.1)_55%,transparent_100%)]" />
+          <div className="skeleton-sweep skeleton-sweep-soft pointer-events-none absolute inset-[-150%]" />
           <svg
             viewBox="0 0 600 240"
             preserveAspectRatio="none"

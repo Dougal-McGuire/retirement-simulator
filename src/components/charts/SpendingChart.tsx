@@ -18,10 +18,13 @@ import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/lib/hooks/useMediaQuery'
 import {
   axisTick,
+  brushChrome,
   chartInk,
   ChartLegend,
   ChartTooltipCard,
   fanHue,
+  measureAxisWidth,
+  niceCeil,
   withAlpha,
   type TooltipRow,
 } from '@/components/charts/chartTheme'
@@ -152,6 +155,19 @@ export function SpendingChart({
   const isZoomed = indexRange.startIndex > 0 || indexRange.endIndex < data.length - 1
   const canRenderChart = chartSize.width > 0 && chartSize.height > 0
 
+  // Round the axis to a readable bound and size it to its widest tick label so
+  // long compact-currency labels ("4,5 Mio. €") are never clipped.
+  const domainMax = useMemo(() => {
+    const max = data.reduce((acc, point) => Math.max(acc, point.spending_p90), 0)
+    return max > 0 ? niceCeil(max * 1.05) : undefined
+  }, [data])
+
+  const axisWidth = useMemo(() => {
+    const top = domainMax ?? 0
+    const samples = [top, top * 0.75, top * 0.5, top * 0.25, 0].map(formatCurrencyShort)
+    return measureAxisWidth(samples, isMobile)
+  }, [domainMax, formatCurrencyShort, isMobile])
+
   return (
     <div className="w-full min-w-0 space-y-5 border-3 border-neo-black bg-neo-white p-4 shadow-neo sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -226,12 +242,14 @@ export function SpendingChart({
             />
             <YAxis
               yAxisId="spending"
-              width={isMobile ? 46 : 58}
+              width={axisWidth}
               tick={axisTick(isMobile)}
               tickLine={false}
               tickMargin={6}
               axisLine={false}
               tickFormatter={formatCurrencyShort}
+              domain={[0, domainMax ?? 'auto']}
+              allowDataOverflow={domainMax != null}
             />
             {/* P10–P90 spending band */}
             <Area
@@ -300,10 +318,7 @@ export function SpendingChart({
             />
             <Brush
               dataKey="age"
-              height={isMobile ? 20 : 24}
-              stroke={chartInk.brushStroke}
-              fill={chartInk.brushFill}
-              travellerWidth={isMobile ? 6 : 8}
+              {...brushChrome(isMobile)}
               startIndex={indexRange.startIndex}
               endIndex={indexRange.endIndex}
               onChange={onBrushChange}

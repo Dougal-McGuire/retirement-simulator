@@ -26,6 +26,59 @@ test.describe('simulation dashboard', () => {
     )
   })
 
+  test('creates, renames and switches plans', async ({ page }) => {
+    await page.goto('/en/simulation')
+
+    const switcher = page.getByTestId('plan-switcher')
+    await expect(switcher).toBeVisible()
+    await expect(switcher).toContainText('Base plan')
+
+    // Create
+    await page.getByTestId('plan-new').click()
+    await page.getByLabel('Plan name').fill('Retire at 60')
+    await page.getByRole('button', { name: 'Create plan' }).click()
+    await expect(switcher).toContainText('Retire at 60')
+
+    // Duplicate + rename
+    await page.getByTestId('plan-duplicate').click()
+    await page.getByTestId('plan-rename').click()
+    await page.getByLabel('Plan name').fill('Barista FIRE')
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(switcher).toContainText('Barista FIRE')
+
+    // Switch back to the base plan
+    await page.getByTestId('plan-switcher-select').click()
+    await page.getByRole('option', { name: 'Base plan' }).click()
+    await expect(switcher).toContainText('Base plan')
+  })
+
+  test('compares two plans side by side on demand', async ({ page }) => {
+    await page.goto('/en/simulation')
+
+    await page.getByTestId('plan-new').click()
+    await page.getByLabel('Plan name').fill('Retire at 60')
+    await page.getByRole('button', { name: 'Create plan' }).click()
+
+    await page.getByRole('tab', { name: 'Scenarios & advice' }).click()
+
+    const comparison = page.getByTestId('plan-comparison')
+    await expect(comparison).toBeVisible()
+    await expect(comparison.getByTestId('plan-comparison-row')).toHaveCount(0)
+
+    await page.getByTestId('plan-comparison-run').click()
+    await expect(comparison.getByTestId('plan-comparison-row')).toHaveCount(2, { timeout: 30000 })
+    await expect(comparison).toContainText('Median assets at end')
+  })
+
+  test('turns a stress-test lever into a plan', async ({ page }) => {
+    await page.goto('/en/simulation')
+    await page.getByRole('tab', { name: 'Scenarios & advice' }).click()
+
+    await page.getByTestId('stress-lever-save').first().click()
+
+    await expect(page.getByTestId('plan-switcher')).toContainText('Retire 2 years later')
+  })
+
   test('surfaces warnings for a strained plan', async ({ page }) => {
     await page.addInitScript(() => {
       const params = {

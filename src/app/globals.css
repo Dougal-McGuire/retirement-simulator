@@ -712,6 +712,30 @@
     animation: shimmer 2s infinite;
   }
 
+  /* Loading sweep used by skeletons (kept out of arbitrary Tailwind values so the
+     generated stylesheet stays small and parseable). */
+  .skeleton-sweep {
+    background-image: linear-gradient(
+      120deg,
+      transparent 0%,
+      rgb(var(--neo-blue-rgb) / 0.12) 40%,
+      rgb(var(--neo-blue-rgb) / 0.12) 60%,
+      transparent 100%
+    );
+    animation: shimmer 2s linear infinite;
+  }
+
+  .skeleton-sweep-soft {
+    background-image: linear-gradient(
+      115deg,
+      transparent 0%,
+      rgb(var(--neo-blue-rgb) / 0.07) 45%,
+      rgb(var(--neo-blue-rgb) / 0.1) 55%,
+      transparent 100%
+    );
+    animation-duration: 2.4s;
+  }
+
   /* Fast, crisp transitions for neo-brutalism */
   .transition-neo {
     transition:
@@ -772,6 +796,28 @@
       box-shadow: var(--shadow-neo-mobile-lg) !important;
     }
   }
+}
+
+/* Range navigator (Recharts brush) — styled as a deliberate control rather
+   than the default grey scrollbar. */
+.chart-range-navigator .recharts-brush-slide {
+  fill: rgb(var(--neo-blue-rgb) / 0.16);
+  fill-opacity: 1;
+  stroke: rgb(var(--neo-blue-rgb) / 0.55);
+  stroke-width: 1;
+  cursor: grab;
+}
+
+.chart-range-navigator:active .recharts-brush-slide {
+  cursor: grabbing;
+}
+
+.chart-range-navigator .recharts-brush-texts text,
+.chart-range-navigator text {
+  fill: var(--neo-blue);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 /* Theme morphology: structural differences beyond color tokens. */
@@ -942,6 +988,28 @@ html[data-theme='aurora'] .theme-sidebar > * {
   z-index: 1;
 }
 
+/* Dark themes swap --neo-black (ink) and --neo-white (surface), so any
+   "bright accent fill + neo-black ink" pair collapses into lime-on-lime.
+   Repaint the ink with the dark surface token to restore contrast. */
+html[data-theme='aurora'] .bg-neo-yellow.text-neo-black,
+html[data-theme='aurora'] .bg-neo-green.text-neo-black,
+html[data-theme='aurora'] .bg-neo-cyan.text-neo-black,
+html[data-theme='aurora'] .bg-neo-blue.text-neo-black,
+html[data-theme='aurora'] .bg-neo-pink.text-neo-black,
+html[data-theme='aurora'] .bg-neo-red.text-neo-black,
+html[data-theme='aurora'] .bg-neo-purple.text-neo-black,
+html[data-theme='aurora'] .bg-neo-orange.text-neo-black {
+  color: rgb(var(--neo-white-rgb)) !important;
+}
+
+/* .neo-chip paints its own secondary-foreground ink, which is near-black in
+   dark themes and disappears on a surface-coloured chip. */
+html[data-theme='aurora'] .neo-chip.bg-neo-white,
+html[data-theme='aurora'] .neo-chip.bg-background {
+  color: rgb(var(--neo-black-rgb));
+  border-color: rgb(var(--neo-black-rgb) / 0.45);
+}
+
 html[data-theme='ledger'] body {
   line-height: 1.55;
 }
@@ -1036,9 +1104,14 @@ html[data-theme='signal'] .theme-content > .theme-panel-card:nth-child(even) {
 }
 
 @media (min-width: 1024px) {
-  html[data-theme='aurora'] .theme-setup-grid,
-  html[data-theme='aurora'] .theme-simulation-grid {
+  html[data-theme='aurora'] .theme-setup-grid {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* The dashboard stays two-column in every theme: the parameter panel has to
+     sit beside the charts, otherwise slider-to-chart interaction is impossible. */
+  html[data-theme='aurora'] .theme-simulation-grid {
+    grid-template-columns: 26rem minmax(0, 1fr) !important;
   }
 
   html[data-theme='aurora'] .theme-stepper {
@@ -1077,23 +1150,11 @@ html[data-theme='signal'] .theme-content > .theme-panel-card:nth-child(even) {
   }
 
   html[data-theme='aurora'] .theme-parameter-sidebar {
-    order: 2;
+    order: 1;
   }
 
   html[data-theme='aurora'] .theme-simulation-content {
-    order: 1;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--theme-content-gap);
-  }
-
-  html[data-theme='aurora'] .theme-simulation-content > * {
-    margin-top: 0 !important;
-  }
-
-  html[data-theme='aurora'] .theme-simulation-content > :first-child,
-  html[data-theme='aurora'] .theme-simulation-content > :last-child {
-    grid-column: 1 / -1;
+    order: 2;
   }
 
   html[data-theme='ledger'] .theme-setup-grid {
@@ -1502,4 +1563,55 @@ html[data-theme='signal'] .theme-content > .theme-panel-card:nth-child(even) {
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Landing page: theme-aware tokens so the marketing page reads as the */
+/* same product in every theme instead of inverting into a neon slab.  */
+/* ------------------------------------------------------------------ */
+.landing-cta {
+  --landing-cta-bg: var(--neo-black);
+  --landing-cta-fg: var(--neo-white);
+  background-color: var(--landing-cta-bg);
+}
+
+.landing-cta-title {
+  color: var(--landing-cta-fg);
+}
+
+.landing-cta-sub,
+.landing-cta-link {
+  color: color-mix(in srgb, var(--landing-cta-fg) 76%, transparent);
+}
+
+.landing-cta-link:hover {
+  color: var(--landing-cta-fg);
+}
+
+html[data-theme='aurora'] .landing-cta {
+  --landing-cta-bg: #0b1a2e;
+  --landing-cta-fg: #e2fff9;
+  background-image: linear-gradient(120deg, rgb(var(--neo-blue-rgb) / 0.14), transparent 62%);
+}
+
+/*
+ * Landing typography: themes widen every heading and every `tracking-*`
+ * utility (via an !important rule further up), which turns the marketing page
+ * into all-caps shouting. Pin the landing's display/label tracking to sane
+ * values in every theme. The paired selectors match the theme rule's
+ * specificity and win on source order.
+ */
+.landing-typeset .landing-display,
+html[data-theme] .landing-typeset .landing-display {
+  letter-spacing: 0.005em !important;
+}
+
+.landing-typeset .landing-label,
+html[data-theme] .landing-typeset .landing-label {
+  letter-spacing: 0.055em !important;
+}
+
+.landing-typeset .landing-body,
+html[data-theme] .landing-typeset .landing-body {
+  letter-spacing: 0.005em !important;
 }

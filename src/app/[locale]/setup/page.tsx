@@ -11,7 +11,9 @@ import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
 import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
 import { ExpenseList } from '@/components/forms/fields/ExpenseList'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
+import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
 import { OneTimeIncome, CustomExpense, ExpenseInterval } from '@/types'
+import { AuthMenu } from '@/components/auth/AuthMenu'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { cn } from '@/lib/utils'
@@ -26,11 +28,14 @@ export default function SetupPage() {
   const t = useTranslations('setup')
   const tStatus = useTranslations('stepStatus')
   const tUi = useTranslations('ui')
+  const tPlans = useTranslations('plans')
   const format = useFormatter()
 
   const params = useSimulationStore((state) => state.params)
   const updateParams = useSimulationStore((state) => state.updateParams)
   const setAutoRunSuspended = useSimulationStore((state) => state.setAutoRunSuspended)
+  const createPlan = useSimulationStore((state) => state.createPlan)
+  const [savePlanOpen, setSavePlanOpen] = useState(false)
 
   const [currentStep, setCurrentStep] = useState(0)
   const [progressLoaded, setProgressLoaded] = useState(false)
@@ -119,15 +124,20 @@ export default function SetupPage() {
     stepHeadingRef.current?.scrollIntoView({ block: 'nearest' })
   }, [currentStep, progressLoaded])
 
+  const finishSetup = () => {
+    // Data is already in simulation store, just clear progress and navigate
+    localStorage.removeItem(STORAGE_KEY)
+    router.push('/simulation')
+  }
+
   const handleNext = () => {
     if (currentStep < STEP_KEYS.length - 1) {
       setCurrentStep(currentStep + 1)
       return
     }
 
-    // Data is already in simulation store, just clear progress and navigate
-    localStorage.removeItem(STORAGE_KEY)
-    router.push('/simulation')
+    // Last step: offer to keep this configuration as its own named plan.
+    setSavePlanOpen(true)
   }
 
   const handleBack = () => {
@@ -313,6 +323,7 @@ export default function SetupPage() {
                 helpText={t('assets.fields.currentAssets.help')}
                 className="w-full"
                 unit={t('units.currency')}
+                groupThousands
                 min={0}
                 validation={{
                   min: 0,
@@ -333,6 +344,7 @@ export default function SetupPage() {
                 helpText={t('assets.fields.annualSavings.help')}
                 className="w-full"
                 unit={t('units.currency')}
+                groupThousands
                 min={0}
                 validation={{
                   min: 0,
@@ -379,6 +391,7 @@ export default function SetupPage() {
                 helpText={t('assets.fields.monthlyPension.help')}
                 className="w-full"
                 unit={t('units.currency')}
+                groupThousands
                 min={0}
                 validation={{
                   min: 0,
@@ -415,6 +428,7 @@ export default function SetupPage() {
                   ageLabel: t('assets.oneTimeIncomes.ageLabel'),
                   agePrefix: tUi('age'),
                   amountLabel: t('assets.oneTimeIncomes.amountLabel'),
+                  addHint: t('assets.oneTimeIncomes.addHint'),
                   remove: t('assets.oneTimeIncomes.remove'),
                   edit: t('assets.oneTimeIncomes.edit'),
                   save: t('assets.oneTimeIncomes.save'),
@@ -521,6 +535,7 @@ export default function SetupPage() {
               templates={expenseTemplates}
               strings={{
                 addButton: t('expenses.add'),
+                addHint: t('expenses.addHint'),
                 empty: t('expenses.empty'),
                 emptyHint: t('expenses.emptyHint'),
                 nameLabel: t('expenses.nameLabel'),
@@ -632,7 +647,7 @@ export default function SetupPage() {
             className={cn(glassCardClass, 'theme-hero relative overflow-hidden px-5 py-7 sm:px-8 sm:py-10')}
           >
             <div className="theme-hero-accent absolute right-8 top-8 hidden h-12 w-12 rotate-6 border-3 border-neo-black bg-neo-yellow/40 md:block" />
-            <div className="theme-hero-mark absolute -left-6 bottom-10 hidden h-16 w-16 -rotate-3 border-3 border-neo-black bg-neo-blue/20 md:block" />
+            <div className="theme-hero-mark pointer-events-none absolute -left-8 -bottom-6 hidden h-16 w-16 -rotate-3 border-3 border-neo-black bg-neo-blue/20 md:block" />
 
             <div className="theme-hero-layout relative flex flex-col gap-8">
               <div className="theme-hero-top flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -654,6 +669,7 @@ export default function SetupPage() {
                 </div>
 
                 <div className="theme-action-strip flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  <AuthMenu className="w-full sm:w-56" />
                   <ThemeSwitcher className="w-full sm:w-56" />
                   <LocaleSwitcher className="w-full sm:w-40" />
                   <Button variant="secondary" size="sm" asChild className="min-w-[11rem]">
@@ -662,33 +678,6 @@ export default function SetupPage() {
                 </div>
               </div>
 
-              <div className="theme-progress-block flex flex-col gap-4 border-t-3 border-neo-black pt-6 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-wrap items-center gap-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
-                  <span className="border-3 border-neo-black bg-neo-white px-4 py-1 shadow-neo-sm">
-                    {progressLabel}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-neo-black">{percentLabel}</span>
-                    {progressPercent === 100 && <Check className="h-4 w-4 text-neo-green" />}
-                  </span>
-                  <span className="text-[0.6rem] normal-case tracking-normal text-muted-foreground">
-                    {t('progress.autosave')}
-                  </span>
-                </div>
-                <div
-                  className="theme-progress-bar relative h-3 w-full overflow-hidden border-2 border-neo-black bg-neo-white shadow-neo-xs sm:max-w-sm"
-                  role="progressbar"
-                  aria-label={`${progressLabel}, ${percentLabel}`}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={progressPercent}
-                >
-                  <div
-                    className="h-full bg-neo-blue transition-all duration-300 ease-out"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -705,40 +694,52 @@ export default function SetupPage() {
               'theme-sidebar theme-stepper space-y-6 p-6 lg:sticky lg:top-6 lg:self-start'
             )}
           >
+            {/* Single canonical progress statement for the whole page: the
+                step counter, the bar and the time estimate live here only. */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                <span>{progressLabel}</span>
-                <span className="tabular-nums text-neo-black">{progressPercent}%</span>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <p className="text-[0.78rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                  {progressLabel}
+                </p>
+                <p className="flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <span className="tabular-nums">{percentLabel}</span>
+                  {progressPercent === 100 && (
+                    <Check className="h-3.5 w-3.5 text-neo-green" aria-hidden="true" />
+                  )}
+                </p>
               </div>
-              {/* Time estimate */}
-              <div className="theme-stepper-meta border-2 border-dashed border-neo-black bg-neo-blue/5 px-3 py-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    {t('progress.timeRemaining')}
-                  </span>
-                  <span className="text-[0.68rem] font-bold tabular-nums text-neo-black">
+              <div
+                className="theme-progress-bar relative h-3 w-full overflow-hidden border-2 border-neo-black bg-neo-white shadow-neo-xs"
+                role="progressbar"
+                aria-label={`${progressLabel}, ${percentLabel}`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={progressPercent}
+              >
+                <div
+                  className="h-full bg-neo-blue transition-all duration-300 ease-out"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <span>
+                  {t('progress.timeRemaining')}:{' '}
+                  <span className="tabular-nums text-neo-black">
                     {t('progress.minutesRemaining', { minutes: minutesLeft })}
                   </span>
-                </div>
+                </span>
+                <span className="normal-case tracking-normal">{t('progress.autosave')}</span>
               </div>
+            </div>
 
-              {/* Compact step segments (mobile / tablet) */}
-              <div className="flex gap-1.5 pt-1 lg:hidden" aria-hidden="true">
-                {steps.map((step, index) => (
-                  <button
-                    key={step.id}
-                    type="button"
-                    tabIndex={-1}
-                    onClick={() => handleStepClick(index)}
-                    className={cn(
-                      'h-2 flex-1 border border-neo-black/40 transition-colors',
-                      index < currentStep && 'bg-secondary',
-                      index === currentStep && 'bg-neo-blue',
-                      index > currentStep && 'bg-muted'
-                    )}
-                  />
-                ))}
-              </div>
+            {/* Mobile / tablet: the step titles the desktop stepper shows. */}
+            <div className="lg:hidden">
+              <p className="text-[0.74rem] font-bold uppercase tracking-[0.14em] text-neo-black">
+                {steps[currentStep].title}
+              </p>
+              <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">
+                {steps[currentStep].description}
+              </p>
             </div>
 
             <div className="hidden lg:block">
@@ -820,18 +821,13 @@ export default function SetupPage() {
           <section className="theme-content theme-setup-content space-y-5">
             <Card className={cn(glassCardClass, 'theme-active-step-card')}>
               <CardHeader className="border-b-3 border-neo-black bg-neo-white">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <CardTitle
-                    ref={stepHeadingRef}
-                    tabIndex={-1}
-                    className="text-xl font-extrabold uppercase tracking-[0.12em] text-neo-black"
-                  >
-                    {steps[currentStep].title}
-                  </CardTitle>
-                  <span className="hidden border-2 border-neo-black bg-neo-white px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-muted-foreground shadow-neo-xs sm:inline-block">
-                    {progressLabel}
-                  </span>
-                </div>
+                <CardTitle
+                  ref={stepHeadingRef}
+                  tabIndex={-1}
+                  className="text-xl font-extrabold uppercase tracking-[0.12em] text-neo-black"
+                >
+                  {steps[currentStep].title}
+                </CardTitle>
                 <CardDescription className="mt-1 text-xs font-medium normal-case leading-relaxed tracking-normal text-muted-foreground">
                   {steps[currentStep].description}
                 </CardDescription>
@@ -843,42 +839,70 @@ export default function SetupPage() {
               </CardContent>
             </Card>
 
-            <div className="theme-wizard-actions sticky bottom-0 z-20 -mx-2 flex flex-col gap-3 border-t-2 border-neo-black/10 bg-background px-4 py-3 sm:static sm:z-auto sm:mx-0 sm:flex-row sm:items-start sm:justify-between sm:border-t-0 sm:bg-transparent sm:px-0 sm:py-0">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBack}
-                disabled={currentStep === 0}
-                className={cn('sm:min-w-[10rem]', currentStep === 0 && 'opacity-40')}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {t('buttons.back')}
-              </Button>
+            {/* Spacer so the fixed mobile action bar never covers the last
+                rows of the step card. Desktop keeps the bar in flow. */}
+            <div className="h-[7.5rem] sm:hidden" aria-hidden="true" />
 
-              <div className="flex flex-col items-stretch gap-2 sm:items-end">
+            <div className="theme-wizard-actions fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t-3 border-neo-black bg-background px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-3 shadow-[0_-4px_0_0_rgba(0,0,0,0.06)] sm:static sm:z-auto sm:mx-0 sm:flex-row sm:items-start sm:justify-between sm:border-t-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-0 sm:shadow-none">
+              <div className="flex items-center gap-3 sm:contents">
                 <Button
-                  variant="default"
+                  variant="outline"
                   size="sm"
-                  onClick={handleNext}
-                  className="sm:min-w-[12rem]"
+                  onClick={handleBack}
+                  disabled={currentStep === 0}
+                  className="flex-1 disabled:border-neo-black/40 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none sm:flex-none sm:min-w-[10rem]"
                 >
-                  {currentStep === steps.length - 1 ? t('buttons.complete') : t('buttons.next')}
-                  {currentStep === steps.length - 1 ? (
-                    <Check className="ml-2 h-4 w-4" />
-                  ) : (
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  )}
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {t('buttons.back')}
                 </Button>
-                {currentStep < steps.length - 1 && (
-                  <p className="text-[0.65rem] font-medium text-muted-foreground sm:text-right">
-                    {t('buttons.upNext', { step: steps[currentStep + 1].title })}
-                  </p>
-                )}
+
+                <div className="flex flex-1 flex-col items-stretch gap-1.5 sm:flex-none sm:items-end sm:gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleNext}
+                    className="sm:min-w-[12rem]"
+                  >
+                    {currentStep === steps.length - 1 ? t('buttons.complete') : t('buttons.next')}
+                    {currentStep === steps.length - 1 ? (
+                      <Check className="ml-2 h-4 w-4" />
+                    ) : (
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    )}
+                  </Button>
+                  {currentStep < steps.length - 1 && (
+                    <p className="hidden text-[0.65rem] font-medium text-muted-foreground sm:block sm:text-right">
+                      {t('buttons.upNext', { step: steps[currentStep + 1].title })}
+                    </p>
+                  )}
+                </div>
               </div>
+              {currentStep < steps.length - 1 && (
+                <p className="text-center text-[0.62rem] font-medium text-muted-foreground sm:hidden">
+                  {t('buttons.upNext', { step: steps[currentStep + 1].title })}
+                </p>
+              )}
             </div>
           </section>
         </div>
       </main>
+
+      <PlanNameDialog
+        open={savePlanOpen}
+        onOpenChange={setSavePlanOpen}
+        inputId="wizard-plan-name"
+        title={tPlans('dialogs.wizard.title')}
+        description={tPlans('dialogs.wizard.description')}
+        label={tPlans('dialogs.wizard.label')}
+        placeholder={tPlans('dialogs.wizard.placeholder')}
+        confirmLabel={tPlans('dialogs.wizard.save')}
+        secondaryLabel={tPlans('dialogs.wizard.skip')}
+        onSecondary={finishSetup}
+        onConfirm={(name) => {
+          createPlan(name)
+          finishSetup()
+        }}
+      />
     </div>
   )
 }

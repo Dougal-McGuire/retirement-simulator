@@ -72,17 +72,16 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
         </div>
       </div>
 
-      {/* Mobile Sheet Trigger */}
-      <div className="lg:hidden">
+      {/* Mobile sheet trigger: docked in the document flow (sticky under the
+          header) so it can never cover the tabs, the gauge or a chart. */}
+      <div className="sticky top-0 z-30 -mx-2 mb-2 border-b-2 border-neo-black bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-3 sm:px-3 lg:hidden">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-5 z-40 h-12 min-w-[11rem] shadow-neo"
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              {t('trigger')}
+            <Button variant="secondary" size="sm" className="h-12 w-full justify-between shadow-neo">
+              <span className="flex items-center">
+                <Settings className="mr-2 h-4 w-4" />
+                {t('trigger')}
+              </span>
               <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </SheetTrigger>
