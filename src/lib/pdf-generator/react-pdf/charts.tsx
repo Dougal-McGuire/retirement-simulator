@@ -59,17 +59,24 @@ function svgCurrency(value: number, intlLocale: string): string {
   return formatted.replace(/[\u202f\u00a0]/g, ' ')
 }
 
+/**
+ * One palette for every figure in the report: the app's blue carries the data,
+ * the percentile bounds are neutral dashed ink, and red is reserved for the
+ * single semantic it has throughout the document — capital depletion.
+ */
 const CHART_COLORS = {
   band: tokens.colors.accent[100],
-  median: tokens.colors.accent[700],
-  p10: tokens.colors.warning[600],
-  p90: tokens.colors.success[600],
+  median: tokens.colors.accent[600],
+  bound: tokens.colors.ink[500],
   grid: tokens.colors.ink[150],
   axis: tokens.colors.ink[300],
   axisText: tokens.colors.ink[500],
   zero: tokens.colors.ink[400],
-  marker: tokens.colors.ink[400],
+  marker: tokens.colors.brand.yellowLine,
+  risk: tokens.colors.danger[600],
 }
+
+const BOUND_DASH = '2.5,2'
 
 interface ProjectionChartProps {
   data: Array<{ age: number; p10: number; p50: number; p90: number }>
@@ -156,10 +163,25 @@ export function ProjectionChart({
   }
 
   const legendItems = [
-    { type: 'swatch' as const, color: CHART_COLORS.band, label: isGerman ? 'P10–P90 Band' : 'P10–P90 band' },
-    { type: 'line' as const, color: CHART_COLORS.median, width: 2, label: isGerman ? 'Median (P50)' : 'Median (P50)' },
-    { type: 'line' as const, color: CHART_COLORS.p10, width: 1, label: isGerman ? 'Stress (P10)' : 'Stress (P10)' },
-    { type: 'line' as const, color: CHART_COLORS.p90, width: 1, label: isGerman ? 'Chance (P90)' : 'Upside (P90)' },
+    {
+      type: 'line' as const,
+      color: CHART_COLORS.median,
+      width: 2,
+      label: isGerman ? 'Median (P50)' : 'Median (P50)',
+    },
+    {
+      type: 'swatch' as const,
+      color: CHART_COLORS.band,
+      label: isGerman
+        ? 'P10–P90 Band (Stress bis Chance)'
+        : 'P10–P90 band (stress to upside)',
+    },
+    {
+      type: 'dashed' as const,
+      color: CHART_COLORS.bound,
+      width: 0.9,
+      label: isGerman ? 'Bandgrenzen' : 'Band bounds',
+    },
   ]
 
   return (
