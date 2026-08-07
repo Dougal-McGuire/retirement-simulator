@@ -391,7 +391,25 @@ export function CoverSparkline({
   ]
   bandPath[0] = bandPath[0].replace(/^L/, 'M')
 
+  const first = data[0]
   const last = data[data.length - 1]
+
+  const stageMarkers: Array<{ age: number; label: string }> = []
+  if (retireAge && retireAge > minAge && retireAge < maxAge) {
+    stageMarkers.push({
+      age: retireAge,
+      label: isGerman ? `Ruhestand ${retireAge}` : `Retire ${retireAge}`,
+    })
+  }
+  if (pensionAge && pensionAge > minAge && pensionAge < maxAge && pensionAge !== retireAge) {
+    stageMarkers.push({
+      age: pensionAge,
+      label: isGerman ? `Rente ${pensionAge}` : `Pension ${pensionAge}`,
+    })
+  }
+
+  const axisLabel = (age: number, caption: string) =>
+    `${isGerman ? 'Alter' : 'Age'} ${age} · ${caption}`
 
   return (
     <View style={{ width, height }}>
@@ -400,28 +418,69 @@ export function CoverSparkline({
           {y(0) <= chartHeight && y(0) >= 0 && (
             <Line x1={0} y1={y(0)} x2={chartWidth} y2={y(0)} stroke={tokens.colors.ink[200]} strokeWidth={0.7} />
           )}
-          <Path d={`${bandPath.join(' ')} Z`} fill={tokens.colors.accent[100]} fillOpacity={0.9} />
-          <Path d={toPath((d) => d.p50)} stroke={tokens.colors.accent[700]} strokeWidth={1.8} fill="none" />
 
-          {/* End-point label: median at horizon */}
+          {/* Life-stage markers give the two end labels something to sit between */}
+          {stageMarkers.map((marker) => (
+            <G key={`cover-marker-${marker.age}`}>
+              <Line
+                x1={x(marker.age)}
+                y1={0}
+                x2={x(marker.age)}
+                y2={chartHeight}
+                stroke={tokens.colors.brand.yellowLine}
+                strokeWidth={0.8}
+                strokeDasharray="3,2"
+              />
+              <SvgText
+                x={x(marker.age) + 3}
+                y={-6}
+                style={{ fontSize: 6, fill: tokens.colors.ink[500] }}
+              >
+                {marker.label}
+              </SvgText>
+            </G>
+          ))}
+
+          <Path d={`${bandPath.join(' ')} Z`} fill={tokens.colors.accent[100]} fillOpacity={0.9} />
+          <Path d={toPath((d) => d.p50)} stroke={tokens.colors.accent[600]} strokeWidth={1.8} fill="none" />
+
+          {/* End-point label: median at the planning horizon */}
+          <Line
+            x1={chartWidth}
+            y1={y(last.p50)}
+            x2={chartWidth + 4}
+            y2={y(last.p50)}
+            stroke={tokens.colors.accent[600]}
+            strokeWidth={0.8}
+          />
           <SvgText
-            x={chartWidth + 5}
-            y={y(last.p50) + 2}
-            style={{ fontSize: 6.5, fill: tokens.colors.ink[700] }}
+            x={chartWidth + 6}
+            y={y(last.p50) - 1}
+            style={{ fontSize: 6, fill: tokens.colors.ink[500] }}
+          >
+            {isGerman ? 'Median' : 'Median'}
+          </SvgText>
+          <SvgText
+            x={chartWidth + 6}
+            y={y(last.p50) + 7.5}
+            style={{ fontSize: 7, fontWeight: 600, fill: tokens.colors.ink[900] }}
           >
             {svgCurrency(last.p50, intlLocale)}
           </SvgText>
 
-          {/* Age labels at both ends */}
-          <SvgText x={0} y={chartHeight + 11} style={{ fontSize: 6.5, fill: tokens.colors.ink[400] }}>
-            {minAge}
+          {/* Age + value context at both ends */}
+          <SvgText x={0} y={chartHeight + 12} style={{ fontSize: 6, fill: tokens.colors.ink[500] }}>
+            {axisLabel(minAge, isGerman ? 'heute' : 'today')}
+          </SvgText>
+          <SvgText x={0} y={chartHeight + 20.5} style={{ fontSize: 6.5, fontWeight: 600, fill: tokens.colors.ink[700] }}>
+            {svgCurrency(first.p50, intlLocale)}
           </SvgText>
           <SvgText
             x={chartWidth}
-            y={chartHeight + 11}
-            style={{ fontSize: 6.5, fill: tokens.colors.ink[400], textAnchor: 'end' }}
+            y={chartHeight + 12}
+            style={{ fontSize: 6, fill: tokens.colors.ink[500], textAnchor: 'end' }}
           >
-            {maxAge}
+            {axisLabel(maxAge, isGerman ? 'Planungsende' : 'horizon')}
           </SvgText>
         </G>
       </Svg>
@@ -506,7 +565,7 @@ export function SpendingChart({
                   width={barWidth}
                   height={barHeight}
                   rx={2}
-                  fill={index === 0 ? tokens.colors.accent[700] : tokens.colors.accent[500]}
+                  fill={index === 0 ? tokens.colors.accent[600] : tokens.colors.accent[500]}
                 />
 
                 <SvgText
