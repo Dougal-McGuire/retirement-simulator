@@ -359,7 +359,7 @@ interface CoverSparklineProps {
 export function CoverSparkline({
   data,
   width = 473,
-  height = 190,
+  height = 246,
   locale = 'de',
   retireAge,
   pensionAge,
