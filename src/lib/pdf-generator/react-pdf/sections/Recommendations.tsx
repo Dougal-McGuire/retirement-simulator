@@ -152,7 +152,13 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
               key={`${rec.title}-${index}`}
               style={[
                 styles.card,
-                { borderLeftWidth: 2.5, borderLeftColor: tag.color, marginBottom: 8 },
+                {
+                  borderLeftWidth: 2.5,
+                  borderLeftColor: tag.color,
+                  marginBottom: 6,
+                  paddingVertical: 7,
+                  paddingHorizontal: 9,
+                },
               ]}
               wrap={false}
             >
@@ -210,15 +216,15 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
                   </View>
                   <Text
                     style={{
-                      fontSize: 10.5,
+                      fontSize: 9.5,
                       fontWeight: 600,
                       color: tokens.colors.ink[900],
-                      marginBottom: 3,
+                      marginBottom: 2,
                     }}
                   >
                     {rec.title}
                   </Text>
-                  <Text style={{ fontSize: 8.5, lineHeight: 1.5, color: tokens.colors.ink[700] }}>
+                  <Text style={{ fontSize: 8, lineHeight: 1.45, color: tokens.colors.ink[700] }}>
                     {rec.body}
                   </Text>
                 </View>

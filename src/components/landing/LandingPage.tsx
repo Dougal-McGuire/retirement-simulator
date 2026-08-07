@@ -198,7 +198,7 @@ export function LandingPage() {
         {/* ================= Same plan, different futures ================= */}
         <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:pb-28">
           <div className="mx-auto mb-10 flex max-w-2xl flex-col items-center text-center">
-            <span className="inline-block border-3 border-neo-black bg-primary landing-label px-3 py-1 text-[0.66rem] font-bold text-primary-foreground shadow-neo-sm">
+            <span className="landing-label inline-block border-3 border-neo-black bg-neo-yellow px-3 py-1 text-[0.66rem] font-bold text-gray-950 shadow-neo-sm">
               {t('spread.eyebrow')}
             </span>
             <h2 className="landing-display mt-5 text-balance font-heading text-2xl font-black text-neo-black sm:text-4xl">

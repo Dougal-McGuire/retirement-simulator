@@ -732,15 +732,6 @@ export default function SetupPage() {
               </div>
             </div>
 
-            {/* Mobile / tablet: the step titles the desktop stepper shows. */}
-            <div className="lg:hidden">
-              <p className="text-[0.74rem] font-bold uppercase tracking-[0.14em] text-neo-black">
-                {steps[currentStep].title}
-              </p>
-              <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">
-                {steps[currentStep].description}
-              </p>
-            </div>
 
             <div className="hidden lg:block">
               <ol
