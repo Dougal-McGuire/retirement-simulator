@@ -44,7 +44,7 @@ export function HeaderControlsMenu({ className }: HeaderControlsMenuProps) {
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="theme-panel-card w-full border-3 border-neo-black bg-neo-white p-0 shadow-neo sm:w-80"
+        className="w-full border-3 border-neo-black bg-neo-white p-0 shadow-neo sm:w-80"
       >
         <SheetHeader className="border-b-3 border-neo-black px-6 py-5">
           <SheetTitle className="flex items-center justify-between gap-3 text-base font-black tracking-[0.08em] text-neo-black">

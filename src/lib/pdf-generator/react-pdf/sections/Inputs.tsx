@@ -11,11 +11,18 @@ interface InputsProps {
 }
 
 export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
-  const { profile, assumptions, expenses, finances } = content
+  const { profile, assumptions, expenses, finances, projections } = content
   const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
   const isGerman = content.locale !== 'en'
 
   const baseSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
+  const pensionAnnual = finances.monthlyPension * 12
+  const realReturn = (1 + assumptions.expectedReturn) / (1 + assumptions.inflation) - 1
+  const retireMedian = projections.milestones.find(
+    (milestone) => milestone.age === profile.person.retireAge
+  )?.p50
+  const firstYearWithdrawalRate =
+    retireMedian && retireMedian > 0 ? baseSpend / retireMedian : null
   const withdrawalStrategyLabel =
     assumptions.withdrawalStrategy === 'vanguardDynamic'
       ? 'Vanguard Dynamic Spending'
@@ -90,6 +97,57 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
       }
     )
   }
+
+  const bridgeYears = Math.max(0, profile.person.pensionAge - profile.person.retireAge)
+  const phaseRows: Array<{ phase: string; ages: string; income: string; flow: string }> = [
+    {
+      phase: isGerman ? 'Ansparphase' : 'Accumulation',
+      ages: `${profile.person.currentAge}–${profile.person.retireAge - 1}`,
+      income: isGerman ? 'Erwerbseinkommen' : 'Employment income',
+      flow: `+${fmtCurrency(finances.annualSavings, locale)}`,
+    },
+    ...(bridgeYears > 0
+      ? [
+          {
+            phase: isGerman ? 'Überbrückung' : 'Bridge',
+            ages: `${profile.person.retireAge}–${profile.person.pensionAge - 1}`,
+            income: isGerman ? 'keine Rente' : 'no pension yet',
+            flow: `−${fmtCurrency(baseSpend, locale)}`,
+          },
+        ]
+      : []),
+    {
+      phase: isGerman ? 'Rentenphase' : 'Pension phase',
+      ages: `${profile.person.pensionAge}–${profile.person.horizonAge}`,
+      income: `${isGerman ? 'Rente' : 'Pension'} ${fmtCurrency(pensionAnnual, locale)}`,
+      flow: `−${fmtCurrency(Math.max(0, baseSpend - pensionAnnual), locale)}`,
+    },
+  ]
+
+  const derived: Array<{ label: string; value: string; note: string }> = [
+    {
+      label: isGerman ? 'Reale Rendite' : 'Real return',
+      value: fmtPercent(realReturn, 1, locale),
+      note: isGerman ? 'Rendite nach Inflation' : 'return after inflation',
+    },
+    {
+      label: isGerman ? 'Entnahmerate' : 'Withdrawal rate',
+      value: firstYearWithdrawalRate !== null ? fmtPercent(firstYearWithdrawalRate, 1, locale) : '–',
+      note: isGerman ? 'erstes Ruhestandsjahr' : 'first year of retirement',
+    },
+    {
+      label: isGerman ? 'Überbrückungsjahre' : 'Bridge years',
+      value: fmtNumber(bridgeYears, { locale }),
+      note: isGerman
+        ? `Alter ${profile.person.retireAge}–${profile.person.pensionAge}`
+        : `age ${profile.person.retireAge}–${profile.person.pensionAge}`,
+    },
+    {
+      label: isGerman ? 'Sparquote zu Ausgaben' : 'Savings vs spending',
+      value: baseSpend > 0 ? fmtPercent(finances.annualSavings / baseSpend, 0, locale) : '–',
+      note: isGerman ? 'Sparleistung / Jahresbudget' : 'annual savings / annual budget',
+    },
+  ]
 
   return (
     <View>
@@ -178,6 +236,80 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
             ))}
           </Table>
         </View>
+      </View>
+
+      {/* Phases: what actually flows in and out of the portfolio, and when */}
+      <View style={[styles.card, { marginBottom: 12 }]}>
+        <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
+          {isGerman ? 'Phasen des Plans' : 'Phases of the Plan'}
+        </Text>
+        <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 4 }}>
+          {isGerman
+            ? 'Netto-Fluss zum bzw. aus dem Depot pro Jahr, in heutigen Beträgen und vor Marktrendite.'
+            : 'Net flow to or from the portfolio per year, in today’s amounts and before market returns.'}
+        </Text>
+        <Table>
+          <TableRow header>
+            <TableCell header width="26%">
+              {isGerman ? 'Phase' : 'Phase'}
+            </TableCell>
+            <TableCell header width="18%">
+              {isGerman ? 'Alter' : 'Ages'}
+            </TableCell>
+            <TableCell header width="34%">
+              {isGerman ? 'Einkommensquelle' : 'Income source'}
+            </TableCell>
+            <TableCell header width="22%" align="right">
+              {isGerman ? 'Depotfluss p.a.' : 'Portfolio flow p.a.'}
+            </TableCell>
+          </TableRow>
+          {phaseRows.map((row, index) => (
+            <TableRow key={row.phase} alt={index % 2 === 1}>
+              <TableCell width="26%">
+                <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>{row.phase}</Text>
+              </TableCell>
+              <TableCell width="18%">{row.ages}</TableCell>
+              <TableCell width="34%">
+                <Text style={{ fontSize: 7.5 }}>{row.income}</Text>
+              </TableCell>
+              <TableCell width="22%" align="right">
+                <Text
+                  style={{
+                    fontWeight: 600,
+                    color: row.flow.startsWith('+')
+                      ? tokens.colors.success[600]
+                      : tokens.colors.ink[900],
+                  }}
+                >
+                  {row.flow}
+                </Text>
+              </TableCell>
+            </TableRow>
+          ))}
+        </Table>
+      </View>
+
+      {/* Derived figures — the numbers the assumptions imply */}
+      <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+        {derived.map((item, index) => (
+          <View
+            key={item.label}
+            style={[
+              styles.cardMuted,
+              {
+                flex: 1,
+                marginRight: index < derived.length - 1 ? 10 : 0,
+                marginBottom: 0,
+                paddingVertical: 8,
+              },
+            ]}
+            wrap={false}
+          >
+            <Text style={styles.kpiLabel}>{item.label}</Text>
+            <Text style={[styles.kpiValue, { fontSize: 13, marginTop: 3 }]}>{item.value}</Text>
+            <Text style={[styles.kpiDescription, { marginTop: 2 }]}>{item.note}</Text>
+          </View>
+        ))}
       </View>
 
       <View style={styles.callout}>
