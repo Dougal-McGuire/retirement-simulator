@@ -288,9 +288,12 @@ export function SectionHeader({ number, overline, title, lead, style }: SectionH
   return (
     <View style={mergeStyles(styles.sectionHeaderBlock, style)}>
       {(number || overline) && (
-        <Text style={styles.overline}>
-          {[number, overline].filter(Boolean).join('  ·  ')}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+          <View style={styles.brandMark} />
+          <Text style={[styles.overline, { marginBottom: 0 }]}>
+            {[number, overline].filter(Boolean).join('  ·  ')}
+          </Text>
+        </View>
       )}
       <Text style={styles.h2}>{title}</Text>
       {lead && <Text style={styles.sectionLead}>{lead}</Text>}

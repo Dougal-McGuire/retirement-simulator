@@ -517,7 +517,7 @@ export const styles = StyleSheet.create({
   fontSemibold: { fontWeight: 600 },
   fontBold: { fontWeight: 700 },
   textMuted: { color: tokens.colors.ink[500] },
-  textAccent: { color: tokens.colors.accent[600] },
+  textAccent: { color: tokens.colors.accent[700] },
 })
 
 export default styles

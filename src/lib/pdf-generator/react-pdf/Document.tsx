@@ -67,8 +67,7 @@ export function ReportPage({
               style={{
                 width: 5.5,
                 height: 5.5,
-                backgroundColor: tokens.colors.accent[600],
-                borderRadius: 1,
+                backgroundColor: tokens.colors.brand.yellow,
                 marginRight: 5,
               }}
             />
@@ -151,10 +150,10 @@ export function CoverPage({
 
   return (
     <ReportPage pageStyle="cover">
-      {/* Top brand band */}
+      {/* Top brand band — the app's near-black shell with its yellow marker */}
       <View
         style={{
-          backgroundColor: tokens.colors.accent[800],
+          backgroundColor: tokens.colors.brand.ink,
           paddingHorizontal: inset,
           paddingTop: 36,
           paddingBottom: 40,
