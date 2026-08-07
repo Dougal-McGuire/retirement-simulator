@@ -86,6 +86,7 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
           locale={content.locale}
           retireAge={person.retireAge}
           pensionAge={person.pensionAge}
+          depletionAge={projections.exhaustionAge}
         />
       </View>
 
