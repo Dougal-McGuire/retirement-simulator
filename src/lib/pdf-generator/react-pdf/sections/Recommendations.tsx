@@ -274,6 +274,43 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
         </View>
       )}
 
+      <View style={[styles.card, { marginTop: 4, marginBottom: 8 }]}>
+        <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
+          {isGerman ? 'Wirkung der wichtigsten Hebel' : 'Effect of the Main Levers'}
+        </Text>
+        <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 4 }}>
+          {isGerman
+            ? `Direkte Rechnung auf Basis der aktuellen Eingaben — keine erneute Simulation. Ausgangslage: ${fmtCurrency(gapToday, locale)} Lücke pro Jahr, ${fmtCurrency(bridgeNeed, locale)} Überbrückungsbedarf.`
+            : `Direct arithmetic on the current inputs — not a re-run of the simulation. Baseline: ${fmtCurrency(gapToday, locale)} gap per year, ${fmtCurrency(bridgeNeed, locale)} bridge need.`}
+        </Text>
+        <Table>
+          <TableRow header>
+            <TableCell header width="42%">
+              {isGerman ? 'Hebel' : 'Lever'}
+            </TableCell>
+            <TableCell header width="32%" align="right">
+              {isGerman ? 'Wirkung auf Jahresbedarf' : 'Effect on annual need'}
+            </TableCell>
+            <TableCell header width="26%" align="right">
+              {isGerman ? 'Überbrückungsbedarf' : 'Bridge need'}
+            </TableCell>
+          </TableRow>
+          {levers.map((lever, index) => (
+            <TableRow key={lever.lever} alt={index % 2 === 1}>
+              <TableCell width="42%">
+                <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>{lever.lever}</Text>
+              </TableCell>
+              <TableCell width="32%" align="right">
+                <Text style={{ fontSize: 7.5 }}>{lever.gap}</Text>
+              </TableCell>
+              <TableCell width="26%" align="right">
+                <Text style={{ fontSize: 7.5 }}>{lever.bridge}</Text>
+              </TableCell>
+            </TableRow>
+          ))}
+        </Table>
+      </View>
+
       <View style={[styles.card, { marginTop: 0, marginBottom: 8 }]}>
         <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
           {isGerman ? '90-Tage-Umsetzungsplan' : '90-Day Implementation Plan'}
