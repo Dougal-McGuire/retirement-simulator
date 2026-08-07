@@ -85,6 +85,8 @@ interface ProjectionChartProps {
   locale?: string
   retireAge?: number
   pensionAge?: number
+  /** Age at which the P10 path first hits zero, marked in red when present. */
+  depletionAge?: number
 }
 
 export function ProjectionChart({
@@ -94,6 +96,7 @@ export function ProjectionChart({
   locale = 'de',
   retireAge,
   pensionAge,
+  depletionAge,
 }: ProjectionChartProps) {
   if (!data || data.length < 2) {
     return (
@@ -225,9 +228,42 @@ export function ProjectionChart({
 
           {/* Confidence band + percentile lines */}
           <Path d={`${areaPath.join(' ')} Z`} fill={CHART_COLORS.band} fillOpacity={0.85} />
-          <Path d={p10Path} stroke={CHART_COLORS.p10} strokeWidth={1} fill="none" />
-          <Path d={p90Path} stroke={CHART_COLORS.p90} strokeWidth={1} fill="none" />
+          <Path
+            d={p10Path}
+            stroke={CHART_COLORS.bound}
+            strokeWidth={0.9}
+            strokeDasharray={BOUND_DASH}
+            fill="none"
+          />
+          <Path
+            d={p90Path}
+            stroke={CHART_COLORS.bound}
+            strokeWidth={0.9}
+            strokeDasharray={BOUND_DASH}
+            fill="none"
+          />
           <Path d={p50Path} stroke={CHART_COLORS.median} strokeWidth={2} fill="none" />
+
+          {/* Depletion point — the only place red appears in a figure. */}
+          {depletionAge !== undefined && depletionAge >= minAge && depletionAge <= maxAge && (
+            <G>
+              <Line
+                x1={x(depletionAge)}
+                y1={y(0) - 9}
+                x2={x(depletionAge)}
+                y2={y(0) + 9}
+                stroke={CHART_COLORS.risk}
+                strokeWidth={1.2}
+              />
+              <SvgText
+                x={x(depletionAge) - 4}
+                y={y(0) + 17}
+                style={{ fontSize: 6, fill: CHART_COLORS.risk, textAnchor: 'end' }}
+              >
+                {isGerman ? `P10 erschöpft ${depletionAge}` : `P10 depleted ${depletionAge}`}
+              </SvgText>
+            </G>
+          )}
 
           {/* Axes */}
           <Line

@@ -1,16 +1,7 @@
 'use client'
 
 import { useMemo, useEffect, useRef, useState } from 'react'
-import {
-  ComposedChart,
-  Area,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Brush,
-} from 'recharts'
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Brush } from 'recharts'
 import { useTranslations } from 'next-intl'
 import type { WithdrawalStrategy } from '@/types'
 import type { BandPoint } from '@/components/charts/AssetsChart'

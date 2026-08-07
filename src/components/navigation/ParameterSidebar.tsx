@@ -77,7 +77,11 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
       <div className="sticky top-0 z-30 -mx-2 mb-2 border-b-2 border-neo-black bg-background px-2 py-2 sm:-mx-3 sm:px-3 lg:hidden">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button variant="secondary" size="sm" className="h-12 w-full justify-between shadow-neo">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-12 w-full justify-between shadow-neo"
+            >
               <span className="flex items-center">
                 <Settings className="mr-2 h-4 w-4" />
                 {t('trigger')}

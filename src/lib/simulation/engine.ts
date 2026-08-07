@@ -1,9 +1,4 @@
-import {
-  SimulationParams,
-  SimulationResults,
-  PercentileData,
-  isWithdrawalStrategy,
-} from '@/types'
+import { SimulationParams, SimulationResults, PercentileData, isWithdrawalStrategy } from '@/types'
 
 /**
  * Uniform [0,1) source. Defaults to `Math.random` so callers that do not care

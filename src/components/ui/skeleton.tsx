@@ -13,9 +13,7 @@ function Skeleton({ className, shimmer = true, ...props }: SkeletonProps) {
       )}
       {...props}
     >
-      {shimmer && (
-        <div className="skeleton-sweep pointer-events-none absolute inset-[-120%]" />
-      )}
+      {shimmer && <div className="skeleton-sweep pointer-events-none absolute inset-[-120%]" />}
     </div>
   )
 }
