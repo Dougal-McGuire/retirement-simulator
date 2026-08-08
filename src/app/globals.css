@@ -99,8 +99,10 @@
     --theme-pattern-opacity: 1;
     --theme-pattern-blend: normal;
     --theme-font-body:
-      var(--font-plex-mono), var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --theme-font-heading: var(--font-space-grotesk), var(--font-inter), system-ui, -apple-system, sans-serif;
+      var(--font-plex-mono), var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont,
+      'Segoe UI', sans-serif;
+    --theme-font-heading:
+      var(--font-space-grotesk), var(--font-inter), system-ui, -apple-system, sans-serif;
     --theme-letter-spacing-body: 0.01em;
     --theme-heading-spacing: 0.08em;
     --theme-h1-spacing: 0.12em;
@@ -128,8 +130,8 @@
     --popover-foreground: 222 30% 12%;
     --primary: 224 79% 44%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 20% 94%;
-    --secondary-foreground: 222 30% 18%;
+    --secondary: 220 60% 96%;
+    --secondary-foreground: 224 72% 32%;
     --muted: 220 20% 95%;
     --muted-foreground: 220 13% 38%;
     --accent: 224 79% 44%;
@@ -140,18 +142,18 @@
     --input: 220 18% 84%;
     --ring: 224 79% 44%;
     --chart-1: 224 79% 44%;
-    --chart-2: 273 84% 65%;
+    --chart-2: 272 74% 59%;
     --chart-3: 0 74% 50%;
-    --chart-4: 162 82% 30%;
+    --chart-4: 160 100% 25%;
     --chart-5: 187 82% 30%;
     --neo-black-rgb: 22 28 41;
     --neo-white-rgb: 255 255 255;
-    --neo-yellow-rgb: 176 116 0;
+    --neo-yellow-rgb: 244 183 64;
     --neo-blue-rgb: 23 71 201;
     --neo-red-rgb: 220 38 38;
-    --neo-green-rgb: 14 138 95;
+    --neo-green-rgb: 0 128 85;
     --neo-pink-rgb: 190 38 130;
-    --neo-purple-rgb: 124 58 205;
+    --neo-purple-rgb: 151 77 225;
     --neo-cyan-rgb: 14 116 130;
     --neo-orange-rgb: 194 80 16;
     --neo-border-strong: #e3e7ed;
@@ -167,12 +169,12 @@
     --shadow-neo-mobile: var(--shadow-neo-xs);
     --shadow-neo-mobile-md: var(--shadow-neo-sm);
     --shadow-neo-mobile-lg: var(--shadow-neo);
-    --shadow-neo-yellow: 0 6px 18px rgba(176, 116, 0, 0.18);
+    --shadow-neo-yellow: 0 6px 18px rgba(244, 183, 64, 0.28);
     --shadow-neo-blue: 0 6px 18px rgba(23, 71, 201, 0.18);
     --shadow-neo-red: 0 6px 18px rgba(220, 38, 38, 0.16);
-    --shadow-neo-green: 0 6px 18px rgba(14, 138, 95, 0.16);
+    --shadow-neo-green: 0 6px 18px rgba(0, 128, 85, 0.16);
     --shadow-neo-pink: 0 6px 18px rgba(190, 38, 130, 0.16);
-    --shadow-neo-purple: 0 6px 18px rgba(124, 58, 205, 0.16);
+    --shadow-neo-purple: 0 6px 18px rgba(151, 77, 225, 0.16);
     --theme-border-width: 1px;
     --theme-border-thin: 1px;
     --theme-radius-panel: 10px;
@@ -225,7 +227,7 @@
     --card-foreground: 222 30% 92%;
     --popover: 219 31% 11%;
     --popover-foreground: 222 30% 92%;
-    --primary: 213 72% 53%;
+    --primary: 213 80% 58%;
     --primary-foreground: 219 35% 8%;
     --secondary: 42 49% 58%;
     --secondary-foreground: 219 35% 9%;
@@ -238,19 +240,19 @@
     --border: 219 20% 26%;
     --input: 219 20% 32%;
     --ring: 42 49% 58%;
-    --chart-1: 213 72% 53%;
-    --chart-2: 303 37% 52%;
+    --chart-1: 213 80% 58%;
+    --chart-2: 297 30% 59%;
     --chart-3: 13 73% 58%;
     --chart-4: 158 36% 48%;
     --chart-5: 42 49% 58%;
     --neo-black-rgb: 230 234 242;
     --neo-white-rgb: 19 25 36;
     --neo-yellow-rgb: 201 169 97;
-    --neo-blue-rgb: 50 128 221;
+    --neo-blue-rgb: 62 139 233;
     --neo-red-rgb: 226 104 71;
     --neo-green-rgb: 78 166 131;
     --neo-pink-rgb: 216 138 168;
-    --neo-purple-rgb: 179 87 173;
+    --neo-purple-rgb: 179 120 182;
     --neo-cyan-rgb: 90 178 186;
     --neo-orange-rgb: 224 149 92;
     --neo-border-strong: rgb(230 234 242 / 0.14);
@@ -275,11 +277,11 @@
     --shadow-neo-mobile-md: var(--shadow-neo);
     --shadow-neo-mobile-lg: var(--shadow-neo-md);
     --shadow-neo-yellow: 0 10px 28px rgba(201, 169, 97, 0.24);
-    --shadow-neo-blue: 0 10px 28px rgba(50, 128, 221, 0.26);
+    --shadow-neo-blue: 0 10px 28px rgba(62, 139, 233, 0.26);
     --shadow-neo-red: 0 10px 28px rgba(226, 104, 71, 0.24);
     --shadow-neo-green: 0 10px 28px rgba(78, 166, 131, 0.24);
     --shadow-neo-pink: 0 10px 28px rgba(216, 138, 168, 0.22);
-    --shadow-neo-purple: 0 10px 28px rgba(179, 87, 173, 0.24);
+    --shadow-neo-purple: 0 10px 28px rgba(179, 120, 182, 0.24);
     --theme-border-width: 1px;
     --theme-border-thin: 1px;
     --theme-radius-panel: 12px;
@@ -302,7 +304,7 @@
     --theme-focus: var(--neo-yellow);
     --theme-bg-layer:
       radial-gradient(120% 80% at 82% -10%, rgba(201, 169, 97, 0.1), transparent 58%),
-      radial-gradient(90% 70% at 5% 105%, rgba(50, 128, 221, 0.1), transparent 60%),
+      radial-gradient(90% 70% at 5% 105%, rgba(62, 139, 233, 0.1), transparent 60%),
       linear-gradient(180deg, #0a0e15 0%, #0c111b 55%, #0a0e15 100%);
     --theme-pattern-image:
       linear-gradient(90deg, var(--neo-grid-line) 1px, transparent 1px),
@@ -341,28 +343,28 @@
     --secondary-foreground: 19 25% 16%;
     --muted: 32 45% 93%;
     --muted-foreground: 20 14% 36%;
-    --accent: 4 76% 58%;
+    --accent: 3 65% 52%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 4 76% 50%;
+    --destructive: 3 65% 47%;
     --destructive-foreground: 0 0% 100%;
     --border: 30 32% 88%;
     --input: 30 32% 82%;
     --ring: 201 77% 36%;
     --chart-1: 201 77% 36%;
     --chart-2: 265 76% 64%;
-    --chart-3: 4 76% 58%;
-    --chart-4: 161 53% 38%;
+    --chart-3: 3 65% 52%;
+    --chart-4: 154 89% 27%;
     --chart-5: 40 91% 45%;
     --neo-black-rgb: 58 47 42;
     --neo-white-rgb: 255 255 255;
     --neo-yellow-rgb: 246 185 59;
     --neo-blue-rgb: 21 112 161;
-    --neo-red-rgb: 229 77 66;
-    --neo-green-rgb: 45 149 112;
-    --neo-pink-rgb: 214 71 137;
+    --neo-red-rgb: 212 60 51;
+    --neo-green-rgb: 8 130 74;
+    --neo-pink-rgb: 203 60 127;
     --neo-purple-rgb: 138 76 224;
-    --neo-cyan-rgb: 17 143 148;
-    --neo-orange-rgb: 219 104 26;
+    --neo-cyan-rgb: 2 129 134;
+    --neo-orange-rgb: 190 85 0;
     --neo-border-strong: #ece0d5;
     --neo-surface: #ffffff;
     --neo-surface-muted: #fff4e8;
@@ -378,9 +380,9 @@
     --shadow-neo-mobile-lg: var(--shadow-neo);
     --shadow-neo-yellow: 0 10px 24px rgba(246, 185, 59, 0.34);
     --shadow-neo-blue: 0 10px 24px rgba(21, 112, 161, 0.24);
-    --shadow-neo-red: 0 10px 24px rgba(229, 77, 66, 0.26);
-    --shadow-neo-green: 0 10px 24px rgba(45, 149, 112, 0.24);
-    --shadow-neo-pink: 0 10px 24px rgba(214, 71, 137, 0.24);
+    --shadow-neo-red: 0 10px 24px rgba(212, 60, 51, 0.26);
+    --shadow-neo-green: 0 10px 24px rgba(8, 130, 74, 0.24);
+    --shadow-neo-pink: 0 10px 24px rgba(203, 60, 127, 0.24);
     --shadow-neo-purple: 0 10px 24px rgba(138, 76, 224, 0.24);
     --theme-border-width: 1px;
     --theme-border-thin: 1px;
@@ -404,8 +406,8 @@
     --theme-focus: var(--neo-blue);
     --theme-bg-layer:
       radial-gradient(70% 55% at 12% -5%, rgba(246, 185, 59, 0.22), transparent 62%),
-      radial-gradient(60% 50% at 92% 8%, rgba(229, 77, 66, 0.14), transparent 64%),
-      radial-gradient(70% 60% at 78% 102%, rgba(17, 143, 148, 0.14), transparent 62%),
+      radial-gradient(60% 50% at 92% 8%, rgba(212, 60, 51, 0.14), transparent 64%),
+      radial-gradient(58% 46% at 88% 104%, rgba(2, 129, 134, 0.07), transparent 62%),
       linear-gradient(180deg, #fffaf3 0%, #fff6ec 100%);
     --theme-pattern-image: radial-gradient(rgba(58, 47, 42, 0.07) 1.2px, transparent 1.2px);
     --theme-pattern-size: 26px 26px;
@@ -787,6 +789,69 @@ html[data-theme]:not([data-theme='neo']) [class*='tracking-'] {
   letter-spacing: var(--theme-ui-letter-spacing) !important;
 }
 
+html[data-theme]:not([data-theme='neo']) .theme-control,
+html[data-theme]:not([data-theme='neo']) [data-slot='select-trigger'],
+html[data-theme]:not([data-theme='neo']) [data-slot='select-item'],
+html[data-theme]:not([data-theme='neo']) input,
+html[data-theme]:not([data-theme='neo']) textarea,
+html[data-theme]:not([data-theme='neo']) [role='tab'] {
+  border-radius: var(--theme-radius-control) !important;
+  text-transform: var(--theme-control-transform) !important;
+  letter-spacing: var(--theme-ui-letter-spacing) !important;
+}
+
+html[data-theme]:not([data-theme='neo']) .theme-control:hover,
+html[data-theme]:not([data-theme='neo']) [data-slot='select-trigger']:hover {
+  transform: translate(var(--theme-hover-x), var(--theme-hover-y)) !important;
+}
+
+html[data-theme]:not([data-theme='neo']) .neo-chip,
+html[data-theme]:not([data-theme='neo']) .theme-badge-row > span,
+html[data-theme]:not([data-theme='neo']) .theme-progress-block > div:first-child > span {
+  border-radius: var(--theme-radius-chip) !important;
+  text-transform: var(--theme-control-transform) !important;
+  letter-spacing: var(--theme-chip-spacing) !important;
+  box-shadow: var(--shadow-neo-sm) !important;
+}
+
+html[data-theme]:not([data-theme='neo']) .border-3 {
+  border-width: var(--theme-border-width) !important;
+}
+
+html[data-theme]:not([data-theme='neo']) .border-2 {
+  border-width: var(--theme-border-thin) !important;
+}
+
+html[data-theme]:not([data-theme='neo'])
+  .border-3:not(.theme-hero):not(.theme-sidebar):not(.theme-panel-card),
+html[data-theme]:not([data-theme='neo']) .border-2 {
+  border-radius: var(--theme-radius-control);
+}
+
+html[data-theme]:not([data-theme='neo']) .border-t-3 {
+  border-top-width: var(--theme-border-width) !important;
+}
+
+html[data-theme]:not([data-theme='neo']) .border-r-3 {
+  border-right-width: var(--theme-border-width) !important;
+}
+
+html[data-theme]:not([data-theme='neo']) .border-b-3 {
+  border-bottom-width: var(--theme-border-width) !important;
+}
+
+html[data-theme]:not([data-theme='neo']) .border-l-3 {
+  border-left-width: var(--theme-border-width) !important;
+}
+
+html[data-theme]:not([data-theme='neo']) .divide-y-3 > :not([hidden]) ~ :not([hidden]) {
+  border-top-width: var(--theme-border-width) !important;
+}
+
+html[data-theme]:not([data-theme='neo']) .divide-x-\[3px\] > :not([hidden]) ~ :not([hidden]) {
+  border-left-width: var(--theme-border-width) !important;
+}
+
 /* The three alternate themes all read in sentence case: the shouty all-caps
    labels belong to the neo-brutalist original, not to a calm analyst tool, a
    private-banking dark mode, or a friendly one. */
@@ -815,9 +880,107 @@ html[data-theme='spiel'] .divide-neo-black > :not([hidden]) ~ :not([hidden]) {
   border-color: var(--neo-border-strong);
 }
 
+/* The `--theme-font-*` tokens are declared on <html>, but next/font publishes
+   its family variables (`--font-inter`, …) on the <body> class. A custom
+   property whose value contains an unresolvable var() is invalid at computed
+   value time, so those stacks silently evaporated and every theme inherited the
+   neo-brutalist Plex Mono. Each theme's body rule below re-declares them where
+   the family variables actually exist. Scoped to the themes that need it, so
+   the neo original keeps exactly the typography it has today. */
+
+/* Tailwind's `font-heading` / `font-sans` / `font-body` utilities name concrete
+   families in tailwind.config.ts, so they bypass the theme font tokens and pin
+   every screen to the neo-brutalist Space Grotesk + Plex Mono pairing. Re-point
+   them at the active theme's stacks; `font-mono` stays monospace on purpose
+   (it marks figures, not prose). */
+html[data-theme='klar'] .font-heading,
+html[data-theme='elegant'] .font-heading,
+html[data-theme='spiel'] .font-heading {
+  font-family: var(--theme-font-heading) !important;
+}
+
+html[data-theme='klar'] .font-sans,
+html[data-theme='klar'] .font-body,
+html[data-theme='elegant'] .font-sans,
+html[data-theme='elegant'] .font-body,
+html[data-theme='spiel'] .font-sans,
+html[data-theme='spiel'] .font-body {
+  font-family: var(--theme-font-body) !important;
+}
+
+/* The setup hero carries two rotated neo-brutalist confetti squares. They are
+   the loudest thing on an otherwise calm page in the analytical and the dark
+   theme, so they are dropped there and softened into a blob in the playful one. */
+html[data-theme='klar'] .theme-hero-accent,
+html[data-theme='klar'] .theme-hero-mark,
+html[data-theme='elegant'] .theme-hero-accent,
+html[data-theme='elegant'] .theme-hero-mark {
+  display: none !important;
+}
+
+html[data-theme='spiel'] .theme-hero-accent,
+html[data-theme='spiel'] .theme-hero-mark {
+  border-radius: 999px !important;
+  border-color: transparent !important;
+  rotate: 0deg !important;
+}
+
+/* Accent fills carry dark ink in the neo-brutalist original because every accent
+   there is a bright poster colour. These three themes use accent steps chosen to
+   pass 4.5:1 as small text on their own surface, which makes them too dark for
+   dark ink — so a filled accent takes the surface colour as its ink instead. */
+html[data-theme='klar'] .bg-neo-green.text-neo-black,
+html[data-theme='klar'] .bg-neo-red.text-neo-black,
+html[data-theme='klar'] .bg-neo-orange.text-neo-black,
+html[data-theme='klar'] .bg-neo-cyan.text-neo-black,
+html[data-theme='klar'] .bg-neo-pink.text-neo-black,
+html[data-theme='klar'] .bg-neo-purple.text-neo-black,
+html[data-theme='klar'] .bg-neo-blue.text-neo-black,
+html[data-theme='spiel'] .bg-neo-green.text-neo-black,
+html[data-theme='spiel'] .bg-neo-red.text-neo-black,
+html[data-theme='spiel'] .bg-neo-orange.text-neo-black,
+html[data-theme='spiel'] .bg-neo-cyan.text-neo-black,
+html[data-theme='spiel'] .bg-neo-pink.text-neo-black,
+html[data-theme='spiel'] .bg-neo-purple.text-neo-black,
+html[data-theme='spiel'] .bg-neo-blue.text-neo-black {
+  color: var(--neo-white) !important;
+}
+
+/* An accent-on-accent pair: the "active plan" tag paints blue ink inside a
+   yellow chip. On a gold or amber fill it has to be the ink colour instead. */
+html[data-theme='klar'] .bg-neo-yellow .text-neo-blue,
+html[data-theme='spiel'] .bg-neo-yellow .text-neo-blue {
+  color: rgb(var(--neo-black-rgb)) !important;
+}
+
+html[data-theme='elegant'] .bg-neo-yellow .text-neo-blue {
+  color: rgb(var(--neo-white-rgb)) !important;
+}
+
+/* The closing call-to-action is a dark slab in every theme, so the muted ink it
+   inherits from the page would sit on the wrong side of the surface. Tie it to
+   the slab's own foreground token. */
+html[data-theme='klar'] .landing-cta .text-muted-foreground,
+html[data-theme='elegant'] .landing-cta .text-muted-foreground,
+html[data-theme='spiel'] .landing-cta .text-muted-foreground {
+  color: color-mix(in srgb, var(--landing-cta-fg) 82%, transparent) !important;
+}
+
+/* Chart milestone labels ("RETIREMENT", "PENSION STARTS") are uppercased by an
+   inline style on the Recharts reference line, which no class-based rule can
+   reach. These themes read in sentence case throughout. */
+html[data-theme='klar'] text.recharts-label,
+html[data-theme='elegant'] text.recharts-label,
+html[data-theme='spiel'] text.recharts-label {
+  text-transform: none !important;
+  letter-spacing: 0.03em !important;
+}
+
 /* ---------------------------- KLAR --------------------------------- */
 
 html[data-theme='klar'] body {
+  --theme-font-body: var(--font-inter), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --theme-font-heading: var(--font-inter), system-ui, -apple-system, sans-serif;
   line-height: 1.6;
   font-weight: 450;
 }
@@ -852,9 +1015,33 @@ html[data-theme='klar'] .theme-step-list > * + * {
   margin-top: 0.5rem !important;
 }
 
+/* Gold at 20–30% over a near-black ground turns olive. The washes that mark
+   "new here" strips, hovered rows and selected options get a much fainter gold
+   so they read as a tint of the surface rather than a khaki slab. */
+html[data-theme='elegant'] .bg-neo-yellow\/30,
+html[data-theme='elegant'] .bg-neo-yellow\/25,
+html[data-theme='elegant'] .bg-neo-yellow\/20,
+html[data-theme='elegant'] .bg-neo-yellow\/15,
+html[data-theme='elegant'] .hover\:bg-neo-yellow\/30:hover,
+html[data-theme='elegant'] .hover\:bg-neo-yellow\/20:hover,
+html[data-theme='elegant'] .hover\:bg-neo-yellow\/15:hover,
+html[data-theme='elegant'] [data-state='inactive']:hover {
+  background-color: rgb(var(--neo-yellow-rgb) / 0.1) !important;
+}
+
+/* The tip strip and hover washes are painted with the accent at 15–30%. On the
+   analytical theme that reads as a wide tan band; pull it back to a whisper. */
+html[data-theme='klar'] .bg-neo-yellow\/30,
+html[data-theme='klar'] .bg-neo-yellow\/25,
+html[data-theme='klar'] .bg-neo-yellow\/20 {
+  background-color: rgb(var(--neo-yellow-rgb) / 0.14) !important;
+}
+
 /* --------------------------- ELEGANT ------------------------------- */
 
 html[data-theme='elegant'] body {
+  --theme-font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --theme-font-heading: var(--font-sora), var(--font-inter), system-ui, sans-serif;
   line-height: 1.7;
 }
 
@@ -911,6 +1098,8 @@ html[data-theme='elegant'] .neo-chip.bg-background {
 /* ---------------------------- SPIEL -------------------------------- */
 
 html[data-theme='spiel'] body {
+  --theme-font-body: var(--font-plus-jakarta), var(--font-inter), system-ui, sans-serif;
+  --theme-font-heading: var(--font-plus-jakarta), var(--font-inter), system-ui, sans-serif;
   line-height: 1.65;
 }
 

@@ -56,3 +56,4 @@ next-env.d.ts
 
 # build info (generated at build time)
 src/lib/build-info/build-info.json
+test-results/

@@ -1,12 +1,7 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import { IBM_Plex_Mono, Inter, Plus_Jakarta_Sans, Sora, Space_Grotesk } from 'next/font/google'
-import {
-  DEFAULT_THEME_ID,
-  LEGACY_THEME_ALIASES,
-  THEME_IDS,
-  THEME_STORAGE_KEY,
-} from '@/lib/themes'
+import { DEFAULT_THEME_ID, LEGACY_THEME_ALIASES, THEME_IDS, THEME_STORAGE_KEY } from '@/lib/themes'
 import './globals.css'
 
 const jakarta = Plus_Jakarta_Sans({
