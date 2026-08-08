@@ -9,17 +9,17 @@ export const THEME_OPTIONS = [
   {
     id: 'klar',
     translationKey: 'klar',
-    swatches: ['#f7f9fc', '#161c29', '#1747c9', '#0e8a5f'],
+    swatches: ['#1747c9', '#161c29', '#0e8a5f', '#f4f6f9'],
   },
   {
     id: 'elegant',
     translationKey: 'elegant',
-    swatches: ['#0b0f17', '#131924', '#c9a961', '#3280dd'],
+    swatches: ['#131924', '#c9a961', '#3280dd', '#e6eaf2'],
   },
   {
     id: 'spiel',
     translationKey: 'spiel',
-    swatches: ['#fff6ec', '#e54d42', '#f6b93b', '#118f94'],
+    swatches: ['#e54d42', '#f6b93b', '#118f94', '#fff6ec'],
   },
 ] as const
 

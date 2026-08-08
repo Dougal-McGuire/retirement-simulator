@@ -81,7 +81,7 @@ export function ThemeSwitcher({ className, size = 'sm' }: ThemeSwitcherProps) {
               {activeOption.swatches.slice(0, 3).map((swatch) => (
                 <span
                   key={`trigger-${activeOption.id}-${swatch}`}
-                  className="h-3 w-2.5 border border-neo-black"
+                  className="h-3 w-2.5 border border-neo-black/40"
                   style={{ backgroundColor: swatch }}
                 />
               ))}
@@ -99,7 +99,7 @@ export function ThemeSwitcher({ className, size = 'sm' }: ThemeSwitcherProps) {
                 {option.swatches.map((swatch) => (
                   <span
                     key={`${option.id}-${swatch}`}
-                    className="h-3 w-3 border border-neo-black"
+                    className="h-3 w-3 border border-neo-black/40"
                     style={{ backgroundColor: swatch }}
                   />
                 ))}
