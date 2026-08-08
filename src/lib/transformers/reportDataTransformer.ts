@@ -6,7 +6,9 @@ import { estimateRecommendationUplift, generateRecommendations } from '@/lib/ins
 
 export function transformToReportData(
   params: SimulationParams,
-  results: SimulationResults
+  results: SimulationResults,
+  /** Name of the plan the figures come from; printed on the report cover. */
+  planName?: string
 ): ReportData {
   // Generate milestones from simulation results
   const milestones = results.ages.map((age, index) => ({
@@ -141,6 +143,7 @@ export function transformToReportData(
       reportId: `RPT-${Date.now()}`,
       generatedAt: new Date().toISOString(),
       version: '1.0.0',
+      ...(planName?.trim() ? { planName: planName.trim().slice(0, 80) } : {}),
     },
   }
 }

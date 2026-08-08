@@ -25,6 +25,7 @@ import {
 } from '@/lib/stores/plans'
 import {
   BASE_PARAMS_KEY,
+  BASE_PLANS_IMPORTED_KEY,
   BASE_SAVED_SETUPS_KEY,
   BASE_STORE_KEY,
   storageKey,
@@ -37,14 +38,12 @@ import {
 const STORAGE_KEY = () => storageKey(BASE_PARAMS_KEY)
 const SAVED_SETUPS_KEY = () => storageKey(BASE_SAVED_SETUPS_KEY)
 
-/** v0: params + savedSetups. v1: first-class plans. */
-const STORE_VERSION = 1
-
 /**
- * Marks that pre-plan saved setups have been imported as plans, so the one-time
- * migration never resurrects plans the user deleted afterwards.
+ * v0: params + savedSetups.
+ * v1: first-class plans.
+ * v2: plans are durable; edits live in a working copy (`draftParams`).
  */
-const BASE_PLANS_IMPORTED_KEY = 'retirement-simulator-plans-imported'
+const STORE_VERSION = 2
 
 type NumericParamKey = keyof Omit<
   SimulationParams,
@@ -208,7 +207,15 @@ const migrateToCustomExpenses = (params: PersistedParams): CustomExpense[] => {
   return expenses
 }
 
-const normalizePersistedParams = (persistedParams: unknown): SimulationParams => {
+/**
+ * Turns anything that came out of localStorage (or an older app version) into a
+ * complete, valid parameter set.
+ *
+ * Exported for `paramRegistration.test.ts`: every field of `SimulationParams`
+ * has to survive this round-trip, otherwise a newly added parameter silently
+ * resets to its default on every reload.
+ */
+export const normalizePersistedParams = (persistedParams: unknown): SimulationParams => {
   const params = toPersistedParams(persistedParams)
   const {
     annualExpenses: _annualExpenses,
@@ -270,6 +277,18 @@ const normalizeParamsForFingerprint = (params: Partial<SimulationParams>): Simul
 const getParamsFingerprint = (params: Partial<SimulationParams>) =>
   JSON.stringify(normalizeParamsForFingerprint(params))
 
+const paramsDiffer = (a: SimulationParams, b: SimulationParams) =>
+  getParamsFingerprint(a) !== getParamsFingerprint(b)
+
+const sanitizePlanSuccessRates = (value: unknown): Record<string, number> => {
+  if (!isRecord(value)) return {}
+  const sanitized: Record<string, number> = {}
+  Object.entries(value).forEach(([id, rate]) => {
+    if (typeof rate === 'number' && Number.isFinite(rate)) sanitized[id] = rate
+  })
+  return sanitized
+}
+
 const runSimulationWithBestAvailableRuntime = async (params: SimulationParams) => {
   if (
     typeof window === 'undefined' ||
@@ -312,20 +331,49 @@ export const useSimulationStore = create<SimulationStore>()(
         set({ plans, savedSetups: plansToSavedSetups(plans) })
       }
 
-      /** Applies params to the store and mirrors them into the active plan. */
+      const findPlan = (id: string) => get().plans.find((plan) => plan.id === id)
+
+      /**
+       * Writes params into the *working copy* only. The named plan is durable:
+       * it changes on `savePlanDraft`, never as a side effect of editing. This
+       * is what keeps an abandoned wizard session (or a stray slider drag) from
+       * silently rewriting a plan the user considers finished.
+       */
       const applyParams = (nextParams: SimulationParams) => {
-        const { plans, activePlanId } = get()
-        const timestamp = Date.now()
-        const nextPlans = plans.map((plan) =>
-          plan.id === activePlanId ? { ...plan, params: nextParams, updatedAt: timestamp } : plan
-        )
+        const activePlan = findPlan(get().activePlanId)
+        const dirty = activePlan ? paramsDiffer(nextParams, activePlan.params) : true
 
         set({
           params: nextParams,
+          draftParams: dirty ? nextParams : null,
+          isDirty: dirty,
           error: null,
-          plans: nextPlans,
-          savedSetups: plansToSavedSetups(nextPlans),
         })
+      }
+
+      /** Drops the working copy and points the store at `plan`'s stored params. */
+      const adoptPlanParams = (plan: Plan) => {
+        set({
+          activePlanId: plan.id,
+          params: plan.params,
+          draftParams: null,
+          isDirty: false,
+          error: null,
+        })
+      }
+
+      /** Remembers a plan's success rate when the current results describe it. */
+      const successRateFor = (params: SimulationParams): number | null => {
+        const { results } = get()
+        if (!results) return null
+        return paramsDiffer(results.params, params) ? null : results.successRate
+      }
+
+      const rememberSuccessRate = (planId: string, rate: number | null) => {
+        const next = { ...get().planSuccessRates }
+        if (rate === null) delete next[planId]
+        else next[planId] = rate
+        set({ planSuccessRates: next })
       }
 
       /** Runs (or queues) a simulation after a plan-level change. */
@@ -347,6 +395,9 @@ export const useSimulationStore = create<SimulationStore>()(
 
       return {
         params: DEFAULT_PARAMS,
+        draftParams: null,
+        isDirty: false,
+        planSuccessRates: {},
         results: null,
         isLoading: false,
         error: null,
@@ -357,7 +408,32 @@ export const useSimulationStore = create<SimulationStore>()(
         autoRunSuspended: false,
         pendingRun: false,
 
-        createPlan: (name: string, params?: SimulationParams) => {
+        savePlanDraft: () => {
+          const { plans, activePlanId, params, isDirty } = get()
+          if (!isDirty) return
+          if (!plans.some((plan) => plan.id === activePlanId)) return
+
+          const timestamp = Date.now()
+          const nextPlans = plans.map((plan) =>
+            plan.id === activePlanId ? { ...plan, params, updatedAt: timestamp } : plan
+          )
+
+          commitPlans(nextPlans)
+          set({ draftParams: null, isDirty: false, error: null })
+          rememberSuccessRate(activePlanId, successRateFor(params))
+        },
+
+        revertPlanDraft: () => {
+          const { activePlanId, isDirty } = get()
+          if (!isDirty) return
+          const plan = findPlan(activePlanId)
+          if (!plan) return
+
+          adoptPlanParams(plan)
+          requestRun()
+        },
+
+        createPlan: (name: string, params?: SimulationParams, options?: { activate?: boolean }) => {
           const { plans, params: currentParams } = get()
           if (plans.length >= MAX_PLANS) {
             set({ error: 'planLimitReached' })
@@ -371,14 +447,21 @@ export const useSimulationStore = create<SimulationStore>()(
           })
 
           commitPlans([...plans, plan])
-          set({ activePlanId: plan.id, params: plan.params, error: null })
+          rememberSuccessRate(plan.id, successRateFor(plan.params))
+
+          // Background creation (stress levers): the plan is stored but the
+          // user keeps editing whatever they were on.
+          if (options?.activate === false) return plan.id
+
+          // The new plan owns these params now, so the working copy is clean.
+          adoptPlanParams(plan)
           requestRun()
 
           return plan.id
         },
 
         duplicatePlan: (id: string, name?: string) => {
-          const { plans } = get()
+          const { plans, activePlanId, isDirty, params } = get()
           const source = plans.find((plan) => plan.id === id)
           if (!source) return null
           if (plans.length >= MAX_PLANS) {
@@ -386,14 +469,20 @@ export const useSimulationStore = create<SimulationStore>()(
             return null
           }
 
+          // Duplicating the plan you are editing copies what is on screen, so
+          // "Duplicate" doubles as a save-as for unsaved work.
+          const sourceParams = id === activePlanId && isDirty ? params : source.params
+
           const copy = makePlan({
             id: createPlanId(plans),
             name: uniquePlanName(name ?? source.name, plans),
-            params: source.params,
+            params: sourceParams,
           })
 
           commitPlans([...plans, copy])
-          set({ activePlanId: copy.id, params: copy.params, error: null })
+          adoptPlanParams(copy)
+          const sourceRate = get().planSuccessRates[source.id]
+          rememberSuccessRate(copy.id, typeof sourceRate === 'number' ? sourceRate : null)
           requestRun()
 
           return copy.id
@@ -425,22 +514,26 @@ export const useSimulationStore = create<SimulationStore>()(
 
           const nextPlans = plans.filter((plan) => plan.id !== id)
           commitPlans(nextPlans)
+          rememberSuccessRate(id, null)
 
           if (activePlanId === id) {
-            const nextActive = nextPlans[0]
-            set({ activePlanId: nextActive.id, params: nextActive.params, error: null })
+            adoptPlanParams(nextPlans[0])
             requestRun()
           }
         },
 
+        /**
+         * Activates another plan. Any working copy is dropped — callers that can
+         * lose user edits (the plan switcher) prompt first.
+         */
         setActivePlan: (id: string) => {
-          const { plans, activePlanId } = get()
-          if (id === activePlanId) return
+          const { plans, activePlanId, isDirty } = get()
+          if (id === activePlanId && !isDirty) return
 
           const plan = plans.find((entry) => entry.id === id)
           if (!plan) return
 
-          set({ activePlanId: plan.id, params: plan.params, error: null })
+          adoptPlanParams(plan)
           requestRun()
         },
 
@@ -510,11 +603,16 @@ export const useSimulationStore = create<SimulationStore>()(
               return
             }
 
-            set({
+            set((state) => ({
               results,
               isLoading: false,
               error: null,
-            })
+              // A clean run describes the stored plan, so the switcher can show
+              // its success rate without re-simulating.
+              planSuccessRates: state.isDirty
+                ? state.planSuccessRates
+                : { ...state.planSuccessRates, [state.activePlanId]: results.successRate },
+            }))
           } catch (error) {
             console.error('Simulation error:', error)
             set({
@@ -620,14 +718,23 @@ export const useSimulationStore = create<SimulationStore>()(
       // rebuilds plans from the persisted params and saved setups (which may
       // also live in the legacy standalone storage key).
       migrate: (persistedState, version) => {
-        const state = (isRecord(persistedState) ? persistedState : {}) as Partial<SimulationStore>
+        let state = (isRecord(persistedState) ? { ...persistedState } : {}) as Partial<
+          SimulationStore
+        >
         if (version < 1) {
-          return { ...state, plans: [], activePlanId: '' } as SimulationStore
+          state = { ...state, plans: [], activePlanId: '' }
+        }
+        // v1 mirrored every edit straight into the active plan, so there is no
+        // draft to recover: the persisted params already are the plan's params.
+        if (version < 2) {
+          state = { ...state, draftParams: null, isDirty: false, planSuccessRates: {} }
         }
         return state as SimulationStore
       },
       partialize: (state) => ({
         params: state.params,
+        draftParams: state.draftParams,
+        planSuccessRates: state.planSuccessRates,
         results: state.results, // Persist results to avoid re-running simulation on every page load
         plans: state.plans,
         activePlanId: state.activePlanId,
@@ -688,9 +795,25 @@ export const useSimulationStore = create<SimulationStore>()(
             const activePlan = bootstrapped.plans.find(
               (plan) => plan.id === bootstrapped.activePlanId
             )
+            // Unsaved edits survive a reload as a visible working copy rather
+            // than being silently written into (or dropped from) the plan.
+            const draft = state.draftParams ? normalizePersistedParams(state.draftParams) : null
             if (activePlan) {
-              state.params = activePlan.params
+              if (draft && paramsDiffer(draft, activePlan.params)) {
+                state.params = draft
+                state.draftParams = draft
+                state.isDirty = true
+              } else {
+                state.params = activePlan.params
+                state.draftParams = null
+                state.isDirty = false
+              }
+            } else {
+              state.draftParams = null
+              state.isDirty = false
             }
+
+            state.planSuccessRates = sanitizePlanSuccessRates(state.planSuccessRates)
 
             // Validate that persisted results match current params
             // If params have changed since results were generated, clear stale results
@@ -736,3 +859,11 @@ export const useRenamePlan = () => useSimulationStore((state) => state.renamePla
 export const useDuplicatePlan = () => useSimulationStore((state) => state.duplicatePlan)
 export const useDeletePlan = () => useSimulationStore((state) => state.deletePlan)
 export const useSetActivePlan = () => useSimulationStore((state) => state.setActivePlan)
+
+// Working-copy (draft) helpers
+export const usePlanIsDirty = () => useSimulationStore((state) => state.isDirty)
+export const useSavePlanDraft = () => useSimulationStore((state) => state.savePlanDraft)
+export const useRevertPlanDraft = () => useSimulationStore((state) => state.revertPlanDraft)
+export const usePlanSuccessRates = () => useSimulationStore((state) => state.planSuccessRates)
+export const useActivePlan = () =>
+  useSimulationStore((state) => state.plans.find((plan) => plan.id === state.activePlanId))

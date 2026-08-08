@@ -1108,10 +1108,10 @@ html[data-theme='signal'] .theme-content > .theme-panel-card:nth-child(even) {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  /* The dashboard stays two-column in every theme: the parameter panel has to
-     sit beside the charts, otherwise slider-to-chart interaction is impossible. */
+  /* The dashboard is a single full-width column in every theme: plan editing
+     is its own tab, so nothing has to be squeezed into a sidebar. */
   html[data-theme='aurora'] .theme-simulation-grid {
-    grid-template-columns: 26rem minmax(0, 1fr) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
   html[data-theme='aurora'] .theme-stepper {
@@ -1149,20 +1149,12 @@ html[data-theme='signal'] .theme-content > .theme-panel-card:nth-child(even) {
     display: none !important;
   }
 
-  html[data-theme='aurora'] .theme-parameter-sidebar {
-    order: 1;
-  }
-
-  html[data-theme='aurora'] .theme-simulation-content {
-    order: 2;
-  }
-
   html[data-theme='ledger'] .theme-setup-grid {
     grid-template-columns: 300px minmax(0, 1fr) !important;
   }
 
   html[data-theme='ledger'] .theme-simulation-grid {
-    grid-template-columns: 340px minmax(0, 1fr) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
   html[data-theme='ledger'] .theme-hero-top {
@@ -1174,16 +1166,14 @@ html[data-theme='signal'] .theme-content > .theme-panel-card:nth-child(even) {
   }
 
   html[data-theme='prism'] .theme-simulation-grid {
-    grid-template-columns: minmax(0, 1fr) 390px !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  html[data-theme='prism'] .theme-stepper,
-  html[data-theme='prism'] .theme-parameter-sidebar {
+  html[data-theme='prism'] .theme-stepper {
     order: 2;
   }
 
-  html[data-theme='prism'] .theme-setup-content,
-  html[data-theme='prism'] .theme-simulation-content {
+  html[data-theme='prism'] .theme-setup-content {
     order: 1;
   }
 
@@ -1196,7 +1186,7 @@ html[data-theme='signal'] .theme-content > .theme-panel-card:nth-child(even) {
   }
 
   html[data-theme='signal'] .theme-simulation-grid {
-    grid-template-columns: minmax(360px, 0.78fr) minmax(0, 1.22fr) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
   html[data-theme='signal'] .theme-stepper {

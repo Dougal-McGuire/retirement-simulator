@@ -12,6 +12,17 @@ import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
 import { ExpenseList } from '@/components/forms/fields/ExpenseList'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
 import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
+import { planDisplayName } from '@/lib/plans/planName'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { OneTimeIncome, CustomExpense, ExpenseInterval } from '@/types'
 import { AuthMenu } from '@/components/auth/AuthMenu'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
@@ -35,7 +46,21 @@ export default function SetupPage() {
   const updateParams = useSimulationStore((state) => state.updateParams)
   const setAutoRunSuspended = useSimulationStore((state) => state.setAutoRunSuspended)
   const createPlan = useSimulationStore((state) => state.createPlan)
+  const renamePlan = useSimulationStore((state) => state.renamePlan)
+  const savePlanDraft = useSimulationStore((state) => state.savePlanDraft)
+  const revertPlanDraft = useSimulationStore((state) => state.revertPlanDraft)
+  const plans = useSimulationStore((state) => state.plans)
+  const activePlanId = useSimulationStore((state) => state.activePlanId)
+  const isDirty = useSimulationStore((state) => state.isDirty)
   const [savePlanOpen, setSavePlanOpen] = useState(false)
+  const [newPlanOpen, setNewPlanOpen] = useState(false)
+  const [planNameDraft, setPlanNameDraft] = useState('')
+
+  const activePlan = plans.find((plan) => plan.id === activePlanId) ?? plans[0]
+  const activePlanName = activePlan ? planDisplayName(activePlan, tPlans) : ''
+  // First run: the untouched built-in plan is the only one, so the wizard just
+  // needs a name for it instead of a save/update/discard decision.
+  const isFirstRun = plans.length === 1 && Boolean(activePlan?.nameKey)
 
   const [currentStep, setCurrentStep] = useState(0)
   const [progressLoaded, setProgressLoaded] = useState(false)
@@ -128,6 +153,15 @@ export default function SetupPage() {
     // Data is already in simulation store, just clear progress and navigate
     localStorage.removeItem(STORAGE_KEY)
     router.push('/simulation')
+  }
+
+  /** First run: name the built-in plan and keep everything just configured. */
+  const handleFirstRunFinish = () => {
+    const trimmed = planNameDraft.trim()
+    if (trimmed && activePlan) renamePlan(activePlan.id, trimmed)
+    savePlanDraft()
+    setSavePlanOpen(false)
+    finishSetup()
   }
 
   const handleNext = () => {
@@ -659,11 +693,27 @@ export default function SetupPage() {
                     <span className="inline-flex items-center gap-2 border-3 border-neo-black bg-neo-white px-4 py-1.5 text-muted-foreground shadow-neo-sm">
                       {t('header.badges.time')}
                     </span>
+                    {/* Which plan this session is editing — the wizard writes to
+                        a working copy, never straight into the stored plan. */}
+                    <span
+                      data-testid="wizard-plan-context"
+                      className="inline-flex items-center gap-2 border-3 border-neo-black bg-neo-blue/10 px-4 py-1.5 text-neo-black shadow-neo-sm"
+                    >
+                      {t('planContext.editing', { name: activePlanName })}
+                    </span>
+                    {isDirty && (
+                      <span className="inline-flex items-center gap-2 border-3 border-neo-black bg-neo-yellow px-4 py-1.5 text-neo-black shadow-neo-sm">
+                        {t('planContext.unsaved')}
+                      </span>
+                    )}
                   </div>
                   <div>
                     <h1 className="text-3xl font-black sm:text-4xl">{t('header.title')}</h1>
                     <p className="mt-3 max-w-2xl text-sm font-medium leading-relaxed text-foreground/80">
                       {t('header.subtitle')}
+                    </p>
+                    <p className="mt-2 max-w-2xl text-xs font-medium leading-relaxed text-muted-foreground">
+                      {t('planContext.hint')}
                     </p>
                   </div>
                 </div>
@@ -878,19 +928,107 @@ export default function SetupPage() {
         </div>
       </main>
 
+      {/* The wizard edits the same working copy as the dashboard, so finishing
+          is an explicit decision: update the plan, branch off a new one, or
+          throw the session away. Nothing is written until one is picked. */}
+      <Dialog open={savePlanOpen} onOpenChange={setSavePlanOpen}>
+        <DialogContent className="bg-neo-white sm:max-w-[32rem]" data-testid="wizard-finish-dialog">
+          <DialogHeader>
+            <DialogTitle>
+              {isFirstRun ? t('finish.firstRunTitle') : t('finish.title')}
+            </DialogTitle>
+            <DialogDescription>
+              {isFirstRun
+                ? t('finish.firstRunDescription')
+                : isDirty
+                  ? t('finish.descriptionNamed', { name: activePlanName })
+                  : t('finish.descriptionClean')}
+            </DialogDescription>
+          </DialogHeader>
+
+          {isFirstRun && (
+            <div className="py-2">
+              <Label htmlFor="wizard-plan-name" className="text-sm font-medium">
+                {tPlans('dialogs.wizard.label')}
+              </Label>
+              <Input
+                id="wizard-plan-name"
+                autoFocus
+                maxLength={60}
+                value={planNameDraft}
+                placeholder={activePlanName}
+                onChange={(event) => setPlanNameDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') handleFirstRunFinish()
+                }}
+                className="mt-2 h-11 border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.78rem] font-semibold"
+              />
+            </div>
+          )}
+
+          <DialogFooter className="sm:flex-wrap">
+            <Button variant="outline" size="sm" onClick={() => setSavePlanOpen(false)}>
+              {t('finish.back')}
+            </Button>
+
+            {isFirstRun ? (
+              <Button size="sm" data-testid="wizard-finish-continue" onClick={handleFirstRunFinish}>
+                {t('finish.continue')}
+              </Button>
+            ) : (
+              <>
+                {isDirty && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-neo-red"
+                    data-testid="wizard-finish-discard"
+                    onClick={() => {
+                      revertPlanDraft()
+                      setSavePlanOpen(false)
+                      finishSetup()
+                    }}
+                  >
+                    {t('finish.discard')}
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  data-testid="wizard-finish-new"
+                  onClick={() => setNewPlanOpen(true)}
+                >
+                  {t('finish.saveAsNew')}
+                </Button>
+                <Button
+                  size="sm"
+                  data-testid="wizard-finish-update"
+                  onClick={() => {
+                    savePlanDraft()
+                    setSavePlanOpen(false)
+                    finishSetup()
+                  }}
+                >
+                  {t('finish.update', { name: activePlanName })}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PlanNameDialog
-        open={savePlanOpen}
-        onOpenChange={setSavePlanOpen}
-        inputId="wizard-plan-name"
+        open={newPlanOpen}
+        onOpenChange={setNewPlanOpen}
+        inputId="wizard-new-plan-name"
         title={tPlans('dialogs.wizard.title')}
         description={tPlans('dialogs.wizard.description')}
         label={tPlans('dialogs.wizard.label')}
         placeholder={tPlans('dialogs.wizard.placeholder')}
         confirmLabel={tPlans('dialogs.wizard.save')}
-        secondaryLabel={tPlans('dialogs.wizard.skip')}
-        onSecondary={finishSetup}
         onConfirm={(name) => {
           createPlan(name)
+          setSavePlanOpen(false)
           finishSetup()
         }}
       />

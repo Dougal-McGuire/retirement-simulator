@@ -35,8 +35,40 @@ export function hashString(value: string): number {
 }
 
 /**
- * Derive a stable seed from the simulation inputs so identical parameters
- * always replay the same market paths.
+ * Base seed of the market-path scenario set.
+ *
+ * The engine deliberately does NOT derive its seed from the parameters. Every
+ * run index owns a fixed stream of standard-normal draws, so:
+ *
+ * - identical parameters always produce bit-identical results,
+ * - run `k` sees the same standard normals no matter how many runs are
+ *   requested, which makes a 1 200-run comparison a strict prefix of a
+ *   5 000-run dashboard sample instead of an unrelated re-roll,
+ * - changing any parameter (retirement age, savings, even ROI/volatility)
+ *   re-uses the same underlying scenarios and only changes how they are
+ *   transformed. Nudging a slider therefore moves the success rate smoothly
+ *   instead of re-rolling the whole Monte Carlo and jittering by ±1pp.
+ *
+ * This is the classic "common random numbers" variance-reduction setup: it is
+ * what makes side-by-side plan comparisons and stress levers meaningful.
+ */
+export const DEFAULT_PATH_SEED = 0x5eed_c0de
+
+/**
+ * splitmix32-style avalanche. Turns (baseSeed, runIndex) into a well-separated
+ * 32-bit seed so neighbouring run indices do not produce correlated streams.
+ */
+export function mixSeed(seed: number, index: number): number {
+  let h = (seed ^ Math.imul(index + 1, 0x9e3779b9)) >>> 0
+  h = Math.imul(h ^ (h >>> 16), 0x21f0aaad) >>> 0
+  h = Math.imul(h ^ (h >>> 15), 0x735a2d97) >>> 0
+  return (h ^ (h >>> 15)) >>> 0
+}
+
+/**
+ * Stable identity hash of the simulation inputs. Used to tell parameter sets
+ * apart (caching, staleness checks, tests); it is intentionally *not* the RNG
+ * seed — see {@link DEFAULT_PATH_SEED}.
  */
 export function hashSimulationParams(params: SimulationParams): number {
   const shape = {
@@ -123,11 +155,45 @@ export function sampleLognormalFactorFromArithmetic(
   return sampleLognormalFactor(params, random)
 }
 
-type LognormalParams = ReturnType<typeof lognormalParamsFromArithmetic>
+export type LognormalParams = ReturnType<typeof lognormalParamsFromArithmetic>
 
-type SimulationDistributions = {
-  roi: LognormalParams
-  inflation: LognormalParams
+/**
+ * Sampling parameters per year offset (index 0 = the plan's first year).
+ * Every entry is identical today because the model uses one flat set of market
+ * assumptions, but the per-age shape is what a term-structure ("glidepath",
+ * "first decade is bad") or a historical-sequence mode needs.
+ */
+export type SimulationDistributions = {
+  roi: LognormalParams[]
+  inflation: LognormalParams[]
+}
+
+/**
+ * The seam between "how a year's market outcome is produced" and "what the
+ * portfolio does with it". Monte Carlo sampling is one implementation; a
+ * historical-sequence or bootstrap mode can drop in here without touching the
+ * cashflow logic, because it receives the year offset and run index.
+ */
+export type MarketSampler = {
+  nextGrowthFactor: (yearIndex: number, run: number, random: RandomSource) => number
+  nextInflationFactor: (yearIndex: number, run: number, random: RandomSource) => number
+}
+
+/**
+ * Default sampler: independent lognormal draws per year from the per-age
+ * distribution table. Consumes exactly one standard normal per call, growth
+ * before inflation, which is the RNG contract the golden master pins down.
+ */
+export function createMonteCarloSampler(distributions: SimulationDistributions): MarketSampler {
+  const at = (table: LognormalParams[], yearIndex: number) =>
+    table[Math.min(yearIndex, table.length - 1)]
+
+  return {
+    nextGrowthFactor: (yearIndex, _run, random) =>
+      sampleLognormalFactor(at(distributions.roi, yearIndex), random),
+    nextInflationFactor: (yearIndex, _run, random) =>
+      sampleLognormalFactor(at(distributions.inflation, yearIndex), random),
+  }
 }
 
 function sampleLognormalFactor(
@@ -330,26 +396,30 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
  * - Proportional cost basis adjustment during withdrawals
  *
  * @param params - Simulation parameters
- * @param distributions - Precomputed lognormal sampling parameters
- * @returns Object containing asset history, spending history, a failure flag, and the index of the first failure year (depletionIndex, null if the run never failed)
+ * @param schedule - Per-plan constants, built once for all runs
+ * @param sampler - Produces this year's growth and inflation factors
+ * @param run - Index of this run, so a sampler can address a specific path
+ * @param random - Uniform [0,1) source backing the sampler
+ * @returns Asset, spending and cumulative-inflation histories, a failure flag, and the index of the first failure year (depletionIndex, null if the run never failed)
  */
-function runSingleSimulation(
-  params: SimulationParams,
-  distributions: SimulationDistributions,
-  random: RandomSource
-): {
-  assetHistory: number[]
-  spendingHistory: number[]
-  failed: boolean
-  depletionIndex: number | null
-} {
-  const assetHistory: number[] = []
-  const spendingHistory: number[] = []
-  let currentAssets = params.currentAssets
-  let costBasis = params.currentAssets // Track original investment amount
-  let currentAnnualSavings = params.annualSavings
+/**
+ * Everything about a plan that is identical for every Monte Carlo run.
+ * Built once in `runMonteCarloSimulation` instead of per run, so a 7 500-run
+ * simulation no longer rebuilds the same Map and expense totals 7 500 times.
+ */
+type SimulationSchedule = {
+  /** age -> total one-time income credited at the start of that age. */
+  oneTimeIncomeByAge: ReadonlyMap<number, number>
+  /** Base-year (un-inflated) monthly expense total. */
+  baseMonthlyExpense: number
+  /** Base-year (un-inflated) annual expense total. */
+  baseAnnualExpense: number
+  effectiveRetirementAge: number
+  usesDynamicSpending: boolean
+}
 
-  const oneTimeIncomeSchedule = new Map<number, number>()
+function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
+  const oneTimeIncomeByAge = new Map<number, number>()
   if (Array.isArray(params.oneTimeIncomes)) {
     for (const income of params.oneTimeIncomes) {
       if (!income) continue
@@ -359,40 +429,79 @@ function runSingleSimulation(
       if (!Number.isFinite(payoutAge)) continue
       const depositAge = payoutAge + 1
       if (depositAge < params.currentAge || depositAge > params.endAge) continue
-      oneTimeIncomeSchedule.set(depositAge, (oneTimeIncomeSchedule.get(depositAge) ?? 0) + amount)
+      oneTimeIncomeByAge.set(depositAge, (oneTimeIncomeByAge.get(depositAge) ?? 0) + amount)
     }
   }
 
   // Calculate total monthly and annual expenses from custom expenses
   const customExpenses = params.customExpenses ?? []
-  const totalMonthlyExpense = customExpenses
+  const baseMonthlyExpense = customExpenses
     .filter((e) => e.interval === 'monthly')
     .reduce((sum, expense) => sum + expense.amount, 0)
-  const totalAnnualExpense = customExpenses
+  const baseAnnualExpense = customExpenses
     .filter((e) => e.interval === 'annual')
     .reduce((sum, expense) => sum + expense.amount, 0)
 
-  let currentMonthlyExpense = totalMonthlyExpense
-  let currentAnnualExpense = totalAnnualExpense
+  return {
+    oneTimeIncomeByAge,
+    baseMonthlyExpense,
+    baseAnnualExpense,
+    effectiveRetirementAge: Math.max(params.retirementAge, params.currentAge),
+    usesDynamicSpending: params.withdrawalStrategy === 'vanguardDynamic',
+  }
+}
+
+function runSingleSimulation(
+  params: SimulationParams,
+  schedule: SimulationSchedule,
+  sampler: MarketSampler,
+  run: number,
+  random: RandomSource
+): {
+  assetHistory: number[]
+  spendingHistory: number[]
+  /** Cumulative inflation from the start of the plan up to each age. */
+  inflationIndexHistory: number[]
+  failed: boolean
+  depletionIndex: number | null
+} {
+  const assetHistory: number[] = []
+  const spendingHistory: number[] = []
+  const inflationIndexHistory: number[] = []
+  let currentAssets = params.currentAssets
+  let costBasis = params.currentAssets // Track original investment amount
+  let currentAnnualSavings = params.annualSavings
+
+  const { oneTimeIncomeByAge, baseMonthlyExpense, baseAnnualExpense } = schedule
+
+  let currentMonthlyExpense = baseMonthlyExpense
+  let currentAnnualExpense = baseAnnualExpense
   let runFailed = false
   let depletionIndex: number | null = null
   let previousDynamicAnnualSpending: number | null = null
   let dynamicSpendingInflationFactor = 1
+  /**
+   * Cumulative price level relative to the plan's first year. Year `i` spends
+   * base-year amounts scaled by the index accumulated over years `0..i-1`, and
+   * the same index deflates that year's nominal figures into today's euros.
+   */
+  let inflationIndex = 1
 
-  const effectiveRetirementAge = Math.max(params.retirementAge, params.currentAge)
-  const usesDynamicSpending = params.withdrawalStrategy === 'vanguardDynamic'
+  const { effectiveRetirementAge, usesDynamicSpending } = schedule
 
   for (let age = params.currentAge; age <= params.endAge; age++) {
-    const scheduledIncome = oneTimeIncomeSchedule.get(age)
+    const yearIndex = age - params.currentAge
+    inflationIndexHistory.push(inflationIndex)
+
+    const scheduledIncome = oneTimeIncomeByAge.get(age)
     if (scheduledIncome && scheduledIncome > 0) {
       currentAssets += scheduledIncome
       costBasis += scheduledIncome
-      oneTimeIncomeSchedule.delete(age)
     }
 
     if (age < effectiveRetirementAge) {
       // Accumulation phase (working years)
-      const roiFactor = sampleLognormalFactor(distributions.roi, random)
+      const roiFactor = sampler.nextGrowthFactor(yearIndex, run, random)
 
       // During accumulation, assume reinvestment without realizing gains
       currentAssets = currentAssets * roiFactor + currentAnnualSavings
@@ -400,9 +509,10 @@ function runSingleSimulation(
       spendingHistory.push(0) // No spending during accumulation for visualization
 
       // Inflate expenses so that retirement starts with age-adjusted spending
-      const inflationFactor = sampleLognormalFactor(distributions.inflation, random)
-      currentMonthlyExpense *= inflationFactor
-      currentAnnualExpense *= inflationFactor
+      const inflationFactor = sampler.nextInflationFactor(yearIndex, run, random)
+      inflationIndex *= inflationFactor
+      currentMonthlyExpense = baseMonthlyExpense * inflationIndex
+      currentAnnualExpense = baseAnnualExpense * inflationIndex
 
       const savingsGrowthFactor = 1 + params.annualSavingsGrowthRate
       currentAnnualSavings = Math.max(0, currentAnnualSavings * savingsGrowthFactor)
@@ -432,7 +542,7 @@ function runSingleSimulation(
       const netNeeded = totalAnnualExpenseThisYear - annualIncome
 
       // Apply investment growth first
-      const roiFactor = sampleLognormalFactor(distributions.roi, random)
+      const roiFactor = sampler.nextGrowthFactor(yearIndex, run, random)
       currentAssets = Math.max(0, currentAssets * roiFactor)
 
       if (netNeeded > 0) {
@@ -465,9 +575,10 @@ function runSingleSimulation(
       spendingHistory.push(monthlyEquivalentSpending)
 
       // Apply inflation to expenses for next year
-      const inflationFactor = sampleLognormalFactor(distributions.inflation, random)
-      currentMonthlyExpense *= inflationFactor
-      currentAnnualExpense *= inflationFactor
+      const inflationFactor = sampler.nextInflationFactor(yearIndex, run, random)
+      inflationIndex *= inflationFactor
+      currentMonthlyExpense = baseMonthlyExpense * inflationIndex
+      currentAnnualExpense = baseAnnualExpense * inflationIndex
       if (usesDynamicSpending) {
         previousDynamicAnnualSpending = totalAnnualExpenseThisYear
         dynamicSpendingInflationFactor = inflationFactor
@@ -490,6 +601,7 @@ function runSingleSimulation(
   return {
     assetHistory,
     spendingHistory,
+    inflationIndexHistory,
     failed: runFailed,
     depletionIndex,
   }
@@ -502,34 +614,53 @@ function runSingleSimulation(
  */
 export function runMonteCarloSimulation(
   params: SimulationParams,
-  options: { random?: RandomSource } = {}
+  options: { random?: RandomSource; seed?: number; sampler?: MarketSampler } = {}
 ): SimulationResults {
   const normalizedParams = normalizeSimulationParams(params)
-  // Deterministic by default: the same parameters always replay the same market
-  // paths, so the headline success rate no longer jitters between mounts.
-  const random = options.random ?? mulberry32(hashSimulationParams(normalizedParams))
-  const distributions: SimulationDistributions = {
-    roi: lognormalParamsFromArithmetic(normalizedParams.averageROI, normalizedParams.roiVolatility),
-    inflation: lognormalParamsFromArithmetic(
-      normalizedParams.averageInflation,
-      normalizedParams.inflationVolatility
-    ),
-  }
-  const ages: number[] = []
-  const assetRuns: number[][] = []
-  const spendingRuns: number[][] = []
-  let successfulRuns = 0
+  // Deterministic by default. `options.random` forces every run to share one
+  // stream (legacy behaviour, used by tests); otherwise each run index gets its
+  // own stream derived from a fixed base seed so the scenario set is stable
+  // across parameter changes and run counts. See DEFAULT_PATH_SEED.
+  const sharedRandom = options.random
+  const baseSeed = options.seed ?? DEFAULT_PATH_SEED
 
+  const ages: number[] = []
   // Initialize age array
   for (let age = normalizedParams.currentAge; age <= normalizedParams.endAge; age++) {
     ages.push(age)
   }
 
+  // One entry per year offset. Flat today; the shape is what a term structure
+  // or historical-sequence mode would vary.
+  const roiParams = lognormalParamsFromArithmetic(
+    normalizedParams.averageROI,
+    normalizedParams.roiVolatility
+  )
+  const inflationParams = lognormalParamsFromArithmetic(
+    normalizedParams.averageInflation,
+    normalizedParams.inflationVolatility
+  )
+  const distributions: SimulationDistributions = {
+    roi: ages.map(() => roiParams),
+    inflation: ages.map(() => inflationParams),
+  }
+
+  const sampler = options.sampler ?? createMonteCarloSampler(distributions)
+  const schedule = buildSimulationSchedule(normalizedParams)
+
+  const assetRuns: number[][] = []
+  const spendingRuns: number[][] = []
+  const assetRunsReal: number[][] = []
+  const spendingRunsReal: number[][] = []
+  const inflationIndexRuns: number[][] = []
+  let successfulRuns = 0
+
   const depletionCounts = new Array<number>(ages.length).fill(0)
 
   // Run all simulations
   for (let run = 0; run < normalizedParams.simulationRuns; run++) {
-    const result = runSingleSimulation(normalizedParams, distributions, random)
+    const random = sharedRandom ?? mulberry32(mixSeed(baseSeed, run))
+    const result = runSingleSimulation(normalizedParams, schedule, sampler, run, random)
 
     if (!result.failed) {
       successfulRuns++
@@ -537,6 +668,12 @@ export function runMonteCarloSimulation(
 
     assetRuns.push(result.assetHistory)
     spendingRuns.push(result.spendingHistory)
+    // Deflate each path by *its own* realised inflation before percentiles are
+    // taken. Deflating the nominal percentile band by an average price level
+    // would mix quantiles of two different distributions; this does not.
+    assetRunsReal.push(deflatePath(result.assetHistory, result.inflationIndexHistory))
+    spendingRunsReal.push(deflatePath(result.spendingHistory, result.inflationIndexHistory))
+    inflationIndexRuns.push(result.inflationIndexHistory)
 
     if (result.depletionIndex !== null && result.depletionIndex < depletionCounts.length) {
       depletionCounts[result.depletionIndex]++
@@ -546,6 +683,11 @@ export function runMonteCarloSimulation(
   // Calculate percentiles
   const assetPercentiles = calculatePercentiles(assetRuns)
   const spendingPercentiles = calculatePercentiles(spendingRuns)
+  const assetPercentilesReal = calculatePercentiles(assetRunsReal)
+  const spendingPercentilesReal = calculatePercentiles(spendingRunsReal)
+  // Median realised price level per age. Lets the UI express nominally fixed
+  // amounts (a pension in euros) in today's money without re-running anything.
+  const inflationIndexP50 = calculatePercentiles(inflationIndexRuns).p50
 
   // Calculate success rate
   const successRate = (successfulRuns / normalizedParams.simulationRuns) * 100
@@ -560,10 +702,21 @@ export function runMonteCarloSimulation(
     ages,
     assetPercentiles,
     spendingPercentiles,
+    assetPercentilesReal,
+    spendingPercentilesReal,
+    inflationIndexP50,
     successRate,
     depletionByAge,
     params: normalizedParams,
   }
+}
+
+/** Converts a nominal path into today's euros using that path's own price level. */
+function deflatePath(values: number[], inflationIndex: number[]): number[] {
+  return values.map((value, index) => {
+    const level = inflationIndex[index]
+    return level > 0 ? value / level : value
+  })
 }
 
 /**

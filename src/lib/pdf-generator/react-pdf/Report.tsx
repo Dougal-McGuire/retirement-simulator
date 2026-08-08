@@ -314,12 +314,20 @@ export function RetirementReport({ content }: RetirementReportProps) {
   const reportTitle = isGerman ? 'Ruhestandsbericht' : 'Retirement Plan Report'
   const generatedLong = fmtDateLong(metadata.generatedAt, intlLocale)
 
+  // The plan the figures come from. Named on the cover, in the running header
+  // and in the footer, so an exported PDF is identifiable on its own.
+  const planName = metadata.planName?.trim()
+  const planLabel = isGerman ? 'Plan' : 'Plan'
+  const documentTitle = planName ? `${reportTitle} — ${planName}` : reportTitle
+
   const headerConfig = {
     brand: brandName,
-    right: `${reportTitle}  ·  ${generatedLong}`,
+    right: planName
+      ? `${planLabel}: ${planName}  ·  ${generatedLong}`
+      : `${reportTitle}  ·  ${generatedLong}`,
   }
   const footerConfig = {
-    left: metadata.id,
+    left: planName ? `${planLabel}: ${planName}  ·  ${metadata.id}` : metadata.id,
     center: isGerman
       ? 'Vertraulich · Keine Anlageberatung'
       : 'Confidential · Not investment advice',
@@ -480,7 +488,7 @@ export function RetirementReport({ content }: RetirementReportProps) {
 
   return (
     <ReportDocument
-      title={reportTitle}
+      title={documentTitle}
       subject={
         isGerman
           ? 'Monte-Carlo Analyse Ruhestandsplanung'
@@ -492,6 +500,7 @@ export function RetirementReport({ content }: RetirementReportProps) {
         classification={isGerman ? 'Vertraulich' : 'Confidential'}
         overline={isGerman ? 'Monte-Carlo-Analyse · Ruhestandsplanung' : 'Monte Carlo Analysis · Retirement Planning'}
         title={reportTitle}
+        planLabel={planName ? `${planLabel}: ${planName}` : undefined}
         subtitle={
           isGerman
             ? 'Professionelle Auswertung Ihrer aktuellen Simulationsdaten mit Fokus auf Tragfähigkeit, Risiken und konkreten Handlungsbedarf.'
@@ -541,6 +550,7 @@ export function RetirementReport({ content }: RetirementReportProps) {
             : `Median asset path with P10–P90 band, age ${profile.person.currentAge} to ${profile.person.horizonAge} · detailed chart in section 03`
         }
         metadata={[
+          ...(planName ? [{ label: planLabel, value: planName }] : []),
           { label: isGerman ? 'Berichts-ID' : 'Report ID', value: metadata.id },
           { label: isGerman ? 'Erstellt am' : 'Generated', value: generatedLong },
           {

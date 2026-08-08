@@ -6,7 +6,15 @@
     "signedIn": "Signed in",
     "notConfigured": "Sign-in not configured",
     "loading": "Loading account",
-    "accountFallbackName": "Google account"
+    "accountFallbackName": "Google account",
+    "localOnly": "Your data stays on this device — sign-in only separates profiles.",
+    "migration": {
+      "title": "Bring your existing plans into this account?",
+      "description": "You created plans on this device before signing in. Copy them into this account, or start with a clean workspace?",
+      "note": "Either way the anonymous plans stay on this device — sign out and they are back.",
+      "confirm": "Bring my plans",
+      "decline": "Start fresh"
+    }
   },
   "landing": {
     "meta": {
@@ -349,6 +357,24 @@
       "entertainment": "Entertainment",
       "vacations": "Vacations",
       "homeRepairs": "Home Repairs"
+    },
+    "planContext": {
+      "editing": "Editing: {name}",
+      "unsaved": "Unsaved changes",
+      "hint": "Your answers stay in a working copy until you save them at the end."
+    },
+    "finish": {
+      "title": "Where should this go?",
+      "descriptionNamed": "You changed the working copy of “{name}”. Save it back into that plan, keep it as a new plan, or discard the changes.",
+      "descriptionClean": "Nothing changed, so there is nothing to save. Continue to your results.",
+      "firstRunTitle": "Name your plan",
+      "firstRunDescription": "Give this plan a name so you can recognise it later. You can rename it any time.",
+      "nameLabel": "New plan name",
+      "update": "Update “{name}”",
+      "saveAsNew": "Save as new plan",
+      "discard": "Discard changes",
+      "continue": "Continue",
+      "back": "Keep editing"
     }
   },
   "simulation": {
@@ -371,7 +397,14 @@
     "tabs": {
       "overview": "Overview",
       "details": "Cashflow & details",
-      "scenarios": "Scenarios & advice"
+      "scenarios": "Scenarios & advice",
+      "plan": "Plan"
+    },
+    "display": {
+      "label": "Display currency amounts",
+      "nominal": "Nominal",
+      "real": "Today's €",
+      "realHint": "Adjusted for inflation — amounts in today's purchasing power"
     }
   },
   "parameterSidebar": {
@@ -684,7 +717,8 @@
     },
     "actions": {
       "generating": "Generating…",
-      "generate": "Generate Report"
+      "generate": "Generate Report",
+      "ready": "Report downloaded"
     }
   },
   "planHero": {
@@ -752,7 +786,10 @@
         }
       },
       "saveAsPlan": "Save as new plan",
-      "savedHint": "Creates a plan with these stressed parameters and switches to it."
+      "savedHint": "Creates a new plan with these parameters. Your current plan stays active.",
+      "deltaPoints": "{value} pts",
+      "saturated": "Success already {rate} — comparing worst-decile end assets instead.",
+      "worstDecile": "Worst-decile end assets"
     }
   },
   "recommendations": {
@@ -1697,7 +1734,11 @@
     "switcher": {
       "ariaLabel": "Active plan",
       "count": "{count} of {max} plans",
-      "limit": "Plan limit reached ({max}). Delete a plan to add another."
+      "limit": "Plan limit reached ({max}). Delete a plan to add another.",
+      "active": "Active",
+      "successRate": "{rate} success",
+      "notSimulated": "Not simulated yet",
+      "modified": "Modified"
     },
     "defaultNames": {
       "base": "Base plan"
@@ -1711,7 +1752,11 @@
       "cancel": "Cancel",
       "create": "Create plan",
       "save": "Save",
-      "confirmDelete": "Delete plan"
+      "confirmDelete": "Delete plan",
+      "saveToPlan": "Save to plan",
+      "revert": "Revert",
+      "undo": "Undo",
+      "saveAsNew": "Save as new plan"
     },
     "dialogs": {
       "new": {
@@ -1737,6 +1782,16 @@
         "placeholder": "e.g. Base plan",
         "save": "Save as new plan",
         "skip": "Update current plan"
+      },
+      "scenario": {
+        "title": "Save as new plan",
+        "description": "Creates a new plan from “{source}” with this lever applied. Your current plan stays active.",
+        "label": "Plan name",
+        "placeholder": "e.g. Save 10% more",
+        "source": "Based on",
+        "changes": "What changes",
+        "noChanges": "This lever leaves the parameters unchanged.",
+        "confirm": "Create plan"
       }
     },
     "comparison": {
@@ -1767,7 +1822,81 @@
         "aria": "Line chart overlaying the median asset path of each compared plan by age.",
         "tooltip": "Age {age}"
       },
-      "stale": "Parameters changed since this comparison ran — run it again for current numbers."
+      "stale": "Parameters changed since this comparison ran — run it again for current numbers.",
+      "emptyReady": "{count} plans are already selected — press “Run comparison” to line them up.",
+      "emptyNeedsSelection": "Select at least {min} plans, then run the comparison.",
+      "selectMore": "Select at least {min} plans — a comparison needs two to say anything.",
+      "staleRerun": "Re-run",
+      "base": "Base",
+      "deltaPoints": "{value} pts",
+      "deltaYears": "{value} yrs",
+      "deltaSame": "same",
+      "assumptions": {
+        "title": "Assumptions",
+        "description": "The inputs behind these numbers. Rows that differ are highlighted.",
+        "expand": "Show assumptions",
+        "collapse": "Hide assumptions",
+        "identical": "These plans share every assumption we compare — only the run-to-run noise differs.",
+        "groups": {
+          "timeline": "Timeline",
+          "income": "Assets & income",
+          "spending": "Spending",
+          "market": "Market assumptions",
+          "strategy": "Withdrawal strategy"
+        },
+        "rows": {
+          "currentAge": "Current age",
+          "retirementAge": "Retirement age",
+          "legalRetirementAge": "Statutory pension age",
+          "endAge": "Plan horizon",
+          "bridgeYears": "Pension bridge",
+          "currentAssets": "Current assets",
+          "annualSavings": "Annual savings",
+          "annualSavingsGrowthRate": "Savings growth",
+          "monthlyPension": "Monthly pension",
+          "oneTimeIncomes": "One-time income (total)",
+          "monthlySpending": "Monthly spending",
+          "annualSpending": "Annual spending",
+          "expenseItems": "Expense items",
+          "averageROI": "Average return",
+          "roiVolatility": "Return volatility",
+          "averageInflation": "Average inflation",
+          "inflationVolatility": "Inflation volatility",
+          "capitalGainsTax": "Capital gains tax",
+          "withdrawalStrategy": "Withdrawal strategy",
+          "dsWithdrawalRate": "Initial withdrawal rate",
+          "dsCeilingRate": "Spending ceiling",
+          "dsFloorRate": "Spending floor"
+        },
+        "differsCount": "{count, plural, one {# difference} other {# differences}}"
+      },
+      "selectionChanged": "Selection changed since this comparison ran — run it again for the plans you picked."
+    },
+    "toasts": {
+      "planCreatedFrom": "Created “{name}” from “{source}” — selected in Compare plans.",
+      "switchToPlan": "Switch to it",
+      "dismiss": "Dismiss"
+    },
+    "dirty": {
+      "badge": "Unsaved changes",
+      "clean": "Saved",
+      "hint": "These edits drive the simulation but are not stored in this plan yet.",
+      "savedToast": "Saved to “{name}”",
+      "revertedToast": "Reverted to the saved “{name}”",
+      "ariaSave": "Save unsaved changes to {name}",
+      "ariaRevert": "Discard unsaved changes to {name}"
+    },
+    "switchGuard": {
+      "title": "Unsaved changes in “{name}”",
+      "description": "You edited “{name}” without saving. Choose what happens before switching to “{target}”.",
+      "save": "Save and switch",
+      "discard": "Discard and switch",
+      "cancel": "Stay here"
+    },
+    "deleted": {
+      "toast": "Deleted “{name}”",
+      "restored": "Restored “{name}”",
+      "restoreFailed": "Could not restore the plan — the plan limit is reached."
     }
   },
   "headerControls": {
@@ -1775,5 +1904,63 @@
     "title": "Display settings",
     "description": "Switch the interface language or pick a different visual theme.",
     "close": "Close"
+  },
+  "planEditor": {
+    "title": "Plan assumptions",
+    "description": "Every input “{name}” simulates. Edits run live and stay in the working copy until you save them to the plan.",
+    "descriptionGeneric": "Every input this plan simulates. Edits run live and stay in the working copy until you save them to the plan.",
+    "groups": {
+      "personal": {
+        "title": "Personal & timeline",
+        "description": "The ages that frame saving and drawdown."
+      },
+      "income": {
+        "title": "Income & savings",
+        "description": "What flows in before and after you stop working."
+      },
+      "expenses": {
+        "title": "Expenses",
+        "description": "What this plan has to fund, every year."
+      },
+      "market": {
+        "title": "Market & rules",
+        "description": "Return assumptions, taxes and the withdrawal rule."
+      }
+    },
+    "summary": {
+      "workingYears": "Working years left",
+      "retirementYears": "Years in retirement",
+      "years": "{count, plural, =1 {# year} other {# years}}",
+      "monthlyTotal": "Monthly expenses",
+      "annualExtras": "Annual extras",
+      "combinedAnnual": "Total per year",
+      "savingsRate": "Savings rate",
+      "savingsRateHint": "Savings ÷ (savings + spending)",
+      "realReturn": "Real return after inflation",
+      "pensionGap": "Statutory pension starts at {age}",
+      "expenseCount": "{count, plural, =0 {No entries} =1 {# entry} other {# entries}}"
+    },
+    "reset": {
+      "trigger": "Reset to defaults",
+      "title": "Reset THIS plan to defaults?",
+      "description": "Every assumption in “{name}” goes back to the default scenario. Your other plans are untouched, and nothing is stored until you save this plan.",
+      "confirm": "Reset this plan",
+      "done": "“{name}” reset to defaults",
+      "undone": "Reset undone"
+    },
+    "editAria": "Edit {field}",
+    "jump": "Jump to {group}"
+  },
+  "quickAdjust": {
+    "title": "Quick what-if",
+    "description": "The four levers that move the outcome most. Every change lands in the working copy.",
+    "openEditor": "Edit full plan",
+    "expensesHint": "Scales every expense in this plan proportionally.",
+    "fields": {
+      "retirementAge": "Retirement age",
+      "annualSavings": "Annual savings",
+      "monthlyExpenses": "Monthly expenses",
+      "averageROI": "Expected return"
+    }
   }
 }

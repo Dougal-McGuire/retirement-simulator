@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts'
-import { GitCompareArrows } from 'lucide-react'
+import { Check, GitCompareArrows } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
-import { MAX_COMPARISON_PLANS, type Plan, type SimulationResults } from '@/types'
+import { MAX_COMPARISON_PLANS, type Plan } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -16,16 +16,27 @@ import {
   type TooltipRow,
 } from '@/components/charts/chartTheme'
 import { useChartFormatters } from '@/components/charts/useChartData'
+import { AssumptionsDiff } from '@/components/plans/AssumptionsDiff'
 import { deriveDepletionAges } from '@/lib/insights/depletion'
 import { planDisplayName } from '@/lib/plans/planName'
-import { areSimulationParamsEqual, getPlanHealth } from '@/lib/simulation/planInsights'
-import { useActivePlanId, usePlans } from '@/lib/stores/simulationStore'
+import { comparisonFingerprint } from '@/lib/simulation/planDiff'
+import { getPlanHealth } from '@/lib/simulation/planInsights'
+import { useActivePlanId, usePlans, useSimulationStore } from '@/lib/stores/simulationStore'
+import {
+  MIN_COMPARISON_PLANS,
+  useComparisonStore,
+  type ComparisonSnapshot,
+} from '@/lib/stores/comparisonStore'
 import { useIsMobile } from '@/lib/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
 
-/** Comparison runs are on demand, so they can be cheaper than the live plan. */
+/**
+ * Budget for an on-demand comparison. Plans below this run count (the default
+ * 500 is) are simulated at their own count, so the comparison reports exactly
+ * the same success rate as the dashboard; only unusually heavy plans are
+ * clamped, and the footnote says so.
+ */
 const COMPARISON_RUNS = 1200
-const MIN_COMPARISON_PLANS = 2
 
 /** One hue per compared plan, all drawn from the active theme's tokens. */
 const planHues = [
@@ -34,37 +45,13 @@ const planHues = [
   { solid: 'var(--neo-green)', rgb: '--neo-green-rgb' },
 ] as const
 
-interface ComparisonRow {
-  planId: string
-  name: string
-  results: SimulationResults
-  successRate: number
-  medianEndAssets: number
-  depletionRisk: number
-  shortfallAge: number | null
-}
-
 const healthClasses = {
   strong: 'border-success-600 bg-success-50 text-success-700',
   watch: 'border-warning-600 bg-warning-50 text-warning-700',
   strained: 'border-neo-red bg-red-50 text-neo-red',
 } as const
 
-const buildRow = (plan: Plan, name: string, results: SimulationResults): ComparisonRow => {
-  const lastIndex = Math.max(0, results.ages.length - 1)
-  const depletionShare = results.depletionByAge?.[lastIndex]
-
-  return {
-    planId: plan.id,
-    name,
-    results,
-    successRate: results.successRate,
-    medianEndAssets: results.assetPercentiles.p50[lastIndex] ?? 0,
-    depletionRisk:
-      typeof depletionShare === 'number' ? depletionShare * 100 : 100 - results.successRate,
-    shortfallAge: deriveDepletionAges(results).p10DepletionAge,
-  }
-}
+const hueFor = (index: number) => planHues[index % planHues.length]
 
 export function PlanComparison() {
   const t = useTranslations('plans')
@@ -75,8 +62,14 @@ export function PlanComparison() {
   const activePlanId = useActivePlanId()
   const { formatCurrency, formatCurrencyShort } = useChartFormatters()
 
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [rows, setRows] = useState<ComparisonRow[]>([])
+  // Selection and the last run's numbers are persisted: switching tabs or
+  // reloading should not silently throw a comparison away.
+  const selectedIds = useComparisonStore((state) => state.selectedIds)
+  const snapshots = useComparisonStore((state) => state.snapshots)
+  const setSelectedIds = useComparisonStore((state) => state.setSelectedIds)
+  const toggleSelected = useComparisonStore((state) => state.toggleSelected)
+  const setSnapshots = useComparisonStore((state) => state.setSnapshots)
+
   const [status, setStatus] = useState<'idle' | 'running' | 'ready' | 'error'>('idle')
   const runIdRef = useRef(0)
 
@@ -97,23 +90,58 @@ export function PlanComparison() {
     const observer = new ResizeObserver(measure)
     observer.observe(frame)
     return () => observer.disconnect()
-  }, [rows.length])
+  }, [snapshots.length])
+
+  // Once the user has touched a chip the selection is theirs: dropping below two
+  // plans is a legitimate state (the button then explains itself) and must not
+  // be silently topped back up.
+  const selectionTouchedRef = useRef(false)
+
+  // Both stores rehydrate from localStorage after the first render. Seeding or
+  // pruning the selection before that would throw away a persisted comparison.
+  const [hydrated, setHydrated] = useState(false)
+  useEffect(() => {
+    const persisted = [useComparisonStore.persist, useSimulationStore.persist]
+    const check = () => {
+      if (persisted.every((store) => store.hasHydrated())) setHydrated(true)
+    }
+    check()
+    const unsubscribe = persisted.map((store) => store.onFinishHydration(check))
+    return () => unsubscribe.forEach((off) => off())
+  }, [])
 
   // Default selection: the active plan plus the next one, kept valid as plans
   // are created or deleted. Never triggers a run on its own.
   useEffect(() => {
-    setSelectedIds((current) => {
-      const stillValid = current.filter((id) => plans.some((plan) => plan.id === id))
-      if (stillValid.length >= MIN_COMPARISON_PLANS) return stillValid
+    if (!hydrated) return
 
-      const seeded = [activePlanId, ...plans.map((plan) => plan.id)]
-        .filter((id, index, list) => id && list.indexOf(id) === index)
-        .filter((id) => plans.some((plan) => plan.id === id))
-        .slice(0, MIN_COMPARISON_PLANS)
+    // Read through the stores: a rehydration that lands between renders would
+    // otherwise be invisible to this effect's closure.
+    const livePlans = useSimulationStore.getState().plans
+    const liveActiveId = useSimulationStore.getState().activePlanId
+    const liveSelected = useComparisonStore.getState().selectedIds
 
-      return seeded
-    })
-  }, [plans, activePlanId])
+    const stillValid = liveSelected.filter((id) => livePlans.some((plan) => plan.id === id))
+    if (stillValid.length !== liveSelected.length) {
+      setSelectedIds(stillValid)
+      return
+    }
+    if (selectionTouchedRef.current || stillValid.length >= MIN_COMPARISON_PLANS) return
+
+    const seeded = [...stillValid, liveActiveId, ...livePlans.map((plan) => plan.id)]
+      .filter((id, index, list) => id && list.indexOf(id) === index)
+      .filter((id) => livePlans.some((plan) => plan.id === id))
+      .slice(0, MIN_COMPARISON_PLANS)
+
+    if (seeded.length !== liveSelected.length || seeded.some((id, i) => id !== liveSelected[i])) {
+      setSelectedIds(seeded)
+    }
+  }, [hydrated, plans, activePlanId, selectedIds, setSelectedIds])
+
+  const onToggleSelected = (id: string) => {
+    selectionTouchedRef.current = true
+    toggleSelected(id)
+  }
 
   const selectedPlans = useMemo(
     () =>
@@ -123,18 +151,9 @@ export function PlanComparison() {
     [selectedIds, plans]
   )
 
-  const canRun = selectedPlans.length >= MIN_COMPARISON_PLANS && status !== 'running'
+  const hasEnoughSelected = selectedPlans.length >= MIN_COMPARISON_PLANS
+  const canRun = hasEnoughSelected && status !== 'running'
   const hasEnoughPlans = plans.length >= MIN_COMPARISON_PLANS
-
-  const togglePlan = (id: string) => {
-    setSelectedIds((current) => {
-      if (current.includes(id)) {
-        return current.length <= 1 ? current : current.filter((entry) => entry !== id)
-      }
-      if (current.length >= MAX_COMPARISON_PLANS) return current
-      return [...current, id]
-    })
-  }
 
   const runComparison = async () => {
     const runId = runIdRef.current + 1
@@ -143,60 +162,99 @@ export function PlanComparison() {
 
     try {
       const { runSimulationInClient } = await import('@/lib/simulation/workerClient')
-      const nextRows: ComparisonRow[] = []
+      const next: ComparisonSnapshot[] = []
 
       for (const plan of selectedPlans) {
-        const results = await runSimulationInClient({
-          ...plan.params,
-          simulationRuns: Math.min(plan.params.simulationRuns, COMPARISON_RUNS),
+        const runs = Math.min(plan.params.simulationRuns, COMPARISON_RUNS)
+        const results = await runSimulationInClient({ ...plan.params, simulationRuns: runs })
+        const lastIndex = Math.max(0, results.ages.length - 1)
+        const depletionShare = results.depletionByAge?.[lastIndex]
+
+        next.push({
+          planId: plan.id,
+          name: planDisplayName(plan, t),
+          successRate: results.successRate,
+          medianEndAssets: results.assetPercentiles.p50[lastIndex] ?? 0,
+          depletionRisk:
+            typeof depletionShare === 'number' ? depletionShare * 100 : 100 - results.successRate,
+          shortfallAge: deriveDepletionAges(results).p10DepletionAge,
+          retirementAge: plan.params.retirementAge,
+          ages: results.ages,
+          medianAssets: results.assetPercentiles.p50,
+          fingerprint: comparisonFingerprint(plan.params),
+          runs,
+          ranAt: Date.now(),
         })
-        nextRows.push(buildRow(plan, planDisplayName(plan, t), results))
       }
 
       if (runIdRef.current !== runId) return
-      setRows(nextRows)
+      setSnapshots(next)
       setStatus('ready')
     } catch (error) {
       console.error('Plan comparison failed:', error)
       if (runIdRef.current !== runId) return
-      setRows([])
+      setSnapshots([])
       setStatus('error')
     }
   }
 
-  // A row is stale once its plan's parameters moved on since the run.
-  const staleRows = useMemo(
-    () =>
-      rows.filter((row) => {
-        const plan = plans.find((entry) => entry.id === row.planId)
-        if (!plan) return true
-        return !areSimulationParamsEqual(
-          { ...plan.params, simulationRuns: row.results.params.simulationRuns },
-          row.results.params
-        )
-      }),
-    [rows, plans]
-  )
+  // A snapshot is stale once its plan's parameters moved on since the run — or
+  // once the plan is gone entirely.
+  const staleIds = useMemo(() => {
+    const stale = new Set<string>()
+    snapshots.forEach((snapshot) => {
+      const plan = plans.find((entry) => entry.id === snapshot.planId)
+      if (!plan || comparisonFingerprint(plan.params) !== snapshot.fingerprint) {
+        stale.add(snapshot.planId)
+      }
+    })
+    return stale
+  }, [snapshots, plans])
+
+  // Results belong to the plans that were run; if the chips have moved on since,
+  // say so instead of letting the table quietly disagree with the selection.
+  const selectionChanged =
+    snapshots.length > 0 &&
+    (snapshots.length !== selectedIds.length ||
+      snapshots.some((snapshot, index) => snapshot.planId !== selectedIds[index]))
 
   const chartData = useMemo(() => {
-    if (rows.length === 0) return []
+    if (snapshots.length === 0) return []
 
-    const ages = Array.from(new Set(rows.flatMap((row) => row.results.ages))).sort((a, b) => a - b)
+    const ages = Array.from(new Set(snapshots.flatMap((snapshot) => snapshot.ages))).sort(
+      (a, b) => a - b
+    )
 
     return ages.map((age) => {
       const point: Record<string, number | null> = { age }
-      rows.forEach((row, index) => {
-        const ageIndex = row.results.ages.indexOf(age)
-        point[`plan${index}`] = ageIndex === -1 ? null : row.results.assetPercentiles.p50[ageIndex]
+      snapshots.forEach((snapshot, index) => {
+        const ageIndex = snapshot.ages.indexOf(age)
+        point[`plan${index}`] = ageIndex === -1 ? null : (snapshot.medianAssets[ageIndex] ?? null)
       })
       return point
     })
-  }, [rows])
+  }, [snapshots])
 
-  const bestSuccess = rows.length > 0 ? Math.max(...rows.map((row) => row.successRate)) : null
-  const retirementAges = Array.from(
-    new Set(rows.map((row) => row.results.params.retirementAge))
-  ).sort((a, b) => a - b)
+  const bestSuccess =
+    snapshots.length > 0 ? Math.max(...snapshots.map((snapshot) => snapshot.successRate)) : null
+  const baseline = snapshots[0]
+
+  // One dashed marker per distinct retirement age, labelled with the plan it
+  // belongs to — an unlabelled dash in a multi-plan chart is just noise.
+  const retirementMarkers = useMemo(() => {
+    const byAge = new Map<number, { names: string[]; index: number }>()
+    snapshots.forEach((snapshot, index) => {
+      // Long plan names would run off the plot; the legend carries the full one.
+      const short =
+        snapshot.name.length > 16 ? `${snapshot.name.slice(0, 15).trimEnd()}…` : snapshot.name
+      const entry = byAge.get(snapshot.retirementAge)
+      if (entry) entry.names.push(short)
+      else byAge.set(snapshot.retirementAge, { names: [short], index })
+    })
+    return Array.from(byAge.entries())
+      .map(([age, entry]) => ({ age, ...entry }))
+      .sort((a, b) => a.age - b.age)
+  }, [snapshots])
 
   const formatPercentValue = (value: number) =>
     format.number(value / 100, {
@@ -204,6 +262,57 @@ export function PlanComparison() {
       minimumFractionDigits: value % 1 === 0 ? 0 : 1,
       maximumFractionDigits: 1,
     })
+
+  const signed = (value: number, body: string) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${body}`
+
+  const formatPointsDelta = (value: number) =>
+    Math.abs(value) < 0.05
+      ? tc('deltaSame')
+      : tc('deltaPoints', {
+          value: signed(
+            value,
+            format.number(Math.abs(value), { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+          ),
+        })
+
+  const formatCurrencyDelta = (value: number) =>
+    // Rounded first: locales that do not abbreviate thousands (German keeps
+    // "949.171 €") would otherwise render a stray decimal.
+    Math.abs(value) < 1
+      ? tc('deltaSame')
+      : signed(value, formatCurrencyShort(Math.round(Math.abs(value))))
+
+  const formatYearsDelta = (value: number) =>
+    value === 0
+      ? tc('deltaSame')
+      : tc('deltaYears', { value: signed(value, format.number(Math.abs(value))) })
+
+  const deltaTone = (value: number, higherIsBetter: boolean) => {
+    if (Math.abs(value) < 1e-9) return 'text-muted-foreground'
+    return (higherIsBetter ? value > 0 : value < 0) ? 'text-success-700' : 'text-neo-red'
+  }
+
+  /** Delta against the first (base) plan, or the "Base" tag on that plan itself. */
+  const renderDelta = (index: number, value: string, tone: string) =>
+    index === 0 ? (
+      <span className="block text-[0.56rem] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+        {tc('base')}
+      </span>
+    ) : (
+      <span className={cn('block text-[0.58rem] font-extrabold tabular-nums', tone)}>{value}</span>
+    )
+
+  const shortfallDelta = (snapshot: ComparisonSnapshot) => {
+    if (!baseline || snapshot.shortfallAge === null || baseline.shortfallAge === null) return null
+    return snapshot.shortfallAge - baseline.shortfallAge
+  }
+
+  const successDelta = (snapshot: ComparisonSnapshot) =>
+    snapshot.successRate - (baseline?.successRate ?? 0)
+  const assetsDelta = (snapshot: ComparisonSnapshot) =>
+    snapshot.medianEndAssets - (baseline?.medianEndAssets ?? 0)
+  const riskDelta = (snapshot: ComparisonSnapshot) =>
+    snapshot.depletionRisk - (baseline?.depletionRisk ?? 0)
 
   const renderTooltip = ({
     active,
@@ -216,16 +325,16 @@ export function PlanComparison() {
   }) => {
     if (!active || !payload?.length) return null
 
-    const tooltipRows = rows
-      .map((row, index): TooltipRow | null => {
+    const tooltipRows = snapshots
+      .map((snapshot, index): TooltipRow | null => {
         const entry = payload.find((item) => item.dataKey === `plan${index}`)
         if (!entry || entry.value == null) return null
         return {
-          key: row.planId,
-          label: row.name,
+          key: snapshot.planId,
+          label: snapshot.name,
           value: formatCurrency(entry.value),
           kind: 'line',
-          color: planHues[index % planHues.length].solid,
+          color: hueFor(index).solid,
         }
       })
       .filter((row): row is TooltipRow => row !== null)
@@ -235,12 +344,34 @@ export function PlanComparison() {
     return <ChartTooltipCard title={tc('chart.tooltip', { age: label ?? '' })} rows={tooltipRows} />
   }
 
+  /** Stale numbers stay readable but visibly out of date. */
+  const staleClass = (planId: string) => (staleIds.has(planId) ? 'opacity-45 grayscale' : undefined)
+
+  // Assumptions follow the plans that were actually run, so the columns line up
+  // with the results above even if the selection has moved on since.
+  const assumptionPlans = snapshots
+    .map((snapshot, index) => {
+      const plan = plans.find((entry) => entry.id === snapshot.planId)
+      return plan
+        ? {
+            id: plan.id,
+            name: planDisplayName(plan, t),
+            params: plan.params,
+            color: hueFor(index).solid,
+          }
+        : null
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+
   return (
     <Card className="overflow-hidden" data-testid="plan-comparison">
       <CardContent className="bg-neo-white p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
-            <GitCompareArrows className="mt-0.5 h-5 w-5 shrink-0 text-neo-blue" aria-hidden="true" />
+            <GitCompareArrows
+              className="mt-0.5 h-5 w-5 shrink-0 text-neo-blue"
+              aria-hidden="true"
+            />
             <div>
               <h4 className="text-sm font-extrabold uppercase tracking-[0.16em]">{tc('title')}</h4>
               <p className="mt-1 max-w-xl text-xs font-medium text-muted-foreground">
@@ -253,9 +384,10 @@ export function PlanComparison() {
             className="shrink-0"
             onClick={() => void runComparison()}
             disabled={!canRun}
+            title={hasEnoughSelected ? undefined : tc('selectMore', { min: MIN_COMPARISON_PLANS })}
             data-testid="plan-comparison-run"
           >
-            {status === 'running' ? tc('running') : status === 'ready' ? tc('rerun') : tc('run')}
+            {status === 'running' ? tc('running') : snapshots.length > 0 ? tc('rerun') : tc('run')}
           </Button>
         </div>
 
@@ -267,7 +399,7 @@ export function PlanComparison() {
             {plans.map((plan) => {
               const index = selectedIds.indexOf(plan.id)
               const isSelected = index !== -1
-              const hue = isSelected ? planHues[index % planHues.length] : null
+              const atLimit = !isSelected && selectedIds.length >= MAX_COMPARISON_PLANS
 
               return (
                 <button
@@ -275,25 +407,30 @@ export function PlanComparison() {
                   type="button"
                   role="checkbox"
                   aria-checked={isSelected}
-                  onClick={() => togglePlan(plan.id)}
-                  disabled={!isSelected && selectedIds.length >= MAX_COMPARISON_PLANS}
+                  onClick={() => onToggleSelected(plan.id)}
+                  disabled={atLimit}
                   data-testid="plan-comparison-option"
+                  data-selected={isSelected ? 'true' : 'false'}
                   className={cn(
-                    'flex items-center gap-2 border-2 px-3 py-2 text-[0.66rem] font-extrabold uppercase tracking-[0.12em] transition-neo',
+                    'flex items-center gap-2 border-2 py-2 pl-2 pr-3 text-[0.66rem] font-extrabold uppercase tracking-[0.12em] transition-neo',
                     isSelected
-                      ? 'border-neo-black bg-neo-white text-neo-black shadow-neo-xs'
-                      : 'border-neo-black/30 bg-muted text-muted-foreground hover:border-neo-black',
-                    !isSelected && selectedIds.length >= MAX_COMPARISON_PLANS && 'opacity-40'
+                      ? 'border-neo-black bg-neo-yellow text-neo-black shadow-neo-xs'
+                      : 'border-dashed border-neo-black/40 bg-neo-white text-muted-foreground hover:border-solid hover:border-neo-black hover:text-neo-black',
+                    atLimit && 'cursor-not-allowed opacity-40'
                   )}
                 >
-                  {hue ? (
-                    <LegendSwatch kind="line" color={hue.solid} />
-                  ) : (
-                    <span
-                      aria-hidden="true"
-                      className="inline-block h-[3px] w-4 shrink-0 rounded-full bg-neo-black/20"
-                    />
-                  )}
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'flex h-4 w-4 shrink-0 items-center justify-center border-2',
+                      isSelected
+                        ? 'border-neo-black bg-neo-black text-neo-white'
+                        : 'border-neo-black/40 bg-neo-white'
+                    )}
+                  >
+                    {isSelected && <Check className="h-3 w-3" strokeWidth={4} />}
+                  </span>
+                  {isSelected && <LegendSwatch kind="line" color={hueFor(index).solid} />}
                   <span className="max-w-[12rem] truncate">{planDisplayName(plan, t)}</span>
                   {plan.id === activePlanId && (
                     <span className="text-[0.56rem] font-semibold tracking-[0.1em] text-neo-blue">
@@ -304,10 +441,20 @@ export function PlanComparison() {
               )
             })}
           </div>
-          <p className="mt-2 text-[0.62rem] font-medium text-muted-foreground">
-            {hasEnoughPlans
-              ? tc('hint', { min: MIN_COMPARISON_PLANS, max: MAX_COMPARISON_PLANS })
-              : tc('needMorePlans')}
+          <p
+            className={cn(
+              'mt-2 text-[0.62rem]',
+              hasEnoughPlans && !hasEnoughSelected
+                ? 'font-semibold text-neo-red'
+                : 'font-medium text-muted-foreground'
+            )}
+            data-testid="plan-comparison-hint"
+          >
+            {!hasEnoughPlans
+              ? tc('needMorePlans')
+              : hasEnoughSelected
+                ? tc('hint', { min: MIN_COMPARISON_PLANS, max: MAX_COMPARISON_PLANS })
+                : tc('selectMore', { min: MIN_COMPARISON_PLANS })}
           </p>
         </fieldset>
 
@@ -317,19 +464,38 @@ export function PlanComparison() {
           </p>
         )}
 
-        {rows.length === 0 ? (
+        {snapshots.length === 0 ? (
           <p className="mt-5 border-2 border-dashed border-neo-black/30 px-4 py-6 text-center text-xs font-medium text-muted-foreground">
-            {status === 'running' ? tc('running') : tc('empty')}
+            {status === 'running'
+              ? tc('running')
+              : hasEnoughSelected
+                ? tc('emptyReady', { count: selectedPlans.length })
+                : tc('emptyNeedsSelection', { min: MIN_COMPARISON_PLANS })}
           </p>
         ) : (
           <>
-            {staleRows.length > 0 && (
-              <p className="mt-4 border-2 border-warning-600 bg-warning-50 px-3 py-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-warning-700">
-                {tc('stale')}
-              </p>
+            {(staleIds.size > 0 || selectionChanged) && (
+              <div
+                className="mt-4 flex flex-col gap-2 border-2 border-warning-600 bg-warning-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                data-testid="plan-comparison-stale"
+              >
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-warning-700">
+                  {staleIds.size > 0 ? tc('stale') : tc('selectionChanged')}
+                </p>
+                <Button
+                  size="sm"
+                  className="h-8 shrink-0 px-3 text-[0.6rem]"
+                  onClick={() => void runComparison()}
+                  disabled={!canRun}
+                  data-testid="plan-comparison-stale-rerun"
+                >
+                  {tc('staleRerun')}
+                </Button>
+              </div>
             )}
 
-            <div className="mt-5 overflow-x-auto">
+            {/* Desktop: one row per plan. */}
+            <div className="mt-5 hidden overflow-x-auto md:block">
               <table className="w-full min-w-[34rem] border-collapse text-left">
                 <thead>
                   <tr className="border-b-2 border-neo-black text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
@@ -351,43 +517,62 @@ export function PlanComparison() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, index) => {
-                    const hue = planHues[index % planHues.length]
-                    const health = getPlanHealth(row.successRate)
+                  {snapshots.map((snapshot, index) => {
+                    const health = getPlanHealth(snapshot.successRate)
+                    const years = shortfallDelta(snapshot)
+                    const muted = staleClass(snapshot.planId)
 
                     return (
                       <tr
-                        key={row.planId}
+                        key={snapshot.planId}
                         className="border-b border-neo-black/15 text-[0.72rem] font-semibold text-neo-black"
                         data-testid="plan-comparison-row"
+                        data-stale={staleIds.has(snapshot.planId) ? 'true' : 'false'}
                       >
                         <th scope="row" className="py-3 pr-3 font-extrabold">
                           <span className="flex items-center gap-2">
-                            <LegendSwatch kind="line" color={hue.solid} />
-                            <span className="max-w-[12rem] truncate">{row.name}</span>
+                            <LegendSwatch kind="line" color={hueFor(index).solid} />
+                            <span className="max-w-[12rem] truncate">{snapshot.name}</span>
                           </span>
                         </th>
-                        <td className="py-3 pr-3 text-right tabular-nums">
+                        <td className={cn('py-3 pr-3 text-right tabular-nums', muted)}>
                           <span
                             className={cn(
                               'inline-flex items-center gap-1 border-2 px-2 py-1 text-[0.66rem] font-extrabold',
                               healthClasses[health]
                             )}
                           >
-                            {formatPercentValue(row.successRate)}
-                            {bestSuccess !== null && row.successRate === bestSuccess && (
+                            {formatPercentValue(snapshot.successRate)}
+                            {bestSuccess !== null && snapshot.successRate === bestSuccess && (
                               <span className="text-[0.54rem] tracking-[0.1em]">{tc('best')}</span>
                             )}
                           </span>
+                          {renderDelta(
+                            index,
+                            formatPointsDelta(successDelta(snapshot)),
+                            deltaTone(successDelta(snapshot), true)
+                          )}
                         </td>
-                        <td className="py-3 pr-3 text-right tabular-nums">
-                          {formatCurrency(row.medianEndAssets)}
+                        <td className={cn('py-3 pr-3 text-right tabular-nums', muted)}>
+                          {formatCurrency(snapshot.medianEndAssets)}
+                          {renderDelta(
+                            index,
+                            formatCurrencyDelta(assetsDelta(snapshot)),
+                            deltaTone(assetsDelta(snapshot), true)
+                          )}
                         </td>
-                        <td className="py-3 pr-3 text-right tabular-nums">
-                          {formatPercentValue(row.depletionRisk)}
+                        <td className={cn('py-3 pr-3 text-right tabular-nums', muted)}>
+                          {formatPercentValue(snapshot.depletionRisk)}
+                          {renderDelta(
+                            index,
+                            formatPointsDelta(riskDelta(snapshot)),
+                            deltaTone(riskDelta(snapshot), false)
+                          )}
                         </td>
-                        <td className="py-3 text-right tabular-nums">
-                          {row.shortfallAge ?? tc('never')}
+                        <td className={cn('py-3 text-right tabular-nums', muted)}>
+                          {snapshot.shortfallAge ?? tc('never')}
+                          {years !== null &&
+                            renderDelta(index, formatYearsDelta(years), deltaTone(years, true))}
                         </td>
                       </tr>
                     )
@@ -395,6 +580,117 @@ export function PlanComparison() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile: the same numbers as one card per plan, nothing clipped. */}
+            <ul className="mt-5 space-y-3 md:hidden" data-testid="plan-comparison-cards">
+              {snapshots.map((snapshot, index) => {
+                const health = getPlanHealth(snapshot.successRate)
+                const years = shortfallDelta(snapshot)
+                const muted = staleClass(snapshot.planId)
+
+                return (
+                  <li
+                    key={snapshot.planId}
+                    className="border-2 border-neo-black bg-neo-white px-4 py-3"
+                    data-testid="plan-comparison-card"
+                    data-stale={staleIds.has(snapshot.planId) ? 'true' : 'false'}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex min-w-0 items-center gap-2 text-[0.74rem] font-extrabold text-neo-black">
+                        <LegendSwatch kind="line" color={hueFor(index).solid} />
+                        <span className="truncate">{snapshot.name}</span>
+                      </span>
+                      <span
+                        className={cn(
+                          'inline-flex shrink-0 items-center gap-1 border-2 px-2 py-1 text-[0.66rem] font-extrabold',
+                          healthClasses[health],
+                          muted
+                        )}
+                      >
+                        {formatPercentValue(snapshot.successRate)}
+                        {bestSuccess !== null && snapshot.successRate === bestSuccess && (
+                          <span className="text-[0.54rem] tracking-[0.1em]">{tc('best')}</span>
+                        )}
+                      </span>
+                    </div>
+
+                    <dl className={cn('mt-3 divide-y divide-neo-black/10 text-[0.68rem]', muted)}>
+                      {[
+                        {
+                          key: 'success',
+                          label: tc('columns.successRate'),
+                          value:
+                            index === 0 ? tc('base') : formatPointsDelta(successDelta(snapshot)),
+                          tone:
+                            index === 0
+                              ? 'text-muted-foreground'
+                              : deltaTone(successDelta(snapshot), true),
+                          delta: null,
+                        },
+                        {
+                          key: 'medianEnd',
+                          label: tc('columns.medianEnd'),
+                          value: formatCurrency(snapshot.medianEndAssets),
+                          tone: undefined,
+                          delta:
+                            index === 0
+                              ? null
+                              : {
+                                  text: formatCurrencyDelta(assetsDelta(snapshot)),
+                                  tone: deltaTone(assetsDelta(snapshot), true),
+                                },
+                        },
+                        {
+                          key: 'depletion',
+                          label: tc('columns.depletionRisk'),
+                          value: formatPercentValue(snapshot.depletionRisk),
+                          tone: undefined,
+                          delta:
+                            index === 0
+                              ? null
+                              : {
+                                  text: formatPointsDelta(riskDelta(snapshot)),
+                                  tone: deltaTone(riskDelta(snapshot), false),
+                                },
+                        },
+                        {
+                          key: 'shortfall',
+                          label: tc('columns.shortfallAge'),
+                          value: `${snapshot.shortfallAge ?? tc('never')}`,
+                          tone: undefined,
+                          delta:
+                            years === null || index === 0
+                              ? null
+                              : { text: formatYearsDelta(years), tone: deltaTone(years, true) },
+                        },
+                      ].map((row) => (
+                        <div
+                          key={row.key}
+                          className="flex items-baseline justify-between gap-3 py-1.5"
+                        >
+                          <dt className="font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                            {row.label}
+                          </dt>
+                          <dd
+                            className={cn(
+                              'shrink-0 text-right font-extrabold tabular-nums',
+                              row.tone
+                            )}
+                          >
+                            {row.value}
+                            {row.delta && (
+                              <span className={cn('ml-2 text-[0.6rem]', row.delta.tone)}>
+                                {row.delta.text}
+                              </span>
+                            )}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </li>
+                )
+              })}
+            </ul>
 
             <div className="mt-6 border-3 border-neo-black bg-neo-white p-4 shadow-neo-sm">
               <h5 className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
@@ -406,17 +702,20 @@ export function PlanComparison() {
 
               <ChartLegend
                 className="mt-3"
-                items={rows.map((row, index) => ({
-                  key: row.planId,
-                  label: row.name,
+                items={snapshots.map((snapshot, index) => ({
+                  key: snapshot.planId,
+                  label: snapshot.name,
                   kind: 'line',
-                  color: planHues[index % planHues.length].solid,
+                  color: hueFor(index).solid,
                 }))}
               />
 
               <div
                 ref={chartFrameRef}
-                className="mt-3 h-[16rem] w-full min-w-0 sm:h-[19rem]"
+                className={cn(
+                  'mt-3 h-[16rem] w-full min-w-0 sm:h-[19rem]',
+                  staleIds.size === snapshots.length && 'opacity-45 grayscale'
+                )}
                 role="img"
                 aria-label={tc('chart.aria')}
               >
@@ -427,8 +726,8 @@ export function PlanComparison() {
                     data={chartData}
                     margin={
                       isMobile
-                        ? { top: 12, right: 8, left: 0, bottom: 4 }
-                        : { top: 16, right: 16, left: 4, bottom: 4 }
+                        ? { top: 26, right: 8, left: 0, bottom: 4 }
+                        : { top: 30, right: 16, left: 4, bottom: 4 }
                     }
                   >
                     <CartesianGrid vertical={false} stroke={chartInk.grid} strokeWidth={1} />
@@ -452,21 +751,30 @@ export function PlanComparison() {
                     />
                     <Tooltip content={renderTooltip} cursor={{ stroke: chartInk.cursor }} />
                     <ReferenceLine y={0} stroke={chartInk.axisLine} strokeWidth={1} />
-                    {retirementAges.map((age) => (
+                    {retirementMarkers.map((marker, markerIndex) => (
                       <ReferenceLine
-                        key={`retirement-${age}`}
-                        x={age}
-                        stroke={chartInk.marker}
+                        key={`retirement-${marker.age}`}
+                        x={marker.age}
+                        stroke={hueFor(marker.index).solid}
+                        strokeOpacity={0.6}
                         strokeDasharray="4 4"
+                        label={{
+                          value: `${marker.names.join(' · ')} · ${marker.age}`,
+                          position: 'top',
+                          dy: markerIndex * 12,
+                          fill: hueFor(marker.index).solid,
+                          fontSize: isMobile ? 9 : 10,
+                          fontWeight: 700,
+                        }}
                       />
                     ))}
-                    {rows.map((row, index) => (
+                    {snapshots.map((snapshot, index) => (
                       <Line
-                        key={row.planId}
+                        key={snapshot.planId}
                         type="monotone"
                         dataKey={`plan${index}`}
-                        name={row.name}
-                        stroke={planHues[index % planHues.length].solid}
+                        name={snapshot.name}
+                        stroke={hueFor(index).solid}
                         strokeWidth={2.5}
                         dot={false}
                         activeDot={{ r: 3 }}
@@ -478,6 +786,10 @@ export function PlanComparison() {
                 )}
               </div>
             </div>
+
+            {assumptionPlans.length >= MIN_COMPARISON_PLANS && (
+              <AssumptionsDiff plans={assumptionPlans} />
+            )}
 
             <p className="mt-3 text-[0.6rem] font-medium text-muted-foreground">
               {tc('runsNote', { runs: COMPARISON_RUNS })}

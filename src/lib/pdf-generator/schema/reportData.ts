@@ -147,6 +147,11 @@ export const ReportDataSchema = z.object({
       reportId: z.string().default(() => `RPT-${Date.now()}`),
       generatedAt: z.string().default(() => new Date().toISOString()),
       version: z.string().default('1.0.0'),
+      /**
+       * Name of the plan the report was generated from. Optional so older
+       * payloads (and the legacy print route) keep validating unchanged.
+       */
+      planName: z.string().trim().min(1).max(80).optional(),
     })
     .optional(),
   locale: ReportLocaleSchema.optional(),

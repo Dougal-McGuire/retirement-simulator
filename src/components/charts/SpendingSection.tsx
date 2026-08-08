@@ -4,7 +4,14 @@ import { useCallback, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import type { SimulationResults } from '@/types'
 import { SpendingChart } from '@/components/charts/SpendingChart'
-import { useBrushRange, useChartData, useChartFormatters } from '@/components/charts/useChartData'
+import { RealToggle } from '@/components/charts/RealToggle'
+import {
+  hasRealSeries,
+  useBrushRange,
+  useChartData,
+  useChartFormatters,
+} from '@/components/charts/useChartData'
+import { useDisplayReal, useSetDisplayReal } from '@/lib/stores/displayStore'
 
 interface SpendingSectionProps {
   results: SimulationResults
@@ -12,7 +19,10 @@ interface SpendingSectionProps {
 
 export function SpendingSection({ results }: SpendingSectionProps) {
   const t = useTranslations('simulationChart')
-  const { spendingData } = useChartData(results)
+  const displayReal = useDisplayReal()
+  const setDisplayReal = useSetDisplayReal()
+  const canShowReal = hasRealSeries(results)
+  const { spendingData, deflatorForAge } = useChartData(results, displayReal)
   const { formatCurrency, formatCurrencyShort, formatPercent } = useChartFormatters()
   const ages = useMemo(() => spendingData.map((d) => d.age), [spendingData])
   const { indexRange, onBrushChange, resetZoom } = useBrushRange(ages)
@@ -22,9 +32,14 @@ export function SpendingSection({ results }: SpendingSectionProps) {
       ? 'spendingTable.note.dynamic'
       : 'spendingTable.note.fixed'
 
+  // The pension is a fixed nominal amount, so in today's euros it shrinks with
+  // the median realised price level rather than staying flat.
   const monthlyPensionAtAge = useCallback(
-    (age: number) => (age >= results.params.legalRetirementAge ? results.params.monthlyPension : 0),
-    [results.params.legalRetirementAge, results.params.monthlyPension]
+    (age: number) =>
+      age >= results.params.legalRetirementAge
+        ? results.params.monthlyPension / deflatorForAge(age)
+        : 0,
+    [deflatorForAge, results.params.legalRetirementAge, results.params.monthlyPension]
   )
 
   return (
@@ -41,6 +56,9 @@ export function SpendingSection({ results }: SpendingSectionProps) {
         onResetZoom={resetZoom}
         formatCurrency={formatCurrency}
         formatCurrencyShort={formatCurrencyShort}
+        headerControls={
+          canShowReal ? <RealToggle value={displayReal} onChange={setDisplayReal} /> : null
+        }
       />
 
       <details className="border-3 border-neo-black bg-neo-white p-4 shadow-neo-sm">

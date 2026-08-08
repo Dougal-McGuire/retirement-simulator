@@ -98,6 +98,8 @@ const GeneratePdfRequestBodySchema = z
     results: z.unknown().optional(),
     reportData: z.unknown().optional(),
     locale: ReportLocaleSchema.optional(),
+    // Optional so older clients and the legacy print route keep working.
+    planName: z.string().trim().min(1).max(80).optional(),
   })
   .passthrough()
 
@@ -134,12 +136,16 @@ function validateSimulationResults(value: unknown): Omit<SimulationResults, 'par
   return parsed.data
 }
 
-function withLocale(value: unknown, locale: ReportLocale) {
-  if (value && typeof value === 'object') {
-    return { ...value, locale }
-  }
+function withLocale(value: unknown, locale: ReportLocale, planName?: string) {
+  const base = value && typeof value === 'object' ? { ...(value as Record<string, unknown>) } : {}
+  const metadata = base.metadata && typeof base.metadata === 'object' ? base.metadata : undefined
 
-  return { locale }
+  return {
+    ...base,
+    locale,
+    // A plan name sent alongside a pre-built payload still reaches the cover.
+    ...(planName ? { metadata: { ...(metadata ?? {}), planName } } : {}),
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -162,7 +168,7 @@ export async function POST(req: NextRequest) {
     }
     body = parsedBody.data
 
-    const { params, results, reportData } = body
+    const { params, results, reportData, planName } = body
     const requestedLocale = body.locale ?? DEFAULT_REPORT_LOCALE
 
     // Validate input data
@@ -173,14 +179,14 @@ export async function POST(req: NextRequest) {
       if (!freshParams) {
         throw new ClientRequestError('Parameter fehlen')
       }
-      const generated = transformToReportData(freshParams, { ...validResults, params: freshParams })
+      const generated = transformToReportData(freshParams, { ...validResults, params: freshParams }, planName)
       const parsed = ReportDataSchema.safeParse({ ...generated, locale: requestedLocale })
       if (!parsed.success) {
         throw new ClientRequestError('Ungueltige Berichtsdaten', 400, parsed.error.flatten())
       }
       validated = parsed.data
     } else if (reportData) {
-      const parsed = ReportDataSchema.safeParse(withLocale(reportData, requestedLocale))
+      const parsed = ReportDataSchema.safeParse(withLocale(reportData, requestedLocale, planName))
       if (!parsed.success) {
         throw new ClientRequestError('Ungueltige Berichtsdaten', 400, parsed.error.flatten())
       }

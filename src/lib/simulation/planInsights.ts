@@ -94,8 +94,14 @@ export function getPlanHealth(successRate: number): PlanHealth {
 
 export function buildPlanInsightMetrics(
   params: SimulationParams,
-  results: SimulationResults | null
+  results: SimulationResults | null,
+  options: { displayReal?: boolean } = {}
 ): PlanInsightMetrics {
+  // Display-only: picks which pre-computed asset series the euro figures read
+  // from. Ratios (withdrawal rate, real return) and base-year amounts such as
+  // the expense total are already unit-free or already in today's euros.
+  const assetPercentiles =
+    (options.displayReal ? results?.assetPercentilesReal : undefined) ?? results?.assetPercentiles
   const combinedExpenses = calculateCombinedExpenses(params.customExpenses)
   const pensionAnnual = params.monthlyPension * 12
   const retirementIndex = results
@@ -106,9 +112,8 @@ export function buildPlanInsightMetrics(
     : -1
   const safeRetirementIndex = retirementIndex === -1 ? 0 : retirementIndex
   const horizonIndex = results ? Math.max(0, results.ages.length - 1) : 0
-  const retirementMedianAssets =
-    results?.assetPercentiles.p50[safeRetirementIndex] ?? params.currentAssets
-  const horizonMedianAssets = results?.assetPercentiles.p50[horizonIndex] ?? params.currentAssets
+  const retirementMedianAssets = assetPercentiles?.p50[safeRetirementIndex] ?? params.currentAssets
+  const horizonMedianAssets = assetPercentiles?.p50[horizonIndex] ?? params.currentAssets
   const firstYearPension = params.retirementAge >= params.legalRetirementAge ? pensionAnnual : 0
   const firstYearPortfolioNeed = Math.max(0, combinedExpenses.combinedAnnual - firstYearPension)
   const firstYearWithdrawalRate =
@@ -129,8 +134,31 @@ export function buildPlanInsightMetrics(
   }
 }
 
+/**
+ * Stress levers run at a reduced count so they stay responsive while the user
+ * drags sliders. That is only safe if whatever they are compared against was
+ * measured at the *same* count — see `buildScenarioBaselineParams`.
+ */
+export function scenarioPreviewRuns(params: SimulationParams): number {
+  return Math.max(150, Math.min(500, Math.round(params.simulationRuns * 0.5)))
+}
+
+/**
+ * The unchanged plan, re-measured at the levers' preview run count.
+ *
+ * Comparing a 250-run lever against the dashboard's 500-run headline mixes a
+ * real effect with Monte Carlo sampling error, which is how a lever that can
+ * only help ("spend 10% less") ends up displaying a negative delta. Running the
+ * baseline at the same count makes the difference pure signal: the engine
+ * reuses one fixed scenario set across parameter changes, so the two runs see
+ * the same market paths and everything that is left is the lever itself.
+ */
+export function buildScenarioBaselineParams(params: SimulationParams): SimulationParams {
+  return { ...params, simulationRuns: scenarioPreviewRuns(params) }
+}
+
 export function buildScenarioParams(params: SimulationParams) {
-  const previewRuns = Math.max(150, Math.min(500, Math.round(params.simulationRuns * 0.5)))
+  const previewRuns = scenarioPreviewRuns(params)
   const maxRetirementAge = Math.max(params.currentAge, params.endAge - 1)
 
   return [

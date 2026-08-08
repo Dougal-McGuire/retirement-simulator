@@ -111,18 +111,28 @@ function AuthSession({ className, compact }: AuthMenuProps) {
   if (status !== 'authenticated' || !session?.user) {
     const label = t('signIn')
     return (
-      <Button
-        type="button"
-        variant="outline"
-        size={compact ? 'icon' : 'sm'}
-        onClick={handleSignIn}
-        disabled={isPending}
-        aria-label={compact ? label : undefined}
-        className={cn(compact ? 'h-10 w-10' : SIGN_IN_BUTTON_CLASS, className)}
-      >
-        <GoogleIcon className="h-4 w-4 shrink-0" />
-        {!compact && <span className="truncate">{label}</span>}
-      </Button>
+      // The landing page promises "no sign-up, no cloud" — the tooltip spells
+      // out that signing in still keeps every plan on this device.
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size={compact ? 'icon' : 'sm'}
+            onClick={handleSignIn}
+            disabled={isPending}
+            aria-label={compact ? label : undefined}
+            title={t('localOnly')}
+            className={cn(compact ? 'h-10 w-10' : SIGN_IN_BUTTON_CLASS, className)}
+          >
+            <GoogleIcon className="h-4 w-4 shrink-0" />
+            {!compact && <span className="truncate">{label}</span>}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[16rem]">
+          {compact ? `${label} — ${t('localOnly')}` : t('localOnly')}
+        </TooltipContent>
+      </Tooltip>
     )
   }
 
@@ -178,9 +188,19 @@ function AuthSession({ className, compact }: AuthMenuProps) {
         <span className="truncate text-[0.7rem] font-bold text-neo-black" title={displayName}>
           {displayName}
         </span>
-        <span className="truncate text-[0.6rem] uppercase tracking-[0.14em] text-muted-foreground">
-          {t('signedIn')}
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className="truncate text-[0.6rem] uppercase tracking-[0.14em] text-muted-foreground"
+              title={t('localOnly')}
+            >
+              {t('signedIn')}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-[16rem]">
+            {t('localOnly')}
+          </TooltipContent>
+        </Tooltip>
       </span>
       <Tooltip>
         <TooltipTrigger asChild>

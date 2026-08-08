@@ -1,10 +1,13 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { FileText, Download, Loader2 } from 'lucide-react'
+import { planDisplayName } from '@/lib/plans/planName'
+import { useActivePlanId, usePlans } from '@/lib/stores/simulationStore'
 import { SimulationResults, SimulationParams } from '@/types'
 
 interface GenerateReportButtonProps {
@@ -16,6 +19,20 @@ interface GenerateReportButtonProps {
   buttonClassName?: string
   wrapperClassName?: string
   children?: React.ReactNode
+  /** Overrides the plan name printed on the report (defaults to the active plan). */
+  planName?: string
+}
+
+/** Filename-safe slug of a plan name, e.g. "Retire 2 years later" → "retire-2-years-later". */
+export function planFilenameSlug(name: string | undefined | null): string {
+  if (!name) return ''
+  return name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
 }
 
 export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
@@ -27,11 +44,23 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
   buttonClassName,
   wrapperClassName,
   children,
+  planName,
 }) => {
   const t = useTranslations('report')
+  const tPlans = useTranslations('plans')
   const locale = useLocale()
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const plans = usePlans()
+  const activePlanId = useActivePlanId()
+
+  // The report is about a *named* plan; without this the PDF reads like a
+  // generic document and several exports are indistinguishable in a folder.
+  const activePlanName = useMemo(() => {
+    if (planName) return planName
+    const active = plans.find((plan) => plan.id === activePlanId)
+    return active ? planDisplayName(active, (key) => tPlans(key)) : undefined
+  }, [planName, plans, activePlanId, tPlans])
 
   const canGenerate = results && !disabled
 
@@ -50,6 +79,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
           params: results?.params || params,
           results,
           locale,
+          planName: activePlanName,
         }),
         signal: controller.signal,
       })
@@ -66,7 +96,10 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
       }
 
       const blob = await response.blob()
-      const filename = `retirement-report-${new Date().toISOString().split('T')[0]}.pdf`
+      const slug = planFilenameSlug(activePlanName)
+      const filename = `retirement-report${slug ? `-${slug}` : ''}-${
+        new Date().toISOString().split('T')[0]
+      }.pdf`
 
       // Create download link
       const url = window.URL.createObjectURL(blob)
@@ -92,11 +125,18 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
     setIsGenerating(true)
     setError(null)
 
+    // A toast carries the feedback even when the button sits in a menu that
+    // closes, or off-screen after a scroll.
+    const toastId = toast.loading(t('actions.generating'))
+
     try {
       await generatePDF()
+      toast.success(t('actions.ready'), { id: toastId })
     } catch (error) {
       console.error('PDF generation failed:', error)
-      setError(error instanceof Error ? error.message : t('errors.generic'))
+      const message = error instanceof Error ? error.message : t('errors.generic')
+      setError(message)
+      toast.error(message, { id: toastId })
     } finally {
       setIsGenerating(false)
     }
@@ -122,17 +162,23 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
         size={size}
         onClick={handleGenerate}
         disabled={isGenerating}
+        aria-busy={isGenerating}
         className={cn(buttonClassName)}
       >
-        {children || (
+        {/* The busy state wins over any custom label: callers that pass their
+            own children (the mobile menu) would otherwise show no feedback. */}
+        {isGenerating ? (
           <>
-            {isGenerating ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="mr-2 h-4 w-4" />
-            )}
-            {isGenerating ? t('actions.generating') : t('actions.generate')}
+            <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" />
+            <span className="flex-1 text-left">{t('actions.generating')}</span>
           </>
+        ) : (
+          children || (
+            <>
+              <Download className="mr-2 h-4 w-4" />
+              {t('actions.generate')}
+            </>
+          )
         )}
       </Button>
 

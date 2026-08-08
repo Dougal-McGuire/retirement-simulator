@@ -50,6 +50,8 @@ interface AssetsChartProps {
   onResetZoom: () => void
   formatCurrency: (value: number) => string
   formatCurrencyShort: (value: number) => string
+  /** Extra controls rendered in the section header, left of the scale switch. */
+  headerControls?: React.ReactNode
 }
 
 export function AssetsChart({
@@ -63,6 +65,7 @@ export function AssetsChart({
   onResetZoom,
   formatCurrency,
   formatCurrencyShort,
+  headerControls,
 }: AssetsChartProps) {
   const t = useTranslations('assetsChart')
   const isMobile = useIsMobile()
@@ -221,6 +224,7 @@ export function AssetsChart({
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {headerControls}
           <div
             role="group"
             aria-label={t('scale.label')}

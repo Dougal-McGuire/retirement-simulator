@@ -183,6 +183,8 @@ export interface ReportMetadata {
   id: string
   generatedAt: string
   version?: string
+  /** Name of the plan this report was generated from, when known. */
+  planName?: string
 }
 
 export interface ReportProfile {
@@ -399,6 +401,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       id: data.metadata?.reportId ?? `RPT-${Date.now()}`,
       generatedAt: data.metadata?.generatedAt ?? new Date().toISOString(),
       version: data.metadata?.version,
+      planName: data.metadata?.planName,
     },
     profile: {
       person: {

@@ -32,6 +32,8 @@ interface SpendingChartProps {
   formatCurrency: (value: number) => string
   formatCurrencyShort: (value: number) => string
   onResetZoom: () => void
+  /** Extra controls rendered in the section header, left of the zoom reset. */
+  headerControls?: React.ReactNode
 }
 
 export function SpendingChart({
@@ -46,6 +48,7 @@ export function SpendingChart({
   formatCurrency,
   formatCurrencyShort,
   onResetZoom,
+  headerControls,
 }: SpendingChartProps) {
   const t = useTranslations('spendingChart')
   const isMobile = useIsMobile()
@@ -173,16 +176,19 @@ export function SpendingChart({
             {t('description')}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onResetZoom}
-          className="shrink-0 px-3 py-1 text-[0.7rem] sm:px-4"
-          disabled={!isZoomed}
-        >
-          {t('reset')}
-        </Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {headerControls}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onResetZoom}
+            className="shrink-0 px-3 py-1 text-[0.7rem] sm:px-4"
+            disabled={!isZoomed}
+          >
+            {t('reset')}
+          </Button>
+        </div>
       </div>
 
       <ChartLegend

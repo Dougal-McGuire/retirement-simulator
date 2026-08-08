@@ -95,7 +95,10 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
           <Link href="/" className="group flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center border-3 border-neo-black bg-neo-yellow shadow-neo-sm transition-neo group-hover:-translate-x-[1px] group-hover:-translate-y-[1px] group-hover:shadow-neo">
-              <Image src="/piggy.svg" alt="" width={24} height={24} priority />
+              {/* No `priority`: the 1 KB inline-size logo never wins a preload
+                  race, and the emitted <link rel="preload"> only produced a
+                  "preloaded but not used" console warning. */}
+              <Image src="/piggy.svg" alt="" width={24} height={24} />
             </span>
             <span className="landing-label font-heading text-[0.72rem] font-black text-neo-black [overflow-wrap:anywhere] sm:text-sm">
               {t('nav.appName')}

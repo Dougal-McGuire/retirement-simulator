@@ -116,6 +116,8 @@ interface CoverPageProps {
   classification?: string
   overline?: string
   title: string
+  /** Plan the report was generated from, e.g. "Plan: Retire at 60". */
+  planLabel?: string
   subtitle?: string
   badge?: string
   badgeTone?: 'success' | 'warning' | 'danger'
@@ -137,6 +139,7 @@ export function CoverPage({
   classification,
   overline,
   title,
+  planLabel,
   subtitle,
   badge,
   badgeTone = 'success',
@@ -230,6 +233,20 @@ export function CoverPage({
         >
           {title}
         </Text>
+
+        {planLabel && (
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: 0.2,
+              color: tokens.colors.brand.yellow,
+              marginBottom: 12,
+            }}
+          >
+            {planLabel}
+          </Text>
+        )}
 
         {subtitle && (
           <Text

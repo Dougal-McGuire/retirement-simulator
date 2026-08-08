@@ -16,6 +16,24 @@ export const BASE_STORE_KEY = 'retirement-simulator-store'
 export const BASE_PARAMS_KEY = 'retirement-simulator-params'
 /** Saved setups key. */
 export const BASE_SAVED_SETUPS_KEY = 'retirement-simulator-saved-setups'
+/**
+ * Marks that pre-plan saved setups have been imported as plans, so the one-time
+ * legacy migration never resurrects plans the user deleted afterwards.
+ */
+export const BASE_PLANS_IMPORTED_KEY = 'retirement-simulator-plans-imported'
+/**
+ * Marks that the "bring your local plans into this account?" prompt has been
+ * answered for a given account, so signing in again never re-asks.
+ */
+export const BASE_PLANS_MIGRATED_KEY = 'retirement-simulator-plans-migrated'
+
+/** Every key the browser-local workspace of one namespace is made of. */
+export const NAMESPACED_BASE_KEYS = [
+  BASE_STORE_KEY,
+  BASE_PARAMS_KEY,
+  BASE_SAVED_SETUPS_KEY,
+  BASE_PLANS_IMPORTED_KEY,
+] as const
 
 const NAMESPACE_SEPARATOR = '::'
 const USER_NAMESPACE_PREFIX = 'u-'

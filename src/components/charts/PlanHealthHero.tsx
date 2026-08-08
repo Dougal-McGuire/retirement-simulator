@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useMemo } from 'react'
-import { AlertTriangle } from 'lucide-react'
-import { useFormatter, useTranslations } from 'next-intl'
+import { AlertTriangle, Pencil } from 'lucide-react'
+import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import type { SimulationParams, SimulationResults } from '@/types'
 import { buildPlanInsightMetrics } from '@/lib/simulation/planInsights'
+import { useDisplayReal } from '@/lib/stores/displayStore'
 import { computePlanHealthScore, type PlanHealthLabel } from '@/lib/insights/planHealth'
 import { deriveDepletionAges } from '@/lib/insights/depletion'
 import { buildPlanWarnings, type PlanWarning } from '@/lib/insights/warnings'
@@ -16,6 +17,11 @@ interface PlanHealthHeroProps {
   params: SimulationParams
   results: SimulationResults | null
   isLoading: boolean
+  /**
+   * Opens the plan editor focused on the field behind a tile, so a number the
+   * user disagrees with is one click away from being changed.
+   */
+  onEditField?: (fieldId: string) => void
 }
 
 const scoreLabelKeys: Record<PlanHealthLabel, 'strong' | 'moderate' | 'needsAttention'> = {
@@ -43,9 +49,15 @@ function successStroke(rate: number) {
 }
 
 function SuccessGauge({ rate }: { rate: number }) {
+  const locale = useLocale()
   const radius = 52
   const circumference = 2 * Math.PI * radius
   const clamped = Math.max(0, Math.min(100, rate))
+  // "99.6%" in English, "99,6 %" in German — including the locale's spacing
+  // rule around the percent sign.
+  const percentSuffix = new Intl.NumberFormat(locale, { style: 'percent' })
+    .format(0)
+    .replace(/[\d٠-٩]/g, '')
 
   return (
     <div className="relative h-36 w-36 shrink-0 sm:h-40 sm:w-40">
@@ -76,7 +88,8 @@ function SuccessGauge({ rate }: { rate: number }) {
           end={clamped}
           duration={1.2}
           decimals={clamped >= 99.95 ? 0 : 1}
-          suffix="%"
+          suffix={percentSuffix}
+          locale={locale}
           className={cn(
             'whitespace-nowrap text-2xl font-black leading-none tabular-nums sm:text-[1.6rem]',
             successToneClass(clamped)
@@ -87,15 +100,25 @@ function SuccessGauge({ rate }: { rate: number }) {
   )
 }
 
-export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroProps) {
+export function PlanHealthHero({
+  params,
+  results,
+  isLoading,
+  onEditField,
+}: PlanHealthHeroProps) {
   const t = useTranslations('planHero')
+  const tEditor = useTranslations('planEditor')
   const format = useFormatter()
 
   const health = useMemo(
     () => (results ? computePlanHealthScore(params, results) : null),
     [params, results]
   )
-  const metrics = useMemo(() => buildPlanInsightMetrics(params, results), [params, results])
+  const displayReal = useDisplayReal()
+  const metrics = useMemo(
+    () => buildPlanInsightMetrics(params, results, { displayReal }),
+    [params, results, displayReal]
+  )
   const depletion = useMemo(
     () => (results ? deriveDepletionAges(results) : { p10DepletionAge: null, p50DepletionAge: null }),
     [results]
@@ -130,7 +153,13 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
     }
   }
 
-  const tiles: { key: string; label: string; value: React.ReactNode; detail: string }[] = [
+  const tiles: {
+    key: string
+    label: string
+    value: React.ReactNode
+    detail: string
+    edit?: { fieldId: string; label: string }
+  }[] = [
     {
       key: 'score',
       label: t('score.label'),
@@ -157,6 +186,7 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
           ? t('lasts.detailP10', { age: depletion.p10DepletionAge })
           : t('lasts.detailNone')
         : '',
+      edit: { fieldId: 'editor-endAge', label: `${params.endAge}` },
     },
     {
       key: 'withdrawal',
@@ -172,6 +202,7 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
       label: t('bridge.label'),
       value: t('bridge.value', { years: metrics.bridgeYears }),
       detail: t('bridge.detail', { age: params.legalRetirementAge }),
+      edit: { fieldId: 'editor-retirementAge', label: `${params.retirementAge}` },
     },
   ]
 
@@ -211,11 +242,24 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
             {tiles.map((tile) => (
               <div
                 key={tile.key}
-                className="border-2 border-neo-black bg-background p-4 shadow-neo-sm"
+                className="relative border-2 border-neo-black bg-background p-4 shadow-neo-sm"
               >
                 <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   {tile.label}
                 </span>
+                {tile.edit && onEditField && (
+                  <button
+                    type="button"
+                    data-testid={`hero-edit-${tile.key}`}
+                    onClick={() => onEditField(tile.edit!.fieldId)}
+                    aria-label={tEditor('editAria', { field: tile.label })}
+                    title={tEditor('editAria', { field: tile.label })}
+                    className="absolute right-2 top-2 inline-flex items-center gap-1 border-2 border-neo-black bg-neo-white px-1.5 py-0.5 text-[0.58rem] font-extrabold tabular-nums text-neo-black transition-neo hover:bg-neo-yellow"
+                  >
+                    {tile.edit.label}
+                    <Pencil className="h-2.5 w-2.5" aria-hidden="true" />
+                  </button>
+                )}
                 <div className="mt-2 text-xl font-black text-neo-black sm:text-2xl">
                   {tile.value}
                 </div>

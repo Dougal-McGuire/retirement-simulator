@@ -6,7 +6,15 @@
     "signedIn": "Angemeldet",
     "notConfigured": "Anmeldung nicht konfiguriert",
     "loading": "Konto wird geladen",
-    "accountFallbackName": "Google-Konto"
+    "accountFallbackName": "Google-Konto",
+    "localOnly": "Ihre Daten bleiben auf diesem Gerät — die Anmeldung trennt lediglich Profile.",
+    "migration": {
+      "title": "Vorhandene Pläne in dieses Konto übernehmen?",
+      "description": "Sie haben auf diesem Gerät Pläne erstellt, bevor Sie sich angemeldet haben. Sollen sie in dieses Konto kopiert werden oder möchten Sie neu starten?",
+      "note": "Die anonymen Pläne bleiben in jedem Fall auf diesem Gerät — nach dem Abmelden sind sie wieder da.",
+      "confirm": "Pläne übernehmen",
+      "decline": "Neu starten"
+    }
   },
   "landing": {
     "meta": {
@@ -167,7 +175,7 @@
     }
   },
   "themeSwitcher": {
-    "label": "Theme",
+    "label": "Design",
     "options": {
       "neo": "Neo Brutal",
       "aurora": "Aurora Quant",
@@ -178,7 +186,7 @@
   },
   "setup": {
     "header": {
-      "title": "Setup",
+      "title": "Einrichtung",
       "subtitle": "Definieren Sie Ihre Basisannahmen, bevor Sie die Ruhestands-Engine starten.",
       "simulationLink": "Zur Simulation",
       "badges": {
@@ -349,13 +357,31 @@
       "entertainment": "Unterhaltung",
       "vacations": "Urlaub",
       "homeRepairs": "Hausreparaturen"
+    },
+    "planContext": {
+      "editing": "Bearbeitet: {name}",
+      "unsaved": "Ungespeicherte Änderungen",
+      "hint": "Deine Angaben bleiben im Arbeitsstand, bis du sie am Ende speicherst."
+    },
+    "finish": {
+      "title": "Wohin damit?",
+      "descriptionNamed": "Du hast den Arbeitsstand von „{name}“ geändert. Speichere ihn in diesem Plan, lege einen neuen Plan an oder verwirf die Änderungen.",
+      "descriptionClean": "Es hat sich nichts geändert. Weiter zu deinen Ergebnissen.",
+      "firstRunTitle": "Benenne deinen Plan",
+      "firstRunDescription": "Gib diesem Plan einen Namen, damit du ihn wiedererkennst. Du kannst ihn jederzeit umbenennen.",
+      "nameLabel": "Name des neuen Plans",
+      "update": "„{name}“ aktualisieren",
+      "saveAsNew": "Als neuen Plan speichern",
+      "discard": "Änderungen verwerfen",
+      "continue": "Weiter",
+      "back": "Weiter bearbeiten"
     }
   },
   "simulation": {
     "header": {
       "title": "Ruhestandssimulation",
       "subtitle": "Planen, justieren und überwachen Sie Ihren Ruhestand mit Live-Monte-Carlo-Ergebnissen.",
-      "setupLink": "Setup",
+      "setupLink": "Einrichtung",
       "badges": {
         "engine": "Live-Monte-Carlo",
         "runs": "{count} Läufe pro Aktualisierung"
@@ -370,8 +396,15 @@
     },
     "tabs": {
       "overview": "Überblick",
-      "details": "Cashflow & Details",
-      "scenarios": "Szenarien & Empfehlungen"
+      "details": "Zahlungsströme & Details",
+      "scenarios": "Szenarien & Empfehlungen",
+      "plan": "Plan"
+    },
+    "display": {
+      "label": "Darstellung der Eurobeträge",
+      "nominal": "Nominal",
+      "real": "Heutige €",
+      "realHint": "in heutiger Kaufkraft"
     }
   },
   "parameterSidebar": {
@@ -386,7 +419,7 @@
     "description": "Schnellzugriff auf Einstellungen und Aktionen",
     "sections": {
       "language": "Sprache",
-      "theme": "Theme",
+      "theme": "Design",
       "actions": "Aktionen"
     },
     "actions": {
@@ -684,7 +717,8 @@
     },
     "actions": {
       "generating": "Erstelle…",
-      "generate": "Bericht erstellen"
+      "generate": "Bericht erstellen",
+      "ready": "Bericht heruntergeladen"
     }
   },
   "planHero": {
@@ -752,7 +786,10 @@
         }
       },
       "saveAsPlan": "Als neuen Plan speichern",
-      "savedHint": "Legt einen Plan mit diesen Stress-Parametern an und wechselt zu ihm."
+      "savedHint": "Legt einen neuen Plan mit diesen Parametern an. Dein aktueller Plan bleibt aktiv.",
+      "deltaPoints": "{value} Pkt.",
+      "saturated": "Erfolgsquote bereits {rate} — verglichen wird das Vermögen im schlechtesten Zehntel.",
+      "worstDecile": "Vermögen im schlechtesten Zehntel"
     }
   },
   "recommendations": {
@@ -1697,7 +1734,11 @@
     "switcher": {
       "ariaLabel": "Aktiver Plan",
       "count": "{count} von {max} Plänen",
-      "limit": "Planlimit erreicht ({max}). Lösche einen Plan, um einen neuen anzulegen."
+      "limit": "Planlimit erreicht ({max}). Lösche einen Plan, um einen neuen anzulegen.",
+      "active": "Aktiv",
+      "successRate": "{rate} Erfolg",
+      "notSimulated": "Noch nicht simuliert",
+      "modified": "Geändert"
     },
     "defaultNames": {
       "base": "Basisplan"
@@ -1711,7 +1752,11 @@
       "cancel": "Abbrechen",
       "create": "Plan erstellen",
       "save": "Speichern",
-      "confirmDelete": "Plan löschen"
+      "confirmDelete": "Plan löschen",
+      "saveToPlan": "Im Plan speichern",
+      "revert": "Verwerfen",
+      "undo": "Rückgängig",
+      "saveAsNew": "Als neuen Plan speichern"
     },
     "dialogs": {
       "new": {
@@ -1737,6 +1782,16 @@
         "placeholder": "z. B. Basisplan",
         "save": "Als neuen Plan speichern",
         "skip": "Aktuellen Plan aktualisieren"
+      },
+      "scenario": {
+        "title": "Als neuen Plan speichern",
+        "description": "Erstellt einen neuen Plan aus „{source}“ mit dieser Stellschraube. Dein aktueller Plan bleibt aktiv.",
+        "label": "Planname",
+        "placeholder": "z. B. 10% mehr sparen",
+        "source": "Basiert auf",
+        "changes": "Was sich ändert",
+        "noChanges": "Diese Stellschraube ändert keine Parameter.",
+        "confirm": "Plan erstellen"
       }
     },
     "comparison": {
@@ -1767,7 +1822,81 @@
         "aria": "Liniendiagramm, das den Median-Vermögenspfad jedes verglichenen Plans nach Alter überlagert.",
         "tooltip": "Alter {age}"
       },
-      "stale": "Parameter haben sich seit dem Vergleich geändert — bitte erneut berechnen."
+      "stale": "Parameter haben sich seit dem Vergleich geändert — bitte erneut berechnen.",
+      "emptyReady": "{count} Pläne sind bereits ausgewählt — starte den Vergleich, um sie nebeneinander zu sehen.",
+      "emptyNeedsSelection": "Wähle mindestens {min} Pläne und starte dann den Vergleich.",
+      "selectMore": "Wähle mindestens {min} Pläne — ein Vergleich braucht zwei.",
+      "staleRerun": "Neu berechnen",
+      "base": "Basis",
+      "deltaPoints": "{value} Pkt.",
+      "deltaYears": "{value} J.",
+      "deltaSame": "gleich",
+      "assumptions": {
+        "title": "Annahmen",
+        "description": "Die Eingaben hinter diesen Zahlen. Abweichende Zeilen sind hervorgehoben.",
+        "expand": "Annahmen anzeigen",
+        "collapse": "Annahmen ausblenden",
+        "identical": "Diese Pläne teilen alle verglichenen Annahmen — nur das Simulationsrauschen unterscheidet sich.",
+        "groups": {
+          "timeline": "Zeitplan",
+          "income": "Vermögen & Einkommen",
+          "spending": "Ausgaben",
+          "market": "Marktannahmen",
+          "strategy": "Entnahmestrategie"
+        },
+        "rows": {
+          "currentAge": "Aktuelles Alter",
+          "retirementAge": "Renteneintrittsalter",
+          "legalRetirementAge": "Gesetzliches Rentenalter",
+          "endAge": "Planungshorizont",
+          "bridgeYears": "Rentenlücke",
+          "currentAssets": "Aktuelles Vermögen",
+          "annualSavings": "Jährliche Sparrate",
+          "annualSavingsGrowthRate": "Wachstum der Sparrate",
+          "monthlyPension": "Monatliche Rente",
+          "oneTimeIncomes": "Einmalzahlungen (gesamt)",
+          "monthlySpending": "Monatliche Ausgaben",
+          "annualSpending": "Jährliche Ausgaben",
+          "expenseItems": "Ausgabenposten",
+          "averageROI": "Durchschnittliche Rendite",
+          "roiVolatility": "Rendite-Volatilität",
+          "averageInflation": "Durchschnittliche Inflation",
+          "inflationVolatility": "Inflations-Volatilität",
+          "capitalGainsTax": "Kapitalertragsteuer",
+          "withdrawalStrategy": "Entnahmestrategie",
+          "dsWithdrawalRate": "Anfängliche Entnahmerate",
+          "dsCeilingRate": "Ausgaben-Obergrenze",
+          "dsFloorRate": "Ausgaben-Untergrenze"
+        },
+        "differsCount": "{count, plural, one {# Abweichung} other {# Abweichungen}}"
+      },
+      "selectionChanged": "Die Auswahl hat sich seit dem Vergleich geändert — starte ihn neu für die gewählten Pläne."
+    },
+    "toasts": {
+      "planCreatedFrom": "„{name}“ aus „{source}“ erstellt — im Planvergleich ausgewählt.",
+      "switchToPlan": "Dorthin wechseln",
+      "dismiss": "Schließen"
+    },
+    "dirty": {
+      "badge": "Ungespeicherte Änderungen",
+      "clean": "Gespeichert",
+      "hint": "Diese Änderungen steuern die Simulation, sind aber noch nicht im Plan gespeichert.",
+      "savedToast": "In „{name}“ gespeichert",
+      "revertedToast": "Auf den gespeicherten Stand von „{name}“ zurückgesetzt",
+      "ariaSave": "Ungespeicherte Änderungen in {name} speichern",
+      "ariaRevert": "Ungespeicherte Änderungen an {name} verwerfen"
+    },
+    "switchGuard": {
+      "title": "Ungespeicherte Änderungen in „{name}“",
+      "description": "Du hast „{name}“ geändert, ohne zu speichern. Entscheide, was vor dem Wechsel zu „{target}“ passieren soll.",
+      "save": "Speichern und wechseln",
+      "discard": "Verwerfen und wechseln",
+      "cancel": "Hier bleiben"
+    },
+    "deleted": {
+      "toast": "„{name}“ gelöscht",
+      "restored": "„{name}“ wiederhergestellt",
+      "restoreFailed": "Plan konnte nicht wiederhergestellt werden — das Planlimit ist erreicht."
     }
   },
   "headerControls": {
@@ -1775,5 +1904,63 @@
     "title": "Darstellung",
     "description": "Sprache der Oberfläche wechseln oder ein anderes Theme wählen.",
     "close": "Schließen"
+  },
+  "planEditor": {
+    "title": "Plan-Annahmen",
+    "description": "Alle Eingaben, die „{name}“ simuliert. Änderungen wirken sofort und bleiben im Arbeitsstand, bis du sie im Plan speicherst.",
+    "descriptionGeneric": "Alle Eingaben, die dieser Plan simuliert. Änderungen wirken sofort und bleiben im Arbeitsstand, bis du sie im Plan speicherst.",
+    "groups": {
+      "personal": {
+        "title": "Person & Zeitachse",
+        "description": "Die Alter, die Ansparphase und Entnahmephase abstecken."
+      },
+      "income": {
+        "title": "Einkommen & Sparen",
+        "description": "Was vor und nach dem Erwerbsleben hereinkommt."
+      },
+      "expenses": {
+        "title": "Ausgaben",
+        "description": "Was dieser Plan jedes Jahr finanzieren muss."
+      },
+      "market": {
+        "title": "Markt & Regeln",
+        "description": "Renditeannahmen, Steuern und die Entnahmeregel."
+      }
+    },
+    "summary": {
+      "workingYears": "Verbleibende Arbeitsjahre",
+      "retirementYears": "Jahre im Ruhestand",
+      "years": "{count, plural, =1 {# Jahr} other {# Jahre}}",
+      "monthlyTotal": "Monatliche Ausgaben",
+      "annualExtras": "Jährliche Extras",
+      "combinedAnnual": "Summe pro Jahr",
+      "savingsRate": "Sparquote",
+      "savingsRateHint": "Sparen ÷ (Sparen + Ausgaben)",
+      "realReturn": "Reale Rendite nach Inflation",
+      "pensionGap": "Gesetzliche Rente beginnt mit {age}",
+      "expenseCount": "{count, plural, =0 {Keine Einträge} =1 {# Eintrag} other {# Einträge}}"
+    },
+    "reset": {
+      "trigger": "Auf Standard zurücksetzen",
+      "title": "DIESEN Plan auf Standard zurücksetzen?",
+      "description": "Alle Annahmen in „{name}“ kehren zum Standardszenario zurück. Deine anderen Pläne bleiben unberührt, und nichts wird gespeichert, bevor du den Plan speicherst.",
+      "confirm": "Diesen Plan zurücksetzen",
+      "done": "„{name}“ auf Standard zurückgesetzt",
+      "undone": "Zurücksetzen rückgängig gemacht"
+    },
+    "editAria": "{field} bearbeiten",
+    "jump": "Zu {group} springen"
+  },
+  "quickAdjust": {
+    "title": "Schnelles Was-wäre-wenn",
+    "description": "Die vier Stellschrauben mit der größten Wirkung. Jede Änderung landet im Arbeitsstand.",
+    "openEditor": "Gesamten Plan bearbeiten",
+    "expensesHint": "Skaliert alle Ausgaben dieses Plans proportional.",
+    "fields": {
+      "retirementAge": "Renteneintrittsalter",
+      "annualSavings": "Jährliche Sparrate",
+      "monthlyExpenses": "Monatliche Ausgaben",
+      "averageROI": "Erwartete Rendite"
+    }
   }
 }

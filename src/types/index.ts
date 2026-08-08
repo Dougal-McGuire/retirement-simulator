@@ -53,6 +53,23 @@ export interface SimulationResults {
   ages: number[]
   assetPercentiles: PercentileData
   spendingPercentiles: PercentileData
+  /**
+   * Same series expressed in today's purchasing power. Each Monte Carlo path is
+   * deflated by its own realised inflation *before* percentiles are taken, so
+   * these are genuine quantiles of the real-terms distribution rather than the
+   * nominal band divided by an average price level.
+   *
+   * Optional: results persisted before this field existed lack it, and the UI
+   * falls back to the nominal series.
+   */
+  assetPercentilesReal?: PercentileData
+  spendingPercentilesReal?: PercentileData
+  /**
+   * Median realised price level per age, relative to the plan's first year
+   * (index 0 is always 1). Used to express nominally fixed amounts — a pension
+   * quoted in today's euros — in real terms without re-running the simulation.
+   */
+  inflationIndexP50?: number[]
   successRate: number
   /**
    * Fraction of runs (0..1) whose assets were exhausted at or before each age.
@@ -124,7 +141,21 @@ export const MAX_COMPARISON_PLANS = 3
 
 // State management interfaces
 export interface SimulationStore {
+  /**
+   * The working copy the simulation always runs on: the active plan's params
+   * with any unsaved edits layered on top. Never write to it directly — use
+   * `updateParams`, which keeps `draftParams`/`isDirty` in sync.
+   */
   params: SimulationParams
+  /**
+   * Unsaved edits sandboxed over the active plan. `null` while the working copy
+   * matches the stored plan, so a plan is only ever mutated on an explicit save.
+   */
+  draftParams: SimulationParams | null
+  /** True while `draftParams` differs from the active plan's stored params. */
+  isDirty: boolean
+  /** Last known success rate per plan id, used to enrich the plan switcher. */
+  planSuccessRates: Record<string, number>
   results: SimulationResults | null
   isLoading: boolean
   error: string | null
@@ -134,9 +165,23 @@ export interface SimulationStore {
   autoRunSuspended: boolean
   pendingRun: boolean
 
+  // Draft (working copy) actions
+  /** Commits the working copy into the active plan. No-op when clean. */
+  savePlanDraft: () => void
+  /** Throws the working copy away and restores the active plan's params. */
+  revertPlanDraft: () => void
+
   // Plan actions
-  /** Creates a plan from `params` (defaults to the current params) and activates it. */
-  createPlan: (name: string, params?: SimulationParams) => string | null
+  /**
+   * Creates a plan from `params` (defaults to the current params) and activates
+   * it. Pass `{ activate: false }` to add the plan in the background — used by
+   * the stress levers, which must not hijack the plan the user is editing.
+   */
+  createPlan: (
+    name: string,
+    params?: SimulationParams,
+    options?: { activate?: boolean }
+  ) => string | null
   renamePlan: (id: string, name: string) => void
   /** Copies a plan (params included) under a new name and activates the copy. */
   duplicatePlan: (id: string, name?: string) => string | null

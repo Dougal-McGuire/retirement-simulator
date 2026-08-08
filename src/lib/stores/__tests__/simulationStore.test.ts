@@ -580,7 +580,7 @@ describe('simulationStore', () => {
       expect(useSimulationStore.getState().params.annualSavings).toBe(61000)
     })
 
-    it('writes parameter edits through to the active plan only', async () => {
+    it('keeps parameter edits in the working copy until they are saved', async () => {
       const { useSimulationStore } = setupStore()
       const baseId = useSimulationStore.getState().activePlanId
 
@@ -590,7 +590,19 @@ describe('simulationStore', () => {
       useSimulationStore.getState().updateParams({ monthlyPension: 1234 })
       await flushSimulationQueue()
 
-      const { plans } = useSimulationStore.getState()
+      // The simulation sees the edit, the stored plans do not.
+      expect(useSimulationStore.getState().params.monthlyPension).toBe(1234)
+      expect(useSimulationStore.getState().isDirty).toBe(true)
+      expect(
+        useSimulationStore.getState().plans.find((plan) => plan.id === otherId)?.params
+          .monthlyPension
+      ).toBe(DEFAULT_PARAMS.monthlyPension)
+
+      useSimulationStore.getState().savePlanDraft()
+
+      const { plans, isDirty, draftParams } = useSimulationStore.getState()
+      expect(isDirty).toBe(false)
+      expect(draftParams).toBeNull()
       expect(plans.find((plan) => plan.id === otherId)?.params.monthlyPension).toBe(1234)
       expect(plans.find((plan) => plan.id === baseId)?.params.monthlyPension).toBe(
         DEFAULT_PARAMS.monthlyPension
@@ -745,6 +757,233 @@ describe('simulationStore', () => {
 
       useSimulationStore.getState().deleteSetup(created!.id)
       expect(useSimulationStore.getState().plans.some((plan) => plan.id === created!.id)).toBe(false)
+    })
+  })
+
+  describe('working copy (plan drafts)', () => {
+    const setupStore = () => {
+      const { useSimulationStore, localStorageMock } = loadStore()
+      const runSimulation = jest.fn(async () => {
+        useSimulationStore.setState({
+          results: createResults(useSimulationStore.getState().params),
+          isLoading: false,
+          error: null,
+          pendingRun: false,
+        })
+      })
+      useSimulationStore.setState({ runSimulation })
+      return { useSimulationStore, runSimulation, localStorageMock }
+    }
+
+    it('starts clean and marks the working copy dirty on the first edit', async () => {
+      const { useSimulationStore } = setupStore()
+
+      expect(useSimulationStore.getState().isDirty).toBe(false)
+      expect(useSimulationStore.getState().draftParams).toBeNull()
+
+      useSimulationStore.getState().updateParams({ retirementAge: 63 })
+      await flushSimulationQueue()
+
+      const state = useSimulationStore.getState()
+      expect(state.isDirty).toBe(true)
+      expect(state.draftParams?.retirementAge).toBe(63)
+      // The simulation always runs on the working copy.
+      expect(state.results?.params.retirementAge).toBe(63)
+      expect(state.plans[0].params.retirementAge).toBe(DEFAULT_PARAMS.retirementAge)
+    })
+
+    it('goes clean again when an edit is undone by hand', async () => {
+      const { useSimulationStore } = setupStore()
+
+      useSimulationStore.getState().updateParams({ retirementAge: 63 })
+      await flushSimulationQueue()
+      useSimulationStore.getState().updateParams({ retirementAge: DEFAULT_PARAMS.retirementAge })
+      await flushSimulationQueue()
+
+      expect(useSimulationStore.getState().isDirty).toBe(false)
+      expect(useSimulationStore.getState().draftParams).toBeNull()
+    })
+
+    it('saves the working copy into the active plan and bumps updatedAt', async () => {
+      const { useSimulationStore } = setupStore()
+      const before = useSimulationStore.getState().plans[0].updatedAt
+
+      useSimulationStore.getState().updateParams({ currentAssets: 750000 })
+      await flushSimulationQueue()
+      useSimulationStore.getState().savePlanDraft()
+
+      const { plans, isDirty, draftParams, savedSetups } = useSimulationStore.getState()
+      expect(isDirty).toBe(false)
+      expect(draftParams).toBeNull()
+      expect(plans[0].params.currentAssets).toBe(750000)
+      expect(plans[0].updatedAt).toBeGreaterThanOrEqual(before)
+      // The legacy mirror stays in sync with plans.
+      expect(savedSetups[0].params.currentAssets).toBe(750000)
+    })
+
+    it('does nothing when saving a clean working copy', () => {
+      const { useSimulationStore } = setupStore()
+      const before = useSimulationStore.getState().plans[0]
+
+      useSimulationStore.getState().savePlanDraft()
+
+      expect(useSimulationStore.getState().plans[0]).toBe(before)
+    })
+
+    it('reverts the working copy back to the stored plan and re-runs', async () => {
+      const { useSimulationStore, runSimulation } = setupStore()
+
+      useSimulationStore.getState().updateParams({ annualSavings: 12000 })
+      await flushSimulationQueue()
+      runSimulation.mockClear()
+
+      useSimulationStore.getState().revertPlanDraft()
+      await flushSimulationQueue()
+
+      const state = useSimulationStore.getState()
+      expect(state.isDirty).toBe(false)
+      expect(state.draftParams).toBeNull()
+      expect(state.params.annualSavings).toBe(DEFAULT_PARAMS.annualSavings)
+      expect(runSimulation).toHaveBeenCalledTimes(1)
+    })
+
+    it('drops the working copy when another plan is activated', async () => {
+      const { useSimulationStore } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+
+      const otherId = useSimulationStore.getState().createPlan('Retire at 60')
+      await flushSimulationQueue()
+
+      useSimulationStore.getState().updateParams({ monthlyPension: 42 })
+      await flushSimulationQueue()
+      expect(useSimulationStore.getState().isDirty).toBe(true)
+
+      useSimulationStore.getState().setActivePlan(baseId)
+      await flushSimulationQueue()
+
+      const state = useSimulationStore.getState()
+      expect(state.activePlanId).toBe(baseId)
+      expect(state.isDirty).toBe(false)
+      expect(state.params.monthlyPension).toBe(DEFAULT_PARAMS.monthlyPension)
+      // The abandoned edit never reached the plan the user was on.
+      expect(
+        state.plans.find((plan) => plan.id === otherId)?.params.monthlyPension
+      ).toBe(DEFAULT_PARAMS.monthlyPension)
+    })
+
+    it('lets a dirty plan be re-selected to discard the working copy', async () => {
+      const { useSimulationStore } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+
+      useSimulationStore.getState().updateParams({ monthlyPension: 42 })
+      await flushSimulationQueue()
+
+      useSimulationStore.getState().setActivePlan(baseId)
+      await flushSimulationQueue()
+
+      expect(useSimulationStore.getState().isDirty).toBe(false)
+      expect(useSimulationStore.getState().params.monthlyPension).toBe(
+        DEFAULT_PARAMS.monthlyPension
+      )
+    })
+
+    it('hands the working copy to a new plan created from it', async () => {
+      const { useSimulationStore } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+
+      useSimulationStore.getState().updateParams({ retirementAge: 58 })
+      await flushSimulationQueue()
+
+      const newId = useSimulationStore.getState().createPlan('Retire at 58')
+      await flushSimulationQueue()
+
+      const state = useSimulationStore.getState()
+      expect(state.isDirty).toBe(false)
+      expect(state.plans.find((plan) => plan.id === newId)?.params.retirementAge).toBe(58)
+      expect(state.plans.find((plan) => plan.id === baseId)?.params.retirementAge).toBe(
+        DEFAULT_PARAMS.retirementAge
+      )
+    })
+
+    it('caches the success rate of a clean run per plan', async () => {
+      const { useSimulationStore } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+
+      useSimulationStore.setState({
+        results: createResults(useSimulationStore.getState().params),
+      })
+      await useSimulationStore.getState().runSimulation()
+
+      // The stubbed runSimulation does not populate the cache, so drive the
+      // real bookkeeping through savePlanDraft instead.
+      useSimulationStore.getState().updateParams({ currentAssets: 700000 })
+      await flushSimulationQueue()
+      useSimulationStore.setState({
+        results: createResults(useSimulationStore.getState().params),
+      })
+      useSimulationStore.getState().savePlanDraft()
+
+      expect(useSimulationStore.getState().planSuccessRates[baseId]).toBe(75)
+    })
+
+    it('round-trips an unsaved working copy through persistence', async () => {
+      const { useSimulationStore, localStorageMock } = setupStore()
+
+      useSimulationStore.getState().updateParams({ retirementAge: 64 })
+      await flushSimulationQueue()
+      useSimulationStore.getState().savePlanDraft()
+      useSimulationStore.getState().updateParams({ retirementAge: 66 })
+      await flushSimulationQueue()
+
+      const persisted = localStorageMock.getItem(STORE_KEY)
+      expect(persisted).toBeTruthy()
+      const parsed = JSON.parse(persisted as string) as {
+        version: number
+        state: { draftParams: SimulationParams | null; plans: { params: SimulationParams }[] }
+      }
+      expect(parsed.version).toBe(2)
+      expect(parsed.state.draftParams?.retirementAge).toBe(66)
+      expect(parsed.state.plans[0].params.retirementAge).toBe(64)
+
+      // Reload from exactly what was written (the legacy-import marker is part
+      // of the same storage in a real browser session).
+      const reloaded = loadStore({
+        [STORE_KEY]: persisted as string,
+        'retirement-simulator-plans-imported': '1',
+      })
+      const state = reloaded.useSimulationStore.getState()
+      expect(state.isDirty).toBe(true)
+      expect(state.params.retirementAge).toBe(66)
+      expect(state.plans[0].params.retirementAge).toBe(64)
+    })
+
+    it('migrates v1 state into a clean working copy', () => {
+      const v1Params = { ...DEFAULT_PARAMS, retirementAge: 61 }
+      const { useSimulationStore } = loadStore({
+        [STORE_KEY]: JSON.stringify({
+          version: 1,
+          state: {
+            params: v1Params,
+            results: null,
+            plans: [
+              {
+                id: 'plan-base',
+                name: 'Base plan',
+                params: v1Params,
+                createdAt: 1,
+                updatedAt: 2,
+              },
+            ],
+            activePlanId: 'plan-base',
+          },
+        }),
+      })
+
+      const state = useSimulationStore.getState()
+      expect(state.isDirty).toBe(false)
+      expect(state.draftParams).toBeNull()
+      expect(state.params.retirementAge).toBe(61)
+      expect(state.plans[0].params.retirementAge).toBe(61)
     })
   })
 })

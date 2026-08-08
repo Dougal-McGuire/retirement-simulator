@@ -11,6 +11,21 @@ interface AnimatedCounterProps {
   suffix?: string
   className?: string
   delay?: number
+  /**
+   * BCP-47 tag used for the group/decimal separators. Defaults to en-US so
+   * existing callers are unaffected; pass the active UI locale wherever the
+   * number is user-facing (German expects "99,6", not "99.6").
+   */
+  locale?: string
+}
+
+/** Group and decimal separators the given locale uses for plain numbers. */
+function separatorsFor(locale: string): { separator: string; decimal: string } {
+  const parts = new Intl.NumberFormat(locale).formatToParts(1234.5)
+  return {
+    separator: parts.find((part) => part.type === 'group')?.value ?? ',',
+    decimal: parts.find((part) => part.type === 'decimal')?.value ?? '.',
+  }
 }
 
 // useLayoutEffect logs a warning during SSR; fall back to useEffect there.
@@ -33,6 +48,7 @@ export function AnimatedCounter({
   suffix = '',
   className = '',
   delay = 0,
+  locale = 'en-US',
 }: AnimatedCounterProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [shouldAnimate, setShouldAnimate] = useState(false)
@@ -55,13 +71,15 @@ export function AnimatedCounter({
     return () => clearTimeout(timer)
   }, [delay])
 
+  const { separator, decimal } = useMemo(() => separatorsFor(locale), [locale])
+
   const staticValue = useMemo(
     () =>
-      `${prefix}${end.toLocaleString('en-US', {
+      `${prefix}${end.toLocaleString(locale, {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       })}${suffix}`,
-    [decimals, end, prefix, suffix]
+    [decimals, end, locale, prefix, suffix]
   )
 
   return (
@@ -73,6 +91,8 @@ export function AnimatedCounter({
           decimals={decimals}
           prefix={prefix}
           suffix={suffix}
+          separator={separator}
+          decimal={decimal}
           preserveValue
         />
       ) : (

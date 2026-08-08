@@ -33,25 +33,10 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    ".next-landing/types/**/*.ts",
-    ".next-landing/dev/types/**/*.ts",
-    ".next-sim/types/**/*.ts",
-    ".next-sim/dev/types/**/*.ts",
-    ".next-wizpdf/types/**/*.ts",
-    ".next-wizpdf/dev/types/**/*.ts",
-    ".next-auth/types/**/*.ts",
-    ".next-auth/dev/types/**/*.ts",
-    ".next-plans/types/**/*.ts",
-    ".next-plans/dev/types/**/*.ts",
-    ".next-authbuild/types/**/*.ts",
-    ".next-authbuild/dev/types/**/*.ts",
-    ".next-authctl/types/**/*.ts",
-    ".next-authctl/dev/types/**/*.ts",
-    ".next-authbuild2/types/**/*.ts",
-    ".next-authbuild2/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    ".next-*"
   ]
 }

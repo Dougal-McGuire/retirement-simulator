@@ -24,11 +24,10 @@ let nextRequestId = 0
 const canUseWorker = () =>
   typeof window !== 'undefined' && typeof Worker !== 'undefined' && process.env.NODE_ENV !== 'test'
 
-const getWorker = () => {
+const getWorker = async () => {
   if (!worker) {
-    worker = new Worker(new URL('./simulation.worker.ts', import.meta.url), {
-      type: 'module',
-    })
+    const { createSimulationWorker } = await import('./createSimulationWorker')
+    worker ??= createSimulationWorker()
   }
 
   return worker
@@ -39,7 +38,7 @@ export async function runSimulationInClient(params: SimulationParams): Promise<S
     return runMonteCarloSimulation(params)
   }
 
-  const simulationWorker = getWorker()
+  const simulationWorker = await getWorker()
   const id = nextRequestId++
 
   return new Promise<SimulationResults>((resolve, reject) => {

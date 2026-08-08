@@ -5,6 +5,7 @@ import { CircleDollarSign } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import type { SimulationParams, SimulationResults } from '@/types'
 import { buildPlanInsightMetrics } from '@/lib/simulation/planInsights'
+import { useDisplayReal } from '@/lib/stores/displayStore'
 import { Card, CardContent } from '@/components/ui/card'
 
 interface CashflowCardProps {
@@ -15,7 +16,11 @@ interface CashflowCardProps {
 export function CashflowCard({ params, results }: CashflowCardProps) {
   const t = useTranslations('planDashboard')
   const format = useFormatter()
-  const metrics = useMemo(() => buildPlanInsightMetrics(params, results), [params, results])
+  const displayReal = useDisplayReal()
+  const metrics = useMemo(
+    () => buildPlanInsightMetrics(params, results, { displayReal }),
+    [params, results, displayReal]
+  )
 
   const formatCurrency = (value: number, compact = false) =>
     format.number(value, {
