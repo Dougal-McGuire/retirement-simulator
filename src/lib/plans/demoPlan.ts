@@ -72,9 +72,12 @@ export function buildDemoPlanParams(): SimulationParams {
     retirementAge: 62,
     legalRetirementAge: 67,
     endAge: 92,
-    currentAssets: 540000,
-    annualSavings: 36000,
-    monthlyPension: 2400,
+    // Tuned so the example lands in the "watch it" band rather than either
+    // extreme: a plan that already succeeds 99% of the time demonstrates
+    // nothing, and one that fails outright reads as a broken product.
+    currentAssets: 820000,
+    annualSavings: 44000,
+    monthlyPension: 3000,
     householdType: 'couple',
     // A bequest goal turns the success gauge into a strictly harder question,
     // which is exactly the behaviour the example is meant to demonstrate.
