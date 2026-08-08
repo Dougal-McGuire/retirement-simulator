@@ -13,7 +13,13 @@ import { mapReportDataToContent } from '@/lib/pdf-generator/reportTypes'
 import { RetirementReport } from '@/lib/pdf-generator/react-pdf'
 import React from 'react'
 import { z, ZodError } from 'zod'
-import { EXPENSE_INTERVALS, WITHDRAWAL_STRATEGIES } from '@/types'
+import {
+  CASHFLOW_FREQUENCIES,
+  CASHFLOW_KINDS,
+  EXPENSE_INTERVALS,
+  MARKET_MODELS,
+  WITHDRAWAL_STRATEGIES,
+} from '@/types'
 import type { SimulationParams, SimulationResults } from '@/types'
 
 export const runtime = 'nodejs'
@@ -28,6 +34,18 @@ const CustomExpenseSchema = z.object({
   name: z.string(),
   amount: z.number(),
   interval: z.enum(EXPENSE_INTERVALS),
+})
+
+const CashFlowSchema = z.object({
+  id: z.string(),
+  kind: z.enum(CASHFLOW_KINDS),
+  name: z.string(),
+  amount: z.number(),
+  frequency: z.enum(CASHFLOW_FREQUENCIES),
+  startAge: z.number().optional(),
+  endAge: z.number().optional(),
+  inflationLinked: z.boolean().optional(),
+  growthRate: z.number().optional(),
 })
 
 const OneTimeIncomeSchema = z.object({
@@ -51,7 +69,18 @@ const SimulationParamsSchema = z.object({
   averageInflation: z.number(),
   inflationVolatility: z.number(),
   capitalGainsTax: z.number(),
+  // Defaulted: a client on an older build posts params without a market model
+  // or glide path, and "Monte Carlo, single asset" is exactly what it meant.
+  marketModel: z.enum(MARKET_MODELS).default('monteCarlo'),
+  glidePathEnabled: z.boolean().default(false),
+  equityAllocationStart: z.number().default(0.8),
+  equityAllocationEnd: z.number().default(0.4),
+  bondReturn: z.number().default(0.03),
+  bondVolatility: z.number().default(0.06),
   customExpenses: z.array(CustomExpenseSchema),
+  // Defaulted for the same reason: older clients post the projections only, and
+  // the report never needs the flows to be reconstructed to render them.
+  cashFlows: z.array(CashFlowSchema).default([]),
   withdrawalStrategy: z.enum(WITHDRAWAL_STRATEGIES),
   dsWithdrawalRate: z.number(),
   dsCeilingRate: z.number(),

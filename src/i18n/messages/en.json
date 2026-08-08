@@ -231,8 +231,8 @@
         "description": "Current assets and savings plan"
       },
       "expenses": {
-        "title": "Expenses",
-        "description": "Your retirement spending plan"
+        "title": "Cash flows",
+        "description": "Spending, and any income beyond your pension"
       },
       "market": {
         "title": "Market Assumptions",
@@ -375,6 +375,81 @@
       "discard": "Discard changes",
       "continue": "Continue",
       "back": "Keep editing"
+    },
+    "cashFlows": {
+      "intro": "Everything that flows in or out on top of your salary and pension. Each item can run for life or only between two ages — a rental income that ends, a repair in a single year, care costs late in the plan.",
+      "kind": {
+        "income": "Income",
+        "expense": "Expense"
+      },
+      "frequency": {
+        "monthly": "Monthly",
+        "annual": "Annual",
+        "once": "One-off"
+      },
+      "fields": {
+        "name": "Name",
+        "namePlaceholder": "e.g. Groceries, Rental income, Roof repair",
+        "amount": "Amount per occurrence (€)",
+        "frequency": "Frequency",
+        "startAge": "From age",
+        "endAge": "Until age",
+        "atAge": "At age",
+        "inflationLinked": "Grows with inflation",
+        "inflationLinkedOn": "Amount stays worth the same in today’s money.",
+        "inflationLinkedOff": "Fixed euro amount — it loses purchasing power over time.",
+        "nominalTag": "fixed €",
+        "growthRate": "Extra growth p.a. (%)",
+        "growthRateHint": "On top of inflation. Care costs typically rise faster; a fixed annuity does not."
+      },
+      "window": {
+        "lifetime": "Whole plan",
+        "range": "Age {from}–{to}",
+        "from": "From age {age}",
+        "until": "Until age {age}",
+        "at": "At age {age}"
+      },
+      "table": {
+        "item": "Item",
+        "period": "Period",
+        "amount": "Amount",
+        "actions": "Actions"
+      },
+      "actions": {
+        "add": "Add cash flow",
+        "save": "Save",
+        "cancel": "Cancel",
+        "edit": "Edit",
+        "remove": "Remove"
+      },
+      "advanced": {
+        "show": "Advanced options",
+        "hide": "Hide advanced options"
+      },
+      "timeline": {
+        "title": "When each flow applies",
+        "retirement": "Retirement {age}"
+      },
+      "empty": {
+        "title": "No cash flows yet",
+        "hint": "Start from a template below, or add your own"
+      },
+      "summary": {
+        "income": "Recurring income per year",
+        "expense": "Recurring expenses per year",
+        "note": "Totals cover recurring items at full rate; one-off payments and age windows are shown in the timeline above."
+      },
+      "templates": {
+        "label": "Templates (click to add)",
+        "items": {
+          "partTime": "Part-time income",
+          "rental": "Rental income",
+          "riester": "Riester payout",
+          "partnerPension": "Partner’s pension",
+          "care": "Care costs",
+          "roof": "Roof renovation"
+        }
+      }
     }
   },
   "simulation": {
@@ -384,7 +459,9 @@
       "setupLink": "Setup",
       "badges": {
         "engine": "Live Monte Carlo",
-        "runs": "{count} runs per update"
+        "runs": "{count} runs per update",
+        "historical": "Historical · {count} paths",
+        "engineHistorical": "Live backtest"
       },
       "confidenceLabel": "Success probability",
       "confidence": {
@@ -684,6 +761,39 @@
       "dsFloorRate": {
         "label": "DS Floor",
         "tooltip": "Maximum annual decrease versus last year’s inflation-adjusted spending."
+      },
+      "marketModel": {
+        "label": "Market model",
+        "tooltip": "Monte Carlo draws returns from your assumptions. Historical replays a real return series year by year.",
+        "options": {
+          "monteCarlo": {
+            "label": "Monte Carlo",
+            "description": "Random draws from your return, volatility and inflation assumptions."
+          },
+          "historical": {
+            "label": "Historical",
+            "description": "Replays real market history — one path per available start year."
+          }
+        },
+        "historicalNotice": "Historical mode supplies returns, volatility and inflation from the record itself ({count} start years, {from}–{to}), so the assumptions below are ignored while it is on.",
+        "runsIgnored": "Fixed at {count} in historical mode — one path per start year, not a sample.",
+        "pathsLabel": "Historical paths",
+        "pathsHint": "One per start year",
+        "leverIgnored": "Ignored in historical mode — returns come from the record."
+      },
+      "glidePath": {
+        "label": "Glide path",
+        "description": "Slide from equities into bonds as retirement approaches, then hold that mix.",
+        "start": "Equity share today",
+        "end": "Equity share in retirement",
+        "advanced": "Bond assumptions",
+        "bondReturn": "Bond return",
+        "bondVolatility": "Bond volatility",
+        "sparklineLabel": "Equity share by age",
+        "sparklineCaption": "{start} at {startAge} → {end} from {retirementAge} onwards",
+        "equitySleeveLabel": "Equities · {label}",
+        "correlationNote": "The two sleeves are blended assuming zero correlation between equities and bonds: the blended volatility is √(w²σe² + (1−w)²σb²). Real stock/bond correlation swings either side of zero, so a blended plan may look slightly calmer here than it would in practice.",
+        "historicalNote": "In historical mode these assumptions are ignored: the allocation is applied to each year’s actual equity and bond returns."
       }
     },
     "saved": {
@@ -703,6 +813,10 @@
         "cancel": "Cancel",
         "confirm": "Create plan"
       }
+    },
+    "toggle": {
+      "on": "On",
+      "off": "Off"
     }
   },
   "report": {
@@ -732,7 +846,8 @@
     "success": {
       "label": "Success rate",
       "detail": "{runs} simulation runs",
-      "caption": "Share of simulated futures in which your money lasts through the whole plan."
+      "caption": "Share of simulated futures in which your money lasts through the whole plan.",
+      "detailHistorical": "{runs} historical start years"
     },
     "lasts": {
       "label": "Assets last",
@@ -825,7 +940,10 @@
       },
       "reduceVolatility": {
         "title": "Consider volatility reduction",
-        "body": "Your portfolio has high volatility. As you approach retirement, consider gradually shifting to more stable investments."
+        "body": "Your portfolio has high volatility. As you approach retirement, consider gradually shifting to more stable investments.",
+        "action": "Turn on the glide path",
+        "applied": "Glide path switched on",
+        "undo": "Undo"
       },
       "reviewInsurance": {
         "title": "Review insurance coverage",
@@ -920,7 +1038,8 @@
     "aria": {
       "description": "Asset projection fan chart: the median outcome is drawn as a solid line, surrounded by a likely range (20th to 80th percentile) and a full range (10th to 90th percentile) band.",
       "controls": "Use arrow keys to navigate chart data points. Press R to reset zoom. Drag across the chart to zoom into a time range."
-    }
+    },
+    "descriptionHistorical": "Projected portfolio value from a historical backtest: one path per start year in the return series. The solid line is the median outcome; the shaded bands show where most of those histories land."
   },
   "shortfallChart": {
     "title": "Risk of running out",
@@ -1866,7 +1985,16 @@
           "withdrawalStrategy": "Withdrawal strategy",
           "dsWithdrawalRate": "Initial withdrawal rate",
           "dsCeilingRate": "Spending ceiling",
-          "dsFloorRate": "Spending floor"
+          "dsFloorRate": "Spending floor",
+          "marketModel": "Market model",
+          "glidePathEnabled": "Glide path",
+          "equityAllocationStart": "Equity share today",
+          "equityAllocationEnd": "Equity share in retirement",
+          "bondReturn": "Bond return",
+          "bondVolatility": "Bond volatility",
+          "scheduledIncome": "Scheduled income (lifetime)",
+          "scheduledExpenses": "Scheduled expenses (lifetime)",
+          "scheduledItems": "Scheduled items"
         },
         "differsCount": "{count, plural, one {# difference} other {# differences}}"
       },
@@ -1925,6 +2053,11 @@
       "market": {
         "title": "Market & rules",
         "description": "Return assumptions, taxes and the withdrawal rule."
+      },
+      "cashFlows": {
+        "title": "Cash flows",
+        "description": "Everything this plan pays out or takes in, and for how long.",
+        "incomePointer": "{count, plural, =0 {One-off income lives in the cash-flow card below} =1 {# one-off income, edited in the cash-flow card below} other {# one-off incomes, edited in the cash-flow card below}}"
       }
     },
     "summary": {
@@ -1938,7 +2071,9 @@
       "savingsRateHint": "Savings ÷ (savings + spending)",
       "realReturn": "Real return after inflation",
       "pensionGap": "Statutory pension starts at {age}",
-      "expenseCount": "{count, plural, =0 {No entries} =1 {# entry} other {# entries}}"
+      "expenseCount": "{count, plural, =0 {No entries} =1 {# entry} other {# entries}}",
+      "scheduledFlows": "Scheduled flows",
+      "scheduledFlowsHint": "Windowed or one-off items"
     },
     "reset": {
       "trigger": "Reset to defaults",

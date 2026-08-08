@@ -1,4 +1,11 @@
-import { DEFAULT_PARAMS, type SimulationParams } from '@/types'
+import {
+  DEFAULT_PARAMS,
+  MARKET_MODELS,
+  WITHDRAWAL_STRATEGIES,
+  type SimulationParams,
+} from '@/types'
+import en from '@/i18n/messages/en.json'
+import de from '@/i18n/messages/de.json'
 import {
   buildAssumptionGroups,
   buildAssumptionRows,
@@ -88,6 +95,31 @@ describe('assumption rows', () => {
     ])
     expect(rowByKey(mixed, 'withdrawalStrategy')?.differs).toBe(true)
     expect(rowByKey(mixed, 'dsWithdrawalRate')?.values).toEqual([0.05, 0.05])
+  })
+
+  it('hides the market model until a plan leaves Monte Carlo', () => {
+    const bothDefault = buildAssumptionRows([withParams({}), withParams({})])
+    expect(rowByKey(bothDefault, 'marketModel')).toBeUndefined()
+
+    const mixed = buildAssumptionRows([withParams({}), withParams({ marketModel: 'historical' })])
+    expect(rowByKey(mixed, 'marketModel')?.values).toEqual(['monteCarlo', 'historical'])
+    expect(rowByKey(mixed, 'marketModel')?.differs).toBe(true)
+    expect(rowByKey(mixed, 'marketModel')?.kind).toBe('marketModel')
+  })
+
+  it('hides the allocation rows until a plan runs a glide path', () => {
+    const flat = buildAssumptionRows([withParams({}), withParams({})])
+    expect(rowByKey(flat, 'glidePathEnabled')).toBeUndefined()
+    expect(rowByKey(flat, 'equityAllocationStart')).toBeUndefined()
+    expect(rowByKey(flat, 'bondReturn')).toBeUndefined()
+
+    const glided = buildAssumptionRows([
+      withParams({}),
+      withParams({ glidePathEnabled: true, equityAllocationEnd: 0.3 }),
+    ])
+    expect(rowByKey(glided, 'glidePathEnabled')?.values).toEqual(['off', 'on'])
+    expect(rowByKey(glided, 'glidePathEnabled')?.kind).toBe('toggle')
+    expect(rowByKey(glided, 'equityAllocationEnd')?.values).toEqual([0.4, 0.3])
   })
 
   it('groups rows in display order and skips empty groups', () => {
@@ -183,5 +215,101 @@ describe('comparisonFingerprint', () => {
     const after = withParams({ oneTimeIncomes: [{ age: 70, amount: 50000, name: 'Bonus' }] })
 
     expect(comparisonFingerprint(before)).not.toBe(comparisonFingerprint(after))
+  })
+})
+
+/**
+ * The diff layer emits raw values plus a unit tag; the comparison table looks
+ * every one of them up in the message catalogue. A row without a label renders
+ * as a raw key in production, which no type checks and no snapshot would catch.
+ */
+describe('cash flows in the comparison', () => {
+  const windowed = withParams({
+    cashFlows: [
+      ...DEFAULT_PARAMS.cashFlows,
+      {
+        id: 'rent',
+        kind: 'income' as const,
+        name: 'Rent',
+        amount: 900,
+        frequency: 'monthly' as const,
+        startAge: 62,
+        endAge: 70,
+      },
+    ],
+  })
+
+  it('adds scheduled-flow rows only when a plan has some', () => {
+    const withoutFlows = buildAssumptionRows([withParams({}), withParams({})])
+    expect(rowByKey(withoutFlows, 'scheduledIncome')).toBeUndefined()
+
+    const rows = buildAssumptionRows([windowed, withParams({})])
+    const income = rowByKey(rows, 'scheduledIncome')
+    // Nine years of €900/month, in today's euros.
+    expect(income?.values).toEqual([900 * 12 * 9, 0])
+    expect(income?.differs).toBe(true)
+    expect(rowByKey(rows, 'scheduledItems')?.values).toEqual([1, 0])
+  })
+
+  it('treats a windowed flow as a comparison-relevant change', () => {
+    expect(comparisonFingerprint(windowed)).not.toBe(comparisonFingerprint(withParams({})))
+    // ...while reordering the same flows is not a change.
+    const reordered = withParams({ cashFlows: [...windowed.cashFlows].reverse() })
+    expect(comparisonFingerprint(reordered)).toBe(comparisonFingerprint(windowed))
+  })
+})
+
+describe('assumption rows are translatable', () => {
+  const catalogues = [
+    ['en', en],
+    ['de', de],
+  ] as const
+
+  const allRows = buildAssumptionRows([
+    withParams({
+      marketModel: 'historical',
+      glidePathEnabled: true,
+      // Also forces the optional cash-flow rows to be emitted.
+      cashFlows: [
+        ...DEFAULT_PARAMS.cashFlows,
+        {
+          id: 'rent',
+          kind: 'income',
+          name: 'Rent',
+          amount: 900,
+          frequency: 'monthly',
+          startAge: 62,
+          endAge: 70,
+        },
+        { id: 'roof', kind: 'expense', name: 'Roof', amount: 30000, frequency: 'once', startAge: 64 },
+      ],
+    }),
+    withParams({}),
+  ])
+
+  it.each(catalogues)('%s labels every row the diff can emit', (_locale, messages) => {
+    const rowLabels = messages.plans.comparison.assumptions.rows as Record<string, string>
+    for (const row of allRows) {
+      expect(rowLabels[row.key]).toBeTruthy()
+    }
+  })
+
+  it.each(catalogues)('%s names every enumerated value', (_locale, messages) => {
+    const controls = messages.parameterControls as unknown as {
+      toggle: Record<string, string>
+      fields: {
+        marketModel: { options: Record<string, { label: string }> }
+        withdrawalStrategy: { options: Record<string, { label: string }> }
+      }
+    }
+
+    expect(controls.toggle.on).toBeTruthy()
+    expect(controls.toggle.off).toBeTruthy()
+    for (const model of MARKET_MODELS) {
+      expect(controls.fields.marketModel.options[model]?.label).toBeTruthy()
+    }
+    for (const strategy of WITHDRAWAL_STRATEGIES) {
+      expect(controls.fields.withdrawalStrategy.options[strategy]?.label).toBeTruthy()
+    }
   })
 })

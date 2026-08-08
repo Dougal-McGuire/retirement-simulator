@@ -6,8 +6,7 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { RotateCcw, Save } from 'lucide-react'
 import {
   DEFAULT_PARAMS,
-  type CustomExpense,
-  type OneTimeIncome,
+  MARKET_MODELS,
   type SimulationParams,
   type WithdrawalStrategy,
 } from '@/types'
@@ -21,12 +20,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
+import { EquityGlideSparkline } from '@/components/charts/EquityGlideSparkline'
 import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
-import { ExpenseList } from '@/components/forms/fields/ExpenseList'
-import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
+import { CashFlowList } from '@/components/forms/fields/CashFlowList'
+import { buildCashFlowTemplates } from '@/components/forms/fields/cashFlowTemplates'
 import { toast } from '@/components/ui/toast'
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
+import {
+  HISTORICAL_FIRST_YEAR,
+  HISTORICAL_LAST_YEAR,
+  HISTORICAL_PATH_COUNT,
+} from '@/lib/simulation/data/historicalMarket'
 import { planDisplayName } from '@/lib/plans/planName'
 import {
   useActivePlan,
@@ -126,14 +131,20 @@ function PresetRow({
   options,
   activeKey,
   onSelect,
+  disabled = false,
 }: {
   label: string
   options: { key: string; label: string; detail: string }[]
   activeKey?: string
   onSelect: (key: string) => void
+  /** Greyed out when the active market model ignores these assumptions. */
+  disabled?: boolean
 }) {
   return (
-    <div className="space-y-2">
+    <div
+      className={cn('space-y-2', disabled && 'opacity-55')}
+      aria-disabled={disabled || undefined}
+    >
       <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
         {label}
       </span>
@@ -145,6 +156,7 @@ function PresetRow({
               key={option.key}
               type="button"
               aria-pressed={isActive}
+              disabled={disabled}
               onClick={() => onSelect(option.key)}
               className={cn(
                 'flex flex-col items-start gap-0.5 border-2 border-neo-black px-3 py-2 text-left transition-neo',
@@ -184,7 +196,6 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
   const tSetup = useTranslations('setup')
   const tControls = useTranslations('parameterControls')
   const tPlans = useTranslations('plans')
-  const tUi = useTranslations('ui')
   const format = useFormatter()
 
   const params = useSimulationParams()
@@ -233,12 +244,16 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
     format.number(value, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
   const expenses = params.customExpenses ?? []
-  const oneTimeIncomes = params.oneTimeIncomes ?? []
   const combined = useMemo(() => calculateCombinedExpenses(expenses), [expenses])
 
   const workingYears = Math.max(0, params.retirementAge - params.currentAge)
   const retirementYears = Math.max(0, params.endAge - params.retirementAge)
   const realReturn = (1 + params.averageROI) / (1 + params.averageInflation) - 1
+  // Historical mode takes returns, volatility and inflation from the record, so
+  // those inputs are shown but inert rather than hidden — a plan's assumptions
+  // should not silently vanish when you flip a switch.
+  const usesHistory = params.marketModel === 'historical'
+  const glideOn = params.glidePathEnabled
   const savingsBase = params.annualSavings + combined.combinedAnnual
   const savingsRate = savingsBase > 0 ? params.annualSavings / savingsBase : 0
 
@@ -281,113 +296,29 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
     )
   }
 
-  const handleAddExpense = (expense: Omit<CustomExpense, 'id'>) => {
-    const amount = Number.isFinite(expense.amount) ? Math.max(0, Math.round(expense.amount)) : 0
-    const name = expense.name.trim()
-    if (!name || amount === 0) return
-    updateParams({
-      customExpenses: [
-        ...expenses,
-        {
-          ...expense,
-          name,
-          amount,
-          id: `expense-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        },
-      ],
-    })
-  }
+  const cashFlows = params.cashFlows ?? []
+  const onceIncomeCount = cashFlows.filter(
+    (flow) => flow.kind === 'income' && flow.frequency === 'once'
+  ).length
+  /** Flows the legacy "expenses" list could never express — windows and one-offs. */
+  const scheduledFlowCount = cashFlows.filter(
+    (flow) =>
+      flow.kind === 'income' ||
+      flow.frequency === 'once' ||
+      flow.startAge !== undefined ||
+      flow.endAge !== undefined
+  ).length
 
-  const handleUpdateExpense = (id: string, expense: Omit<CustomExpense, 'id'>) => {
-    updateParams({
-      customExpenses: expenses.map((entry) => (entry.id === id ? { ...expense, id } : entry)),
-    })
-  }
-
-  const handleRemoveExpense = (id: string) => {
-    updateParams({ customExpenses: expenses.filter((entry) => entry.id !== id) })
-  }
-
-  const clampIncomeAge = (age: number) =>
-    Math.max(params.currentAge, Math.min(params.endAge, Math.round(age)))
-
-  const handleAddIncome = (income: OneTimeIncome) => {
-    updateParams({
-      oneTimeIncomes: [
-        ...oneTimeIncomes,
-        {
-          name: income.name || '',
-          age: clampIncomeAge(income.age),
-          amount: Math.max(0, Math.round(income.amount)),
-        },
-      ],
-    })
-  }
-
-  const handleUpdateIncome = (index: number, income: OneTimeIncome) => {
-    updateParams({
-      oneTimeIncomes: oneTimeIncomes.map((entry, entryIndex) =>
-        entryIndex === index
-          ? {
-              name: income.name || '',
-              age: clampIncomeAge(income.age),
-              amount: Math.max(0, Math.round(income.amount)),
-            }
-          : entry
-      ),
-    })
-  }
-
-  const handleRemoveIncome = (index: number) => {
-    updateParams({
-      oneTimeIncomes: oneTimeIncomes.filter((_, entryIndex) => entryIndex !== index),
-    })
-  }
-
-  const expenseStrings = {
-    addButton: tControls('fields.expenses.add'),
-    empty: tControls('fields.expenses.empty'),
-    emptyHint: tControls('fields.expenses.emptyHint'),
-    nameLabel: tControls('fields.expenses.nameLabel'),
-    namePlaceholder: tControls('fields.expenses.namePlaceholder'),
-    amountLabel: tControls('fields.expenses.amountLabel'),
-    intervalLabel: tControls('fields.expenses.intervalLabel'),
-    intervalMonthly: tControls('fields.expenses.intervalMonthly'),
-    intervalAnnual: tControls('fields.expenses.intervalAnnual'),
-    remove: tControls('fields.expenses.remove'),
-    edit: tControls('fields.expenses.edit'),
-    save: tControls('fields.expenses.save'),
-    cancel: tControls('fields.expenses.cancel'),
-    summaryLabel: tControls('fields.expenses.summary'),
-    tableHeaders: {
-      name: tControls('fields.expenses.table.name'),
-      amount: tControls('fields.expenses.table.amount'),
-      interval: tControls('fields.expenses.table.interval'),
-      actions: tControls('fields.expenses.table.actions'),
-    },
-  }
-
-  const incomeStrings = {
-    addButton: tControls('fields.oneTimeIncomes.add'),
-    empty: tControls('fields.oneTimeIncomes.empty'),
-    emptyHint: tControls('fields.oneTimeIncomes.emptyHint'),
-    nameLabel: tControls('fields.oneTimeIncomes.nameLabel'),
-    namePlaceholder: tControls('fields.oneTimeIncomes.namePlaceholder'),
-    ageLabel: tControls('fields.oneTimeIncomes.ageLabel'),
-    agePrefix: tUi('age'),
-    amountLabel: tControls('fields.oneTimeIncomes.amountLabel'),
-    remove: tControls('fields.oneTimeIncomes.remove'),
-    edit: tControls('fields.oneTimeIncomes.edit'),
-    save: tControls('fields.oneTimeIncomes.save'),
-    cancel: tControls('fields.oneTimeIncomes.cancel'),
-    summaryLabel: tControls('fields.oneTimeIncomes.summary'),
-    tableHeaders: {
-      name: tControls('fields.oneTimeIncomes.table.name'),
-      age: tControls('fields.oneTimeIncomes.table.age'),
-      amount: tControls('fields.oneTimeIncomes.table.amount'),
-      actions: tControls('fields.oneTimeIncomes.table.actions'),
-    },
-  }
+  const cashFlowTemplates = useMemo(
+    () =>
+      buildCashFlowTemplates((key) => tSetup(`cashFlows.templates.items.${key}`), {
+        currentAge: params.currentAge,
+        retirementAge: params.retirementAge,
+        legalRetirementAge: params.legalRetirementAge,
+        endAge: params.endAge,
+      }),
+    [tSetup, params.currentAge, params.retirementAge, params.legalRetirementAge, params.endAge]
+  )
 
   const gridClass =
     variant === 'drawer'
@@ -580,31 +511,18 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
             />
           </div>
 
-          <div className="space-y-3 border-2 border-neo-black bg-background px-4 py-4">
-            <h4 className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
-              {tControls('sections.financial.oneTime.title')}
-            </h4>
-            <OneTimeIncomeList
-              incomes={oneTimeIncomes}
-              minAge={params.currentAge}
-              maxAge={params.endAge}
-              defaultAge={Math.min(
-                params.endAge,
-                Math.max(params.retirementAge, params.currentAge + 1)
-              )}
-              strings={incomeStrings}
-              onAdd={handleAddIncome}
-              onUpdate={handleUpdateIncome}
-              onRemove={handleRemoveIncome}
-              formatCurrency={formatCurrency}
-            />
-          </div>
+          {/* One-off income used to live here. It is a cash flow like any
+              other now, so the card below owns it — two editors writing the
+              same list is how they drift apart. */}
+          <p className="border-2 border-dashed border-neo-black/40 bg-background px-4 py-3 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            {t('groups.cashFlows.incomePointer', { count: onceIncomeCount })}
+          </p>
         </EditorCard>
 
         <EditorCard
           id="plan-editor-expenses"
-          title={t('groups.expenses.title')}
-          description={t('groups.expenses.description')}
+          title={t('groups.cashFlows.title')}
+          description={t('groups.cashFlows.description')}
           stats={[
             {
               label: t('summary.monthlyTotal'),
@@ -621,18 +539,20 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               }),
             },
             {
-              label: t('summary.combinedAnnual'),
-              value: formatCurrency(combined.combinedAnnual),
+              label: t('summary.scheduledFlows'),
+              value: formatInteger(scheduledFlowCount),
+              hint: t('summary.scheduledFlowsHint'),
             },
           ]}
         >
-          <ExpenseList
-            expenses={expenses}
-            strings={expenseStrings}
-            onAdd={handleAddExpense}
-            onUpdate={handleUpdateExpense}
-            onRemove={handleRemoveExpense}
-            formatCurrency={formatCurrency}
+          <CashFlowList
+            compact
+            flows={cashFlows}
+            currentAge={params.currentAge}
+            retirementAge={params.retirementAge}
+            endAge={params.endAge}
+            templates={cashFlowTemplates}
+            onChange={(next) => updateParams({ cashFlows: next })}
           />
         </EditorCard>
 
@@ -640,24 +560,99 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
           id="plan-editor-market"
           title={t('groups.market.title')}
           description={t('groups.market.description')}
-          stats={[
-            {
-              label: t('summary.realReturn'),
-              value: formatPercent(realReturn, 1),
-            },
-            {
-              label: tControls('fields.roiVolatility.label'),
-              value: `± ${formatPercent(params.roiVolatility)}`,
-            },
-            {
-              label: tControls('fields.simulationRuns.label'),
-              value: formatInteger(params.simulationRuns),
-            },
-          ]}
+          stats={
+            usesHistory
+              ? [
+                  {
+                    label: tControls('fields.marketModel.label'),
+                    value: tControls('fields.marketModel.options.historical.label'),
+                    hint: `${HISTORICAL_FIRST_YEAR}–${HISTORICAL_LAST_YEAR}`,
+                  },
+                  {
+                    label: tControls('fields.marketModel.pathsLabel'),
+                    value: formatInteger(HISTORICAL_PATH_COUNT),
+                    hint: tControls('fields.marketModel.pathsHint'),
+                  },
+                  {
+                    label: tControls('fields.glidePath.label'),
+                    value: glideOn ? tControls('toggle.on') : tControls('toggle.off'),
+                    hint: glideOn
+                      ? `${formatPercent(params.equityAllocationStart, 0)} → ${formatPercent(params.equityAllocationEnd, 0)}`
+                      : undefined,
+                  },
+                ]
+              : [
+                  {
+                    label: t('summary.realReturn'),
+                    value: formatPercent(realReturn, 1),
+                  },
+                  {
+                    label: glideOn
+                      ? tControls('fields.glidePath.equitySleeveLabel', {
+                          label: tControls('fields.roiVolatility.label'),
+                        })
+                      : tControls('fields.roiVolatility.label'),
+                    value: `± ${formatPercent(params.roiVolatility)}`,
+                    hint: glideOn
+                      ? `${formatPercent(params.equityAllocationStart, 0)} → ${formatPercent(params.equityAllocationEnd, 0)}`
+                      : undefined,
+                  },
+                  {
+                    label: tControls('fields.simulationRuns.label'),
+                    value: formatInteger(params.simulationRuns),
+                  },
+                ]
+          }
         >
+          <div className="space-y-2" data-testid="market-model-switch">
+            <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+              {tControls('fields.marketModel.label')}
+            </span>
+            <div className="grid gap-2 sm:grid-cols-2" role="group">
+              {MARKET_MODELS.map((model) => {
+                const isSelected = params.marketModel === model
+                return (
+                  <button
+                    key={model}
+                    type="button"
+                    aria-pressed={isSelected}
+                    data-testid={`market-model-${model}`}
+                    onClick={() => updateParams({ marketModel: model })}
+                    className={cn(
+                      'flex flex-col items-start gap-1 border-2 border-neo-black px-3 py-2.5 text-left transition-neo',
+                      isSelected
+                        ? 'bg-neo-blue text-neo-white shadow-neo-xs'
+                        : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
+                    )}
+                  >
+                    <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.1em]">
+                      {tControls(`fields.marketModel.options.${model}.label`)}
+                    </span>
+                    <span className="text-[0.58rem] font-medium leading-snug opacity-90">
+                      {tControls(`fields.marketModel.options.${model}.description`)}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {usesHistory && (
+              <p
+                className="border-2 border-neo-black bg-neo-yellow px-3 py-2 text-[0.62rem] font-semibold leading-snug text-neo-black"
+                data-testid="market-model-historical-notice"
+              >
+                {tControls('fields.marketModel.historicalNotice', {
+                  count: formatInteger(HISTORICAL_PATH_COUNT),
+                  from: HISTORICAL_FIRST_YEAR,
+                  to: HISTORICAL_LAST_YEAR,
+                })}
+              </p>
+            )}
+          </div>
+
           <PresetRow
             label={tControls('presets.investment.title')}
             activeKey={investmentPresetKey}
+            disabled={usesHistory}
             options={INVESTMENT_PRESETS.map((preset) => ({
               key: preset.key,
               label: tControls(`presets.investment.items.${preset.key}.name`),
@@ -672,7 +667,14 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
           <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
             <WizardSliderField
               id="editor-averageROI"
-              label={tSetup('market.averageROI.label')}
+              disabled={usesHistory}
+              label={
+                glideOn
+                  ? tControls('fields.glidePath.equitySleeveLabel', {
+                      label: tSetup('market.averageROI.label'),
+                    })
+                  : tSetup('market.averageROI.label')
+              }
               value={params.averageROI * 100}
               onValueChange={(value) => updateParams({ averageROI: value / 100 })}
               min={3}
@@ -684,7 +686,14 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
             />
             <WizardSliderField
               id="editor-roiVolatility"
-              label={tControls('fields.roiVolatility.label')}
+              disabled={usesHistory}
+              label={
+                glideOn
+                  ? tControls('fields.glidePath.equitySleeveLabel', {
+                      label: tControls('fields.roiVolatility.label'),
+                    })
+                  : tControls('fields.roiVolatility.label')
+              }
               value={params.roiVolatility * 100}
               onValueChange={(value) => updateParams({ roiVolatility: value / 100 })}
               min={2}
@@ -701,9 +710,125 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
             />
           </div>
 
+          <div
+            className="space-y-4 border-2 border-neo-black bg-background px-4 py-4"
+            data-testid="glide-path-block"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h4 className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                  {tControls('fields.glidePath.label')}
+                </h4>
+                <p className="mt-1 max-w-md text-[0.62rem] font-medium leading-snug text-muted-foreground">
+                  {tControls('fields.glidePath.description')}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={glideOn}
+                data-testid="glide-path-toggle"
+                onClick={() => updateParams({ glidePathEnabled: !glideOn })}
+                className={cn(
+                  'flex shrink-0 items-center gap-2 border-2 border-neo-black px-3 py-1.5 text-[0.62rem] font-extrabold uppercase tracking-[0.12em] transition-neo',
+                  glideOn
+                    ? 'bg-neo-blue text-neo-white shadow-neo-xs'
+                    : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'inline-block h-3 w-3 border-2 border-neo-black',
+                    glideOn ? 'bg-neo-yellow' : 'bg-transparent'
+                  )}
+                />
+                {glideOn ? tControls('toggle.on') : tControls('toggle.off')}
+              </button>
+            </div>
+
+            {glideOn && (
+              <>
+                <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
+                  <WizardSliderField
+                    id="editor-equityAllocationStart"
+                    label={tControls('fields.glidePath.start')}
+                    value={Math.round(params.equityAllocationStart * 100)}
+                    onValueChange={(value) => updateParams({ equityAllocationStart: value / 100 })}
+                    min={0}
+                    max={100}
+                    step={5}
+                    valueLabel={formatPercent(params.equityAllocationStart, 0)}
+                    minLabel={formatPercent(0, 0)}
+                    maxLabel={formatPercent(1, 0)}
+                  />
+                  <WizardSliderField
+                    id="editor-equityAllocationEnd"
+                    label={tControls('fields.glidePath.end')}
+                    value={Math.round(params.equityAllocationEnd * 100)}
+                    onValueChange={(value) => updateParams({ equityAllocationEnd: value / 100 })}
+                    min={0}
+                    max={100}
+                    step={5}
+                    valueLabel={formatPercent(params.equityAllocationEnd, 0)}
+                    minLabel={formatPercent(0, 0)}
+                    maxLabel={formatPercent(1, 0)}
+                  />
+                </div>
+
+                <EquityGlideSparkline
+                  params={params}
+                  label={tControls('fields.glidePath.sparklineLabel')}
+                  caption={tControls('fields.glidePath.sparklineCaption', {
+                    start: formatPercent(params.equityAllocationStart, 0),
+                    startAge: params.currentAge,
+                    end: formatPercent(params.equityAllocationEnd, 0),
+                    retirementAge: Math.max(params.currentAge, params.retirementAge),
+                  })}
+                />
+
+                <details className="border-2 border-neo-black bg-neo-white px-3 py-2">
+                  <summary className="cursor-pointer text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+                    {tControls('fields.glidePath.advanced')}
+                  </summary>
+                  <div className="mt-3 grid gap-x-5 gap-y-6 sm:grid-cols-2">
+                    <LabeledNumberInput
+                      id="editor-bondReturn"
+                      disabled={usesHistory}
+                      label={tControls('fields.glidePath.bondReturn')}
+                      value={Number((params.bondReturn * 100).toFixed(2))}
+                      onChange={(value) => updateParams({ bondReturn: value / 100 })}
+                      className="w-full"
+                      unit={tSetup('units.percentPerYear')}
+                      min={-5}
+                      max={15}
+                    />
+                    <LabeledNumberInput
+                      id="editor-bondVolatility"
+                      disabled={usesHistory}
+                      label={tControls('fields.glidePath.bondVolatility')}
+                      value={Number((params.bondVolatility * 100).toFixed(2))}
+                      onChange={(value) => updateParams({ bondVolatility: value / 100 })}
+                      className="w-full"
+                      unit="%"
+                      min={0}
+                      max={30}
+                    />
+                  </div>
+                  <p className="mt-3 text-[0.6rem] font-medium leading-snug text-muted-foreground">
+                    {usesHistory
+                      ? tControls('fields.glidePath.historicalNote')
+                      : tControls('fields.glidePath.correlationNote')}
+                  </p>
+                </details>
+              </>
+            )}
+          </div>
+
           <PresetRow
             label={tControls('presets.inflation.title')}
             activeKey={inflationPresetKey}
+            disabled={usesHistory}
             options={INFLATION_PRESETS.map((preset) => ({
               key: preset.key,
               label: tControls(`presets.inflation.items.${preset.key}.name`),
@@ -718,6 +843,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
           <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
             <WizardSliderField
               id="editor-averageInflation"
+              disabled={usesHistory}
               label={tSetup('market.averageInflation.label')}
               value={params.averageInflation * 100}
               onValueChange={(value) => updateParams({ averageInflation: value / 100 })}
@@ -730,6 +856,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
             />
             <WizardSliderField
               id="editor-inflationVolatility"
+              disabled={usesHistory}
               label={tControls('fields.inflationVolatility.label')}
               value={params.inflationVolatility * 100}
               onValueChange={(value) => updateParams({ inflationVolatility: value / 100 })}
@@ -753,10 +880,17 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
             />
             <LabeledNumberInput
               id="editor-simulationRuns"
+              disabled={usesHistory}
               label={tControls('fields.simulationRuns.label')}
               value={params.simulationRuns}
               onChange={(value) => updateParams({ simulationRuns: value })}
-              helpText={tControls('fields.simulationRuns.tooltip')}
+              helpText={
+                usesHistory
+                  ? tControls('fields.marketModel.runsIgnored', {
+                      count: formatInteger(HISTORICAL_PATH_COUNT),
+                    })
+                  : tControls('fields.simulationRuns.tooltip')
+              }
               className="w-full"
               groupThousands
               min={100}

@@ -27,6 +27,18 @@ const mutate = (key: keyof SimulationParams, params: SimulationParams): Simulati
         withdrawalStrategy:
           params.withdrawalStrategy === 'vanguardDynamic' ? 'fixedReal' : 'vanguardDynamic',
       }
+    case 'marketModel':
+      return {
+        ...params,
+        marketModel: params.marketModel === 'historical' ? 'monteCarlo' : 'historical',
+      }
+    case 'glidePathEnabled':
+      return { ...params, glidePathEnabled: !params.glidePathEnabled }
+    // `customExpenses` and `oneTimeIncomes` are projections of `cashFlows`, so a
+    // mutation that only touched the projection would be reconciled away on the
+    // way back in. Mutating both is what a real edit does (the store's
+    // `updateParams` funnel folds legacy writes into the flow list for exactly
+    // this reason), and it still proves the projection survives a round-trip.
     case 'customExpenses':
       return {
         ...params,
@@ -34,11 +46,37 @@ const mutate = (key: keyof SimulationParams, params: SimulationParams): Simulati
           ...params.customExpenses,
           { id: 'guard-expense', name: 'Guard', amount: 1234, interval: 'monthly' },
         ],
+        cashFlows: [
+          ...params.cashFlows,
+          { id: 'guard-expense', kind: 'expense', name: 'Guard', amount: 1234, frequency: 'monthly' },
+        ],
       }
     case 'oneTimeIncomes':
       return {
         ...params,
         oneTimeIncomes: [...params.oneTimeIncomes, { name: 'Guard', age: 68, amount: 4321 }],
+        cashFlows: [
+          ...params.cashFlows,
+          { id: 'guard-income', kind: 'income', name: 'Guard', amount: 4321, frequency: 'once', startAge: 68 },
+        ],
+      }
+    // A windowed flow has no legacy counterpart, so this case also pins down
+    // that the projections do NOT silently swallow it.
+    case 'cashFlows':
+      return {
+        ...params,
+        cashFlows: [
+          ...params.cashFlows,
+          {
+            id: 'guard-flow',
+            kind: 'income',
+            name: 'Guard rental',
+            amount: 900,
+            frequency: 'monthly',
+            startAge: 62,
+            endAge: 70,
+          },
+        ],
       }
     default: {
       const current = params[key]
@@ -59,6 +97,10 @@ const RATE_KEYS = new Set<keyof SimulationParams>([
   'annualSavingsGrowthRate',
   'averageROI',
   'roiVolatility',
+  'equityAllocationStart',
+  'equityAllocationEnd',
+  'bondReturn',
+  'bondVolatility',
   'averageInflation',
   'inflationVolatility',
   'dsWithdrawalRate',

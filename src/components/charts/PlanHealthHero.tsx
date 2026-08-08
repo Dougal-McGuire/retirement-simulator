@@ -11,6 +11,7 @@ import { deriveDepletionAges } from '@/lib/insights/depletion'
 import { buildPlanWarnings, type PlanWarning } from '@/lib/insights/warnings'
 import { AnimatedCounter } from '@/components/ui/animated-counter'
 import { Card, CardContent } from '@/components/ui/card'
+import { HISTORICAL_PATH_COUNT } from '@/lib/simulation/data/historicalMarket'
 import { cn } from '@/lib/utils'
 
 interface PlanHealthHeroProps {
@@ -100,12 +101,7 @@ function SuccessGauge({ rate }: { rate: number }) {
   )
 }
 
-export function PlanHealthHero({
-  params,
-  results,
-  isLoading,
-  onEditField,
-}: PlanHealthHeroProps) {
+export function PlanHealthHero({ params, results, isLoading, onEditField }: PlanHealthHeroProps) {
   const t = useTranslations('planHero')
   const tEditor = useTranslations('planEditor')
   const format = useFormatter()
@@ -120,7 +116,8 @@ export function PlanHealthHero({
     [params, results, displayReal]
   )
   const depletion = useMemo(
-    () => (results ? deriveDepletionAges(results) : { p10DepletionAge: null, p50DepletionAge: null }),
+    () =>
+      results ? deriveDepletionAges(results) : { p10DepletionAge: null, p50DepletionAge: null },
     [results]
   )
   const warnings = useMemo(() => buildPlanWarnings(params, results), [params, results])
@@ -195,7 +192,9 @@ export function PlanHealthHero({
         results && metrics.firstYearWithdrawalRate !== null
           ? formatPercent(metrics.firstYearWithdrawalRate)
           : t('notAvailable'),
-      detail: results ? t('withdrawal.detail', { need: formatCurrency(metrics.firstYearPortfolioNeed) }) : '',
+      detail: results
+        ? t('withdrawal.detail', { need: formatCurrency(metrics.firstYearPortfolioNeed) })
+        : '',
     },
     {
       key: 'bridge',
@@ -231,7 +230,11 @@ export function PlanHealthHero({
               </p>
               {results && (
                 <p className="mt-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                  {t('success.detail', { runs: format.number(params.simulationRuns) })}
+                  {params.marketModel === 'historical'
+                    ? t('success.detailHistorical', {
+                        runs: format.number(HISTORICAL_PATH_COUNT),
+                      })
+                    : t('success.detail', { runs: format.number(params.simulationRuns) })}
                 </p>
               )}
             </div>

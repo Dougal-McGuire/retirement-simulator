@@ -5,6 +5,22 @@ export type WithdrawalStrategy = (typeof WITHDRAWAL_STRATEGIES)[number]
 export const isWithdrawalStrategy = (value: unknown): value is WithdrawalStrategy =>
   typeof value === 'string' && (WITHDRAWAL_STRATEGIES as readonly string[]).includes(value)
 
+/**
+ * How a year's market outcome is produced.
+ *
+ * - `monteCarlo`: independent lognormal draws from the plan's own mean/volatility
+ *   assumptions (the default).
+ * - `historical`: replays a real long-run return series, one path per available
+ *   start year. Deterministic — the ROI, volatility and inflation assumptions are
+ *   ignored, the history supplies all three.
+ */
+export const MARKET_MODELS = ['monteCarlo', 'historical'] as const
+
+export type MarketModel = (typeof MARKET_MODELS)[number]
+
+export const isMarketModel = (value: unknown): value is MarketModel =>
+  typeof value === 'string' && (MARKET_MODELS as readonly string[]).includes(value)
+
 // Simulation parameter interfaces
 export interface SimulationParams {
   // Personal information
@@ -21,14 +37,52 @@ export interface SimulationParams {
   oneTimeIncomes: OneTimeIncome[]
 
   // Market parameters
+  /**
+   * Expected arithmetic return. With `glidePathEnabled` this is the *equity*
+   * assumption; the bond sleeve uses `bondReturn`/`bondVolatility`.
+   */
   averageROI: number
+  /** Return volatility — the equity assumption when the glide path is on. */
   roiVolatility: number
   averageInflation: number
   inflationVolatility: number
   capitalGainsTax: number
 
-  // Expenses
+  // Market model
+  /** Monte Carlo draws vs. replaying a real historical return series. */
+  marketModel: MarketModel
+
+  // Asset allocation glide path
+  /**
+   * Blend equities and bonds with an allocation that slides from
+   * `equityAllocationStart` to `equityAllocationEnd` over the accumulation
+   * years, then holds flat through retirement. Off by default, in which case
+   * the portfolio is 100% "equity" and the model is unchanged.
+   */
+  glidePathEnabled: boolean
+  /** Equity share in the plan's first year (0–1). */
+  equityAllocationStart: number
+  /** Equity share from the retirement year onwards (0–1). */
+  equityAllocationEnd: number
+  /** Expected arithmetic return of the bond sleeve. */
+  bondReturn: number
+  /** Volatility of the bond sleeve. */
+  bondVolatility: number
+
+  // Expenses (legacy projection of `cashFlows`; see below)
   customExpenses: CustomExpense[]
+
+  /**
+   * The single source of truth for everything that flows in or out on top of
+   * savings and pension: recurring or one-off, income or expense, optionally
+   * limited to an age window.
+   *
+   * `customExpenses` and `oneTimeIncomes` are kept as *derived projections* of
+   * the lifetime-expense and one-off-income subsets so every older consumer
+   * (report transformer, insights, saved plans) keeps working unchanged. The
+   * store regenerates them on every write — never edit them independently.
+   */
+  cashFlows: CashFlow[]
 
   // Withdrawal strategy
   withdrawalStrategy: WithdrawalStrategy
@@ -219,6 +273,46 @@ export interface CustomExpense {
   interval: ExpenseInterval
 }
 
+export const CASHFLOW_FREQUENCIES = ['monthly', 'annual', 'once'] as const
+
+export type CashFlowFrequency = (typeof CASHFLOW_FREQUENCIES)[number]
+
+export const isCashFlowFrequency = (value: unknown): value is CashFlowFrequency =>
+  typeof value === 'string' && (CASHFLOW_FREQUENCIES as readonly string[]).includes(value)
+
+export const CASHFLOW_KINDS = ['income', 'expense'] as const
+
+export type CashFlowKind = (typeof CASHFLOW_KINDS)[number]
+
+export const isCashFlowKind = (value: unknown): value is CashFlowKind =>
+  typeof value === 'string' && (CASHFLOW_KINDS as readonly string[]).includes(value)
+
+/**
+ * One money movement in the plan: rent that arrives for eight years, a roof
+ * repair in a single year, groceries for life.
+ *
+ * Amounts are quoted **per occurrence in today's euros**. Unless
+ * `inflationLinked` is explicitly false they are re-priced with the plan's
+ * realised inflation, so "€1,200 of groceries" stays €1,200 of groceries in
+ * 2045 too.
+ */
+export interface CashFlow {
+  id: string
+  kind: CashFlowKind
+  name: string
+  /** Amount per occurrence, in today's euros. */
+  amount: number
+  frequency: CashFlowFrequency
+  /** First age the flow applies to. Undefined = from `currentAge`. */
+  startAge?: number
+  /** Last age the flow applies to. Undefined = through `endAge`; ignored for `once`. */
+  endAge?: number
+  /** Default true. False pins the amount to a fixed nominal € figure. */
+  inflationLinked?: boolean
+  /** Extra real growth per year on top of inflation (0 by default). */
+  growthRate?: number
+}
+
 // Chart data interfaces
 export interface ChartDataPoint {
   age: number
@@ -256,6 +350,12 @@ export const DEFAULT_PARAMS: SimulationParams = {
   averageInflation: 0.025,
   inflationVolatility: 0.01,
   capitalGainsTax: 26.25,
+  marketModel: 'monteCarlo',
+  glidePathEnabled: false,
+  equityAllocationStart: 0.8,
+  equityAllocationEnd: 0.4,
+  bondReturn: 0.03,
+  bondVolatility: 0.06,
   customExpenses: [
     { id: 'health', name: 'Health Insurance', amount: 1300, interval: 'monthly' },
     { id: 'food', name: 'Groceries', amount: 1200, interval: 'monthly' },
@@ -265,6 +365,30 @@ export const DEFAULT_PARAMS: SimulationParams = {
     { id: 'vacations', name: 'Vacations', amount: 12000, interval: 'annual' },
     { id: 'repairs', name: 'Home Repairs', amount: 5000, interval: 'annual' },
     { id: 'carMaintenance', name: 'Car Maintenance', amount: 1500, interval: 'annual' },
+  ],
+  // The same eight expenses as unified cash flows — `customExpenses` above is
+  // the lifetime-expense projection of this list, regenerated on every write.
+  cashFlows: [
+    { id: 'health', kind: 'expense', name: 'Health Insurance', amount: 1300, frequency: 'monthly' },
+    { id: 'food', kind: 'expense', name: 'Groceries', amount: 1200, frequency: 'monthly' },
+    {
+      id: 'entertainment',
+      kind: 'expense',
+      name: 'Entertainment',
+      amount: 300,
+      frequency: 'monthly',
+    },
+    { id: 'shopping', kind: 'expense', name: 'Shopping', amount: 500, frequency: 'monthly' },
+    { id: 'utilities', kind: 'expense', name: 'Utilities', amount: 400, frequency: 'monthly' },
+    { id: 'vacations', kind: 'expense', name: 'Vacations', amount: 12000, frequency: 'annual' },
+    { id: 'repairs', kind: 'expense', name: 'Home Repairs', amount: 5000, frequency: 'annual' },
+    {
+      id: 'carMaintenance',
+      kind: 'expense',
+      name: 'Car Maintenance',
+      amount: 1500,
+      frequency: 'annual',
+    },
   ],
   withdrawalStrategy: 'vanguardDynamic',
   dsWithdrawalRate: 0.05,

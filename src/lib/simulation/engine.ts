@@ -1,4 +1,22 @@
-import { SimulationParams, SimulationResults, PercentileData, isWithdrawalStrategy } from '@/types'
+import {
+  SimulationParams,
+  SimulationResults,
+  PercentileData,
+  isWithdrawalStrategy,
+  isMarketModel,
+} from '@/types'
+import {
+  HISTORICAL_MARKET_YEARS,
+  type HistoricalMarketYear,
+} from '@/lib/simulation/data/historicalMarket'
+import {
+  buildCashFlowSeries,
+  cashFlowSignature,
+  projectCustomExpenses,
+  projectOneTimeIncomes,
+  reconcileCashFlows,
+  type CashFlowSeries,
+} from '@/lib/simulation/cashFlows'
 
 /**
  * Uniform [0,1) source. Defaults to `Math.random` so callers that do not care
@@ -85,6 +103,12 @@ export function hashSimulationParams(params: SimulationParams): number {
     averageInflation: params.averageInflation,
     inflationVolatility: params.inflationVolatility,
     capitalGainsTax: params.capitalGainsTax,
+    marketModel: params.marketModel,
+    glidePathEnabled: params.glidePathEnabled,
+    equityAllocationStart: params.equityAllocationStart,
+    equityAllocationEnd: params.equityAllocationEnd,
+    bondReturn: params.bondReturn,
+    bondVolatility: params.bondVolatility,
     withdrawalStrategy: params.withdrawalStrategy,
     dsWithdrawalRate: params.dsWithdrawalRate,
     dsCeilingRate: params.dsCeilingRate,
@@ -95,6 +119,8 @@ export function hashSimulationParams(params: SimulationParams): number {
       expense.amount,
     ]),
     oneTimeIncomes: (params.oneTimeIncomes ?? []).map((income) => [income.age, income.amount]),
+    // Sorted, so reordering the list in the editor is not a model change.
+    cashFlows: cashFlowSignature(params.cashFlows ?? []),
   }
   return hashString(JSON.stringify(shape))
 }
@@ -159,9 +185,9 @@ export type LognormalParams = ReturnType<typeof lognormalParamsFromArithmetic>
 
 /**
  * Sampling parameters per year offset (index 0 = the plan's first year).
- * Every entry is identical today because the model uses one flat set of market
- * assumptions, but the per-age shape is what a term-structure ("glidepath",
- * "first decade is bad") or a historical-sequence mode needs.
+ * Entries are all identical while the plan uses one flat set of market
+ * assumptions; the per-age shape is what the allocation glide path varies (and
+ * what any future term structure — "the first decade is bad" — would use).
  */
 export type SimulationDistributions = {
   roi: LognormalParams[]
@@ -202,6 +228,133 @@ function sampleLognormalFactor(
 ): number {
   const z = sampleStandardNormal(random)
   return Math.exp(mu + sigma * z)
+}
+
+/**
+ * Equity share per year offset (index 0 = the plan's first year).
+ *
+ * Linear from `equityAllocationStart` to `equityAllocationEnd` across the
+ * accumulation years, then held flat at the end allocation for the whole of
+ * retirement — the standard "target date" shape. With the glide path off the
+ * portfolio is 100% equity, which is what the flat single-asset model has
+ * always been.
+ */
+export function buildEquityGlidePath(params: SimulationParams, yearCount: number): number[] {
+  const weights = new Array<number>(Math.max(0, yearCount))
+  if (!params.glidePathEnabled) return weights.fill(1)
+
+  const start = params.equityAllocationStart
+  const end = params.equityAllocationEnd
+  const yearsToRetirement = Math.max(0, params.retirementAge - params.currentAge)
+
+  for (let i = 0; i < weights.length; i++) {
+    if (yearsToRetirement <= 0 || i >= yearsToRetirement) {
+      weights[i] = end
+      continue
+    }
+    weights[i] = start + (end - start) * (i / yearsToRetirement)
+  }
+
+  return weights
+}
+
+/**
+ * Arithmetic mean and stdev of a two-asset portfolio held at equity weight `w`.
+ *
+ * Deliberately assumes ZERO correlation between the equity and bond sleeves:
+ * `sd = sqrt(w²σe² + (1−w)²σb²)`. The realised stock/bond correlation swings
+ * between about −0.5 and +0.5 depending on whether inflation or growth is
+ * driving markets, so no single constant is defensible; zero sits in the middle
+ * and keeps the parameter count honest. The consequence is that a blended
+ * portfolio looks slightly *less* risky here than a positively correlated one
+ * would — the historical market model exists partly to sanity-check that.
+ */
+export function blendPortfolioMoments(
+  equityWeight: number,
+  equityMean: number,
+  equityStdev: number,
+  bondMean: number,
+  bondStdev: number
+): { mean: number; stdev: number } {
+  const w = clamp(equityWeight, 0, 1)
+  const bondWeight = 1 - w
+  const mean = w * equityMean + bondWeight * bondMean
+  const variance =
+    w * w * equityStdev * equityStdev + bondWeight * bondWeight * bondStdev * bondStdev
+  return { mean, stdev: Math.sqrt(Math.max(0, variance)) }
+}
+
+/**
+ * Per-year sampling parameters for a plan.
+ *
+ * With the glide path off every entry is the same object, which is exactly what
+ * the flat model produced before the feature existed (bit-identical results).
+ * With it on, each year offset gets the blend implied by that year's equity
+ * share.
+ */
+export function buildSimulationDistributions(
+  params: SimulationParams,
+  yearCount: number
+): SimulationDistributions {
+  const inflationParams = lognormalParamsFromArithmetic(
+    params.averageInflation,
+    params.inflationVolatility
+  )
+  const inflation = new Array<LognormalParams>(yearCount).fill(inflationParams)
+
+  if (!params.glidePathEnabled) {
+    const roiParams = lognormalParamsFromArithmetic(params.averageROI, params.roiVolatility)
+    return { roi: new Array<LognormalParams>(yearCount).fill(roiParams), inflation }
+  }
+
+  const weights = buildEquityGlidePath(params, yearCount)
+  const roi = weights.map((weight) => {
+    const { mean, stdev } = blendPortfolioMoments(
+      weight,
+      params.averageROI,
+      params.roiVolatility,
+      params.bondReturn,
+      params.bondVolatility
+    )
+    return lognormalParamsFromArithmetic(mean, stdev)
+  })
+
+  return { roi, inflation }
+}
+
+/**
+ * Historical sampler: replays a real return series instead of drawing from a
+ * distribution. Run `k` starts in the k-th year of the series and walks forward,
+ * wrapping around at the end so every start year yields a full-horizon path
+ * (the alternative — dropping start years too close to the end — throws away
+ * the most interesting sequences, which all sit in the last 30 years).
+ *
+ * Consumes no randomness at all: the result is a deterministic function of the
+ * parameters, and `successRate` is literally the share of start years the plan
+ * would have survived.
+ *
+ * The glide path still applies, blending each year's ACTUAL equity and bond
+ * returns at that year's allocation. With the glide path off the weights are
+ * all 1, i.e. an all-equity portfolio.
+ */
+export function createHistoricalSampler(
+  equityWeights: number[],
+  series: readonly HistoricalMarketYear[] = HISTORICAL_MARKET_YEARS
+): MarketSampler {
+  const length = series.length
+  const weightAt = (yearIndex: number) =>
+    equityWeights.length === 0 ? 1 : equityWeights[Math.min(yearIndex, equityWeights.length - 1)]
+  const rowAt = (yearIndex: number, run: number) => series[(run + yearIndex) % length]
+
+  return {
+    nextGrowthFactor: (yearIndex, run) => {
+      const row = rowAt(yearIndex, run)
+      const w = weightAt(yearIndex)
+      const blended = w * row.equityReturn + (1 - w) * row.bondReturn
+      return Math.max(0, 1 + blended)
+    },
+    nextInflationFactor: (yearIndex, run) => Math.max(0, 1 + rowAt(yearIndex, run).inflation),
+  }
 }
 
 /**
@@ -287,6 +440,9 @@ const sanitizeFiniteNumber = (value: unknown, fallback: number): number => {
 const normalizeWithdrawalStrategy = (value: unknown): SimulationParams['withdrawalStrategy'] =>
   isWithdrawalStrategy(value) ? value : 'vanguardDynamic'
 
+const normalizeMarketModel = (value: unknown): SimulationParams['marketModel'] =>
+  isMarketModel(value) ? value : 'monteCarlo'
+
 export function calculateVanguardDynamicAnnualSpending({
   priorYearPortfolioValue,
   previousAnnualSpending,
@@ -356,6 +512,24 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
         }))
     : []
 
+  // Cash flows are the source of truth; the two legacy arrays above are folded
+  // back in (so `{...params, customExpenses: [...]}` still means what it says)
+  // and then rewritten as projections of the reconciled list.
+  const cashFlows = reconcileCashFlows({
+    cashFlows: params.cashFlows,
+    customExpenses,
+    oneTimeIncomes,
+    currentAge,
+  }).map((flow) => ({
+    ...flow,
+    ...(flow.startAge !== undefined
+      ? { startAge: Math.round(clamp(flow.startAge, currentAge, endAge)) }
+      : {}),
+    ...(flow.endAge !== undefined
+      ? { endAge: Math.round(clamp(flow.endAge, currentAge, endAge)) }
+      : {}),
+  }))
+
   return {
     ...params,
     currentAge,
@@ -370,13 +544,20 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
       0.5
     ),
     monthlyPension: Math.max(0, sanitizeFiniteNumber(params.monthlyPension, 0)),
-    oneTimeIncomes,
+    oneTimeIncomes: projectOneTimeIncomes(cashFlows, currentAge),
     averageROI: clamp(sanitizeFiniteNumber(params.averageROI, 0.07), -0.99, 0.3),
     roiVolatility: clamp(sanitizeFiniteNumber(params.roiVolatility, 0.15), 0, 1),
     averageInflation: clamp(sanitizeFiniteNumber(params.averageInflation, 0.025), -0.1, 0.3),
     inflationVolatility: clamp(sanitizeFiniteNumber(params.inflationVolatility, 0.01), 0, 0.3),
     capitalGainsTax: clamp(sanitizeFiniteNumber(params.capitalGainsTax, 26.25), 0, 100),
-    customExpenses,
+    marketModel: normalizeMarketModel(params.marketModel),
+    glidePathEnabled: params.glidePathEnabled === true,
+    equityAllocationStart: clamp(sanitizeFiniteNumber(params.equityAllocationStart, 0.8), 0, 1),
+    equityAllocationEnd: clamp(sanitizeFiniteNumber(params.equityAllocationEnd, 0.4), 0, 1),
+    bondReturn: clamp(sanitizeFiniteNumber(params.bondReturn, 0.03), -0.99, 0.3),
+    bondVolatility: clamp(sanitizeFiniteNumber(params.bondVolatility, 0.06), 0, 1),
+    customExpenses: projectCustomExpenses(cashFlows),
+    cashFlows,
     withdrawalStrategy: normalizeWithdrawalStrategy(params.withdrawalStrategy),
     dsWithdrawalRate: clamp(sanitizeFiniteNumber(params.dsWithdrawalRate, 0.05), 0.02, 0.08),
     dsCeilingRate: clamp(sanitizeFiniteNumber(params.dsCeilingRate, 0.05), 0, 0.15),
@@ -408,44 +589,31 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
  * simulation no longer rebuilds the same Map and expense totals 7 500 times.
  */
 type SimulationSchedule = {
-  /** age -> total one-time income credited at the start of that age. */
-  oneTimeIncomeByAge: ReadonlyMap<number, number>
   /** Base-year (un-inflated) monthly expense total. */
   baseMonthlyExpense: number
   /** Base-year (un-inflated) annual expense total. */
   baseAnnualExpense: number
+  /**
+   * Windowed / one-off / nominally fixed cash flows, expanded per year offset
+   * in today's euros. Split from the two totals above because those are what
+   * the guardrails act on — see `runSingleSimulation`.
+   */
+  flows: CashFlowSeries
   effectiveRetirementAge: number
   usesDynamicSpending: boolean
 }
 
 function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
-  const oneTimeIncomeByAge = new Map<number, number>()
-  if (Array.isArray(params.oneTimeIncomes)) {
-    for (const income of params.oneTimeIncomes) {
-      if (!income) continue
-      const amount = Math.max(0, Number(income.amount) || 0)
-      if (amount <= 0) continue
-      const payoutAge = Math.floor(Number(income.age))
-      if (!Number.isFinite(payoutAge)) continue
-      const depositAge = payoutAge + 1
-      if (depositAge < params.currentAge || depositAge > params.endAge) continue
-      oneTimeIncomeByAge.set(depositAge, (oneTimeIncomeByAge.get(depositAge) ?? 0) + amount)
-    }
-  }
-
-  // Calculate total monthly and annual expenses from custom expenses
-  const customExpenses = params.customExpenses ?? []
-  const baseMonthlyExpense = customExpenses
-    .filter((e) => e.interval === 'monthly')
-    .reduce((sum, expense) => sum + expense.amount, 0)
-  const baseAnnualExpense = customExpenses
-    .filter((e) => e.interval === 'annual')
-    .reduce((sum, expense) => sum + expense.amount, 0)
+  // Every recurring, lifetime, inflation-linked expense lands in the two base
+  // totals (the model the plan has always had); everything a `CashFlow` can say
+  // beyond that — an age window, a single payment, extra real growth, a fixed
+  // nominal amount, income — is expanded per age.
+  const flows = buildCashFlowSeries(params.cashFlows ?? [], params.currentAge, params.endAge)
 
   return {
-    oneTimeIncomeByAge,
-    baseMonthlyExpense,
-    baseAnnualExpense,
+    baseMonthlyExpense: flows.baselineMonthly,
+    baseAnnualExpense: flows.baselineAnnual,
+    flows,
     effectiveRetirementAge: Math.max(params.retirementAge, params.currentAge),
     usesDynamicSpending: params.withdrawalStrategy === 'vanguardDynamic',
   }
@@ -472,7 +640,7 @@ function runSingleSimulation(
   let costBasis = params.currentAssets // Track original investment amount
   let currentAnnualSavings = params.annualSavings
 
-  const { oneTimeIncomeByAge, baseMonthlyExpense, baseAnnualExpense } = schedule
+  const { baseMonthlyExpense, baseAnnualExpense } = schedule
 
   let currentMonthlyExpense = baseMonthlyExpense
   let currentAnnualExpense = baseAnnualExpense
@@ -487,14 +655,43 @@ function runSingleSimulation(
    */
   let inflationIndex = 1
 
-  const { effectiveRetirementAge, usesDynamicSpending } = schedule
+  const { effectiveRetirementAge, usesDynamicSpending, flows } = schedule
+  const taxRate = Math.max(0, params.capitalGainsTax / 100)
+
+  /**
+   * Sells enough of the portfolio to raise `netNeeded` after capital gains tax,
+   * returning the shortfall (0 when the need was met). Shared by both phases:
+   * a windowed expense during the working years has to be funded too, and
+   * letting it quietly drive the balance negative would flatter every plan.
+   */
+  const withdrawNet = (netNeeded: number): number => {
+    if (netNeeded <= 0) return 0
+    if (currentAssets <= 0) return netNeeded
+    const totalWithdrawal = computeGrossWithdrawal(currentAssets, costBasis, netNeeded, taxRate)
+    const withdrawal = Math.min(totalWithdrawal, currentAssets)
+    const withdrawalRatio = withdrawal > 0 && currentAssets > 0 ? withdrawal / currentAssets : 0
+    costBasis = Math.max(0, costBasis * (1 - withdrawalRatio))
+    currentAssets = Math.max(0, currentAssets - withdrawal)
+    return Math.max(0, totalWithdrawal - withdrawal)
+  }
 
   for (let age = params.currentAge; age <= params.endAge; age++) {
     const yearIndex = age - params.currentAge
     inflationIndexHistory.push(inflationIndex)
 
-    const scheduledIncome = oneTimeIncomeByAge.get(age)
-    if (scheduledIncome && scheduledIncome > 0) {
+    // Scheduled flows are quoted in today's euros; inflation-linked ones are
+    // re-priced with this path's realised price level, fixed ones are not.
+    const extraIncome =
+      flows.incomeLinked[yearIndex] * inflationIndex + flows.incomeFixed[yearIndex]
+    const extraExpense =
+      flows.expenseLinked[yearIndex] * inflationIndex + flows.expenseFixed[yearIndex]
+
+    // A one-off payment is quoted in today's euros like every other flow, so an
+    // inheritance booked for 2040 arrives as what that sum is worth by then.
+    const scheduledIncome =
+      (flows.oneTimeIncomeLinkedByAge.get(age) ?? 0) * inflationIndex +
+      (flows.oneTimeIncomeFixedByAge.get(age) ?? 0)
+    if (scheduledIncome > 0) {
       currentAssets += scheduledIncome
       costBasis += scheduledIncome
     }
@@ -504,9 +701,20 @@ function runSingleSimulation(
       const roiFactor = sampler.nextGrowthFactor(yearIndex, run, random)
 
       // During accumulation, assume reinvestment without realizing gains
-      currentAssets = currentAssets * roiFactor + currentAnnualSavings
-      costBasis += currentAnnualSavings // Track additional investments
-      spendingHistory.push(0) // No spending during accumulation for visualization
+      currentAssets = currentAssets * roiFactor
+      // Salary covers ordinary living costs while working, so only scheduled
+      // flows move money here: they net off against the year's savings.
+      const netContribution = currentAnnualSavings + extraIncome - extraExpense
+      if (netContribution >= 0) {
+        currentAssets += netContribution
+        costBasis += netContribution // Track additional investments
+      } else if (withdrawNet(-netContribution) > 0 || currentAssets <= 0) {
+        // The plan could not fund a scheduled expense out of savings or assets.
+        runFailed = true
+        currentAssets = Math.max(0, currentAssets)
+      }
+      // Only scheduled expenses are portfolio spending before retirement.
+      spendingHistory.push(extraExpense / 12)
 
       // Inflate expenses so that retirement starts with age-adjusted spending
       const inflationFactor = sampler.nextInflationFactor(yearIndex, run, random)
@@ -520,7 +728,15 @@ function runSingleSimulation(
       // Distribution phase (retirement years)
       const baselineAnnualExpenseThisYear = currentMonthlyExpense * 12 + currentAnnualExpense
       const priorYearPortfolioValue = Math.max(0, currentAssets)
-      const totalAnnualExpenseThisYear: number =
+      /**
+       * The guardrailed baseline: ordinary, lifetime living costs only.
+       *
+       * Scheduled flows are deliberately kept OUT of it and added afterwards.
+       * A roof repair is not a lifestyle decision the Vanguard ceiling should
+       * clip, and it must not raise next year's floor either — so the flows
+       * ride on top of the rule rather than through it.
+       */
+      const guardrailedAnnualSpending: number =
         usesDynamicSpending && previousDynamicAnnualSpending !== null
           ? calculateVanguardDynamicAnnualSpending({
               priorYearPortfolioValue,
@@ -532,10 +748,12 @@ function runSingleSimulation(
             })
           : baselineAnnualExpenseThisYear
 
+      const totalAnnualExpenseThisYear = guardrailedAnnualSpending + extraExpense
+
       // Add pension income if at legal retirement age
-      let annualIncome = 0
+      let annualIncome = extraIncome
       if (age >= params.legalRetirementAge) {
-        annualIncome = params.monthlyPension * 12
+        annualIncome += params.monthlyPension * 12
       }
 
       // Calculate how much we need to withdraw from investments
@@ -551,13 +769,7 @@ function runSingleSimulation(
           runFailed = true
           currentAssets = 0
         } else {
-          const t = Math.max(0, params.capitalGainsTax / 100)
-          const totalWithdrawal = computeGrossWithdrawal(currentAssets, costBasis, netNeeded, t)
-          const withdrawal = Math.min(totalWithdrawal, currentAssets)
-          const withdrawalRatio =
-            withdrawal > 0 && currentAssets > 0 ? withdrawal / currentAssets : 0
-          costBasis = Math.max(0, costBasis * (1 - withdrawalRatio))
-          currentAssets = Math.max(0, currentAssets - withdrawal)
+          withdrawNet(netNeeded)
           if (currentAssets <= 0) {
             runFailed = true
             currentAssets = 0
@@ -580,7 +792,9 @@ function runSingleSimulation(
       currentMonthlyExpense = baseMonthlyExpense * inflationIndex
       currentAnnualExpense = baseAnnualExpense * inflationIndex
       if (usesDynamicSpending) {
-        previousDynamicAnnualSpending = totalAnnualExpenseThisYear
+        // Anchored to the guardrailed baseline, not to the total: a one-off
+        // expense must not become next year's spending floor.
+        previousDynamicAnnualSpending = guardrailedAnnualSpending
         dynamicSpendingInflationFactor = inflationFactor
       }
 
@@ -630,22 +844,28 @@ export function runMonteCarloSimulation(
     ages.push(age)
   }
 
-  // One entry per year offset. Flat today; the shape is what a term structure
-  // or historical-sequence mode would vary.
-  const roiParams = lognormalParamsFromArithmetic(
-    normalizedParams.averageROI,
-    normalizedParams.roiVolatility
-  )
-  const inflationParams = lognormalParamsFromArithmetic(
-    normalizedParams.averageInflation,
-    normalizedParams.inflationVolatility
-  )
-  const distributions: SimulationDistributions = {
-    roi: ages.map(() => roiParams),
-    inflation: ages.map(() => inflationParams),
-  }
+  // One entry per year offset. Flat unless the glide path is on, in which case
+  // each year carries the blend implied by that year's equity share.
+  const distributions = buildSimulationDistributions(normalizedParams, ages.length)
 
-  const sampler = options.sampler ?? createMonteCarloSampler(distributions)
+  const usesHistory = normalizedParams.marketModel === 'historical'
+  const sampler =
+    options.sampler ??
+    (usesHistory
+      ? createHistoricalSampler(buildEquityGlidePath(normalizedParams, ages.length))
+      : createMonteCarloSampler(distributions))
+
+  /**
+   * Historical mode has exactly as many paths as the series has start years —
+   * asking for 5 000 of 125 possible histories would just repeat each one 40
+   * times and pretend the sample was bigger than it is. `simulationRuns` is left
+   * untouched on the params so switching back to Monte Carlo restores the
+   * user's chosen count.
+   */
+  const effectiveRuns = usesHistory
+    ? HISTORICAL_MARKET_YEARS.length
+    : normalizedParams.simulationRuns
+
   const schedule = buildSimulationSchedule(normalizedParams)
 
   const assetRuns: number[][] = []
@@ -658,7 +878,7 @@ export function runMonteCarloSimulation(
   const depletionCounts = new Array<number>(ages.length).fill(0)
 
   // Run all simulations
-  for (let run = 0; run < normalizedParams.simulationRuns; run++) {
+  for (let run = 0; run < effectiveRuns; run++) {
     const random = sharedRandom ?? mulberry32(mixSeed(baseSeed, run))
     const result = runSingleSimulation(normalizedParams, schedule, sampler, run, random)
 
@@ -690,12 +910,12 @@ export function runMonteCarloSimulation(
   const inflationIndexP50 = calculatePercentiles(inflationIndexRuns).p50
 
   // Calculate success rate
-  const successRate = (successfulRuns / normalizedParams.simulationRuns) * 100
+  const successRate = (successfulRuns / effectiveRuns) * 100
 
   let depletedSoFar = 0
   const depletionByAge = depletionCounts.map((count) => {
     depletedSoFar += count
-    return depletedSoFar / normalizedParams.simulationRuns
+    return depletedSoFar / effectiveRuns
   })
 
   return {

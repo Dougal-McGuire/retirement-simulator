@@ -13,7 +13,7 @@ import {
   Brush,
 } from 'recharts'
 import { useTranslations } from 'next-intl'
-import type { ChartDataPoint } from '@/types'
+import type { ChartDataPoint, SimulationParams } from '@/types'
 import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/lib/hooks/useMediaQuery'
 import {
@@ -52,6 +52,8 @@ interface AssetsChartProps {
   formatCurrencyShort: (value: number) => string
   /** Extra controls rendered in the section header, left of the scale switch. */
   headerControls?: React.ReactNode
+  /** Changes the caption: historical mode replays real years rather than sampling. */
+  marketModel?: SimulationParams['marketModel']
 }
 
 export function AssetsChart({
@@ -66,6 +68,7 @@ export function AssetsChart({
   formatCurrency,
   formatCurrencyShort,
   headerControls,
+  marketModel = 'monteCarlo',
 }: AssetsChartProps) {
   const t = useTranslations('assetsChart')
   const isMobile = useIsMobile()
@@ -220,7 +223,7 @@ export function AssetsChart({
             {t('title')}
           </h4>
           <p className="mt-1.5 max-w-2xl text-xs font-medium leading-relaxed text-muted-foreground">
-            {t('description')}
+            {marketModel === 'historical' ? t('descriptionHistorical') : t('description')}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">

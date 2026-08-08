@@ -36,6 +36,7 @@ export function AssetsSection({ results }: AssetsSectionProps) {
     <div className="space-y-5">
       <AssetsChart
         data={chartDataWithBand}
+        marketModel={results.params.marketModel}
         retirementAge={results.params.retirementAge}
         legalRetirementAge={results.params.legalRetirementAge}
         p10DepletionAge={depletion.p10DepletionAge}

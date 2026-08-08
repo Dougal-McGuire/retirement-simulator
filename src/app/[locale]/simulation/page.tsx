@@ -30,6 +30,7 @@ import { MobileMenu } from '@/components/navigation/MobileMenu'
 import { VersionInfo } from '@/components/navigation/VersionInfo'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
 import { ChartSkeleton } from '@/components/ui/skeleton'
+import { HISTORICAL_PATH_COUNT } from '@/lib/simulation/data/historicalMarket'
 
 type TabValue = 'overview' | 'details' | 'scenarios' | 'plan'
 
@@ -45,6 +46,7 @@ export default function SimulationPage() {
   const tabsRef = useRef<HTMLDivElement>(null)
 
   const successRate = results?.successRate
+  const usesHistory = params.marketModel === 'historical'
   const formattedRuns = useMemo(
     () => format.number(params.simulationRuns),
     [format, params.simulationRuns]
@@ -114,7 +116,8 @@ export default function SimulationPage() {
           field.matches('input, select, textarea, button, [tabindex]') ||
           field.getAttribute('role') === 'slider'
             ? field
-            : (field.querySelector<HTMLElement>('[role="slider"], input, select, textarea') ?? field)
+            : (field.querySelector<HTMLElement>('[role="slider"], input, select, textarea') ??
+              field)
 
         field.scrollIntoView({ behavior: 'smooth', block: 'center' })
         focusable.focus({ preventScroll: true })
@@ -141,7 +144,10 @@ export default function SimulationPage() {
       {/* Header */}
       {/* Mobile pays for every row above the first number, so the chrome is
           tighter there and the marketing copy only appears from `sm` up. */}
-      <header id="navigation" className="theme-page-header relative z-10 pt-5 pb-5 sm:pt-12 sm:pb-10">
+      <header
+        id="navigation"
+        className="theme-page-header relative z-10 pt-5 pb-5 sm:pt-12 sm:pb-10"
+      >
         <div className="theme-container mx-auto max-w-[90rem] px-2 sm:px-3 lg:px-4">
           <div className="theme-hero neo-surface relative overflow-hidden px-4 py-5 transition-neo sm:px-8 sm:py-10">
             <div className="theme-hero-layout relative flex flex-col gap-6 sm:gap-10">
@@ -149,12 +155,28 @@ export default function SimulationPage() {
                 <div className="flex min-w-0 flex-1 flex-col gap-3 text-neo-black sm:gap-5">
                   <div className="theme-badge-row flex flex-wrap items-center gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.32em]">
                     <span className="neo-chip bg-neo-yellow text-neo-black shadow-neo-sm">
-                      {t('header.badges.engine')}
+                      {usesHistory
+                        ? t('header.badges.engineHistorical')
+                        : t('header.badges.engine')}
                     </span>
                     {/* The run count is repeated under the success gauge. */}
-                    <span className="neo-chip hidden bg-neo-white text-muted-foreground shadow-neo-sm sm:inline-flex">
-                      {t('header.badges.runs', { count: formattedRuns })}
-                    </span>
+                    {!usesHistory && (
+                      <span className="neo-chip hidden bg-neo-white text-muted-foreground shadow-neo-sm sm:inline-flex">
+                        {t('header.badges.runs', { count: formattedRuns })}
+                      </span>
+                    )}
+                    {/* Historical mode does not sample: the badge says how many
+                        real start years the numbers above are made of. */}
+                    {usesHistory && (
+                      <span
+                        className="neo-chip bg-neo-yellow px-2 py-1 text-[0.58rem] tracking-[0.18em] text-neo-black shadow-neo-sm"
+                        data-testid="market-model-badge"
+                      >
+                        {t('header.badges.historical', {
+                          count: format.number(HISTORICAL_PATH_COUNT),
+                        })}
+                      </span>
+                    )}
                     <VersionInfo />
                   </div>
                   <div>

@@ -1,5 +1,11 @@
 import type { SimulationParams } from '@/types'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
+import {
+  buildCashFlowSeries,
+  cashFlowSignature,
+  isLifetimeExpenseFlow,
+  isOnceIncomeFlow,
+} from '@/lib/simulation/cashFlows'
 
 /**
  * Assumption diffing for plan comparison.
@@ -20,6 +26,8 @@ export type AssumptionKind =
   | 'percentPoints'
   | 'count'
   | 'strategy'
+  | 'marketModel'
+  | 'toggle'
 
 export interface AssumptionRow {
   /** Translation key suffix under `plans.comparison.assumptions.rows`. */
@@ -50,6 +58,33 @@ const valuesDiffer = (values: Array<number | string>): boolean =>
     }
     return value !== first
   })
+
+const sum = (values: readonly number[]) => values.reduce((total, value) => total + value, 0)
+
+/**
+ * Lifetime totals, in today's euros, of everything the two legacy arrays cannot
+ * express: windowed or one-off flows, and anything with its own growth or a
+ * fixed nominal amount. Lifetime living costs stay in the spending rows above
+ * and one-off income keeps its own row, so nothing is counted twice.
+ */
+function scheduledTotals(params: SimulationParams): { income: number; expense: number } {
+  const series = buildCashFlowSeries(
+    params.cashFlows ?? [],
+    params.currentAge,
+    Math.max(params.currentAge, params.endAge)
+  )
+  return {
+    income: sum(series.incomeLinked) + sum(series.incomeFixed),
+    expense: sum(series.expenseLinked) + sum(series.expenseFixed),
+  }
+}
+
+/** How many flows are scheduled rather than lifetime-recurring. */
+function countScheduledFlows(params: SimulationParams): number {
+  return (params.cashFlows ?? []).filter(
+    (flow) => !isLifetimeExpenseFlow(flow) && !isOnceIncomeFlow(flow)
+  ).length
+}
 
 interface RowSpec {
   key: string
@@ -99,6 +134,14 @@ const rowSpecs: RowSpec[] = [
   },
 
   {
+    key: 'scheduledIncome',
+    group: 'income',
+    kind: 'currency',
+    read: (p) => scheduledTotals(p).income,
+    optional: true,
+  },
+
+  {
     key: 'monthlySpending',
     group: 'spending',
     kind: 'currency',
@@ -119,6 +162,21 @@ const rowSpecs: RowSpec[] = [
     optional: true,
     derived: true,
   },
+  {
+    key: 'scheduledExpenses',
+    group: 'spending',
+    kind: 'currency',
+    read: (p) => scheduledTotals(p).expense,
+    optional: true,
+  },
+  {
+    key: 'scheduledItems',
+    group: 'spending',
+    kind: 'count',
+    read: (p) => countScheduledFlows(p),
+    optional: true,
+    derived: true,
+  },
 
   { key: 'averageROI', group: 'market', kind: 'rate', read: (p) => p.averageROI },
   { key: 'roiVolatility', group: 'market', kind: 'rate', read: (p) => p.roiVolatility },
@@ -136,6 +194,27 @@ const rowSpecs: RowSpec[] = [
     kind: 'percentPoints',
     read: (p) => p.capitalGainsTax,
   },
+  { key: 'marketModel', group: 'market', kind: 'marketModel', read: (p) => p.marketModel },
+  {
+    key: 'glidePathEnabled',
+    group: 'market',
+    kind: 'toggle',
+    read: (p) => (p.glidePathEnabled ? 'on' : 'off'),
+  },
+  {
+    key: 'equityAllocationStart',
+    group: 'market',
+    kind: 'rate',
+    read: (p) => p.equityAllocationStart,
+  },
+  {
+    key: 'equityAllocationEnd',
+    group: 'market',
+    kind: 'rate',
+    read: (p) => p.equityAllocationEnd,
+  },
+  { key: 'bondReturn', group: 'market', kind: 'rate', read: (p) => p.bondReturn },
+  { key: 'bondVolatility', group: 'market', kind: 'rate', read: (p) => p.bondVolatility },
 
   {
     key: 'withdrawalStrategy',
@@ -166,6 +245,15 @@ const rowSpecs: RowSpec[] = [
   },
 ]
 
+/** Rows that are noise unless at least one compared plan runs a glide path. */
+const glidePathRowKeys = new Set([
+  'glidePathEnabled',
+  'equityAllocationStart',
+  'equityAllocationEnd',
+  'bondReturn',
+  'bondVolatility',
+])
+
 const isEmptyRow = (spec: RowSpec, values: Array<number | string>, differs: boolean) => {
   if (!spec.optional || differs) return false
   return values.every((value) => typeof value === 'number' && Math.abs(value) <= EPSILON)
@@ -182,9 +270,17 @@ export function buildAssumptionRows(paramsList: SimulationParams[]): AssumptionR
   const usesDynamicSpending = paramsList.some(
     (params) => params.withdrawalStrategy === 'vanguardDynamic'
   )
+  // The allocation rows only mean something once a plan actually blends two
+  // assets; otherwise they are four constants nobody set.
+  const usesGlidePath = paramsList.some((params) => params.glidePathEnabled)
+  // Same for the market model: naming it is only interesting once a plan has
+  // left the default Monte Carlo behind.
+  const usesHistory = paramsList.some((params) => params.marketModel === 'historical')
 
   return rowSpecs
+    .filter((spec) => (spec.key === 'marketModel' ? usesHistory : true))
     .filter((spec) => (spec.key.startsWith('ds') ? usesDynamicSpending : true))
+    .filter((spec) => (glidePathRowKeys.has(spec.key) ? usesGlidePath : true))
     .map((spec) => {
       const values = paramsList.map((params) => spec.read(params))
       const differs = valuesDiffer(values)
@@ -245,6 +341,8 @@ export function comparisonFingerprint(params: SimulationParams): string {
   const incomes = (params.oneTimeIncomes ?? [])
     .map((income) => `${income.age}|${income.amount}`)
     .join(',')
+  // Order-independent: reordering the cash-flow list is not a model change.
+  const flows = cashFlowSignature(params.cashFlows ?? []).join(',')
 
-  return `${rows.join(';')}#${expenses}#${incomes}`
+  return `${rows.join(';')}#${expenses}#${incomes}#${flows}`
 }

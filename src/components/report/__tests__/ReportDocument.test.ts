@@ -106,6 +106,17 @@ const englishReportContent = {
         share: 0.125,
       },
     ],
+    scheduledFlows: [
+      {
+        id: 'rent',
+        kind: 'income',
+        name: 'Rental income',
+        amount: 900,
+        frequency: 'monthly',
+        startAge: 62,
+        endAge: 70,
+      },
+    ],
   },
   scenarios: [],
   recommendations: {

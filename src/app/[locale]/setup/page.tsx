@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
 import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
 import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
-import { ExpenseList } from '@/components/forms/fields/ExpenseList'
+import { CashFlowList } from '@/components/forms/fields/CashFlowList'
+import { buildCashFlowTemplates } from '@/components/forms/fields/cashFlowTemplates'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
 import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
 import { planDisplayName } from '@/lib/plans/planName'
@@ -23,7 +24,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { OneTimeIncome, CustomExpense, ExpenseInterval } from '@/types'
+import { OneTimeIncome } from '@/types'
 import { AuthMenu } from '@/components/auth/AuthMenu'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
@@ -492,116 +493,22 @@ export default function SetupPage() {
         )
 
       case 'expenses': {
-        const expenseTemplates = [
-          {
-            name: t('expenseTemplates.healthInsurance'),
-            amount: 1300,
-            interval: 'monthly' as ExpenseInterval,
-          },
-          {
-            name: t('expenseTemplates.groceries'),
-            amount: 1200,
-            interval: 'monthly' as ExpenseInterval,
-          },
-          {
-            name: t('expenseTemplates.utilities'),
-            amount: 400,
-            interval: 'monthly' as ExpenseInterval,
-          },
-          {
-            name: t('expenseTemplates.entertainment'),
-            amount: 300,
-            interval: 'monthly' as ExpenseInterval,
-          },
-          {
-            name: t('expenseTemplates.vacations'),
-            amount: 12000,
-            interval: 'annual' as ExpenseInterval,
-          },
-          {
-            name: t('expenseTemplates.homeRepairs'),
-            amount: 5000,
-            interval: 'annual' as ExpenseInterval,
-          },
-        ]
-
-        const handleAddExpense = (expense: Omit<CustomExpense, 'id'>) => {
-          const sanitizedAmount = Number.isFinite(expense.amount)
-            ? Math.max(0, Math.round(expense.amount))
-            : 0
-          const trimmedName = expense.name.trim()
-          if (!trimmedName || sanitizedAmount === 0) return
-          updateParams({
-            customExpenses: [
-              ...params.customExpenses,
-              {
-                ...expense,
-                name: trimmedName,
-                amount: sanitizedAmount,
-                id: `expense-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-              },
-            ],
-          })
-        }
-
-        const handleUpdateExpense = (id: string, expense: Omit<CustomExpense, 'id'>) => {
-          updateParams({
-            customExpenses: params.customExpenses.map((e) =>
-              e.id === id ? { ...expense, id } : e
-            ),
-          })
-        }
-
-        const handleRemoveExpense = (id: string) => {
-          updateParams({
-            customExpenses: params.customExpenses.filter((e) => e.id !== id),
-          })
-        }
+        const templates = buildCashFlowTemplates((key) => t(`cashFlows.templates.items.${key}`), {
+          currentAge: params.currentAge,
+          retirementAge: params.retirementAge,
+          legalRetirementAge: params.legalRetirementAge,
+          endAge: params.endAge,
+        })
 
         return (
           <div className="space-y-5">
-            <p className="text-xs font-medium leading-relaxed text-muted-foreground">
-              {t('expenses.intro')}
-            </p>
-
-            <ExpenseList
-              expenses={params.customExpenses}
-              templates={expenseTemplates}
-              strings={{
-                addButton: t('expenses.add'),
-                addHint: t('expenses.addHint'),
-                empty: t('expenses.empty'),
-                emptyHint: t('expenses.emptyHint'),
-                nameLabel: t('expenses.nameLabel'),
-                namePlaceholder: t('expenses.namePlaceholder'),
-                amountLabel: t('expenses.amountLabel'),
-                intervalLabel: t('expenses.intervalLabel'),
-                intervalMonthly: t('expenses.intervalMonthly'),
-                intervalAnnual: t('expenses.intervalAnnual'),
-                remove: t('expenses.remove'),
-                edit: t('expenses.edit'),
-                save: t('expenses.save'),
-                cancel: t('expenses.cancel'),
-                summaryLabel: t('expenses.summary'),
-                templatesLabel: t('expenses.templates.label'),
-                tableHeaders: {
-                  name: t('expenses.table.name'),
-                  amount: t('expenses.table.amount'),
-                  interval: t('expenses.table.interval'),
-                  actions: t('expenses.table.actions'),
-                },
-              }}
-              onAdd={handleAddExpense}
-              onUpdate={handleUpdateExpense}
-              onRemove={handleRemoveExpense}
-              formatCurrency={(value) =>
-                format.number(value, {
-                  style: 'currency',
-                  currency: 'EUR',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                })
-              }
+            <CashFlowList
+              flows={params.cashFlows ?? []}
+              currentAge={params.currentAge}
+              retirementAge={params.retirementAge}
+              endAge={params.endAge}
+              templates={templates}
+              onChange={(cashFlows) => updateParams({ cashFlows })}
             />
           </div>
         )

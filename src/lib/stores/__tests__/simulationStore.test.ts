@@ -941,7 +941,7 @@ describe('simulationStore', () => {
         version: number
         state: { draftParams: SimulationParams | null; plans: { params: SimulationParams }[] }
       }
-      expect(parsed.version).toBe(2)
+      expect(parsed.version).toBe(3)
       expect(parsed.state.draftParams?.retirementAge).toBe(66)
       expect(parsed.state.plans[0].params.retirementAge).toBe(64)
 
@@ -984,6 +984,218 @@ describe('simulationStore', () => {
       expect(state.draftParams).toBeNull()
       expect(state.params.retirementAge).toBe(61)
       expect(state.plans[0].params.retirementAge).toBe(61)
+    })
+  })
+
+  describe('cash flows (store v3)', () => {
+    /** A v2 plan: spending in `customExpenses`, windfalls in `oneTimeIncomes`. */
+    const v2Params = (overrides: Record<string, unknown> = {}) => ({
+      ...DEFAULT_PARAMS,
+      cashFlows: undefined,
+      customExpenses: [
+        { id: 'rent', name: 'Rent', amount: 1400, interval: 'monthly' },
+        { id: 'travel', name: 'Travel', amount: 6000, interval: 'annual' },
+      ],
+      oneTimeIncomes: [{ name: 'Inheritance', age: 70, amount: 120000 }],
+      ...overrides,
+    })
+
+    const v2Blob = () =>
+      JSON.stringify({
+        version: 2,
+        state: {
+          params: v2Params({ retirementAge: 62 }),
+          draftParams: v2Params({ retirementAge: 63 }),
+          results: null,
+          plans: [
+            {
+              id: 'plan-base',
+              name: 'Base plan',
+              params: v2Params({ retirementAge: 62 }),
+              createdAt: 1,
+              updatedAt: 2,
+            },
+            {
+              id: 'plan-b',
+              name: 'Later retirement',
+              params: v2Params({ retirementAge: 65 }),
+              createdAt: 3,
+              updatedAt: 4,
+            },
+          ],
+          activePlanId: 'plan-base',
+        },
+      })
+
+    it('migrates every stored parameter set from v2 to cash flows', () => {
+      const { useSimulationStore } = loadStore({
+        [STORE_KEY]: v2Blob(),
+        'retirement-simulator-plans-imported': '1',
+      })
+
+      const state = useSimulationStore.getState()
+
+      // Both plans, and the unsaved working copy, are migrated — not just the
+      // one that happens to be active.
+      const migrated = [
+        ...state.plans.map((plan) => plan.params),
+        state.params,
+        state.draftParams as SimulationParams,
+      ]
+
+      migrated.forEach((params) => {
+        expect(params.cashFlows.map((flow) => flow.id)).toEqual([
+          'rent',
+          'travel',
+          expect.stringContaining('income'),
+        ])
+        expect(params.cashFlows[0]).toEqual({
+          id: 'rent',
+          kind: 'expense',
+          name: 'Rent',
+          amount: 1400,
+          frequency: 'monthly',
+        })
+        expect(params.cashFlows[2]).toMatchObject({
+          kind: 'income',
+          name: 'Inheritance',
+          frequency: 'once',
+          startAge: 70,
+          amount: 120000,
+        })
+      })
+
+      // ...and the legacy arrays still say exactly what they said before, so
+      // every consumer that reads them keeps working.
+      expect(state.params.customExpenses).toEqual([
+        { id: 'rent', name: 'Rent', amount: 1400, interval: 'monthly' },
+        { id: 'travel', name: 'Travel', amount: 6000, interval: 'annual' },
+      ])
+      expect(state.params.oneTimeIncomes).toEqual([
+        { name: 'Inheritance', age: 70, amount: 120000 },
+      ])
+      expect(state.draftParams?.retirementAge).toBe(63)
+      expect(state.isDirty).toBe(true)
+    })
+
+    it('keeps the working copy and the plan independent after migration', () => {
+      const { useSimulationStore } = loadStore({
+        [STORE_KEY]: v2Blob(),
+        'retirement-simulator-plans-imported': '1',
+      })
+
+      const state = useSimulationStore.getState()
+      expect(state.plans[0].params.retirementAge).toBe(62)
+      expect(state.plans[1].params.retirementAge).toBe(65)
+      expect(state.params.retirementAge).toBe(63)
+    })
+
+    it('folds a legacy expense write into the flow list', async () => {
+      const { useSimulationStore } = loadStore()
+
+      useSimulationStore.getState().updateParams({
+        customExpenses: [
+          ...useSimulationStore.getState().params.customExpenses,
+          { id: 'boat', name: 'Boat', amount: 400, interval: 'monthly' },
+        ],
+      })
+      await flushSimulationQueue()
+
+      const { params } = useSimulationStore.getState()
+      expect(params.cashFlows.find((flow) => flow.id === 'boat')).toEqual({
+        id: 'boat',
+        kind: 'expense',
+        name: 'Boat',
+        amount: 400,
+        frequency: 'monthly',
+      })
+      expect(params.customExpenses.find((expense) => expense.id === 'boat')).toBeDefined()
+    })
+
+    it('regenerates the projections when cash flows are written directly', async () => {
+      const { useSimulationStore } = loadStore()
+
+      useSimulationStore.getState().updateParams({
+        cashFlows: [
+          {
+            id: 'rent',
+            kind: 'income',
+            name: 'Rental income',
+            amount: 900,
+            frequency: 'monthly',
+            startAge: 62,
+            endAge: 70,
+          },
+          { id: 'gift', kind: 'income', name: 'Gift', amount: 5000, frequency: 'once', startAge: 66 },
+          { id: 'food', kind: 'expense', name: 'Food', amount: 1200, frequency: 'monthly' },
+        ],
+      })
+      await flushSimulationQueue()
+
+      const { params } = useSimulationStore.getState()
+      // The windowed income has no legacy counterpart and must not leak into one.
+      expect(params.customExpenses).toEqual([
+        { id: 'food', name: 'Food', amount: 1200, interval: 'monthly' },
+      ])
+      expect(params.oneTimeIncomes).toEqual([{ name: 'Gift', age: 66, amount: 5000 }])
+      expect(params.cashFlows).toHaveLength(3)
+    })
+
+    it('survives a legacy write without losing windowed flows', async () => {
+      const { useSimulationStore } = loadStore()
+      const windowed = {
+        id: 'rent',
+        kind: 'income' as const,
+        name: 'Rental income',
+        amount: 900,
+        frequency: 'monthly' as const,
+        startAge: 62,
+        endAge: 70,
+      }
+
+      useSimulationStore.getState().updateParams({ cashFlows: [windowed] })
+      await flushSimulationQueue()
+
+      // A surface that only knows `customExpenses` (the sidebar, a stress lever)
+      // writes next. The windowed income has to come through untouched.
+      useSimulationStore.getState().updateParams({
+        customExpenses: [{ id: 'food', name: 'Food', amount: 1200, interval: 'monthly' }],
+      })
+      await flushSimulationQueue()
+
+      const { params } = useSimulationStore.getState()
+      expect(params.cashFlows).toEqual([
+        windowed,
+        { id: 'food', kind: 'expense', name: 'Food', amount: 1200, frequency: 'monthly' },
+      ])
+    })
+
+    it('round-trips a windowed flow through persistence', async () => {
+      const { useSimulationStore, localStorageMock } = loadStore()
+      const windowed = {
+        id: 'care',
+        kind: 'expense' as const,
+        name: 'Care',
+        amount: 2500,
+        frequency: 'monthly' as const,
+        startAge: 80,
+        endAge: 90,
+        inflationLinked: false,
+        growthRate: 0.02,
+      }
+
+      useSimulationStore
+        .getState()
+        .updateParams({ cashFlows: [...DEFAULT_PARAMS.cashFlows, windowed] })
+      await flushSimulationQueue()
+
+      const persisted = localStorageMock.getItem(STORE_KEY) as string
+      const reloaded = loadStore({
+        [STORE_KEY]: persisted,
+        'retirement-simulator-plans-imported': '1',
+      })
+
+      expect(reloaded.useSimulationStore.getState().params.cashFlows).toContainEqual(windowed)
     })
   })
 })

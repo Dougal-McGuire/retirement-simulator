@@ -21,6 +21,8 @@ interface WizardSliderFieldProps {
   helpText?: string
   /** Optional derived context rendered below the help text (e.g. a timeline summary). */
   meta?: ReactNode
+  /** Greys the control out and stops interaction (e.g. an input the active market model ignores). */
+  disabled?: boolean
   className?: string
 }
 
@@ -41,10 +43,14 @@ export function WizardSliderField({
   maxLabel,
   helpText,
   meta,
+  disabled = false,
   className,
 }: WizardSliderFieldProps) {
   return (
-    <div className={cn('space-y-2', className)}>
+    <div
+      className={cn('space-y-2', disabled && 'opacity-55', className)}
+      aria-disabled={disabled || undefined}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Label
           htmlFor={id}
@@ -68,7 +74,8 @@ export function WizardSliderField({
           min={min}
           max={max}
           step={step}
-          className="w-full"
+          disabled={disabled}
+          className={cn('w-full', disabled && 'cursor-not-allowed')}
           aria-label={label}
         />
         <div className="mt-2.5 flex items-center justify-between text-[0.65rem] font-medium tabular-nums text-muted-foreground">

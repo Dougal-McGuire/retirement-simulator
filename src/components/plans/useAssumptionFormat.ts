@@ -14,11 +14,16 @@ import type { AssumptionKind } from '@/lib/simulation/planDiff'
 export function useAssumptionValueFormatter() {
   const format = useFormatter()
   const tStrategy = useTranslations('parameterControls.fields.withdrawalStrategy.options')
+  const tMarketModel = useTranslations('parameterControls.fields.marketModel.options')
+  const tToggle = useTranslations('parameterControls.toggle')
 
   return useCallback(
     (value: number | string, kind: AssumptionKind): string => {
       if (typeof value === 'string') {
-        return kind === 'strategy' ? tStrategy(`${value}.label`) : value
+        if (kind === 'strategy') return tStrategy(`${value}.label`)
+        if (kind === 'marketModel') return tMarketModel(`${value}.label`)
+        if (kind === 'toggle') return tToggle(value === 'on' ? 'on' : 'off')
+        return value
       }
 
       switch (kind) {
@@ -46,6 +51,6 @@ export function useAssumptionValueFormatter() {
           return format.number(value)
       }
     },
-    [format, tStrategy]
+    [format, tStrategy, tMarketModel, tToggle]
   )
 }

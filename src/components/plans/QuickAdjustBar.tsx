@@ -23,6 +23,7 @@ interface QuickAdjustBarProps {
  */
 export function QuickAdjustBar({ onOpenEditor, className }: QuickAdjustBarProps) {
   const t = useTranslations('quickAdjust')
+  const tControls = useTranslations('parameterControls')
   const format = useFormatter()
   const params = useSimulationParams()
   const updateParams = useUpdateParams()
@@ -156,6 +157,14 @@ export function QuickAdjustBar({ onOpenEditor, className }: QuickAdjustBarProps)
           valueLabel={formatPercent(params.averageROI)}
           minLabel={formatPercent(0.03)}
           maxLabel={formatPercent(0.12)}
+          // The historical model takes its returns from the record, so this
+          // lever would move a number the simulation never reads.
+          disabled={params.marketModel === 'historical'}
+          helpText={
+            params.marketModel === 'historical'
+              ? tControls('fields.marketModel.leverIgnored')
+              : undefined
+          }
         />
       </div>
     </section>

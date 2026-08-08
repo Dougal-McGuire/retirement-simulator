@@ -243,6 +243,19 @@ export interface ReportExpensesCategory {
   share: number
 }
 
+/** A scheduled cash flow as printed in the report's inputs table. */
+export interface ReportCashFlow {
+  id: string
+  kind: 'income' | 'expense'
+  name: string
+  amount: number
+  frequency: 'monthly' | 'annual' | 'once'
+  startAge?: number
+  endAge?: number
+  inflationLinked?: boolean
+  growthRate?: number
+}
+
 export interface ReportExpenses {
   horizonYears: number
   totalHorizonAmount: number
@@ -251,6 +264,12 @@ export interface ReportExpenses {
   monthlyCategories: ReportExpensesCategory[]
   annualCategories: ReportExpensesCategory[]
   allCategories: ReportExpensesCategory[]
+  /**
+   * Windowed / one-off / income flows. Deliberately kept out of the totals
+   * above: those describe the plan's steady annual spending, and folding a
+   * single roof repair into "per year" would misstate it.
+   */
+  scheduledFlows: ReportCashFlow[]
 }
 
 export interface ReportScenario {
@@ -451,6 +470,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       monthlyCategories,
       annualCategories,
       allCategories,
+      scheduledFlows: data.spending.cashFlows ?? [],
     },
     scenarios,
     recommendations: {

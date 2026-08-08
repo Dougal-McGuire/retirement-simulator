@@ -38,6 +38,8 @@ interface LabeledNumberInputProps {
   groupThousands?: boolean
   validation?: ValidationRule
   formatValue?: (value: number) => string
+  /** Greys the field out and stops editing (e.g. an input the active market model ignores). */
+  disabled?: boolean
 }
 
 type ValidationState = 'error' | 'warning' | 'neutral'
@@ -94,6 +96,7 @@ export function LabeledNumberInput({
   groupThousands = false,
   validation,
   formatValue,
+  disabled = false,
 }: LabeledNumberInputProps) {
   const [touched, setTouched] = useState(false)
   const [draftValue, setDraftValue] = useState(() => String(value))
@@ -145,7 +148,10 @@ export function LabeledNumberInput({
   const describedBy = descriptionIds.length > 0 ? descriptionIds.join(' ') : undefined
 
   return (
-    <div className="space-y-2">
+    <div
+      className={cn('space-y-2', disabled && 'opacity-55')}
+      aria-disabled={disabled || undefined}
+    >
       <div className="flex items-center gap-1.5">
         <Label
           htmlFor={id}
@@ -180,6 +186,7 @@ export function LabeledNumberInput({
           id={id}
           ref={groupThousands ? grouped.inputRef : undefined}
           type={groupThousands ? 'text' : 'number'}
+          disabled={disabled}
           inputMode={groupThousands ? 'numeric' : 'decimal'}
           autoComplete="off"
           value={displayValue}

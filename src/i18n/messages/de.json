@@ -231,8 +231,8 @@
         "description": "Aktuelle Anlagen und Sparplan"
       },
       "expenses": {
-        "title": "Ausgaben",
-        "description": "Ihr Ausgabenplan für den Ruhestand"
+        "title": "Zahlungsströme",
+        "description": "Ausgaben und Einnahmen jenseits der Rente"
       },
       "market": {
         "title": "Marktannahmen",
@@ -375,6 +375,81 @@
       "discard": "Änderungen verwerfen",
       "continue": "Weiter",
       "back": "Weiter bearbeiten"
+    },
+    "cashFlows": {
+      "intro": "Alles, was zusätzlich zu Gehalt und Rente hereinkommt oder abfließt. Jede Position kann lebenslang laufen oder nur zwischen zwei Altern — Mieteinnahmen, die enden, eine Reparatur in einem Jahr, Pflegekosten am Ende des Plans.",
+      "kind": {
+        "income": "Einnahme",
+        "expense": "Ausgabe"
+      },
+      "frequency": {
+        "monthly": "Monatlich",
+        "annual": "Jährlich",
+        "once": "Einmalig"
+      },
+      "fields": {
+        "name": "Bezeichnung",
+        "namePlaceholder": "z. B. Lebensmittel, Mieteinnahmen, Dachsanierung",
+        "amount": "Betrag je Zahlung (€)",
+        "frequency": "Rhythmus",
+        "startAge": "Ab Alter",
+        "endAge": "Bis Alter",
+        "atAge": "Im Alter",
+        "inflationLinked": "Wächst mit der Inflation",
+        "inflationLinkedOn": "Der Betrag behält seine heutige Kaufkraft.",
+        "inflationLinkedOff": "Fester Eurobetrag — die Kaufkraft sinkt über die Zeit.",
+        "nominalTag": "fester €-Betrag",
+        "growthRate": "Zusätzliches Wachstum p. a. (%)",
+        "growthRateHint": "Zusätzlich zur Inflation. Pflegekosten steigen typischerweise schneller, eine feste Rente nicht."
+      },
+      "window": {
+        "lifetime": "Gesamter Plan",
+        "range": "Alter {from}–{to}",
+        "from": "Ab Alter {age}",
+        "until": "Bis Alter {age}",
+        "at": "Mit {age}"
+      },
+      "table": {
+        "item": "Position",
+        "period": "Zeitraum",
+        "amount": "Betrag",
+        "actions": "Aktionen"
+      },
+      "actions": {
+        "add": "Zahlungsstrom hinzufügen",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "edit": "Bearbeiten",
+        "remove": "Entfernen"
+      },
+      "advanced": {
+        "show": "Erweiterte Optionen",
+        "hide": "Erweiterte Optionen ausblenden"
+      },
+      "timeline": {
+        "title": "Wann welcher Strom wirkt",
+        "retirement": "Ruhestand {age}"
+      },
+      "empty": {
+        "title": "Noch keine Zahlungsströme",
+        "hint": "Mit einer Vorlage unten starten oder eigene Position anlegen"
+      },
+      "summary": {
+        "income": "Laufende Einnahmen pro Jahr",
+        "expense": "Laufende Ausgaben pro Jahr",
+        "note": "Die Summen zeigen laufende Positionen zum vollen Satz; Einmalzahlungen und Zeitfenster stehen in der Zeitleiste oben."
+      },
+      "templates": {
+        "label": "Vorlagen (zum Hinzufügen klicken)",
+        "items": {
+          "partTime": "Teilzeit-Einkommen",
+          "rental": "Mieteinnahmen",
+          "riester": "Riester-Auszahlung",
+          "partnerPension": "Partnerrente",
+          "care": "Pflegekosten",
+          "roof": "Dachsanierung"
+        }
+      }
     }
   },
   "simulation": {
@@ -384,7 +459,9 @@
       "setupLink": "Einrichtung",
       "badges": {
         "engine": "Live-Monte-Carlo",
-        "runs": "{count} Läufe pro Aktualisierung"
+        "runs": "{count} Läufe pro Aktualisierung",
+        "historical": "Historisch · {count} Pfade",
+        "engineHistorical": "Live-Rückrechnung"
       },
       "confidenceLabel": "Erfolgswahrscheinlichkeit",
       "confidence": {
@@ -684,6 +761,39 @@
       "dsFloorRate": {
         "label": "DS-Untergrenze",
         "tooltip": "Maximaler jährlicher Rückgang gegenüber den inflationsbereinigten Ausgaben des Vorjahres."
+      },
+      "marketModel": {
+        "label": "Marktmodell",
+        "tooltip": "Monte Carlo zieht Renditen aus Ihren Annahmen. Der historische Marktverlauf spielt eine echte Renditereihe Jahr für Jahr nach.",
+        "options": {
+          "monteCarlo": {
+            "label": "Monte-Carlo-Simulation",
+            "description": "Zufallsziehungen aus Ihren Annahmen zu Rendite, Schwankung und Inflation."
+          },
+          "historical": {
+            "label": "Historischer Marktverlauf",
+            "description": "Spielt echte Marktgeschichte nach – ein Pfad je verfügbarem Startjahr."
+          }
+        },
+        "historicalNotice": "Der historische Modus liefert Rendite, Schwankung und Inflation aus den Daten selbst ({count} Startjahre, {from}–{to}). Die Annahmen unten bleiben so lange ohne Wirkung.",
+        "runsIgnored": "Im historischen Modus fest auf {count} – ein Pfad je Startjahr, keine Stichprobe.",
+        "pathsLabel": "Historische Pfade",
+        "pathsHint": "Einer je Startjahr",
+        "leverIgnored": "Im historischen Modus ohne Wirkung – die Renditen stammen aus den Daten."
+      },
+      "glidePath": {
+        "label": "Gleitpfad",
+        "description": "Mit näher rückendem Ruhestand von Aktien in Anleihen umschichten und die Quote danach halten.",
+        "start": "Aktienquote heute",
+        "end": "Aktienquote im Ruhestand",
+        "advanced": "Anleihe-Annahmen",
+        "bondReturn": "Anleiherendite",
+        "bondVolatility": "Anleihe-Schwankung",
+        "sparklineLabel": "Aktienquote nach Alter",
+        "sparklineCaption": "{start} mit {startAge} → {end} ab {retirementAge}",
+        "equitySleeveLabel": "Aktien · {label}",
+        "correlationNote": "Beide Bausteine werden ohne Korrelation gemischt: Die Schwankung ergibt sich als √(w²σe² + (1−w)²σb²). Die tatsächliche Korrelation zwischen Aktien und Anleihen schwankt um null, ein gemischtes Portfolio wirkt hier also eher etwas ruhiger als in der Praxis.",
+        "historicalNote": "Im historischen Modus bleiben diese Annahmen wirkungslos: Die Quote wird auf die tatsächlichen Aktien- und Anleiherenditen jedes Jahres angewendet."
       }
     },
     "saved": {
@@ -703,6 +813,10 @@
         "cancel": "Abbrechen",
         "confirm": "Plan erstellen"
       }
+    },
+    "toggle": {
+      "on": "An",
+      "off": "Aus"
     }
   },
   "report": {
@@ -732,7 +846,8 @@
     "success": {
       "label": "Erfolgsquote",
       "detail": "{runs} Simulationsläufe",
-      "caption": "Anteil der simulierten Verläufe, in denen das Vermögen bis zum Planende reicht."
+      "caption": "Anteil der simulierten Verläufe, in denen das Vermögen bis zum Planende reicht.",
+      "detailHistorical": "{runs} historische Startjahre"
     },
     "lasts": {
       "label": "Vermögen reicht",
@@ -825,7 +940,10 @@
       },
       "reduceVolatility": {
         "title": "Volatilität reduzieren",
-        "body": "Ihr Portfolio schwankt stark. Mit näher rückendem Ruhestand empfiehlt sich eine schrittweise Umschichtung in stabilere Anlagen."
+        "body": "Ihr Portfolio schwankt stark. Mit näher rückendem Ruhestand empfiehlt sich eine schrittweise Umschichtung in stabilere Anlagen.",
+        "action": "Gleitpfad einschalten",
+        "applied": "Gleitpfad eingeschaltet",
+        "undo": "Rückgängig"
       },
       "reviewInsurance": {
         "title": "Versicherungsschutz prüfen",
@@ -920,7 +1038,8 @@
     "aria": {
       "description": "Vermögens-Fächerdiagramm: Der Medianverlauf ist als durchgezogene Linie dargestellt, umgeben von einem wahrscheinlichen Bereich (20.–80. Perzentil) und einem Gesamtbereich (10.–90. Perzentil).",
       "controls": "Verwenden Sie die Pfeiltasten, um durch die Diagrammdaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen."
-    }
+    },
+    "descriptionHistorical": "Projizierter Portfoliowert aus einer historischen Rückrechnung: ein Pfad je Startjahr der Renditereihe. Die durchgezogene Linie ist der Median; die schattierten Bänder zeigen, wo die meisten dieser Verläufe liegen."
   },
   "shortfallChart": {
     "title": "Erschöpfungsrisiko",
@@ -1866,7 +1985,16 @@
           "withdrawalStrategy": "Entnahmestrategie",
           "dsWithdrawalRate": "Anfängliche Entnahmerate",
           "dsCeilingRate": "Ausgaben-Obergrenze",
-          "dsFloorRate": "Ausgaben-Untergrenze"
+          "dsFloorRate": "Ausgaben-Untergrenze",
+          "marketModel": "Marktmodell",
+          "glidePathEnabled": "Gleitpfad",
+          "equityAllocationStart": "Aktienquote heute",
+          "equityAllocationEnd": "Aktienquote im Ruhestand",
+          "bondReturn": "Anleiherendite",
+          "bondVolatility": "Anleihe-Schwankung",
+          "scheduledIncome": "Geplante Einnahmen (gesamt)",
+          "scheduledExpenses": "Geplante Ausgaben (gesamt)",
+          "scheduledItems": "Geplante Positionen"
         },
         "differsCount": "{count, plural, one {# Abweichung} other {# Abweichungen}}"
       },
@@ -1925,6 +2053,11 @@
       "market": {
         "title": "Markt & Regeln",
         "description": "Renditeannahmen, Steuern und die Entnahmeregel."
+      },
+      "cashFlows": {
+        "title": "Zahlungsströme",
+        "description": "Alles, was dieser Plan zahlt oder einnimmt — und wie lange.",
+        "incomePointer": "{count, plural, =0 {Einmalige Einnahmen stehen in der Karte „Zahlungsströme“ unten} =1 {# einmalige Einnahme, Bearbeitung in der Karte „Zahlungsströme“} other {# einmalige Einnahmen, Bearbeitung in der Karte „Zahlungsströme“}}"
       }
     },
     "summary": {
@@ -1938,7 +2071,9 @@
       "savingsRateHint": "Sparen ÷ (Sparen + Ausgaben)",
       "realReturn": "Reale Rendite nach Inflation",
       "pensionGap": "Gesetzliche Rente beginnt mit {age}",
-      "expenseCount": "{count, plural, =0 {Keine Einträge} =1 {# Eintrag} other {# Einträge}}"
+      "expenseCount": "{count, plural, =0 {Keine Einträge} =1 {# Eintrag} other {# Einträge}}",
+      "scheduledFlows": "Geplante Ströme",
+      "scheduledFlowsHint": "Positionen mit Zeitfenster oder einmalig"
     },
     "reset": {
       "trigger": "Auf Standard zurücksetzen",

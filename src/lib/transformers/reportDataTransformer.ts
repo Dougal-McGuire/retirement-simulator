@@ -1,5 +1,6 @@
 import type { SimulationParams, SimulationResults } from '@/types'
 import type { ReportData } from '@/lib/pdf-generator/schema/reportData'
+import { isLifetimeExpenseFlow } from '@/lib/simulation/cashFlows'
 import { computeBridgeAnalysis } from '@/lib/insights/bridge'
 import { computePlanHealthScore } from '@/lib/insights/planHealth'
 import { estimateRecommendationUplift, generateRecommendations } from '@/lib/insights/recommendations'
@@ -103,6 +104,23 @@ export function transformToReportData(
         amount: expense.amount,
         interval: expense.interval,
       })),
+      // Only the flows `custom` above cannot represent, so the report never
+      // counts the same euro twice: windows, one-off payments and income.
+      cashFlows: (params.cashFlows ?? [])
+        .filter((flow) => !isLifetimeExpenseFlow(flow))
+        .map((flow) => ({
+          id: flow.id,
+          kind: flow.kind,
+          name: flow.name,
+          amount: flow.amount,
+          frequency: flow.frequency,
+          ...(flow.startAge !== undefined ? { startAge: flow.startAge } : {}),
+          ...(flow.endAge !== undefined ? { endAge: flow.endAge } : {}),
+          ...(flow.inflationLinked !== undefined
+            ? { inflationLinked: flow.inflationLinked }
+            : {}),
+          ...(flow.growthRate !== undefined ? { growthRate: flow.growthRate } : {}),
+        })),
     },
     assumptions: {
       roiMean: params.averageROI,
@@ -110,6 +128,12 @@ export function transformToReportData(
       inflationMean: params.averageInflation,
       inflationStdev: params.inflationVolatility,
       withdrawalStrategy: params.withdrawalStrategy,
+      marketModel: params.marketModel,
+      glidePathEnabled: params.glidePathEnabled,
+      equityAllocationStart: params.equityAllocationStart,
+      equityAllocationEnd: params.equityAllocationEnd,
+      bondReturn: params.bondReturn,
+      bondVolatility: params.bondVolatility,
       dsWithdrawalRate: params.dsWithdrawalRate,
       dsCeilingRate: params.dsCeilingRate,
       dsFloorRate: params.dsFloorRate,

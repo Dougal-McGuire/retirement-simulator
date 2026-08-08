@@ -10,9 +10,16 @@ import {
   OneTimeIncome,
   CustomExpense,
   isWithdrawalStrategy,
+  isMarketModel,
   type Plan,
 } from '@/types'
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
+import {
+  projectCustomExpenses,
+  projectOneTimeIncomes,
+  reconcileCashFlows,
+  sanitizeCashFlows,
+} from '@/lib/simulation/cashFlows'
 import {
   bootstrapPlans,
   createPlanId,
@@ -42,12 +49,18 @@ const SAVED_SETUPS_KEY = () => storageKey(BASE_SAVED_SETUPS_KEY)
  * v0: params + savedSetups.
  * v1: first-class plans.
  * v2: plans are durable; edits live in a working copy (`draftParams`).
+ * v3: unified `cashFlows`; `customExpenses`/`oneTimeIncomes` become projections.
  */
-const STORE_VERSION = 2
+const STORE_VERSION = 3
 
 type NumericParamKey = keyof Omit<
   SimulationParams,
-  'customExpenses' | 'oneTimeIncomes' | 'withdrawalStrategy'
+  | 'customExpenses'
+  | 'oneTimeIncomes'
+  | 'cashFlows'
+  | 'withdrawalStrategy'
+  | 'marketModel'
+  | 'glidePathEnabled'
 >
 
 type PersistedParams = Partial<Record<NumericParamKey, unknown>> & {
@@ -55,7 +68,10 @@ type PersistedParams = Partial<Record<NumericParamKey, unknown>> & {
   customExpenses?: unknown
   monthlyExpenses?: unknown
   oneTimeIncomes?: unknown
+  cashFlows?: unknown
   withdrawalStrategy?: unknown
+  marketModel?: unknown
+  glidePathEnabled?: unknown
 }
 
 const numericParamKeys = [
@@ -72,6 +88,10 @@ const numericParamKeys = [
   'averageInflation',
   'inflationVolatility',
   'capitalGainsTax',
+  'equityAllocationStart',
+  'equityAllocationEnd',
+  'bondReturn',
+  'bondVolatility',
   'dsWithdrawalRate',
   'dsCeilingRate',
   'dsFloorRate',
@@ -107,6 +127,17 @@ const sanitizeNumericParams = (
 
 const sanitizeWithdrawalStrategy = (strategy: unknown): SimulationParams['withdrawalStrategy'] =>
   isWithdrawalStrategy(strategy) ? strategy : DEFAULT_PARAMS.withdrawalStrategy
+
+const sanitizeMarketModel = (model: unknown): SimulationParams['marketModel'] =>
+  isMarketModel(model) ? model : DEFAULT_PARAMS.marketModel
+
+/** Persisted booleans arrive as `true`/`false`, `"true"`/`"false"` or nothing. */
+const sanitizeBoolean = (value: unknown, fallback: boolean): boolean => {
+  if (typeof value === 'boolean') return value
+  if (value === 'true') return true
+  if (value === 'false') return false
+  return fallback
+}
 
 const sanitizeOneTimeIncomes = (incomes: unknown): OneTimeIncome[] => {
   if (!Array.isArray(incomes)) return []
@@ -223,19 +254,40 @@ export const normalizePersistedParams = (persistedParams: unknown): SimulationPa
     monthlyExpenses: _monthlyExpenses,
     oneTimeIncomes: rawOneTimeIncomes,
     withdrawalStrategy: rawWithdrawalStrategy,
+    marketModel: rawMarketModel,
+    glidePathEnabled: rawGlidePathEnabled,
   } = params
   const sanitizedCustomExpenses = sanitizeCustomExpenses(rawCustomExpenses)
   const migratedCustomExpenses = migrateToCustomExpenses(params)
   const customExpenses = Array.isArray(rawCustomExpenses)
     ? sanitizedCustomExpenses
     : migratedCustomExpenses
+  const oneTimeIncomes = sanitizeOneTimeIncomes(rawOneTimeIncomes)
+  const numerics = sanitizeNumericParams(params)
+  const currentAge = numerics.currentAge ?? DEFAULT_PARAMS.currentAge
+
+  /**
+   * Unified cash flows (store v3). Anything persisted before them has none, so
+   * the two legacy arrays *are* the plan and get folded in; from v3 on they are
+   * projections and simply agree with the flows already stored. Either way the
+   * three fields leave this function describing one and the same plan.
+   */
+  const cashFlows = reconcileCashFlows({
+    cashFlows: params.cashFlows,
+    customExpenses,
+    oneTimeIncomes,
+    currentAge,
+  })
 
   return {
     ...DEFAULT_PARAMS,
-    ...sanitizeNumericParams(params),
+    ...numerics,
     withdrawalStrategy: sanitizeWithdrawalStrategy(rawWithdrawalStrategy),
-    oneTimeIncomes: sanitizeOneTimeIncomes(rawOneTimeIncomes),
-    customExpenses,
+    marketModel: sanitizeMarketModel(rawMarketModel),
+    glidePathEnabled: sanitizeBoolean(rawGlidePathEnabled, DEFAULT_PARAMS.glidePathEnabled),
+    cashFlows,
+    oneTimeIncomes: projectOneTimeIncomes(cashFlows, currentAge),
+    customExpenses: projectCustomExpenses(cashFlows),
   }
 }
 
@@ -272,6 +324,7 @@ const normalizeParamsForFingerprint = (params: Partial<SimulationParams>): Simul
   ...params,
   oneTimeIncomes: sanitizeOneTimeIncomes(params.oneTimeIncomes),
   customExpenses: sanitizeCustomExpenses(params.customExpenses),
+  cashFlows: sanitizeCashFlows(params.cashFlows),
 })
 
 const getParamsFingerprint = (params: Partial<SimulationParams>) =>
@@ -550,10 +603,36 @@ export const useSimulationStore = create<SimulationStore>()(
               : Array.isArray(currentParams.oneTimeIncomes)
                 ? currentParams.oneTimeIncomes
                 : []
-          const newParams = {
+          const merged = {
             ...currentParams,
             ...partial,
             oneTimeIncomes: nextOneTimeIncomes,
+          }
+
+          /**
+           * The single funnel into the flow list.
+           *
+           * Writes that name `cashFlows` are the new, complete intent. Writes
+           * that only touch a legacy array (the sidebar's expense editor, a
+           * stress lever scaling `customExpenses`) are folded into the flows
+           * instead of competing with them. Either way the projections are
+           * rewritten afterwards, so no consumer ever sees the two disagree.
+           */
+          const cashFlows =
+            partial.cashFlows !== undefined
+              ? sanitizeCashFlows(partial.cashFlows)
+              : reconcileCashFlows({
+                  cashFlows: currentParams.cashFlows,
+                  customExpenses: merged.customExpenses,
+                  oneTimeIncomes: merged.oneTimeIncomes,
+                  currentAge: merged.currentAge,
+                })
+
+          const newParams: SimulationParams = {
+            ...merged,
+            cashFlows,
+            customExpenses: projectCustomExpenses(cashFlows),
+            oneTimeIncomes: projectOneTimeIncomes(cashFlows, merged.currentAge),
           }
 
           applyParams(newParams)
@@ -728,6 +807,29 @@ export const useSimulationStore = create<SimulationStore>()(
         // draft to recover: the persisted params already are the plan's params.
         if (version < 2) {
           state = { ...state, draftParams: null, isDirty: false, planSuccessRates: {} }
+        }
+        // v2 kept spending in `customExpenses` and windfalls in `oneTimeIncomes`.
+        // v3 turns both into cash flows — lifetime expenses keep their ids, a
+        // windfall becomes a one-off income at the age it was booked for — and
+        // regenerates the two arrays as projections. Every parameter set is
+        // migrated: the live params, the unsaved working copy, and each plan.
+        if (version < 3) {
+          state = {
+            ...state,
+            ...(state.params ? { params: normalizePersistedParams(state.params) } : {}),
+            ...(state.draftParams
+              ? { draftParams: normalizePersistedParams(state.draftParams) }
+              : {}),
+            ...(Array.isArray(state.plans)
+              ? {
+                  plans: state.plans.map((plan) =>
+                    isRecord(plan)
+                      ? { ...plan, params: normalizePersistedParams(plan.params) }
+                      : plan
+                  ) as Plan[],
+                }
+              : {}),
+          }
         }
         return state as SimulationStore
       },

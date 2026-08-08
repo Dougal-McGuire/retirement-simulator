@@ -14,6 +14,7 @@
 
 import { DEFAULT_PARAMS, type SimulationParams } from '@/types'
 import { DEFAULT_PLAN_ID, DEFAULT_PLAN_NAME, DEFAULT_PLAN_NAME_KEY } from '@/lib/stores/plans'
+import { cashFlowSignature, sanitizeCashFlows } from '@/lib/simulation/cashFlows'
 import {
   BASE_PLANS_MIGRATED_KEY,
   BASE_STORE_KEY,
@@ -82,8 +83,20 @@ function paramsAreDefault(params: unknown): boolean {
     if (changed) return false
   }
 
+  // Cash flows are the source of truth for both arrays above; a workspace that
+  // added a windowed flow is not pristine even when the projections still look
+  // like the defaults. Pre-v3 blobs have no `cashFlows` at all — that is the
+  // untouched starter too, so only an actually stored list is compared.
+  const cashFlows = params.cashFlows
+  if (Array.isArray(cashFlows)) {
+    const stored = cashFlowSignature(sanitizeCashFlows(cashFlows))
+    const reference = cashFlowSignature(DEFAULT_PARAMS.cashFlows)
+    if (stored.length !== reference.length) return false
+    if (stored.some((value, index) => value !== reference[index])) return false
+  }
+
   return !(Object.keys(DEFAULT_PARAMS) as Array<keyof SimulationParams>).some((key) => {
-    if (key === 'oneTimeIncomes' || key === 'customExpenses') return false
+    if (key === 'oneTimeIncomes' || key === 'customExpenses' || key === 'cashFlows') return false
     const stored = params[key]
     if (stored === undefined) return false
     const reference = DEFAULT_PARAMS[key]

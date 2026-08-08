@@ -1,5 +1,6 @@
-import type { CustomExpense, SimulationParams, SimulationResults } from '@/types'
+import type { CashFlow, CustomExpense, SimulationParams, SimulationResults } from '@/types'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
+import { cashFlowsEqual } from '@/lib/simulation/cashFlows'
 
 export type PlanHealth = 'strong' | 'watch' | 'strained'
 
@@ -30,6 +31,10 @@ const comparableNumericParamKeys = [
   'averageInflation',
   'inflationVolatility',
   'capitalGainsTax',
+  'equityAllocationStart',
+  'equityAllocationEnd',
+  'bondReturn',
+  'bondVolatility',
   'dsWithdrawalRate',
   'dsCeilingRate',
   'dsFloorRate',
@@ -42,11 +47,31 @@ const scaleExpenses = (expenses: CustomExpense[], multiplier: number) =>
     amount: Math.max(0, Math.round(expense.amount * multiplier)),
   }))
 
+/**
+ * "Spend 10% less" means every recurring expense, not only the ones the legacy
+ * array can express — a windowed care-cost flow is spending too. One-off
+ * expenses are left alone: a roof repair does not get 10% cheaper by choosing
+ * to live more modestly.
+ */
+const scaleExpenseFlows = (flows: CashFlow[], multiplier: number) =>
+  flows.map((flow) =>
+    flow.kind === 'expense' && flow.frequency !== 'once'
+      ? { ...flow, amount: Math.max(0, Math.round(flow.amount * multiplier)) }
+      : flow
+  )
+
 export function areSimulationParamsEqual(
   currentParams: SimulationParams,
   resultParams: SimulationParams
 ): boolean {
   if (currentParams.withdrawalStrategy !== resultParams.withdrawalStrategy) {
+    return false
+  }
+
+  if (
+    currentParams.marketModel !== resultParams.marketModel ||
+    currentParams.glidePathEnabled !== resultParams.glidePathEnabled
+  ) {
     return false
   }
 
@@ -68,6 +93,12 @@ export function areSimulationParamsEqual(
       )
     })
   ) {
+    return false
+  }
+
+  // Windowed / one-off / nominally fixed flows have no counterpart in the two
+  // legacy arrays, so results computed before one was added must go stale too.
+  if (!cashFlowsEqual(currentParams.cashFlows ?? [], resultParams.cashFlows ?? [])) {
     return false
   }
 
@@ -183,6 +214,7 @@ export function buildScenarioParams(params: SimulationParams) {
       params: {
         ...params,
         customExpenses: scaleExpenses(params.customExpenses, 0.9),
+        cashFlows: scaleExpenseFlows(params.cashFlows ?? [], 0.9),
         simulationRuns: previewRuns,
       },
     },

@@ -2,7 +2,7 @@ import React from 'react'
 import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
 import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
-import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
+import type { ReportCashFlow, ReportContent } from '@/lib/pdf-generator/reportTypes'
 import {
   fmtCurrency,
   fmtNumber,
@@ -17,6 +17,7 @@ interface InputsProps {
 
 export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
   const { profile, assumptions, expenses, finances, projections } = content
+  const scheduledFlows = expenses.scheduledFlows ?? []
   const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
   const isGerman = content.locale !== 'en'
 
@@ -101,6 +102,26 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
         value: `${fmtPercent(assumptions.dsCeilingRate, 1, locale)} / ${fmtPercent(assumptions.dsFloorRate, 1, locale)}`,
       }
     )
+  }
+
+  const incomeWord = isGerman ? 'Einnahme' : 'Income'
+  const expenseWord = isGerman ? 'Ausgabe' : 'Expense'
+  const frequencyLabel = (frequency: ReportCashFlow['frequency']) => {
+    if (frequency === 'once') return isGerman ? 'einmalig' : 'one-off'
+    if (frequency === 'annual') return isGerman ? 'jährlich' : 'annual'
+    return isGerman ? 'monatlich' : 'monthly'
+  }
+  /** Ages the flow is active for — open ends read as "from"/"until". */
+  const periodLabel = (flow: ReportCashFlow) => {
+    const from = flow.startAge
+    const to = flow.frequency === 'once' ? from : flow.endAge
+    if (flow.frequency === 'once') {
+      return from === undefined ? '–' : `${isGerman ? 'Alter' : 'age'} ${from}`
+    }
+    if (from === undefined && to === undefined) return isGerman ? 'gesamter Plan' : 'whole plan'
+    if (from !== undefined && to !== undefined) return `${from}–${to}`
+    if (from !== undefined) return `${isGerman ? 'ab' : 'from'} ${from}`
+    return `${isGerman ? 'bis' : 'until'} ${to}`
   }
 
   const bridgeYears = Math.max(0, profile.person.pensionAge - profile.person.retireAge)
@@ -296,6 +317,61 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
           ))}
         </Table>
       </View>
+
+      {/* Scheduled cash flows — only printed when the plan actually has some */}
+      {scheduledFlows.length > 0 && (
+        <View style={[styles.card, { marginBottom: 12 }]}>
+          <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
+            {isGerman ? 'Geplante Zahlungsströme' : 'Scheduled Cash Flows'}
+          </Text>
+          <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 4 }}>
+            {isGerman
+              ? 'Zusätzlich zu den laufenden Ausgaben oben, in heutigen Beträgen. Sie wirken nur in ihrem Zeitfenster.'
+              : 'On top of the recurring spending above, in today’s amounts. Each applies only inside its own age window.'}
+          </Text>
+          <Table>
+            <TableRow header>
+              <TableCell header width="34%">
+                {isGerman ? 'Position' : 'Item'}
+              </TableCell>
+              <TableCell header width="20%">
+                {isGerman ? 'Rhythmus' : 'Frequency'}
+              </TableCell>
+              <TableCell header width="20%">
+                {isGerman ? 'Zeitraum' : 'Period'}
+              </TableCell>
+              <TableCell header width="26%" align="right">
+                {isGerman ? 'Betrag' : 'Amount'}
+              </TableCell>
+            </TableRow>
+            {scheduledFlows.map((flow, index) => (
+              <TableRow key={flow.id} alt={index % 2 === 1}>
+                <TableCell width="34%">
+                  <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
+                    {flow.name || (flow.kind === 'income' ? incomeWord : expenseWord)}
+                  </Text>
+                </TableCell>
+                <TableCell width="20%">{frequencyLabel(flow.frequency)}</TableCell>
+                <TableCell width="20%">{periodLabel(flow)}</TableCell>
+                <TableCell width="26%" align="right">
+                  <Text
+                    style={{
+                      fontWeight: 600,
+                      color:
+                        flow.kind === 'income'
+                          ? tokens.colors.success[600]
+                          : tokens.colors.ink[900],
+                    }}
+                  >
+                    {`${flow.kind === 'income' ? '+' : '−'}${fmtCurrency(flow.amount, locale)}`}
+                    {flow.inflationLinked === false ? (isGerman ? ' (nominal)' : ' (nominal)') : ''}
+                  </Text>
+                </TableCell>
+              </TableRow>
+            ))}
+          </Table>
+        </View>
+      )}
 
       {/* Derived figures — the numbers the assumptions imply */}
       <View style={{ flexDirection: 'row', marginBottom: 12 }}>

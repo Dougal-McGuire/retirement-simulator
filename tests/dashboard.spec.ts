@@ -181,7 +181,9 @@ test.describe('simulation dashboard', () => {
     await expect(page.getByTestId('plan-switcher')).toContainText('Base plan')
     const savingsPerPlan = await page.evaluate(() => {
       const parsed = JSON.parse(window.localStorage.getItem('retirement-simulator-store') as string)
-      return parsed.state.plans.map((plan: { params: { annualSavings: number } }) => plan.params.annualSavings)
+      return parsed.state.plans.map(
+        (plan: { params: { annualSavings: number } }) => plan.params.annualSavings
+      )
     })
     // The abandoned edit never reached either stored plan.
     expect(savingsPerPlan.every((value: number) => value === 48000)).toBe(true)
@@ -262,5 +264,116 @@ test.describe('simulation dashboard', () => {
     await page.goto('/en/simulation')
 
     await expect(page.getByText(/assets run out at age/i)).toBeVisible({ timeout: 20000 })
+  })
+})
+
+test.describe('market model and glide path', () => {
+  test('switches to a historical backtest and freezes the inputs it ignores', async ({ page }) => {
+    await page.goto('/en/simulation')
+    await page.getByTestId('tab-plan').click()
+
+    await page.getByTestId('market-model-historical').click()
+    await expect(page.getByTestId('market-model-historical-notice')).toContainText(
+      '125 start years'
+    )
+
+    // The assumptions the record supplies are visible but inert.
+    await expect(page.locator('#editor-averageROI')).toHaveAttribute('aria-disabled', 'true')
+    await expect(page.locator('#editor-simulationRuns')).toBeDisabled()
+
+    const badge = page.getByTestId('market-model-badge')
+    await expect(badge).toBeVisible()
+    await expect(badge).toContainText('125 paths')
+
+    // Deterministic: the same plan replayed gives exactly the same number.
+    const readRate = () =>
+      page.evaluate(() => {
+        const raw = window.localStorage.getItem('retirement-simulator-store')
+        return raw ? (JSON.parse(raw).state?.results?.successRate ?? null) : null
+      })
+
+    await expect.poll(readRate).not.toBeNull()
+    const first = await readRate()
+    await page.reload()
+    await expect(page.getByTestId('market-model-badge')).toBeVisible()
+    await expect.poll(readRate).toBe(first)
+  })
+
+  test('narrows the outcome band when the glide path is switched on', async ({ page }) => {
+    await page.goto('/en/simulation')
+    await page.getByTestId('tab-plan').click()
+
+    const spread = () =>
+      page.evaluate(() => {
+        const raw = window.localStorage.getItem('retirement-simulator-store')
+        if (!raw) return null
+        const results = JSON.parse(raw).state?.results
+        if (!results) return null
+        const last = results.ages.length - 1
+        return Math.round(results.assetPercentiles.p90[last] - results.assetPercentiles.p10[last])
+      })
+
+    await expect.poll(spread).not.toBeNull()
+    const allEquity = (await spread()) as number
+
+    await page.getByTestId('glide-path-toggle').click()
+    await expect(page.getByTestId('equity-glide-sparkline')).toBeVisible()
+    await expect.poll(spread).toBeLessThan(allEquity)
+  })
+})
+
+
+test.describe('unified cash flows', () => {
+  test('adds a windowed income and a one-off expense, and moves the plan', async ({ page }) => {
+    await page.goto('/en/simulation')
+    await page.getByTestId('tab-plan').click()
+
+    const card = page.locator('#plan-editor-expenses')
+    await expect(card.getByTestId('cashflow-timeline')).toBeVisible()
+
+    // A rental income that runs from 62 to 70 — the thing the old expenses-only
+    // editor could not express at all.
+    await card.getByTestId('cashflow-kind-income').click()
+    await card.locator('#cashflow-name-new').fill('Rental income')
+    await card.locator('#cashflow-amount-new').fill('900')
+    await card.locator('#cashflow-start-new').fill('62')
+    await card.locator('#cashflow-end-new').fill('70')
+    await card.getByTestId('cashflow-add').click()
+
+    await expect(card.getByRole('cell', { name: /Income Rental income/i })).toBeVisible()
+    // Uppercased by CSS, so match case-insensitively.
+    await expect(card.getByRole('cell', { name: /age 62.70/i })).toBeVisible()
+
+    // ...and a single roof repair at 64.
+    await card.getByTestId('cashflow-kind-expense').click()
+    await card.locator('#cashflow-name-new').fill('Roof renovation')
+    await card.locator('#cashflow-amount-new').fill('30000')
+    await card.locator('#cashflow-frequency-new').click()
+    await page.getByRole('option', { name: 'One-off' }).click()
+    await card.locator('#cashflow-start-new').fill('64')
+    await card.getByTestId('cashflow-add').click()
+
+    await expect(card.getByRole('cell', { name: /at age 64/i })).toBeVisible()
+
+    const stored = () =>
+      page.evaluate(() => {
+        const raw = window.localStorage.getItem('retirement-simulator-store')
+        if (!raw) return null
+        const parsed = JSON.parse(raw)
+        const params = parsed.state?.draftParams ?? parsed.state?.params
+        if (!params) return null
+        return {
+          version: parsed.version,
+          flows: params.cashFlows?.length ?? 0,
+          // The legacy projections must stay in sync — every older consumer
+          // (report, insights, saved plans) still reads them.
+          expenses: params.customExpenses?.length ?? 0,
+          windowed: (params.cashFlows ?? []).filter(
+            (flow: { startAge?: number }) => flow.startAge !== undefined
+          ).length,
+        }
+      })
+
+    await expect.poll(stored).toEqual({ version: 3, flows: 10, expenses: 8, windowed: 2 })
   })
 })
