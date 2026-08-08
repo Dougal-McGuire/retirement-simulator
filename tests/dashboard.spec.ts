@@ -488,7 +488,9 @@ test.describe('onboarding, overlays and template ergonomics', () => {
 
     // The new row opens straight into its form with the age window focused —
     // "80–90" is a guess about this person, not an answer.
-    const startField = page.locator('input[id^="cashflow-start-"]').last()
+    // The edit row's field is keyed by the new flow's id; `cashflow-start-new`
+    // belongs to the always-present add form further down.
+    const startField = page.locator('input[id^="cashflow-start-flow-"]')
     await expect(startField).toBeFocused()
     await expect(startField).toHaveValue(/\d+/)
 
