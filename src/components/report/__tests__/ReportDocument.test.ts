@@ -55,6 +55,12 @@ const englishReportContent = {
     dsCeilingRate: 0.05,
     dsFloorRate: -0.025,
     capitalGainsTax: 26.25,
+    taxAllowance: 1000,
+    householdType: 'single',
+    equityFundExemption: 0.3,
+    pensionTaxablePortion: 0.83,
+    pensionTaxRate: 0.18,
+    legacyTargetReal: 0,
     simulationRuns: 100,
   },
   projections: {

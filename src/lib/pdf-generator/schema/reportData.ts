@@ -98,6 +98,17 @@ export const AssumptionsSchema = z.object({
       }
       return Math.min(val, 80)
     }),
+  /**
+   * German tax detail and the bequest goal. Defaulted to the neutral values so
+   * a report generated before they existed still validates as the flat model
+   * it was actually run with.
+   */
+  taxAllowanceAnnual: z.number().min(0).max(100_000).default(0),
+  householdType: z.enum(['single', 'couple']).default('single'),
+  equityFundExemption: z.number().min(0).max(1).default(0),
+  pensionTaxablePortion: z.number().min(0).max(1).default(0),
+  pensionTaxRate: z.number().min(0).max(1).default(0),
+  legacyTargetReal: z.number().min(0).default(0),
   mcRuns: z.number().min(100).max(100_000),
 })
 

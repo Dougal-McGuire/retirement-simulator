@@ -16,7 +16,14 @@ import {
  * in, and the UI decides how to format them for the active locale.
  */
 
-export type AssumptionGroupKey = 'timeline' | 'income' | 'spending' | 'market' | 'strategy'
+export type AssumptionGroupKey =
+  | 'timeline'
+  | 'income'
+  | 'spending'
+  | 'market'
+  | 'tax'
+  | 'strategy'
+  | 'goals'
 
 export type AssumptionKind =
   | 'age'
@@ -28,6 +35,7 @@ export type AssumptionKind =
   | 'strategy'
   | 'marketModel'
   | 'toggle'
+  | 'householdType'
 
 export interface AssumptionRow {
   /** Translation key suffix under `plans.comparison.assumptions.rows`. */
@@ -45,7 +53,15 @@ export interface AssumptionGroup {
   rows: AssumptionRow[]
 }
 
-const groupOrder: AssumptionGroupKey[] = ['timeline', 'income', 'spending', 'market', 'strategy']
+const groupOrder: AssumptionGroupKey[] = [
+  'timeline',
+  'income',
+  'spending',
+  'market',
+  'tax',
+  'strategy',
+  'goals',
+]
 
 /** Rates are stored as fractions; compare them with a tolerance to avoid float noise. */
 const EPSILON = 1e-9
@@ -188,12 +204,6 @@ const rowSpecs: RowSpec[] = [
     read: (p) => p.inflationVolatility,
     optional: true,
   },
-  {
-    key: 'capitalGainsTax',
-    group: 'market',
-    kind: 'percentPoints',
-    read: (p) => p.capitalGainsTax,
-  },
   { key: 'marketModel', group: 'market', kind: 'marketModel', read: (p) => p.marketModel },
   {
     key: 'glidePathEnabled',
@@ -215,6 +225,47 @@ const rowSpecs: RowSpec[] = [
   },
   { key: 'bondReturn', group: 'market', kind: 'rate', read: (p) => p.bondReturn },
   { key: 'bondVolatility', group: 'market', kind: 'rate', read: (p) => p.bondVolatility },
+
+  // German taxation. Kept in its own group: five rows about Abgeltungsteuer
+  // buried between volatility and the withdrawal rule is how nobody notices
+  // that one plan is taxed as a couple.
+  {
+    key: 'capitalGainsTax',
+    group: 'tax',
+    kind: 'percentPoints',
+    read: (p) => p.capitalGainsTax,
+  },
+  {
+    key: 'taxAllowanceAnnual',
+    group: 'tax',
+    kind: 'currency',
+    // The doubled figure, because that is the number the engine shelters with.
+    read: (p) => (p.householdType === 'couple' ? p.taxAllowanceAnnual * 2 : p.taxAllowanceAnnual),
+  },
+  {
+    key: 'householdType',
+    group: 'tax',
+    kind: 'householdType',
+    read: (p) => p.householdType,
+  },
+  {
+    key: 'equityFundExemption',
+    group: 'tax',
+    kind: 'rate',
+    read: (p) => p.equityFundExemption,
+  },
+  {
+    key: 'pensionTaxablePortion',
+    group: 'tax',
+    kind: 'rate',
+    read: (p) => p.pensionTaxablePortion,
+  },
+  {
+    key: 'pensionTaxRate',
+    group: 'tax',
+    kind: 'rate',
+    read: (p) => p.pensionTaxRate,
+  },
 
   {
     key: 'withdrawalStrategy',
@@ -243,7 +294,20 @@ const rowSpecs: RowSpec[] = [
     read: (p) => p.dsFloorRate,
     optional: true,
   },
+
+  // Only shown once someone actually wants to leave something behind: a row
+  // reading "€0" would suggest the plan has a goal it does not have.
+  {
+    key: 'legacyTargetReal',
+    group: 'goals',
+    kind: 'currency',
+    read: (p) => p.legacyTargetReal,
+    optional: true,
+  },
 ]
+
+/** Rows that mean nothing unless at least one compared plan draws a pension. */
+const pensionTaxRowKeys = new Set(['pensionTaxablePortion', 'pensionTaxRate'])
 
 /** Rows that are noise unless at least one compared plan runs a glide path. */
 const glidePathRowKeys = new Set([
@@ -276,11 +340,14 @@ export function buildAssumptionRows(paramsList: SimulationParams[]): AssumptionR
   // Same for the market model: naming it is only interesting once a plan has
   // left the default Monte Carlo behind.
   const usesHistory = paramsList.some((params) => params.marketModel === 'historical')
+  // Pension taxation is only a fact about plans that have a pension.
+  const hasPension = paramsList.some((params) => params.monthlyPension > 0)
 
   return rowSpecs
     .filter((spec) => (spec.key === 'marketModel' ? usesHistory : true))
     .filter((spec) => (spec.key.startsWith('ds') ? usesDynamicSpending : true))
     .filter((spec) => (glidePathRowKeys.has(spec.key) ? usesGlidePath : true))
+    .filter((spec) => (pensionTaxRowKeys.has(spec.key) ? hasPension : true))
     .map((spec) => {
       const values = paramsList.map((params) => spec.read(params))
       const differs = valuesDiffer(values)

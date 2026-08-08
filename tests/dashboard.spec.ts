@@ -322,7 +322,6 @@ test.describe('market model and glide path', () => {
   })
 })
 
-
 test.describe('unified cash flows', () => {
   test('adds a windowed income and a one-off expense, and moves the plan', async ({ page }) => {
     await page.goto('/en/simulation')
@@ -375,5 +374,53 @@ test.describe('unified cash flows', () => {
       })
 
     await expect.poll(stored).toEqual({ version: 3, flows: 10, expenses: 8, windowed: 2 })
+  })
+})
+
+test.describe('German taxes and the legacy goal', () => {
+  test('edits German tax assumptions and reports the resulting tax drag', async ({ page }) => {
+    await page.goto('/en/simulation')
+    await page.getByTestId('tab-plan').click()
+
+    const tax = page.getByTestId('tax-block')
+    await expect(tax).toBeVisible()
+    // The real terms, not a generic "tax rate" euphemism.
+    await expect(tax).toContainText('Sparerpauschbetrag')
+    await expect(tax).toContainText('Teilfreistellung')
+    await expect(tax).toContainText('Abgeltungsteuer')
+
+    // The allowance readout follows the assessment switch.
+    await expect(tax).toContainText('€1,000 per year')
+    await page.getByTestId('household-type-couple').click()
+    await expect(tax).toContainText('€2,000 per year')
+
+    // The drag is measured by the engine, so it has to be a real percentage.
+    await expect(page.getByTestId('tax-drag-readout')).toContainText(/≈\d/)
+  })
+
+  test('scores a legacy goal separately from plain survival', async ({ page }) => {
+    await page.goto('/en/simulation')
+
+    const card = page.getByTestId('legacy-goal-card')
+    await expect(card).toBeVisible()
+    // No goal: the two rates agree and the card says the goal is off.
+    await expect(page.getByTestId('legacy-goal-disabled-hint')).toBeVisible()
+    const funded = card.getByTestId('legacy-goal-funded-value')
+    const survives = card.getByTestId('legacy-goal-survives-value')
+    await expect
+      .poll(async () => (await funded.innerText()) === (await survives.innerText()))
+      .toBe(true)
+
+    const target = page.locator('#editor-legacyTargetReal')
+    await target.fill('300000')
+    await target.blur()
+
+    // The goal is a strictly harder bar, and the gauge caption says so.
+    await expect(page.getByTestId('legacy-goal-disabled-hint')).toHaveCount(0)
+    await expect(card).toContainText(/above target|below target|Right on target/)
+    await expect(page.getByTestId('hero-depletion-detail')).toBeVisible()
+    await expect
+      .poll(async () => (await funded.innerText()) === (await survives.innerText()))
+      .toBe(false)
   })
 })

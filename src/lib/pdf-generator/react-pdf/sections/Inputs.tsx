@@ -3,12 +3,7 @@ import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
 import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
 import type { ReportCashFlow, ReportContent } from '@/lib/pdf-generator/reportTypes'
-import {
-  fmtCurrency,
-  fmtNumber,
-  fmtPercent,
-  fmtRatioPercent,
-} from '@/lib/pdf-generator/formatters'
+import { fmtCurrency, fmtNumber, fmtPercent, fmtRatioPercent } from '@/lib/pdf-generator/formatters'
 
 interface InputsProps {
   content: ReportContent
@@ -27,8 +22,7 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
   const retireMedian = projections.milestones.find(
     (milestone) => milestone.age === profile.person.retireAge
   )?.p50
-  const firstYearWithdrawalRate =
-    retireMedian && retireMedian > 0 ? baseSpend / retireMedian : null
+  const firstYearWithdrawalRate = retireMedian && retireMedian > 0 ? baseSpend / retireMedian : null
   const withdrawalStrategyLabel =
     assumptions.withdrawalStrategy === 'vanguardDynamic'
       ? 'Vanguard Dynamic Spending'
@@ -82,7 +76,7 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
       value: fmtPercent(assumptions.inflationVolatility, 1, locale),
     },
     {
-      label: isGerman ? 'Kapitalertragssteuer' : 'Capital Gains Tax',
+      label: isGerman ? 'Abgeltungsteuer' : 'Capital Gains Tax',
       value: fmtPercent(assumptions.capitalGainsTax / 100, 1, locale),
     },
     {
@@ -90,6 +84,43 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
       value: withdrawalStrategyLabel,
     },
   ]
+
+  // German tax detail, only when the plan actually uses it — a report for a
+  // plan run on the neutral defaults should not sprout four zero rows.
+  if (assumptions.taxAllowance > 0) {
+    marketRows.push({
+      label: isGerman ? 'Sparerpauschbetrag' : 'Tax-free allowance (Sparerpauschbetrag)',
+      value: `${fmtCurrency(assumptions.taxAllowance, locale)} (${
+        assumptions.householdType === 'couple'
+          ? isGerman
+            ? 'zusammenveranlagt'
+            : 'jointly assessed'
+          : isGerman
+            ? 'einzelveranlagt'
+            : 'single'
+      })`,
+    })
+  }
+  if (assumptions.equityFundExemption > 0) {
+    marketRows.push({
+      label: isGerman ? 'Teilfreistellung' : 'Partial exemption (Teilfreistellung)',
+      value: fmtPercent(assumptions.equityFundExemption, 0, locale),
+    })
+  }
+  if (assumptions.pensionTaxablePortion > 0 && assumptions.pensionTaxRate > 0) {
+    marketRows.push({
+      label: isGerman ? 'Rentenbesteuerung' : 'Pension taxation',
+      value: `${fmtPercent(assumptions.pensionTaxablePortion, 0, locale)} ${
+        isGerman ? 'Besteuerungsanteil' : 'taxable'
+      } × ${fmtPercent(assumptions.pensionTaxRate, 0, locale)}`,
+    })
+  }
+  if (assumptions.legacyTargetReal > 0) {
+    marketRows.push({
+      label: isGerman ? 'Nachlassziel (heutige Kaufkraft)' : "Legacy goal (today's euros)",
+      value: fmtCurrency(assumptions.legacyTargetReal, locale),
+    })
+  }
 
   if (assumptions.withdrawalStrategy === 'vanguardDynamic') {
     marketRows.push(
@@ -259,7 +290,9 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
               <TableRow key={row.label} alt={index % 2 === 1}>
                 <TableCell width="58%">{row.label}</TableCell>
                 <TableCell width="42%" align="right">
-                  <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>{row.value}</Text>
+                  <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
+                    {row.value}
+                  </Text>
                 </TableCell>
               </TableRow>
             ))}

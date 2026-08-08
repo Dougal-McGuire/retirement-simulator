@@ -712,8 +712,8 @@
         }
       },
       "capitalGainsTax": {
-        "label": "Kapitalertragsteuer",
-        "tooltip": "Steuersatz auf Veräußerungsgewinne beim Verkauf von Anlagen. In Deutschland ca. 26,375%."
+        "label": "Abgeltungsteuer",
+        "tooltip": "Pauschaler Steuersatz auf realisierte Kursgewinne inkl. Solidaritätszuschlag — für die meisten Anleger 26,375 %. Besteuert wird nur der Gewinnanteil eines Verkaufs."
       },
       "averageROI": {
         "label": "Durchschnittliche Rendite",
@@ -794,6 +794,61 @@
         "equitySleeveLabel": "Aktien · {label}",
         "correlationNote": "Beide Bausteine werden ohne Korrelation gemischt: Die Schwankung ergibt sich als √(w²σe² + (1−w)²σb²). Die tatsächliche Korrelation zwischen Aktien und Anleihen schwankt um null, ein gemischtes Portfolio wirkt hier also eher etwas ruhiger als in der Praxis.",
         "historicalNote": "Im historischen Modus bleiben diese Annahmen wirkungslos: Die Quote wird auf die tatsächlichen Aktien- und Anleiherenditen jedes Jahres angewendet."
+      },
+      "tax": {
+        "title": "Steuern",
+        "description": "Wie Abgeltungsteuer und Rentenbesteuerung an diesem Plan zehren.",
+        "allowance": {
+          "label": "Sparerpauschbetrag",
+          "help": "Kapitalerträge bis zu diesem Betrag bleiben pro Jahr steuerfrei. 1.000 € bei Einzelveranlagung, 2.000 € bei Zusammenveranlagung. 0 schaltet ihn ab.",
+          "effective": "Angesetzt: {amount} pro Jahr"
+        },
+        "household": {
+          "label": "Veranlagung",
+          "options": {
+            "single": {
+              "label": "Einzeln",
+              "description": "Einfacher Pauschbetrag."
+            },
+            "couple": {
+              "label": "Zusammen",
+              "description": "Zusammenveranlagt — Pauschbetrag verdoppelt sich."
+            }
+          }
+        },
+        "exemption": {
+          "label": "Teilfreistellung",
+          "help": "Anteil des Fondsgewinns, der von der Abgeltungsteuer freigestellt ist: 30 % bei Aktienfonds, 15 % bei Mischfonds, 0 % ohne Teilfreistellung."
+        },
+        "pension": {
+          "summary": "Rentenbesteuerung (erweitert)",
+          "taxablePortion": {
+            "label": "Besteuerungsanteil",
+            "help": "Anteil der gesetzlichen Rente, der als steuerpflichtiges Einkommen zählt. 83 % bei Rentenbeginn 2026, steigend Richtung 100 %."
+          },
+          "rate": {
+            "label": "Einkommensteuersatz auf die Rente",
+            "help": "Ihr effektiver Einkommensteuersatz auf den steuerpflichtigen Rententeil."
+          },
+          "net": "{gross} brutto → {net} netto pro Monat ({rate} der Rente)"
+        },
+        "drag": {
+          "label": "Effektive Steuerlast",
+          "value": "≈{rate} aller Entnahmen dieses Plans",
+          "hint": "Median über alle simulierten Verläufe, nach Pauschbetrag und Teilfreistellung.",
+          "empty": "Dieser Plan muss nie verkaufen — es fällt keine Abgeltungsteuer an."
+        }
+      },
+      "householdType": {
+        "label": "Veranlagung",
+        "options": {
+          "single": {
+            "label": "Einzelveranlagung"
+          },
+          "couple": {
+            "label": "Zusammenveranlagung"
+          }
+        }
       }
     },
     "saved": {
@@ -847,7 +902,9 @@
       "label": "Erfolgsquote",
       "detail": "{runs} Simulationsläufe",
       "caption": "Anteil der simulierten Verläufe, in denen das Vermögen bis zum Planende reicht.",
-      "detailHistorical": "{runs} historische Startjahre"
+      "detailHistorical": "{runs} historische Startjahre",
+      "captionLegacy": "Verläufe, in denen das Geld bis zum Planende reicht UND mindestens {amount} (heutige Kaufkraft) übrig bleiben.",
+      "depletionDetail": "Das Geld reicht in {rate} der Verläufe"
     },
     "lasts": {
       "label": "Vermögen reicht",
@@ -1961,7 +2018,9 @@
           "income": "Vermögen & Einkommen",
           "spending": "Ausgaben",
           "market": "Marktannahmen",
-          "strategy": "Entnahmestrategie"
+          "tax": "Steuern",
+          "strategy": "Entnahmestrategie",
+          "goals": "Ziele"
         },
         "rows": {
           "currentAge": "Aktuelles Alter",
@@ -1981,7 +2040,7 @@
           "roiVolatility": "Rendite-Volatilität",
           "averageInflation": "Durchschnittliche Inflation",
           "inflationVolatility": "Inflations-Volatilität",
-          "capitalGainsTax": "Kapitalertragsteuer",
+          "capitalGainsTax": "Abgeltungsteuer",
           "withdrawalStrategy": "Entnahmestrategie",
           "dsWithdrawalRate": "Anfängliche Entnahmerate",
           "dsCeilingRate": "Ausgaben-Obergrenze",
@@ -1994,7 +2053,13 @@
           "bondVolatility": "Anleihe-Schwankung",
           "scheduledIncome": "Geplante Einnahmen (gesamt)",
           "scheduledExpenses": "Geplante Ausgaben (gesamt)",
-          "scheduledItems": "Geplante Positionen"
+          "scheduledItems": "Geplante Positionen",
+          "taxAllowanceAnnual": "Sparerpauschbetrag",
+          "householdType": "Veranlagung",
+          "equityFundExemption": "Teilfreistellung",
+          "pensionTaxablePortion": "Besteuerungsanteil der Rente",
+          "pensionTaxRate": "Einkommensteuersatz auf die Rente",
+          "legacyTargetReal": "Nachlassziel (heutige Kaufkraft)"
         },
         "differsCount": "{count, plural, one {# Abweichung} other {# Abweichungen}}"
       },
@@ -2052,7 +2117,7 @@
       },
       "market": {
         "title": "Markt & Regeln",
-        "description": "Renditeannahmen, Steuern und die Entnahmeregel."
+        "description": "Renditeannahmen, deutsche Steuern und die Entnahmeregel."
       },
       "cashFlows": {
         "title": "Zahlungsströme",
@@ -2084,7 +2149,24 @@
       "undone": "Zurücksetzen rückgängig gemacht"
     },
     "editAria": "{field} bearbeiten",
-    "jump": "Zu {group} springen"
+    "jump": "Zu {group} springen",
+    "goals": {
+      "title": "Nachlassziel",
+      "description": "Was am Planende noch übrig sein soll — in heutiger Kaufkraft.",
+      "targetLabel": "Nachlassziel",
+      "targetHelp": "In heutiger Kaufkraft. 0 bedeutet: Der Plan muss nur reichen, übrig bleiben muss nichts.",
+      "disabled": "Kein Nachlassziel: Ein Verlauf gilt als Erfolg, solange das Geld reicht.",
+      "funded": "Erfüllungswahrscheinlichkeit",
+      "fundedHint": "Reicht bis zum Ende und erreicht das Ziel",
+      "survives": "Geld reicht überhaupt",
+      "survivesHint": "Ohne Nachlassziel gerechnet",
+      "medianTerminal": "Median mit {age}",
+      "surplus": "{amount} über dem Ziel",
+      "shortfall": "{amount} unter dem Ziel",
+      "onTarget": "Genau auf Ziel",
+      "notAvailable": "—",
+      "fundedHintNoGoal": "Kein Ziel gesetzt — reines Durchhalten"
+    }
   },
   "quickAdjust": {
     "title": "Schnelles Was-wäre-wenn",

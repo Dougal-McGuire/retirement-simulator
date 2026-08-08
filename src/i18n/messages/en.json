@@ -712,8 +712,8 @@
         }
       },
       "capitalGainsTax": {
-        "label": "Capital Gains Tax",
-        "tooltip": "Tax rate on investment gains when selling to cover expenses. German rate: 26.375%. This affects your net withdrawal rates."
+        "label": "Abgeltungsteuer (capital gains tax)",
+        "tooltip": "German flat tax on realised investment gains, including solidarity surcharge — 26.375% for most savers. Only the gains portion of a sale is taxed."
       },
       "averageROI": {
         "label": "Average ROI",
@@ -794,6 +794,61 @@
         "equitySleeveLabel": "Equities · {label}",
         "correlationNote": "The two sleeves are blended assuming zero correlation between equities and bonds: the blended volatility is √(w²σe² + (1−w)²σb²). Real stock/bond correlation swings either side of zero, so a blended plan may look slightly calmer here than it would in practice.",
         "historicalNote": "In historical mode these assumptions are ignored: the allocation is applied to each year’s actual equity and bond returns."
+      },
+      "tax": {
+        "title": "Taxes",
+        "description": "How German investment and pension taxation eats into this plan.",
+        "allowance": {
+          "label": "Sparerpauschbetrag (tax-free allowance)",
+          "help": "Investment gains up to this amount are tax-free each year. €1,000 for a single filer, €2,000 for a jointly assessed couple. Set 0 to switch it off.",
+          "effective": "Applied: {amount} per year"
+        },
+        "household": {
+          "label": "Tax assessment",
+          "options": {
+            "single": {
+              "label": "Single",
+              "description": "One allowance."
+            },
+            "couple": {
+              "label": "Couple",
+              "description": "Jointly assessed — allowance doubles."
+            }
+          }
+        },
+        "exemption": {
+          "label": "Teilfreistellung (partial exemption)",
+          "help": "Share of an equity-fund gain that is exempt from Abgeltungsteuer: 30% for an equity fund, 15% for a mixed one, 0% without the exemption."
+        },
+        "pension": {
+          "summary": "Pension taxation (advanced)",
+          "taxablePortion": {
+            "label": "Besteuerungsanteil (taxable share)",
+            "help": "Share of the statutory pension that counts as taxable income for your cohort. 83% for a 2026 start, rising towards 100%."
+          },
+          "rate": {
+            "label": "Income tax rate on the pension",
+            "help": "Your effective income-tax rate on the taxable part of the pension."
+          },
+          "net": "{gross} gross → {net} net per month ({rate} of the pension)"
+        },
+        "drag": {
+          "label": "Effective tax drag",
+          "value": "≈{rate} of everything this plan withdraws",
+          "hint": "Median across all simulated futures, after allowance and Teilfreistellung.",
+          "empty": "This plan never has to sell anything, so no capital gains tax is due."
+        }
+      },
+      "householdType": {
+        "label": "Tax assessment",
+        "options": {
+          "single": {
+            "label": "Single"
+          },
+          "couple": {
+            "label": "Couple (jointly assessed)"
+          }
+        }
       }
     },
     "saved": {
@@ -847,7 +902,9 @@
       "label": "Success rate",
       "detail": "{runs} simulation runs",
       "caption": "Share of simulated futures in which your money lasts through the whole plan.",
-      "detailHistorical": "{runs} historical start years"
+      "detailHistorical": "{runs} historical start years",
+      "captionLegacy": "Futures where the money lasts the whole plan AND leaves at least {amount} in today’s euros.",
+      "depletionDetail": "Money simply lasts in {rate} of futures"
     },
     "lasts": {
       "label": "Assets last",
@@ -1961,7 +2018,9 @@
           "income": "Assets & income",
           "spending": "Spending",
           "market": "Market assumptions",
-          "strategy": "Withdrawal strategy"
+          "tax": "Taxes",
+          "strategy": "Withdrawal strategy",
+          "goals": "Goals"
         },
         "rows": {
           "currentAge": "Current age",
@@ -1981,7 +2040,7 @@
           "roiVolatility": "Return volatility",
           "averageInflation": "Average inflation",
           "inflationVolatility": "Inflation volatility",
-          "capitalGainsTax": "Capital gains tax",
+          "capitalGainsTax": "Capital gains tax (Abgeltungsteuer)",
           "withdrawalStrategy": "Withdrawal strategy",
           "dsWithdrawalRate": "Initial withdrawal rate",
           "dsCeilingRate": "Spending ceiling",
@@ -1994,7 +2053,13 @@
           "bondVolatility": "Bond volatility",
           "scheduledIncome": "Scheduled income (lifetime)",
           "scheduledExpenses": "Scheduled expenses (lifetime)",
-          "scheduledItems": "Scheduled items"
+          "scheduledItems": "Scheduled items",
+          "taxAllowanceAnnual": "Tax-free allowance (Sparerpauschbetrag)",
+          "householdType": "Tax assessment",
+          "equityFundExemption": "Partial exemption (Teilfreistellung)",
+          "pensionTaxablePortion": "Taxable share of pension",
+          "pensionTaxRate": "Income tax on pension",
+          "legacyTargetReal": "Legacy goal (today's €)"
         },
         "differsCount": "{count, plural, one {# difference} other {# differences}}"
       },
@@ -2052,7 +2117,7 @@
       },
       "market": {
         "title": "Market & rules",
-        "description": "Return assumptions, taxes and the withdrawal rule."
+        "description": "Return assumptions, German taxes and the withdrawal rule."
       },
       "cashFlows": {
         "title": "Cash flows",
@@ -2084,7 +2149,24 @@
       "undone": "Reset undone"
     },
     "editAria": "Edit {field}",
-    "jump": "Jump to {group}"
+    "jump": "Jump to {group}",
+    "goals": {
+      "title": "Legacy goal",
+      "description": "What this plan should still be worth at the end, in today's euros.",
+      "targetLabel": "Legacy target",
+      "targetHelp": "In today's purchasing power. 0 means the plan only has to last — nothing has to be left over.",
+      "disabled": "No legacy goal: a run succeeds as long as the money lasts.",
+      "funded": "Funded probability",
+      "fundedHint": "Never depletes and clears the target",
+      "survives": "Money simply lasts",
+      "survivesHint": "Ignoring the legacy goal",
+      "medianTerminal": "Median left at {age}",
+      "surplus": "{amount} above target",
+      "shortfall": "{amount} below target",
+      "onTarget": "Right on target",
+      "notAvailable": "—",
+      "fundedHintNoGoal": "No goal set — this is plain survival"
+    }
   },
   "quickAdjust": {
     "title": "Quick what-if",

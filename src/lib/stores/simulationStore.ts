@@ -11,6 +11,7 @@ import {
   CustomExpense,
   isWithdrawalStrategy,
   isMarketModel,
+  isHouseholdType,
   type Plan,
 } from '@/types'
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
@@ -61,6 +62,7 @@ type NumericParamKey = keyof Omit<
   | 'withdrawalStrategy'
   | 'marketModel'
   | 'glidePathEnabled'
+  | 'householdType'
 >
 
 type PersistedParams = Partial<Record<NumericParamKey, unknown>> & {
@@ -72,6 +74,7 @@ type PersistedParams = Partial<Record<NumericParamKey, unknown>> & {
   withdrawalStrategy?: unknown
   marketModel?: unknown
   glidePathEnabled?: unknown
+  householdType?: unknown
 }
 
 const numericParamKeys = [
@@ -88,6 +91,11 @@ const numericParamKeys = [
   'averageInflation',
   'inflationVolatility',
   'capitalGainsTax',
+  'taxAllowanceAnnual',
+  'equityFundExemption',
+  'pensionTaxablePortion',
+  'pensionTaxRate',
+  'legacyTargetReal',
   'equityAllocationStart',
   'equityAllocationEnd',
   'bondReturn',
@@ -130,6 +138,9 @@ const sanitizeWithdrawalStrategy = (strategy: unknown): SimulationParams['withdr
 
 const sanitizeMarketModel = (model: unknown): SimulationParams['marketModel'] =>
   isMarketModel(model) ? model : DEFAULT_PARAMS.marketModel
+
+const sanitizeHouseholdType = (value: unknown): SimulationParams['householdType'] =>
+  isHouseholdType(value) ? value : DEFAULT_PARAMS.householdType
 
 /** Persisted booleans arrive as `true`/`false`, `"true"`/`"false"` or nothing. */
 const sanitizeBoolean = (value: unknown, fallback: boolean): boolean => {
@@ -256,6 +267,7 @@ export const normalizePersistedParams = (persistedParams: unknown): SimulationPa
     withdrawalStrategy: rawWithdrawalStrategy,
     marketModel: rawMarketModel,
     glidePathEnabled: rawGlidePathEnabled,
+    householdType: rawHouseholdType,
   } = params
   const sanitizedCustomExpenses = sanitizeCustomExpenses(rawCustomExpenses)
   const migratedCustomExpenses = migrateToCustomExpenses(params)
@@ -285,6 +297,7 @@ export const normalizePersistedParams = (persistedParams: unknown): SimulationPa
     withdrawalStrategy: sanitizeWithdrawalStrategy(rawWithdrawalStrategy),
     marketModel: sanitizeMarketModel(rawMarketModel),
     glidePathEnabled: sanitizeBoolean(rawGlidePathEnabled, DEFAULT_PARAMS.glidePathEnabled),
+    householdType: sanitizeHouseholdType(rawHouseholdType),
     cashFlows,
     oneTimeIncomes: projectOneTimeIncomes(cashFlows, currentAge),
     customExpenses: projectCustomExpenses(cashFlows),
@@ -797,9 +810,9 @@ export const useSimulationStore = create<SimulationStore>()(
       // rebuilds plans from the persisted params and saved setups (which may
       // also live in the legacy standalone storage key).
       migrate: (persistedState, version) => {
-        let state = (isRecord(persistedState) ? { ...persistedState } : {}) as Partial<
-          SimulationStore
-        >
+        let state = (
+          isRecord(persistedState) ? { ...persistedState } : {}
+        ) as Partial<SimulationStore>
         if (version < 1) {
           state = { ...state, plans: [], activePlanId: '' }
         }

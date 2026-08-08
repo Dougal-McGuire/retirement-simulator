@@ -3,7 +3,10 @@ import type { ReportData } from '@/lib/pdf-generator/schema/reportData'
 import { isLifetimeExpenseFlow } from '@/lib/simulation/cashFlows'
 import { computeBridgeAnalysis } from '@/lib/insights/bridge'
 import { computePlanHealthScore } from '@/lib/insights/planHealth'
-import { estimateRecommendationUplift, generateRecommendations } from '@/lib/insights/recommendations'
+import {
+  estimateRecommendationUplift,
+  generateRecommendations,
+} from '@/lib/insights/recommendations'
 
 export function transformToReportData(
   params: SimulationParams,
@@ -116,9 +119,7 @@ export function transformToReportData(
           frequency: flow.frequency,
           ...(flow.startAge !== undefined ? { startAge: flow.startAge } : {}),
           ...(flow.endAge !== undefined ? { endAge: flow.endAge } : {}),
-          ...(flow.inflationLinked !== undefined
-            ? { inflationLinked: flow.inflationLinked }
-            : {}),
+          ...(flow.inflationLinked !== undefined ? { inflationLinked: flow.inflationLinked } : {}),
           ...(flow.growthRate !== undefined ? { growthRate: flow.growthRate } : {}),
         })),
     },
@@ -138,6 +139,12 @@ export function transformToReportData(
       dsCeilingRate: params.dsCeilingRate,
       dsFloorRate: params.dsFloorRate,
       capGainsTaxRatePct: params.capitalGainsTax,
+      taxAllowanceAnnual: params.taxAllowanceAnnual,
+      householdType: params.householdType,
+      equityFundExemption: params.equityFundExemption,
+      pensionTaxablePortion: params.pensionTaxablePortion,
+      pensionTaxRate: params.pensionTaxRate,
+      legacyTargetReal: params.legacyTargetReal,
       mcRuns: params.simulationRuns,
     },
     projections: {

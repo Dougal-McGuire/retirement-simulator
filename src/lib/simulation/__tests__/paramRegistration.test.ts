@@ -16,6 +16,12 @@ import { normalizePersistedParams } from '@/lib/stores/simulationStore'
  * reload, or the dashboard keeps showing results computed without it. This
  * suite derives its cases from `Object.keys(DEFAULT_PARAMS)`, so a new field is
  * covered the moment it exists — no checklist to remember.
+ *
+ * Two neighbouring surfaces have their own guards rather than being checked
+ * here, because they are about presentation rather than round-tripping:
+ * `planDiff.test.ts` fails if a comparison row has no en/de label, and the
+ * report chain (`transformToReportData` → `AssumptionsSchema` → PDF Inputs)
+ * is covered by the transformer and report tests.
  */
 
 /** A value that is definitely different from the default, per field. */
@@ -34,6 +40,11 @@ const mutate = (key: keyof SimulationParams, params: SimulationParams): Simulati
       }
     case 'glidePathEnabled':
       return { ...params, glidePathEnabled: !params.glidePathEnabled }
+    case 'householdType':
+      return {
+        ...params,
+        householdType: params.householdType === 'couple' ? 'single' : 'couple',
+      }
     // `customExpenses` and `oneTimeIncomes` are projections of `cashFlows`, so a
     // mutation that only touched the projection would be reconciled away on the
     // way back in. Mutating both is what a real edit does (the store's
@@ -48,7 +59,13 @@ const mutate = (key: keyof SimulationParams, params: SimulationParams): Simulati
         ],
         cashFlows: [
           ...params.cashFlows,
-          { id: 'guard-expense', kind: 'expense', name: 'Guard', amount: 1234, frequency: 'monthly' },
+          {
+            id: 'guard-expense',
+            kind: 'expense',
+            name: 'Guard',
+            amount: 1234,
+            frequency: 'monthly',
+          },
         ],
       }
     case 'oneTimeIncomes':
@@ -57,7 +74,14 @@ const mutate = (key: keyof SimulationParams, params: SimulationParams): Simulati
         oneTimeIncomes: [...params.oneTimeIncomes, { name: 'Guard', age: 68, amount: 4321 }],
         cashFlows: [
           ...params.cashFlows,
-          { id: 'guard-income', kind: 'income', name: 'Guard', amount: 4321, frequency: 'once', startAge: 68 },
+          {
+            id: 'guard-income',
+            kind: 'income',
+            name: 'Guard',
+            amount: 4321,
+            frequency: 'once',
+            startAge: 68,
+          },
         ],
       }
     // A windowed flow has no legacy counterpart, so this case also pins down
@@ -106,6 +130,9 @@ const RATE_KEYS = new Set<keyof SimulationParams>([
   'dsWithdrawalRate',
   'dsCeilingRate',
   'dsFloorRate',
+  'equityFundExemption',
+  'pensionTaxablePortion',
+  'pensionTaxRate',
 ])
 
 const nudge = (key: keyof SimulationParams, value: number): number => {

@@ -6,6 +6,7 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { RotateCcw, Save } from 'lucide-react'
 import {
   DEFAULT_PARAMS,
+  HOUSEHOLD_TYPES,
   MARKET_MODELS,
   type SimulationParams,
   type WithdrawalStrategy,
@@ -26,7 +27,11 @@ import { CashFlowList } from '@/components/forms/fields/CashFlowList'
 import { buildCashFlowTemplates } from '@/components/forms/fields/cashFlowTemplates'
 import { toast } from '@/components/ui/toast'
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts'
-import { calculateCombinedExpenses } from '@/lib/simulation/engine'
+import {
+  annualTaxAllowance,
+  calculateCombinedExpenses,
+  netPensionFactor,
+} from '@/lib/simulation/engine'
 import {
   HISTORICAL_FIRST_YEAR,
   HISTORICAL_LAST_YEAR,
@@ -39,6 +44,7 @@ import {
   useRevertPlanDraft,
   useSavePlanDraft,
   useSimulationParams,
+  useSimulationResults,
   useUpdateParams,
 } from '@/lib/stores/simulationStore'
 import { cn } from '@/lib/utils'
@@ -195,10 +201,12 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
   const t = useTranslations('planEditor')
   const tSetup = useTranslations('setup')
   const tControls = useTranslations('parameterControls')
+  const tTax = useTranslations('parameterControls.fields.tax')
   const tPlans = useTranslations('plans')
   const format = useFormatter()
 
   const params = useSimulationParams()
+  const results = useSimulationResults()
   const updateParams = useUpdateParams()
   const activePlan = useActivePlan()
   const isDirty = usePlanIsDirty()
@@ -270,6 +278,13 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
   )?.key
 
   const retirementSliderMin = Math.max(50, Math.min(params.currentAge + 1, 69))
+
+  // Tax readouts. The drag is measured by the engine over every simulated
+  // future rather than re-derived here, so the number the editor promises is
+  // the number the projection actually paid.
+  const effectiveAllowance = annualTaxAllowance(params)
+  const pensionFactor = netPensionFactor(params)
+  const taxDrag = results?.withdrawalTaxDrag
 
   const handleReset = () => {
     const previous: SimulationParams = { ...params }
@@ -868,17 +883,6 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               maxLabel={formatPercent(0.03, 0)}
             />
             <LabeledNumberInput
-              id="editor-capitalGainsTax"
-              label={tControls('fields.capitalGainsTax.label')}
-              value={params.capitalGainsTax}
-              onChange={(value) => updateParams({ capitalGainsTax: value })}
-              helpText={tControls('fields.capitalGainsTax.tooltip')}
-              className="w-full"
-              unit="%"
-              min={0}
-              max={50}
-            />
-            <LabeledNumberInput
               id="editor-simulationRuns"
               disabled={usesHistory}
               label={tControls('fields.simulationRuns.label')}
@@ -896,6 +900,146 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               min={100}
               max={10000}
             />
+          </div>
+
+          <div
+            className="space-y-4 border-2 border-neo-black bg-background px-4 py-4"
+            data-testid="tax-block"
+          >
+            <div className="min-w-0">
+              <h4 className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                {tTax('title')}
+              </h4>
+              <p className="mt-1 max-w-md text-[0.62rem] font-medium leading-snug text-muted-foreground">
+                {tTax('description')}
+              </p>
+            </div>
+
+            <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
+              <LabeledNumberInput
+                id="editor-capitalGainsTax"
+                label={tControls('fields.capitalGainsTax.label')}
+                value={params.capitalGainsTax}
+                onChange={(value) => updateParams({ capitalGainsTax: value })}
+                helpText={tControls('fields.capitalGainsTax.tooltip')}
+                className="w-full"
+                unit="%"
+                min={0}
+                max={50}
+              />
+              <LabeledNumberInput
+                id="editor-taxAllowanceAnnual"
+                label={tTax('allowance.label')}
+                value={params.taxAllowanceAnnual}
+                onChange={(value) => updateParams({ taxAllowanceAnnual: value })}
+                helpText={tTax('allowance.help')}
+                className="w-full"
+                unit={tSetup('units.currency')}
+                groupThousands
+                min={0}
+                max={10000}
+              />
+            </div>
+
+            <div className="space-y-2" data-testid="household-type-switch">
+              <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                {tTax('household.label')}
+              </span>
+              <div className="grid gap-2 sm:grid-cols-2" role="group">
+                {HOUSEHOLD_TYPES.map((type) => {
+                  const isSelected = params.householdType === type
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      aria-pressed={isSelected}
+                      data-testid={`household-type-${type}`}
+                      onClick={() => updateParams({ householdType: type })}
+                      className={cn(
+                        'flex flex-col items-start gap-1 border-2 border-neo-black px-3 py-2 text-left transition-neo',
+                        isSelected
+                          ? 'bg-neo-blue text-neo-white shadow-neo-xs'
+                          : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
+                      )}
+                    >
+                      <span className="text-[0.66rem] font-extrabold uppercase tracking-[0.1em]">
+                        {tTax(`household.options.${type}.label`)}
+                      </span>
+                      <span className="text-[0.58rem] font-medium leading-snug opacity-90">
+                        {tTax(`household.options.${type}.description`)}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                {tTax('allowance.effective', { amount: formatCurrency(effectiveAllowance) })}
+              </p>
+            </div>
+
+            <WizardSliderField
+              id="editor-equityFundExemption"
+              label={tTax('exemption.label')}
+              value={Math.round(params.equityFundExemption * 100)}
+              onValueChange={(value) => updateParams({ equityFundExemption: value / 100 })}
+              min={0}
+              max={50}
+              step={5}
+              valueLabel={formatPercent(params.equityFundExemption, 0)}
+              minLabel={formatPercent(0, 0)}
+              maxLabel={formatPercent(0.5, 0)}
+              helpText={tTax('exemption.help')}
+            />
+
+            <details className="border-2 border-neo-black bg-neo-white px-3 py-2">
+              <summary className="cursor-pointer text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+                {tTax('pension.summary')}
+              </summary>
+              <div className="mt-3 grid gap-x-5 gap-y-6 sm:grid-cols-2">
+                <LabeledNumberInput
+                  id="editor-pensionTaxablePortion"
+                  label={tTax('pension.taxablePortion.label')}
+                  value={Number((params.pensionTaxablePortion * 100).toFixed(1))}
+                  onChange={(value) => updateParams({ pensionTaxablePortion: value / 100 })}
+                  helpText={tTax('pension.taxablePortion.help')}
+                  className="w-full"
+                  unit="%"
+                  min={0}
+                  max={100}
+                />
+                <LabeledNumberInput
+                  id="editor-pensionTaxRate"
+                  label={tTax('pension.rate.label')}
+                  value={Number((params.pensionTaxRate * 100).toFixed(1))}
+                  onChange={(value) => updateParams({ pensionTaxRate: value / 100 })}
+                  helpText={tTax('pension.rate.help')}
+                  className="w-full"
+                  unit="%"
+                  min={0}
+                  max={50}
+                />
+              </div>
+              <p
+                className="mt-3 text-[0.6rem] font-semibold leading-snug text-muted-foreground"
+                data-testid="pension-net-readout"
+              >
+                {tTax('pension.net', {
+                  gross: formatCurrency(params.monthlyPension),
+                  net: formatCurrency(params.monthlyPension * pensionFactor),
+                  rate: formatPercent(pensionFactor, 1),
+                })}
+              </p>
+            </details>
+
+            <p
+              className="border-2 border-neo-black bg-neo-yellow px-3 py-2 text-[0.62rem] font-bold leading-snug text-neo-black"
+              data-testid="tax-drag-readout"
+            >
+              <span className="uppercase tracking-[0.12em]">{tTax('drag.label')}: </span>
+              {taxDrag === undefined
+                ? tTax('drag.empty')
+                : `${tTax('drag.value', { rate: formatPercent(taxDrag, 1) })} — ${tTax('drag.hint')}`}
+            </p>
           </div>
 
           <div className="space-y-3">

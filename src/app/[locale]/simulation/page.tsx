@@ -15,6 +15,7 @@ import { PlanHealthHero } from '@/components/charts/PlanHealthHero'
 import { AssetsSection } from '@/components/charts/AssetsSection'
 import { SpendingSection } from '@/components/charts/SpendingSection'
 import { ShortfallChart } from '@/components/charts/ShortfallChart'
+import { LegacyGoalCard } from '@/components/charts/LegacyGoalCard'
 import { CashflowCard } from '@/components/charts/CashflowCard'
 import { ScenarioList } from '@/components/charts/ScenarioList'
 import { RecommendationList } from '@/components/charts/RecommendationList'
@@ -277,6 +278,7 @@ export default function SimulationPage() {
                   results && (
                     <>
                       <AssetsSection results={results} />
+                      <LegacyGoalCard params={params} results={results} />
                       <ShortfallChart results={results} />
                     </>
                   )

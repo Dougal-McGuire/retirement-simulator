@@ -129,8 +129,18 @@ describe('assumption rows', () => {
       'income',
       'spending',
       'market',
+      'tax',
       'strategy',
     ])
+    // `goals` only materialises once a plan has a bequest target.
+    const withGoal = buildAssumptionGroups([
+      withParams({ legacyTargetReal: 300000 }),
+      withParams({}),
+    ])
+    expect(withGoal.map((group) => group.key)).toContain('goals')
+    expect(
+      rowByKey(buildAssumptionRows([withParams({}), withParams({})]), 'legacyTargetReal')
+    ).toBeUndefined()
     expect(groups.every((group) => group.rows.length > 0)).toBe(true)
   })
 })
@@ -269,6 +279,8 @@ describe('assumption rows are translatable', () => {
     withParams({
       marketModel: 'historical',
       glidePathEnabled: true,
+      householdType: 'couple',
+      legacyTargetReal: 250000,
       // Also forces the optional cash-flow rows to be emitted.
       cashFlows: [
         ...DEFAULT_PARAMS.cashFlows,
@@ -281,7 +293,14 @@ describe('assumption rows are translatable', () => {
           startAge: 62,
           endAge: 70,
         },
-        { id: 'roof', kind: 'expense', name: 'Roof', amount: 30000, frequency: 'once', startAge: 64 },
+        {
+          id: 'roof',
+          kind: 'expense',
+          name: 'Roof',
+          amount: 30000,
+          frequency: 'once',
+          startAge: 64,
+        },
       ],
     }),
     withParams({}),

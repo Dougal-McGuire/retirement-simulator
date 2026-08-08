@@ -121,6 +121,7 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
     [results]
   )
   const warnings = useMemo(() => buildPlanWarnings(params, results), [params, results])
+  const legacyTarget = Math.max(0, params.legacyTargetReal ?? 0)
 
   const formatCurrency = (value: number) =>
     format.number(value, {
@@ -226,8 +227,26 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
                 {t('success.label')}
               </span>
               <p className="mt-1.5 text-xs font-medium leading-relaxed text-foreground/80">
-                {t('success.caption')}
+                {/* A bequest goal makes the gauge answer a strictly harder
+                    question, so the caption has to say so — otherwise the drop
+                    from raising the target reads as the plan getting worse. */}
+                {legacyTarget > 0
+                  ? t('success.captionLegacy', { amount: formatCurrency(legacyTarget) })
+                  : t('success.caption')}
               </p>
+              {results && legacyTarget > 0 && results.depletionSuccessRate !== undefined && (
+                <p
+                  className="mt-2 text-[0.68rem] font-semibold leading-snug text-muted-foreground"
+                  data-testid="hero-depletion-detail"
+                >
+                  {t('success.depletionDetail', {
+                    rate: format.number(results.depletionSuccessRate / 100, {
+                      style: 'percent',
+                      maximumFractionDigits: 1,
+                    }),
+                  })}
+                </p>
+              )}
               {results && (
                 <p className="mt-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                   {params.marketModel === 'historical'

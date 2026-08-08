@@ -21,6 +21,18 @@ export type MarketModel = (typeof MARKET_MODELS)[number]
 export const isMarketModel = (value: unknown): value is MarketModel =>
   typeof value === 'string' && (MARKET_MODELS as readonly string[]).includes(value)
 
+/**
+ * Who the plan is taxed as. German investment income is sheltered by the
+ * *Sparerpauschbetrag*, and a jointly assessed couple gets exactly twice the
+ * single allowance — the only thing this switch does.
+ */
+export const HOUSEHOLD_TYPES = ['single', 'couple'] as const
+
+export type HouseholdType = (typeof HOUSEHOLD_TYPES)[number]
+
+export const isHouseholdType = (value: unknown): value is HouseholdType =>
+  typeof value === 'string' && (HOUSEHOLD_TYPES as readonly string[]).includes(value)
+
 // Simulation parameter interfaces
 export interface SimulationParams {
   // Personal information
@@ -46,7 +58,38 @@ export interface SimulationParams {
   roiVolatility: number
   averageInflation: number
   inflationVolatility: number
+  /** Abgeltungsteuer incl. Soli, in percentage points (e.g. 26.25). */
   capitalGainsTax: number
+
+  // German investment & pension taxation
+  /**
+   * Sparerpauschbetrag: tax-free investment income per year, in nominal euros.
+   * Doubled for a `couple`. Refills every calendar year; 0 switches it off.
+   */
+  taxAllowanceAnnual: number
+  /** Single or jointly assessed — the latter doubles `taxAllowanceAnnual`. */
+  householdType: HouseholdType
+  /**
+   * Teilfreistellung: the share of a realised equity-fund gain that is exempt
+   * from Abgeltungsteuer (0.30 for an equity fund, 0.15 for a mixed one, 0 for
+   * anything without the partial exemption).
+   */
+  equityFundExemption: number
+  /**
+   * Besteuerungsanteil: the share of the statutory pension that counts as
+   * taxable income for this cohort.
+   */
+  pensionTaxablePortion: number
+  /** Effective income-tax rate applied to the taxable part of the pension. */
+  pensionTaxRate: number
+
+  // Goals
+  /**
+   * Bequest goal in *today's* euros. A run only counts as a success when it
+   * never depletes AND its real terminal assets clear this bar. 0 disables the
+   * goal, in which case success is plain survival.
+   */
+  legacyTargetReal: number
 
   // Market model
   /** Monte Carlo draws vs. replaying a real historical return series. */
@@ -124,7 +167,25 @@ export interface SimulationResults {
    * quoted in today's euros — in real terms without re-running the simulation.
    */
   inflationIndexP50?: number[]
+  /**
+   * Share of runs (0..100) that met the plan's goal: never depleted **and**,
+   * when `legacyTargetReal` is set, left at least that much in today's euros.
+   */
   successRate: number
+  /**
+   * Share of runs (0..100) that merely never depleted, ignoring any bequest
+   * goal. Equal to `successRate` when `legacyTargetReal` is 0.
+   *
+   * Optional: results persisted before this field existed lack it, and every
+   * consumer falls back to `successRate`.
+   */
+  depletionSuccessRate?: number
+  /**
+   * Median share of gross withdrawals lost to capital gains tax across runs
+   * (0..1). Optional for the same reason. Undefined when no run ever had to
+   * sell anything.
+   */
+  withdrawalTaxDrag?: number
   /**
    * Fraction of runs (0..1) whose assets were exhausted at or before each age.
    * Optional because results persisted before this field existed lack it.
@@ -350,6 +411,12 @@ export const DEFAULT_PARAMS: SimulationParams = {
   averageInflation: 0.025,
   inflationVolatility: 0.01,
   capitalGainsTax: 26.25,
+  taxAllowanceAnnual: 1000,
+  householdType: 'single',
+  equityFundExemption: 0.3,
+  pensionTaxablePortion: 0.83,
+  pensionTaxRate: 0.18,
+  legacyTargetReal: 0,
   marketModel: 'monteCarlo',
   glidePathEnabled: false,
   equityAllocationStart: 0.8,

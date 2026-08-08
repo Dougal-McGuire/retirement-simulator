@@ -4,6 +4,7 @@ import {
   PercentileData,
   isWithdrawalStrategy,
   isMarketModel,
+  isHouseholdType,
 } from '@/types'
 import {
   HISTORICAL_MARKET_YEARS,
@@ -103,6 +104,12 @@ export function hashSimulationParams(params: SimulationParams): number {
     averageInflation: params.averageInflation,
     inflationVolatility: params.inflationVolatility,
     capitalGainsTax: params.capitalGainsTax,
+    taxAllowanceAnnual: params.taxAllowanceAnnual,
+    householdType: params.householdType,
+    equityFundExemption: params.equityFundExemption,
+    pensionTaxablePortion: params.pensionTaxablePortion,
+    pensionTaxRate: params.pensionTaxRate,
+    legacyTargetReal: params.legacyTargetReal,
     marketModel: params.marketModel,
     glidePathEnabled: params.glidePathEnabled,
     equityAllocationStart: params.equityAllocationStart,
@@ -443,6 +450,9 @@ const normalizeWithdrawalStrategy = (value: unknown): SimulationParams['withdraw
 const normalizeMarketModel = (value: unknown): SimulationParams['marketModel'] =>
   isMarketModel(value) ? value : 'monteCarlo'
 
+const normalizeHouseholdType = (value: unknown): SimulationParams['householdType'] =>
+  isHouseholdType(value) ? value : 'single'
+
 export function calculateVanguardDynamicAnnualSpending({
   priorYearPortfolioValue,
   previousAnnualSpending,
@@ -550,6 +560,12 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
     averageInflation: clamp(sanitizeFiniteNumber(params.averageInflation, 0.025), -0.1, 0.3),
     inflationVolatility: clamp(sanitizeFiniteNumber(params.inflationVolatility, 0.01), 0, 0.3),
     capitalGainsTax: clamp(sanitizeFiniteNumber(params.capitalGainsTax, 26.25), 0, 100),
+    taxAllowanceAnnual: clamp(sanitizeFiniteNumber(params.taxAllowanceAnnual, 0), 0, 100000),
+    householdType: normalizeHouseholdType(params.householdType),
+    equityFundExemption: clamp(sanitizeFiniteNumber(params.equityFundExemption, 0), 0, 1),
+    pensionTaxablePortion: clamp(sanitizeFiniteNumber(params.pensionTaxablePortion, 0), 0, 1),
+    pensionTaxRate: clamp(sanitizeFiniteNumber(params.pensionTaxRate, 0), 0, 1),
+    legacyTargetReal: Math.max(0, sanitizeFiniteNumber(params.legacyTargetReal, 0)),
     marketModel: normalizeMarketModel(params.marketModel),
     glidePathEnabled: params.glidePathEnabled === true,
     equityAllocationStart: clamp(sanitizeFiniteNumber(params.equityAllocationStart, 0.8), 0, 1),
@@ -601,6 +617,12 @@ type SimulationSchedule = {
   flows: CashFlowSeries
   effectiveRetirementAge: number
   usesDynamicSpending: boolean
+  /** Sparerpauschbetrag available in each single year (couple = doubled). */
+  annualAllowance: number
+  /** Teilfreistellung on realised gains. */
+  exemption: number
+  /** Statutory pension after income tax, per year. */
+  netPensionAnnual: number
 }
 
 function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
@@ -616,6 +638,9 @@ function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
     flows,
     effectiveRetirementAge: Math.max(params.retirementAge, params.currentAge),
     usesDynamicSpending: params.withdrawalStrategy === 'vanguardDynamic',
+    annualAllowance: annualTaxAllowance(params),
+    exemption: clamp(params.equityFundExemption ?? 0, 0, 1),
+    netPensionAnnual: netAnnualPension(params),
   }
 }
 
@@ -632,6 +657,10 @@ function runSingleSimulation(
   inflationIndexHistory: number[]
   failed: boolean
   depletionIndex: number | null
+  /** Everything sold out of the portfolio over the run, before tax. */
+  grossWithdrawn: number
+  /** Capital gains tax paid on those sales. */
+  taxPaid: number
 } {
   const assetHistory: number[] = []
   const spendingHistory: number[] = []
@@ -655,8 +684,19 @@ function runSingleSimulation(
    */
   let inflationIndex = 1
 
-  const { effectiveRetirementAge, usesDynamicSpending, flows } = schedule
+  const { effectiveRetirementAge, usesDynamicSpending, flows, annualAllowance, exemption } =
+    schedule
   const taxRate = Math.max(0, params.capitalGainsTax / 100)
+
+  /**
+   * Sparerpauschbetrag left for the current year. Refills every January (see
+   * the reset at the top of the age loop), so a plan that sells in small slices
+   * shelters the same gain again and again — which is precisely why the
+   * allowance is worth modelling instead of folding into an average tax rate.
+   */
+  let allowanceRemaining = annualAllowance
+  let grossWithdrawn = 0
+  let taxPaid = 0
 
   /**
    * Sells enough of the portfolio to raise `netNeeded` after capital gains tax,
@@ -667,9 +707,24 @@ function runSingleSimulation(
   const withdrawNet = (netNeeded: number): number => {
     if (netNeeded <= 0) return 0
     if (currentAssets <= 0) return netNeeded
-    const totalWithdrawal = computeGrossWithdrawal(currentAssets, costBasis, netNeeded, taxRate)
+    const shelter = { exemption, allowance: allowanceRemaining }
+    const totalWithdrawal = computeGrossWithdrawal(
+      currentAssets,
+      costBasis,
+      netNeeded,
+      taxRate,
+      shelter
+    )
     const withdrawal = Math.min(totalWithdrawal, currentAssets)
     const withdrawalRatio = withdrawal > 0 && currentAssets > 0 ? withdrawal / currentAssets : 0
+    // Tax and allowance are booked on what was *actually* sold: a portfolio
+    // that could not raise the full amount also realised a smaller gain.
+    const realizedTaxableGain =
+      withdrawal * (1 - clamp(costBasis / currentAssets, 0, 1)) * (1 - exemption)
+    const allowanceUsed = Math.min(allowanceRemaining, realizedTaxableGain)
+    allowanceRemaining = Math.max(0, allowanceRemaining - allowanceUsed)
+    taxPaid += Math.max(0, realizedTaxableGain - allowanceUsed) * taxRate
+    grossWithdrawn += withdrawal
     costBasis = Math.max(0, costBasis * (1 - withdrawalRatio))
     currentAssets = Math.max(0, currentAssets - withdrawal)
     return Math.max(0, totalWithdrawal - withdrawal)
@@ -678,6 +733,8 @@ function runSingleSimulation(
   for (let age = params.currentAge; age <= params.endAge; age++) {
     const yearIndex = age - params.currentAge
     inflationIndexHistory.push(inflationIndex)
+    // A new tax year: the allowance is use-it-or-lose-it.
+    allowanceRemaining = annualAllowance
 
     // Scheduled flows are quoted in today's euros; inflation-linked ones are
     // re-priced with this path's realised price level, fixed ones are not.
@@ -750,10 +807,12 @@ function runSingleSimulation(
 
       const totalAnnualExpenseThisYear = guardrailedAnnualSpending + extraExpense
 
-      // Add pension income if at legal retirement age
+      // Add pension income if at legal retirement age. Only the part that
+      // survives income tax can pay for groceries, so the net figure is what
+      // joins the year's income.
       let annualIncome = extraIncome
       if (age >= params.legalRetirementAge) {
-        annualIncome += params.monthlyPension * 12
+        annualIncome += schedule.netPensionAnnual
       }
 
       // Calculate how much we need to withdraw from investments
@@ -818,6 +877,8 @@ function runSingleSimulation(
     inflationIndexHistory,
     failed: runFailed,
     depletionIndex,
+    grossWithdrawn,
+    taxPaid,
   }
 }
 
@@ -874,6 +935,9 @@ export function runMonteCarloSimulation(
   const spendingRunsReal: number[][] = []
   const inflationIndexRuns: number[][] = []
   let successfulRuns = 0
+  let survivingRuns = 0
+  const taxDragRatios: number[] = []
+  const legacyTarget = Math.max(0, normalizedParams.legacyTargetReal ?? 0)
 
   const depletionCounts = new Array<number>(ages.length).fill(0)
 
@@ -882,18 +946,28 @@ export function runMonteCarloSimulation(
     const random = sharedRandom ?? mulberry32(mixSeed(baseSeed, run))
     const result = runSingleSimulation(normalizedParams, schedule, sampler, run, random)
 
-    if (!result.failed) {
-      successfulRuns++
-    }
-
     assetRuns.push(result.assetHistory)
     spendingRuns.push(result.spendingHistory)
     // Deflate each path by *its own* realised inflation before percentiles are
     // taken. Deflating the nominal percentile band by an average price level
     // would mix quantiles of two different distributions; this does not.
-    assetRunsReal.push(deflatePath(result.assetHistory, result.inflationIndexHistory))
+    const realAssets = deflatePath(result.assetHistory, result.inflationIndexHistory)
+    assetRunsReal.push(realAssets)
     spendingRunsReal.push(deflatePath(result.spendingHistory, result.inflationIndexHistory))
     inflationIndexRuns.push(result.inflationIndexHistory)
+
+    if (!result.failed) {
+      survivingRuns++
+      // A bequest goal is a second bar to clear, measured on the same real
+      // series the dashboard shows. With the target at 0 it is always cleared,
+      // so `successRate` collapses to plain survival.
+      const terminalReal = realAssets[realAssets.length - 1] ?? 0
+      if (terminalReal >= legacyTarget) successfulRuns++
+    }
+
+    if (result.grossWithdrawn > 0) {
+      taxDragRatios.push(result.taxPaid / result.grossWithdrawn)
+    }
 
     if (result.depletionIndex !== null && result.depletionIndex < depletionCounts.length) {
       depletionCounts[result.depletionIndex]++
@@ -911,6 +985,9 @@ export function runMonteCarloSimulation(
 
   // Calculate success rate
   const successRate = (successfulRuns / effectiveRuns) * 100
+  const depletionSuccessRate = (survivingRuns / effectiveRuns) * 100
+  const withdrawalTaxDrag =
+    taxDragRatios.length > 0 ? calculatePercentile(taxDragRatios, 50) : undefined
 
   let depletedSoFar = 0
   const depletionByAge = depletionCounts.map((count) => {
@@ -926,6 +1003,8 @@ export function runMonteCarloSimulation(
     spendingPercentilesReal,
     inflationIndexP50,
     successRate,
+    depletionSuccessRate,
+    withdrawalTaxDrag,
     depletionByAge,
     params: normalizedParams,
   }
@@ -940,11 +1019,82 @@ function deflatePath(values: number[], inflationIndex: number[]): number[] {
 }
 
 /**
+ * The German shelters that sit between a realised gain and the tax bill.
+ *
+ * Both default to "no shelter", which is exactly the flat model the engine had
+ * before they existed — `computeGrossWithdrawal(a, b, n, t)` is unchanged.
+ */
+export interface WithdrawalTaxShelter {
+  /** Teilfreistellung: share of the gain that is exempt outright (0..1). */
+  exemption?: number
+  /** Sparerpauschbetrag left for this year, in euros. Offsets taxable gain first. */
+  allowance?: number
+}
+
+/**
+ * What one withdrawal actually costs, given the two shelters.
+ *
+ * Solves for the gross sale `W` that nets `netNeeded` after tax:
+ *
+ *   gain(W)        = W · gainsRatio
+ *   taxableGain(W) = gain(W) · (1 − exemption)
+ *   tax(W)         = max(0, taxableGain(W) − allowance) · taxRate
+ *   net(W)         = W − tax(W)
+ *
+ * `net` is piecewise linear in `W` with a kink where the allowance runs out, so
+ * the sheltered branch is tried first and the taxed branch is only used when
+ * the need is genuinely too large to hide behind the allowance.
+ */
+export function computeWithdrawalTax(
+  currentAssets: number,
+  costBasis: number,
+  netNeeded: number,
+  taxRate: number,
+  shelter: WithdrawalTaxShelter = {}
+): { gross: number; taxableGain: number; allowanceUsed: number; tax: number } {
+  const none = { gross: 0, taxableGain: 0, allowanceUsed: 0, tax: 0 }
+  if (netNeeded <= 0 || currentAssets <= 0) return none
+
+  const basisRatio = clamp(costBasis / currentAssets, 0, 1)
+  const gainsRatio = 1 - basisRatio
+  const exemption = clamp(shelter.exemption ?? 0, 0, 1)
+  const allowance = Math.max(0, shelter.allowance ?? 0)
+  /** Share of every euro withdrawn that is taxable gain. */
+  const taxableShare = gainsRatio * (1 - exemption)
+
+  // Branch 1: the whole taxable gain fits inside the remaining allowance, so
+  // the sale is tax-free and the gross equals the need.
+  const shelteredTaxableGain = netNeeded * taxableShare
+  if (shelteredTaxableGain <= allowance) {
+    return {
+      gross: netNeeded,
+      taxableGain: shelteredTaxableGain,
+      allowanceUsed: shelteredTaxableGain,
+      tax: 0,
+    }
+  }
+
+  // Branch 2: gross up over the part of the gain the allowance no longer covers.
+  const denom = 1 - taxRate * taxableShare
+  if (denom <= 0) return { ...none, gross: Number.POSITIVE_INFINITY }
+  const gross = (netNeeded - taxRate * allowance) / denom
+  const taxableGain = gross * taxableShare
+  const allowanceUsed = Math.min(allowance, taxableGain)
+  return {
+    gross,
+    taxableGain,
+    allowanceUsed,
+    tax: Math.max(0, taxableGain - allowanceUsed) * taxRate,
+  }
+}
+
+/**
  * Compute the gross withdrawal needed to cover a net cash need when capital gains are taxed.
  * - currentAssets: portfolio value after growth
  * - costBasis: remaining cost basis before withdrawal
  * - netNeeded: net cash requirement (expenses - income), non-negative
  * - taxRate: capital gains tax rate in decimal, e.g., 0.25
+ * - shelter: optional Teilfreistellung / Sparerpauschbetrag (both default to none)
  *
  * Returns the gross amount to withdraw so that after tax on the gains portion,
  * the net equals netNeeded. Caps at Infinity if denom <= 0; caller should min with currentAssets.
@@ -953,14 +1103,36 @@ export function computeGrossWithdrawal(
   currentAssets: number,
   costBasis: number,
   netNeeded: number,
-  taxRate: number
+  taxRate: number,
+  shelter: WithdrawalTaxShelter = {}
 ): number {
-  if (netNeeded <= 0 || currentAssets <= 0) return 0
-  const basisRatio = Math.min(1, Math.max(0, costBasis / currentAssets))
-  const gainsRatio = 1 - basisRatio
-  const denom = 1 - taxRate * gainsRatio
-  if (denom <= 0) return Number.POSITIVE_INFINITY
-  return netNeeded / denom
+  return computeWithdrawalTax(currentAssets, costBasis, netNeeded, taxRate, shelter).gross
+}
+
+/**
+ * The Sparerpauschbetrag this plan gets each year — doubled when the household
+ * is jointly assessed. Deliberately a nominal figure: the statutory allowance
+ * is set in euros and only moves when the legislator moves it, so a 30-year
+ * plan should feel it shrink in real terms.
+ */
+export function annualTaxAllowance(params: SimulationParams): number {
+  const base = Math.max(0, params.taxAllowanceAnnual ?? 0)
+  return params.householdType === 'couple' ? base * 2 : base
+}
+
+/**
+ * Net statutory pension: only the Besteuerungsanteil is taxable, and only at
+ * the household's effective income-tax rate.
+ */
+export function netPensionFactor(params: SimulationParams): number {
+  const taxablePortion = clamp(params.pensionTaxablePortion ?? 0, 0, 1)
+  const rate = clamp(params.pensionTaxRate ?? 0, 0, 1)
+  return 1 - taxablePortion * rate
+}
+
+/** Annual statutory pension after income tax, in the euros it is quoted in. */
+export function netAnnualPension(params: SimulationParams): number {
+  return Math.max(0, params.monthlyPension) * 12 * netPensionFactor(params)
 }
 
 /**

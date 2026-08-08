@@ -56,7 +56,11 @@ describe('Engine math correctness', () => {
       endAge: 60,
       currentAssets: 1000,
       annualSavings: 0,
-      monthlyPension: 1000, // 12000 annual income
+      monthlyPension: 1000, // 12000 gross annual income
+      // The statutory pension is taxed by default (Besteuerungsanteil × rate);
+      // this case is about reinvesting a surplus, so keep the pension whole.
+      pensionTaxablePortion: 0,
+      pensionTaxRate: 0,
       averageROI: 0,
       roiVolatility: 0,
       averageInflation: 0,
@@ -84,6 +88,11 @@ describe('Engine math correctness', () => {
       averageInflation: 0,
       inflationVolatility: 0,
       capitalGainsTax: 25,
+      // Gross-up maths only: the German shelters get their own suite
+      // (engine-tax.test.ts). With the shipped defaults this €100 need would be
+      // covered entirely by the Sparerpauschbetrag and never be grossed up.
+      taxAllowanceAnnual: 0,
+      equityFundExemption: 0,
       customExpenses: [
         { id: 'health', name: 'Health', amount: 100 / 12, interval: 'monthly' as const }, // total annual = 100
       ],

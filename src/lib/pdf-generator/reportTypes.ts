@@ -220,6 +220,15 @@ export interface ReportAssumptions {
   dsCeilingRate: number
   dsFloorRate: number
   capitalGainsTax: number
+  /** Sparerpauschbetrag per year, already doubled for a couple. */
+  taxAllowance: number
+  householdType: 'single' | 'couple'
+  /** Teilfreistellung on realised fund gains. */
+  equityFundExemption: number
+  pensionTaxablePortion: number
+  pensionTaxRate: number
+  /** Bequest goal in today's euros; 0 when the plan has none. */
+  legacyTargetReal: number
   simulationRuns: number
 }
 
@@ -456,6 +465,15 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       dsCeilingRate: data.assumptions.dsCeilingRate,
       dsFloorRate: data.assumptions.dsFloorRate,
       capitalGainsTax: data.assumptions.capGainsTaxRatePct,
+      taxAllowance:
+        data.assumptions.householdType === 'couple'
+          ? data.assumptions.taxAllowanceAnnual * 2
+          : data.assumptions.taxAllowanceAnnual,
+      householdType: data.assumptions.householdType,
+      equityFundExemption: data.assumptions.equityFundExemption,
+      pensionTaxablePortion: data.assumptions.pensionTaxablePortion,
+      pensionTaxRate: data.assumptions.pensionTaxRate,
+      legacyTargetReal: data.assumptions.legacyTargetReal,
       simulationRuns: data.assumptions.mcRuns,
     },
     projections: {
@@ -476,7 +494,8 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
     recommendations: {
       uplifts: (summary?.topActionsDetailed ?? []).map((uplift) => ({
         ...uplift,
-        title: locale === 'de' ? (RECOMMENDATION_TITLES_DE[uplift.title] ?? uplift.title) : uplift.title,
+        title:
+          locale === 'de' ? (RECOMMENDATION_TITLES_DE[uplift.title] ?? uplift.title) : uplift.title,
       })),
       primary:
         locale === 'de'

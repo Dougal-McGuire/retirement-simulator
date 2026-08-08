@@ -1,5 +1,5 @@
 import type { CashFlow, CustomExpense, SimulationParams, SimulationResults } from '@/types'
-import { calculateCombinedExpenses } from '@/lib/simulation/engine'
+import { calculateCombinedExpenses, netAnnualPension } from '@/lib/simulation/engine'
 import { cashFlowsEqual } from '@/lib/simulation/cashFlows'
 
 export type PlanHealth = 'strong' | 'watch' | 'strained'
@@ -9,6 +9,8 @@ export type PlanInsightMetrics = {
   annualSpending: number
   monthlySpending: number
   pensionAnnual: number
+  /** Same pension after the Besteuerungsanteil × income-tax rate haircut. */
+  pensionAnnualNet: number
   bridgeYears: number
   retirementMedianAssets: number
   horizonMedianAssets: number
@@ -31,6 +33,11 @@ const comparableNumericParamKeys = [
   'averageInflation',
   'inflationVolatility',
   'capitalGainsTax',
+  'taxAllowanceAnnual',
+  'equityFundExemption',
+  'pensionTaxablePortion',
+  'pensionTaxRate',
+  'legacyTargetReal',
   'equityAllocationStart',
   'equityAllocationEnd',
   'bondReturn',
@@ -70,7 +77,8 @@ export function areSimulationParamsEqual(
 
   if (
     currentParams.marketModel !== resultParams.marketModel ||
-    currentParams.glidePathEnabled !== resultParams.glidePathEnabled
+    currentParams.glidePathEnabled !== resultParams.glidePathEnabled ||
+    currentParams.householdType !== resultParams.householdType
   ) {
     return false
   }
@@ -135,6 +143,9 @@ export function buildPlanInsightMetrics(
     (options.displayReal ? results?.assetPercentilesReal : undefined) ?? results?.assetPercentiles
   const combinedExpenses = calculateCombinedExpenses(params.customExpenses)
   const pensionAnnual = params.monthlyPension * 12
+  // What the pension is actually worth to the plan: the engine funds spending
+  // out of the after-tax pension, so the withdrawal need shown here must too.
+  const pensionAnnualNet = netAnnualPension(params)
   const retirementIndex = results
     ? Math.max(
         0,
@@ -145,7 +156,7 @@ export function buildPlanInsightMetrics(
   const horizonIndex = results ? Math.max(0, results.ages.length - 1) : 0
   const retirementMedianAssets = assetPercentiles?.p50[safeRetirementIndex] ?? params.currentAssets
   const horizonMedianAssets = assetPercentiles?.p50[horizonIndex] ?? params.currentAssets
-  const firstYearPension = params.retirementAge >= params.legalRetirementAge ? pensionAnnual : 0
+  const firstYearPension = params.retirementAge >= params.legalRetirementAge ? pensionAnnualNet : 0
   const firstYearPortfolioNeed = Math.max(0, combinedExpenses.combinedAnnual - firstYearPension)
   const firstYearWithdrawalRate =
     retirementMedianAssets > 0 ? firstYearPortfolioNeed / retirementMedianAssets : null
@@ -156,6 +167,7 @@ export function buildPlanInsightMetrics(
     annualSpending: combinedExpenses.combinedAnnual,
     monthlySpending: combinedExpenses.combinedMonthly,
     pensionAnnual,
+    pensionAnnualNet,
     bridgeYears: Math.max(0, params.legalRetirementAge - params.retirementAge),
     retirementMedianAssets,
     horizonMedianAssets,

@@ -16,6 +16,7 @@ export function useAssumptionValueFormatter() {
   const tStrategy = useTranslations('parameterControls.fields.withdrawalStrategy.options')
   const tMarketModel = useTranslations('parameterControls.fields.marketModel.options')
   const tToggle = useTranslations('parameterControls.toggle')
+  const tHousehold = useTranslations('parameterControls.fields.householdType.options')
 
   return useCallback(
     (value: number | string, kind: AssumptionKind): string => {
@@ -23,6 +24,7 @@ export function useAssumptionValueFormatter() {
         if (kind === 'strategy') return tStrategy(`${value}.label`)
         if (kind === 'marketModel') return tMarketModel(`${value}.label`)
         if (kind === 'toggle') return tToggle(value === 'on' ? 'on' : 'off')
+        if (kind === 'householdType') return tHousehold(`${value}.label`)
         return value
       }
 
@@ -51,6 +53,6 @@ export function useAssumptionValueFormatter() {
           return format.number(value)
       }
     },
-    [format, tStrategy, tMarketModel, tToggle]
+    [format, tStrategy, tMarketModel, tToggle, tHousehold]
   )
 }

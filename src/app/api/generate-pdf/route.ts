@@ -17,6 +17,7 @@ import {
   CASHFLOW_FREQUENCIES,
   CASHFLOW_KINDS,
   EXPENSE_INTERVALS,
+  HOUSEHOLD_TYPES,
   MARKET_MODELS,
   WITHDRAWAL_STRATEGIES,
 } from '@/types'
@@ -69,6 +70,15 @@ const SimulationParamsSchema = z.object({
   averageInflation: z.number(),
   inflationVolatility: z.number(),
   capitalGainsTax: z.number(),
+  // Defaulted: a client on an older build posts params without the German tax
+  // detail or a bequest goal, and the neutral values below reproduce exactly
+  // the flat "every gain taxed, pension untaxed, no goal" model it ran.
+  taxAllowanceAnnual: z.number().default(0),
+  householdType: z.enum(HOUSEHOLD_TYPES).default('single'),
+  equityFundExemption: z.number().default(0),
+  pensionTaxablePortion: z.number().default(0),
+  pensionTaxRate: z.number().default(0),
+  legacyTargetReal: z.number().default(0),
   // Defaulted: a client on an older build posts params without a market model
   // or glide path, and "Monte Carlo, single asset" is exactly what it meant.
   marketModel: z.enum(MARKET_MODELS).default('monteCarlo'),
@@ -208,7 +218,11 @@ export async function POST(req: NextRequest) {
       if (!freshParams) {
         throw new ClientRequestError('Parameter fehlen')
       }
-      const generated = transformToReportData(freshParams, { ...validResults, params: freshParams }, planName)
+      const generated = transformToReportData(
+        freshParams,
+        { ...validResults, params: freshParams },
+        planName
+      )
       const parsed = ReportDataSchema.safeParse({ ...generated, locale: requestedLocale })
       if (!parsed.success) {
         throw new ClientRequestError('Ungueltige Berichtsdaten', 400, parsed.error.flatten())
