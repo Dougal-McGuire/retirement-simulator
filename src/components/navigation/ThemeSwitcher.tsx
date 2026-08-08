@@ -8,6 +8,7 @@ import {
   THEME_OPTIONS,
   THEME_STORAGE_KEY,
   isThemeId,
+  resolveThemeId,
   type ThemeId,
 } from '@/lib/themes'
 import {
@@ -46,7 +47,9 @@ export function ThemeSwitcher({ className, size = 'sm' }: ThemeSwitcherProps) {
       storedTheme = null
     }
 
-    const nextTheme = isThemeId(storedTheme) ? storedTheme : DEFAULT_THEME_ID
+    // A value written by an earlier build (aurora/signal/prism/ledger) is
+    // migrated to its nearest neighbour rather than dropped on the floor.
+    const nextTheme = resolveThemeId(storedTheme)
     setTheme(nextTheme)
     applyTheme(nextTheme)
   }, [])
