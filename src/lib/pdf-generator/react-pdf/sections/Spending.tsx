@@ -3,7 +3,7 @@ import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
 import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
 import { SpendingChart } from '../charts'
-import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
+import type { ReportCashFlow, ReportContent } from '@/lib/pdf-generator/reportTypes'
 import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
 
 interface SpendingProps {
@@ -12,13 +12,45 @@ interface SpendingProps {
 }
 
 export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
-  const { expenses } = content
+  const { expenses, simulation } = content
   const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
   const isGerman = content.locale !== 'en'
 
   const annualTotal = expenses.monthlyTotal * 12 + expenses.annualTotal
-  const topCategories = expenses.allCategories.slice(0, 8)
+  // The section has to hold the chart, the category table AND the scheduled
+  // flows on one page; every flow row costs one category row. Shrinking the
+  // list is preferable to spilling a two-line table onto a blank page.
+  const scheduledCount = (expenses.scheduledFlows ?? []).length
+  const categoryLimit = scheduledCount > 0 ? Math.max(4, 7 - scheduledCount) : 8
+  const topCategories = expenses.allCategories.slice(0, categoryLimit)
+  const shownLabels = new Set(topCategories.map((category) => category.id ?? category.label))
+  const shown = (list: typeof expenses.monthlyCategories) =>
+    list.filter((category) => shownLabels.has(category.id ?? category.label))
   const topShare = topCategories.reduce((sum, category) => sum + category.share, 0)
+
+  // Scheduled flows live here rather than with the planning assumptions: they
+  // are spending (or income that offsets it), and the "total horizon need" KPI
+  // above now counts them, so the reader can see what went into the figure.
+  const scheduledFlows = expenses.scheduledFlows ?? []
+  const incomeWord = isGerman ? 'Einnahme' : 'Income'
+  const expenseWord = isGerman ? 'Ausgabe' : 'Expense'
+  const frequencyLabel = (frequency: ReportCashFlow['frequency']) => {
+    if (frequency === 'once') return isGerman ? 'einmalig' : 'one-off'
+    if (frequency === 'annual') return isGerman ? 'jährlich' : 'annual'
+    return isGerman ? 'monatlich' : 'monthly'
+  }
+  /** Ages the flow is active for — open ends read as "from"/"until". */
+  const periodLabel = (flow: ReportCashFlow) => {
+    const from = flow.startAge
+    const to = flow.frequency === 'once' ? from : flow.endAge
+    if (flow.frequency === 'once') {
+      return from === undefined ? '–' : `${isGerman ? 'Alter' : 'age'} ${from}`
+    }
+    if (from === undefined && to === undefined) return isGerman ? 'gesamter Plan' : 'whole plan'
+    if (from !== undefined && to !== undefined) return `${from}–${to}`
+    if (from !== undefined) return `${isGerman ? 'ab' : 'from'} ${from}`
+    return `${isGerman ? 'bis' : 'until'} ${to}`
+  }
 
   return (
     <View>
@@ -53,9 +85,13 @@ export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
           <Text style={styles.kpiLabel}>{isGerman ? 'Gesamtbedarf' : 'Total Horizon Need'}</Text>
           <Text style={styles.kpiValue}>{fmtCurrency(expenses.totalHorizonAmount, locale)}</Text>
           <Text style={styles.kpiDescription}>
-            {isGerman
-              ? `Über ${fmtNumber(expenses.horizonYears, { locale })} Jahre, ohne Inflation`
-              : `Over ${fmtNumber(expenses.horizonYears, { locale })} years, before inflation`}
+            {expenses.scheduledExpenseTotal > 0
+              ? isGerman
+                ? `Über ${fmtNumber(simulation.horizonYears, { locale })} Jahre, ohne Inflation · inkl. ${fmtCurrency(expenses.scheduledExpenseTotal, locale)} geplanter Zahlungen`
+                : `Over ${fmtNumber(simulation.horizonYears, { locale })} years, before inflation · incl. ${fmtCurrency(expenses.scheduledExpenseTotal, locale)} of scheduled flows`
+              : isGerman
+                ? `Über ${fmtNumber(simulation.horizonYears, { locale })} Jahre, ohne Inflation`
+                : `Over ${fmtNumber(simulation.horizonYears, { locale })} years, before inflation`}
           </Text>
         </View>
       </View>
@@ -66,8 +102,8 @@ export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
           {isGerman ? 'Kostentreiber (Jahreswerte)' : 'Cost Drivers (Annualized)'}
         </Text>
         <SpendingChart
-          monthlyCategories={expenses.monthlyCategories}
-          annualCategories={expenses.annualCategories}
+          monthlyCategories={shown(expenses.monthlyCategories)}
+          annualCategories={shown(expenses.annualCategories)}
           width={481}
           locale={content.locale}
         />
@@ -154,6 +190,60 @@ export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
             : 'The table shows the largest cost drivers; all categories are included in the simulation.'}
         </Text>
       </View>
+
+      {scheduledFlows.length > 0 && (
+        <View style={[styles.card, { marginTop: 12, marginBottom: 0 }]}>
+          <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
+            {isGerman ? 'Geplante Zahlungsströme' : 'Scheduled Cash Flows'}
+          </Text>
+          <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 3 }}>
+            {isGerman
+              ? 'Zusätzlich zu den laufenden Ausgaben oben, in heutigen Beträgen — im Gesamtbedarf enthalten.'
+              : 'On top of the recurring spending above, in today’s amounts — included in the total horizon need.'}
+          </Text>
+          <Table>
+            <TableRow header>
+              <TableCell header width="34%">
+                {isGerman ? 'Position' : 'Item'}
+              </TableCell>
+              <TableCell header width="20%">
+                {isGerman ? 'Rhythmus' : 'Frequency'}
+              </TableCell>
+              <TableCell header width="20%">
+                {isGerman ? 'Zeitraum' : 'Period'}
+              </TableCell>
+              <TableCell header width="26%" align="right">
+                {isGerman ? 'Betrag' : 'Amount'}
+              </TableCell>
+            </TableRow>
+            {scheduledFlows.map((flow, index) => (
+              <TableRow key={flow.id} alt={index % 2 === 1}>
+                <TableCell width="34%">
+                  <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
+                    {flow.name || (flow.kind === 'income' ? incomeWord : expenseWord)}
+                  </Text>
+                </TableCell>
+                <TableCell width="20%">{frequencyLabel(flow.frequency)}</TableCell>
+                <TableCell width="20%">{periodLabel(flow)}</TableCell>
+                <TableCell width="26%" align="right">
+                  <Text
+                    style={{
+                      fontWeight: 600,
+                      color:
+                        flow.kind === 'income'
+                          ? tokens.colors.success[600]
+                          : tokens.colors.ink[900],
+                    }}
+                  >
+                    {`${flow.kind === 'income' ? '+' : '−'}${fmtCurrency(flow.amount, locale)}`}
+                    {flow.inflationLinked === false ? ' (nominal)' : ''}
+                  </Text>
+                </TableCell>
+              </TableRow>
+            ))}
+          </Table>
+        </View>
+      )}
     </View>
   )
 }

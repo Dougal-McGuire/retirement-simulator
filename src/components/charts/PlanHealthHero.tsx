@@ -11,7 +11,8 @@ import { deriveDepletionAges } from '@/lib/insights/depletion'
 import { buildPlanWarnings, type PlanWarning } from '@/lib/insights/warnings'
 import { AnimatedCounter } from '@/components/ui/animated-counter'
 import { Card, CardContent } from '@/components/ui/card'
-import { HISTORICAL_PATH_COUNT } from '@/lib/simulation/data/historicalMarket'
+import { useSimulationContext } from '@/lib/stores/useSimulationContext'
+import { useCompactCurrency } from '@/lib/hooks/useCompactCurrency'
 import { cn } from '@/lib/utils'
 
 interface PlanHealthHeroProps {
@@ -121,16 +122,12 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
     [results]
   )
   const warnings = useMemo(() => buildPlanWarnings(params, results), [params, results])
-  const legacyTarget = Math.max(0, params.legacyTargetReal ?? 0)
+  // Every run count, success rate and market-model label on this card comes
+  // from the one context — never from `params` or `results` directly.
+  const context = useSimulationContext()
+  const legacyTarget = context.legacyTargetReal
 
-  const formatCurrency = (value: number) =>
-    format.number(value, {
-      style: 'currency',
-      currency: 'EUR',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-      minimumFractionDigits: 0,
-    })
+  const formatCurrency = useCompactCurrency()
 
   const formatPercent = (value: number) =>
     format.number(value, { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 })
@@ -179,10 +176,23 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
           ? t('lasts.toAge', { age: depletion.p50DepletionAge })
           : t('lasts.beyond', { age: params.endAge })
         : t('notAvailable'),
+      // "No depletion even in the worst 10%" was false whenever *any* run
+      // depleted: the worst decile of a 5%-depletion-risk plan is full of
+      // failed runs. What the P10 series actually shows is that the tenth
+      // percentile path stays funded — so that is what the caption says, with
+      // the real depletion risk spelled out whenever it is not zero.
       detail: results
         ? depletion.p10DepletionAge !== null
           ? t('lasts.detailP10', { age: depletion.p10DepletionAge })
-          : t('lasts.detailNone')
+          : context.depletionRisk > 0.05
+            ? t('lasts.detailNoneRisk', {
+                age: params.endAge,
+                rate: format.number(context.depletionRisk / 100, {
+                  style: 'percent',
+                  maximumFractionDigits: 1,
+                }),
+              })
+            : t('lasts.detailNone', { age: params.endAge })
         : '',
       edit: { fieldId: 'editor-endAge', label: `${params.endAge}` },
     },
@@ -214,7 +224,7 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
           {/* Success rate hero */}
           <div className="flex items-center gap-5 border-2 border-neo-black bg-background p-4 shadow-neo-sm lg:max-w-[21rem] lg:shrink-0">
             {results ? (
-              <SuccessGauge rate={results.successRate} />
+              <SuccessGauge rate={context.successRate} />
             ) : (
               <div className="flex h-36 w-36 shrink-0 items-center justify-center sm:h-40 sm:w-40">
                 <span className="text-3xl font-black text-muted-foreground">
@@ -234,13 +244,13 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
                   ? t('success.captionLegacy', { amount: formatCurrency(legacyTarget) })
                   : t('success.caption')}
               </p>
-              {results && legacyTarget > 0 && results.depletionSuccessRate !== undefined && (
+              {results && context.successDefinition === 'legacyConditioned' && (
                 <p
                   className="mt-2 text-[0.68rem] font-semibold leading-snug text-muted-foreground"
                   data-testid="hero-depletion-detail"
                 >
                   {t('success.depletionDetail', {
-                    rate: format.number(results.depletionSuccessRate / 100, {
+                    rate: format.number(context.depletionSuccessRate / 100, {
                       style: 'percent',
                       maximumFractionDigits: 1,
                     }),
@@ -248,12 +258,18 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
                 </p>
               )}
               {results && (
-                <p className="mt-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                  {params.marketModel === 'historical'
+                <p
+                  className="mt-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
+                  data-testid="hero-runs"
+                  data-success-rate={context.successRate}
+                  data-runs={context.effectiveRuns}
+                  data-market-model={context.marketModel}
+                >
+                  {context.marketModel === 'historical'
                     ? t('success.detailHistorical', {
-                        runs: format.number(HISTORICAL_PATH_COUNT),
+                        runs: format.number(context.effectiveRuns),
                       })
-                    : t('success.detail', { runs: format.number(params.simulationRuns) })}
+                    : t('success.detail', { runs: format.number(context.effectiveRuns) })}
                 </p>
               )}
             </div>
@@ -266,7 +282,15 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
                 key={tile.key}
                 className="relative border-2 border-neo-black bg-background p-4 shadow-neo-sm"
               >
-                <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                {/* The edit chip is absolutely positioned in the top-right
+                    corner, so the label has to reserve that room or it is
+                    clipped under the chip on a 390px screen ("ASSETS LAS…"). */}
+                <span
+                  className={cn(
+                    'block text-[0.68rem] font-bold uppercase leading-tight tracking-[0.14em] text-muted-foreground',
+                    tile.edit && onEditField && 'pr-14'
+                  )}
+                >
                   {tile.label}
                 </span>
                 {tile.edit && onEditField && (

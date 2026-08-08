@@ -4,7 +4,12 @@ import { styles, tokens } from '../styles'
 import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
 import { ProjectionChart } from '../charts'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
-import { fmtCurrency, fmtNumber } from '@/lib/pdf-generator/formatters'
+import {
+  fmtCurrency,
+  fmtNumber,
+  fmtPercent,
+  fmtRatioPercent,
+} from '@/lib/pdf-generator/formatters'
 
 interface ResultsProps {
   content: ReportContent
@@ -22,7 +27,7 @@ function growthLabel(growth: number, locale: string, isGerman: boolean): string 
 }
 
 export function Results({ content, sectionNumber = '03' }: ResultsProps) {
-  const { projections, profile } = content
+  const { projections, profile, simulation, assumptions, expenses, finances } = content
   const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
   const isGerman = content.locale !== 'en'
 
@@ -61,6 +66,44 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
     value === undefined ? '–' : fmtCurrency(value, locale)
 
   const hasBands = outcomeRows.some((row) => row.p20 !== undefined || row.p80 !== undefined)
+
+  /**
+   * The figures the assumptions imply, read next to the outcome they produced.
+   * They used to close the assumptions section, where a plan with scheduled
+   * cash flows pushed them onto a page of their own that was 85% white.
+   */
+  const baseSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
+  const realReturn = (1 + assumptions.expectedReturn) / (1 + assumptions.inflation) - 1
+  const retireMedian = milestones.find((m) => m.age === person.retireAge)?.p50
+  const firstYearWithdrawalRate = retireMedian && retireMedian > 0 ? baseSpend / retireMedian : null
+  const bridgeYears = Math.max(0, person.pensionAge - person.retireAge)
+  const derived: Array<{ label: string; value: string; note: string }> = [
+    {
+      label: isGerman ? 'Reale Rendite' : 'Real return',
+      value: fmtPercent(realReturn, 1, locale),
+      note: isGerman ? 'Rendite nach Inflation' : 'return after inflation',
+    },
+    {
+      label: isGerman ? 'Entnahmerate' : 'Withdrawal rate',
+      value:
+        firstYearWithdrawalRate !== null
+          ? fmtRatioPercent(firstYearWithdrawalRate, 1, locale)
+          : '–',
+      note: isGerman ? 'erstes Ruhestandsjahr' : 'first year of retirement',
+    },
+    {
+      label: isGerman ? 'Überbrückungsjahre' : 'Bridge years',
+      value: fmtNumber(bridgeYears, { locale }),
+      note: isGerman
+        ? `Alter ${person.retireAge}–${person.pensionAge}`
+        : `age ${person.retireAge}–${person.pensionAge}`,
+    },
+    {
+      label: isGerman ? 'Sparquote zu Ausgaben' : 'Savings vs spending',
+      value: baseSpend > 0 ? fmtRatioPercent(finances.annualSavings / baseSpend, 0, locale) : '–',
+      note: isGerman ? 'Sparleistung / Jahresbudget' : 'annual savings / annual budget',
+    },
+  ]
 
   return (
     <View>
@@ -206,20 +249,62 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
               </Text>
             </View>
           ) : (
-            <View style={[styles.callout, styles.calloutSuccess, { flex: 1 }]}>
+            <View
+              style={[
+                styles.callout,
+                // Red is reserved for depletion in this report; a residual risk
+                // that the P10 line hides is a warning, not a failure.
+                simulation.depletionRisk > 0.0005 ? styles.calloutWarning : styles.calloutSuccess,
+                { flex: 1 },
+              ]}
+            >
               <Text
                 style={{ fontSize: 8.5, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 3 }}
               >
-                {isGerman ? 'Robustes Ergebnis' : 'Robust Outcome'}
+                {isGerman ? 'P10-Pfad bleibt finanziert' : 'P10 Path Stays Funded'}
               </Text>
+              {/* The P10 *band line* staying positive is not the same claim as
+                  "no run ever depletes": the worst decile of a plan with a 5%
+                  depletion risk is full of failed runs. State the band fact,
+                  then the actual risk. */}
               <Text style={{ fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
                 {isGerman
-                  ? 'Auch das konservative P10-Szenario bleibt bis zum Planungshorizont positiv.'
-                  : 'Even the conservative P10 scenario remains positive through the planning horizon.'}
+                  ? `Der P10-Pfad bleibt bis Alter ${fmtNumber(person.horizonAge, { locale })} durchgehend positiv. ${
+                      simulation.depletionRisk > 0.0005
+                        ? `Das heißt nicht, dass kein Lauf scheitert: in ${fmtPercent(simulation.depletionRisk, 1, locale)} der Läufe ist das Kapital vor dem Planungsende aufgebraucht.`
+                        : 'Kein einziger Lauf erschöpft das Kapital vor dem Planungsende.'
+                    }`
+                  : `The P10 path stays positive all the way to age ${fmtNumber(person.horizonAge, { locale })}. ${
+                      simulation.depletionRisk > 0.0005
+                        ? `That is not the same as no run failing: capital is exhausted before the horizon in ${fmtPercent(simulation.depletionRisk, 1, locale)} of runs.`
+                        : 'Not a single run exhausts capital before the horizon.'
+                    }`}
               </Text>
             </View>
           )}
         </View>
+      </View>
+
+      <View style={{ flexDirection: 'row', marginTop: 12 }}>
+        {derived.map((item, index) => (
+          <View
+            key={item.label}
+            style={[
+              styles.cardMuted,
+              {
+                flex: 1,
+                marginRight: index < derived.length - 1 ? 10 : 0,
+                marginBottom: 0,
+                paddingVertical: 8,
+              },
+            ]}
+            wrap={false}
+          >
+            <Text style={styles.kpiLabel}>{item.label}</Text>
+            <Text style={[styles.kpiValue, { fontSize: 13, marginTop: 3 }]}>{item.value}</Text>
+            <Text style={[styles.kpiDescription, { marginTop: 2 }]}>{item.note}</Text>
+          </View>
+        ))}
       </View>
     </View>
   )

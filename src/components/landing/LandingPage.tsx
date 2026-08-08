@@ -11,12 +11,14 @@ import {
 import { useFormatter, useTranslations } from 'next-intl'
 import { Link } from '@/navigation'
 import { Button } from '@/components/ui/button'
+import { ExamplePlanButton } from '@/components/plans/ExamplePlanButton'
 import { HeaderControlsMenu } from '@/components/navigation/HeaderControlsMenu'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { FanChartPreview } from './FanChartPreview'
 import {
-  PREVIEW_AGES,
+  APP_DEFAULT_RUNS,
+  PREVIEW_HORIZON_YEARS,
   PREVIEW_PLAN,
   PREVIEW_RUNS,
   PREVIEW_SUCCESS_RATE,
@@ -74,6 +76,10 @@ export function LandingPage() {
     })
 
   const runsLabel = format.number(PREVIEW_RUNS)
+  // The preview above was run 5,000 times; a visitor's own first plan runs the
+  // shipped default. Saying only the former made the landing page promise a
+  // number the dashboard never shows.
+  const defaultRunsLabel = format.number(APP_DEFAULT_RUNS)
   const successLabel = format.number(PREVIEW_SUCCESS_RATE / 100, {
     style: 'percent',
     maximumFractionDigits: 1,
@@ -84,7 +90,7 @@ export function LandingPage() {
   const STATS = [
     { key: 'scenarios', value: runsLabel },
     { key: 'percentiles', value: t('stats.percentiles.value') },
-    { key: 'years', value: format.number(PREVIEW_AGES.length) },
+    { key: 'years', value: format.number(PREVIEW_HORIZON_YEARS) },
     { key: 'privacy', value: t('stats.privacy.value') },
   ] as const
 
@@ -160,18 +166,16 @@ export function LandingPage() {
                     <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
                   </Link>
                 </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  asChild
-                  className="landing-label h-auto w-full whitespace-normal py-3 text-center leading-tight sm:w-auto lg:w-full lg:max-w-[21rem]"
-                >
-                  <Link href="/simulation">{t('hero.ctaSecondary')}</Link>
-                </Button>
+                {/* A stranger should be able to poke a furnished plan before
+                    typing their own salary into anything. */}
+                <ExamplePlanButton className="w-full sm:w-auto lg:w-full lg:max-w-[21rem]" />
               </div>
 
               <p className="landing-body animate-fade-in-more-delayed mt-4 text-xs font-semibold leading-relaxed text-muted-foreground">
                 {t('hero.note')}
+              </p>
+              <p className="landing-body animate-fade-in-more-delayed mt-2 text-xs font-medium leading-relaxed text-muted-foreground">
+                {t('hero.runsNote', { previewRuns: runsLabel, defaultRuns: defaultRunsLabel })}
               </p>
             </div>
 
@@ -342,6 +346,7 @@ export function LandingPage() {
             >
               {t('cta.secondary')}
             </Link>
+            <ExamplePlanButton variant="secondary" size="sm" className="mt-6 w-full max-w-[20rem]" />
           </div>
         </section>
       </main>

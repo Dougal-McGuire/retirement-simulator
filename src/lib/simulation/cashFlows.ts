@@ -79,6 +79,10 @@ export function sanitizeCashFlow(entry: unknown, fallbackId: string): CashFlow |
   const kind = isCashFlowKind(raw.kind) ? raw.kind : 'expense'
   const frequency = isCashFlowFrequency(raw.frequency) ? raw.frequency : 'monthly'
   const name = typeof raw.name === 'string' ? raw.name : ''
+  // Seeded flows carry a translation key so they follow the UI language; it
+  // survives round-tripping through storage but never affects the model.
+  const nameKey =
+    typeof raw.nameKey === 'string' && raw.nameKey.trim() !== '' ? raw.nameKey.trim() : undefined
   const startAge = optionalAge(raw.startAge)
   // A window is meaningless for a single payment, and keeping a stray `endAge`
   // around would make two otherwise identical flows compare unequal.
@@ -89,6 +93,7 @@ export function sanitizeCashFlow(entry: unknown, fallbackId: string): CashFlow |
     id,
     kind,
     name,
+    ...(nameKey !== undefined ? { nameKey } : {}),
     amount: Math.max(0, amount),
     frequency,
     ...(startAge !== undefined ? { startAge } : {}),
@@ -135,6 +140,9 @@ function readLegacyExpenses(value: unknown): CustomExpense[] | null {
       return {
         id: typeof raw.id === 'string' && raw.id.trim() !== '' ? raw.id.trim() : `expense-${index}`,
         name: typeof raw.name === 'string' ? raw.name : '',
+        ...(typeof raw.nameKey === 'string' && raw.nameKey.trim() !== ''
+          ? { nameKey: raw.nameKey.trim() }
+          : {}),
         amount,
         interval: raw.interval,
       }
@@ -164,6 +172,7 @@ export function projectCustomExpenses(flows: readonly CashFlow[]): CustomExpense
   return flows.filter(isLifetimeExpenseFlow).map((flow) => ({
     id: flow.id,
     name: flow.name,
+    ...(flow.nameKey !== undefined ? { nameKey: flow.nameKey } : {}),
     amount: flow.amount,
     interval: flow.frequency === 'annual' ? ('annual' as const) : ('monthly' as const),
   }))
@@ -238,9 +247,15 @@ export function reconcileCashFlows(params: {
   legacyExpenses?.forEach((expense) => {
     const existing = expenseFlowById.get(expense.id)
     if (existing) {
+      // A legacy array that still carries the key keeps it; one that has
+      // dropped it (a user rename came through the projection) drops it here
+      // too, so a localised label can never outlive the user's own text.
+      const { nameKey: _dropped, ...rest } = existing
+      void _dropped
       replacements.set(existing.id, {
-        ...existing,
+        ...rest,
         name: expense.name,
+        ...(expense.nameKey !== undefined ? { nameKey: expense.nameKey } : {}),
         amount: expense.amount,
         frequency: expense.interval,
       })
@@ -251,6 +266,7 @@ export function reconcileCashFlows(params: {
       id: uniqueId(expense.id),
       kind: 'expense',
       name: expense.name,
+      ...(expense.nameKey !== undefined ? { nameKey: expense.nameKey } : {}),
       amount: expense.amount,
       frequency: expense.interval,
     })

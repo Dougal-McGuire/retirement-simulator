@@ -9,7 +9,6 @@ import {
   HOUSEHOLD_TYPES,
   MARKET_MODELS,
   type SimulationParams,
-  type WithdrawalStrategy,
 } from '@/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,8 +23,10 @@ import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput
 import { EquityGlideSparkline } from '@/components/charts/EquityGlideSparkline'
 import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
 import { CashFlowList } from '@/components/forms/fields/CashFlowList'
+import { WithdrawalPlanner } from '@/components/plans/WithdrawalPlanner'
 import { buildCashFlowTemplates } from '@/components/forms/fields/cashFlowTemplates'
-import { toast } from '@/components/ui/toast'
+import { toast, TOAST_DURATION } from '@/components/ui/toast'
+import { ActionToast } from '@/components/ui/action-toast'
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts'
 import {
   annualTaxAllowance,
@@ -60,11 +61,6 @@ const INFLATION_PRESETS = [
   { key: 'target', values: { averageInflation: 0.025, inflationVolatility: 0.008 } },
   { key: 'elevated', values: { averageInflation: 0.035, inflationVolatility: 0.012 } },
 ] as const
-
-const WITHDRAWAL_STRATEGIES = [
-  'vanguardDynamic',
-  'fixedReal',
-] as const satisfies readonly WithdrawalStrategy[]
 
 const isClose = (a: number, b: number, epsilon = 0.0005) => Math.abs(a - b) <= epsilon
 
@@ -292,22 +288,24 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
     setResetOpen(false)
     toast(
       (instance) => (
-        <span className="flex items-center gap-3 text-sm font-semibold">
-          {t('reset.done', { name: planName })}
-          <button
-            type="button"
-            className="border-2 border-neo-black bg-neo-yellow px-2 py-1 text-[0.68rem] font-extrabold uppercase tracking-[0.12em] text-neo-black"
-            onClick={() => {
-              toast.dismiss(instance.id)
-              updateParams(previous)
-              toast.success(t('reset.undone'))
-            }}
-          >
-            {tPlans('actions.undo')}
-          </button>
-        </span>
+        <ActionToast
+          testId="plan-reset-toast"
+          message={t('reset.done', { name: planName })}
+          actions={[
+            {
+              label: tPlans('actions.undo'),
+              tone: 'primary',
+              testId: 'plan-reset-toast-undo',
+              onClick: () => {
+                toast.dismiss(instance.id)
+                updateParams(previous)
+                toast.success(t('reset.undone'))
+              },
+            },
+          ]}
+        />
       ),
-      { duration: 8000 }
+      { duration: TOAST_DURATION }
     )
   }
 
@@ -1042,80 +1040,22 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
             </p>
           </div>
 
-          <div className="space-y-3">
-            <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
-              {tControls('fields.withdrawalStrategy.label')}
-            </span>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {WITHDRAWAL_STRATEGIES.map((strategy) => {
-                const isSelected = params.withdrawalStrategy === strategy
-                return (
-                  <button
-                    key={strategy}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => updateParams({ withdrawalStrategy: strategy })}
-                    className={cn(
-                      'flex flex-col items-start gap-1 border-2 border-neo-black px-3 py-2.5 text-left transition-neo',
-                      isSelected
-                        ? 'bg-neo-blue text-neo-white shadow-neo-xs'
-                        : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
-                    )}
-                  >
-                    <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.1em]">
-                      {tControls(`fields.withdrawalStrategy.options.${strategy}.label`)}
-                    </span>
-                    <span className="text-[0.58rem] font-medium leading-snug opacity-90">
-                      {tControls(`fields.withdrawalStrategy.options.${strategy}.description`)}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {params.withdrawalStrategy === 'vanguardDynamic' && (
-            <div className="grid gap-x-5 gap-y-6 sm:grid-cols-3">
-              <WizardSliderField
-                id="editor-dsWithdrawalRate"
-                label={tControls('fields.dsWithdrawalRate.label')}
-                value={params.dsWithdrawalRate * 100}
-                onValueChange={(value) => updateParams({ dsWithdrawalRate: value / 100 })}
-                min={2}
-                max={8}
-                step={0.25}
-                valueLabel={formatPercent(params.dsWithdrawalRate, 2)}
-                minLabel={formatPercent(0.02, 0)}
-                maxLabel={formatPercent(0.08, 0)}
-              />
-              <WizardSliderField
-                id="editor-dsCeilingRate"
-                label={tControls('fields.dsCeilingRate.label')}
-                value={params.dsCeilingRate * 100}
-                onValueChange={(value) => updateParams({ dsCeilingRate: value / 100 })}
-                min={0}
-                max={15}
-                step={0.5}
-                valueLabel={formatPercent(params.dsCeilingRate, 1)}
-                minLabel={formatPercent(0, 0)}
-                maxLabel={formatPercent(0.15, 0)}
-              />
-              <WizardSliderField
-                id="editor-dsFloorRate"
-                label={tControls('fields.dsFloorRate.label')}
-                value={params.dsFloorRate * 100}
-                onValueChange={(value) => updateParams({ dsFloorRate: value / 100 })}
-                min={-15}
-                max={0}
-                step={0.5}
-                valueLabel={formatPercent(params.dsFloorRate, 1)}
-                minLabel={formatPercent(-0.15, 0)}
-                maxLabel={formatPercent(0, 0)}
-              />
-            </div>
-          )}
+          {/* The withdrawal rule used to live here as a picker plus three
+              anonymous sliders. It has its own full-width surface below now —
+              the corridor, the readouts and the four-strategy comparison do not
+              fit in half a column, and splitting the controls across two cards
+              would be worse than moving all of them. */}
+          <p className="border-2 border-dashed border-neo-black/40 bg-background px-4 py-3 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            {t('groups.withdrawal.pointer', {
+              strategy: tControls(
+                `fields.withdrawalStrategy.options.${params.withdrawalStrategy}.label`
+              ),
+            })}
+          </p>
         </EditorCard>
       </div>
+
+      <WithdrawalPlanner />
 
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
         <DialogContent className="bg-neo-white sm:max-w-[30rem]" data-testid="plan-reset-dialog">

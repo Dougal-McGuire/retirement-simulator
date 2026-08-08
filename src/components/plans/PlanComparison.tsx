@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts'
 import { Check, GitCompareArrows } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
@@ -20,8 +20,14 @@ import { AssumptionsDiff } from '@/components/plans/AssumptionsDiff'
 import { deriveDepletionAges } from '@/lib/insights/depletion'
 import { planDisplayName } from '@/lib/plans/planName'
 import { comparisonFingerprint } from '@/lib/simulation/planDiff'
+import { effectiveRunCount } from '@/lib/simulation/context'
 import { getPlanHealth } from '@/lib/simulation/planInsights'
-import { useActivePlanId, usePlans, useSimulationStore } from '@/lib/stores/simulationStore'
+import {
+  useActivePlanId,
+  usePlanIsDirty,
+  usePlans,
+  useSimulationStore,
+} from '@/lib/stores/simulationStore'
 import {
   MIN_COMPARISON_PLANS,
   useComparisonStore,
@@ -60,6 +66,10 @@ export function PlanComparison() {
   const isMobile = useIsMobile()
   const plans = usePlans()
   const activePlanId = useActivePlanId()
+  // Unsaved edits to the active plan make its comparison row describe a plan
+  // the user is no longer looking at — exactly as stale as a changed snapshot.
+  const isDirty = usePlanIsDirty()
+  const workingParams = useSimulationStore((state) => state.params)
   const { formatCurrency, formatCurrencyShort } = useChartFormatters()
 
   // Selection and the last run's numbers are persisted: switching tabs or
@@ -151,6 +161,18 @@ export function PlanComparison() {
     [selectedIds, plans]
   )
 
+  /**
+   * The parameters a plan is *currently* worth: the working copy for the active
+   * plan while it has unsaved edits, the stored params otherwise. Both the run
+   * and the staleness check use this, so a re-run actually clears the STALE
+   * badge instead of reproducing it.
+   */
+  const paramsFor = useCallback(
+    (plan: Plan) =>
+      isDirty && plan.id === activePlanId ? workingParams : plan.params,
+    [isDirty, activePlanId, workingParams]
+  )
+
   const hasEnoughSelected = selectedPlans.length >= MIN_COMPARISON_PLANS
   const canRun = hasEnoughSelected && status !== 'running'
   const hasEnoughPlans = plans.length >= MIN_COMPARISON_PLANS
@@ -165,8 +187,12 @@ export function PlanComparison() {
       const next: ComparisonSnapshot[] = []
 
       for (const plan of selectedPlans) {
-        const runs = Math.min(plan.params.simulationRuns, COMPARISON_RUNS)
-        const results = await runSimulationInClient({ ...plan.params, simulationRuns: runs })
+        const planParams = paramsFor(plan)
+        const requested = Math.min(planParams.simulationRuns, COMPARISON_RUNS)
+        // What the engine will really do with that request — 125 fixed paths
+        // under the historical model, whatever number was asked for.
+        const runs = effectiveRunCount({ ...planParams, simulationRuns: requested })
+        const results = await runSimulationInClient({ ...planParams, simulationRuns: requested })
         const lastIndex = Math.max(0, results.ages.length - 1)
         const depletionShare = results.depletionByAge?.[lastIndex]
 
@@ -178,11 +204,12 @@ export function PlanComparison() {
           depletionRisk:
             typeof depletionShare === 'number' ? depletionShare * 100 : 100 - results.successRate,
           shortfallAge: deriveDepletionAges(results).p10DepletionAge,
-          retirementAge: plan.params.retirementAge,
+          retirementAge: planParams.retirementAge,
           ages: results.ages,
           medianAssets: results.assetPercentiles.p50,
-          fingerprint: comparisonFingerprint(plan.params),
+          fingerprint: comparisonFingerprint(planParams),
           runs,
+          marketModel: planParams.marketModel,
           ranAt: Date.now(),
         })
       }
@@ -198,18 +225,54 @@ export function PlanComparison() {
     }
   }
 
-  // A snapshot is stale once its plan's parameters moved on since the run — or
-  // once the plan is gone entirely.
+  // A snapshot is stale once its plan's parameters moved on since the run, once
+  // the plan is gone entirely — or, for the active plan, once the working copy
+  // carries unsaved edits: the dashboard then shows one plan and this row
+  // another, and only saying so keeps the table honest.
   const staleIds = useMemo(() => {
     const stale = new Set<string>()
     snapshots.forEach((snapshot) => {
       const plan = plans.find((entry) => entry.id === snapshot.planId)
-      if (!plan || comparisonFingerprint(plan.params) !== snapshot.fingerprint) {
+      if (!plan || comparisonFingerprint(paramsFor(plan)) !== snapshot.fingerprint) {
         stale.add(snapshot.planId)
       }
     })
     return stale
-  }, [snapshots, plans])
+  }, [snapshots, plans, paramsFor])
+
+  /**
+   * True when the only reason anything is stale is the unsaved working copy —
+   * the snapshot still matches the *stored* plan, so the banner has to say
+   * "unsaved edits" rather than "parameters changed".
+   */
+  const dirtyOnly = useMemo(
+    () =>
+      isDirty &&
+      staleIds.size > 0 &&
+      snapshots.every((snapshot) => {
+        const plan = plans.find((entry) => entry.id === snapshot.planId)
+        return plan !== undefined && comparisonFingerprint(plan.params) === snapshot.fingerprint
+      }),
+    [isDirty, staleIds, snapshots, plans]
+  )
+
+  const formatRanAt = (timestamp: number) =>
+    format.dateTime(new Date(timestamp), { dateStyle: 'short', timeStyle: 'short' })
+
+  /** "Stale · run 12/08, 14:31" — the badge and when the number was measured. */
+  const staleBadge = (snapshot: ComparisonSnapshot) =>
+    staleIds.has(snapshot.planId) ? (
+      <span
+        className="mt-1 inline-flex items-center gap-1 border-2 border-warning-600 bg-warning-50 px-1.5 py-0.5 text-[0.52rem] font-extrabold uppercase tracking-[0.1em] text-warning-700"
+        data-testid="plan-comparison-stale-badge"
+        title={tc('staleRanAt', { time: formatRanAt(snapshot.ranAt) })}
+      >
+        {tc('staleBadge')}
+        <span className="font-semibold tracking-normal normal-case">
+          {tc('staleRanAt', { time: formatRanAt(snapshot.ranAt) })}
+        </span>
+      </span>
+    ) : null
 
   // Results belong to the plans that were run; if the chips have moved on since,
   // say so instead of letting the table quietly disagree with the selection.
@@ -480,7 +543,11 @@ export function PlanComparison() {
                 data-testid="plan-comparison-stale"
               >
                 <p className="text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-warning-700">
-                  {staleIds.size > 0 ? tc('stale') : tc('selectionChanged')}
+                  {staleIds.size === 0
+                    ? tc('selectionChanged')
+                    : dirtyOnly
+                      ? tc('staleDirty')
+                      : tc('stale')}
                 </p>
                 <Button
                   size="sm"
@@ -534,6 +601,7 @@ export function PlanComparison() {
                             <LegendSwatch kind="line" color={hueFor(index).solid} />
                             <span className="max-w-[12rem] truncate">{snapshot.name}</span>
                           </span>
+                          {staleBadge(snapshot)}
                         </th>
                         <td className={cn('py-3 pr-3 text-right tabular-nums', muted)}>
                           <span
@@ -596,9 +664,12 @@ export function PlanComparison() {
                     data-stale={staleIds.has(snapshot.planId) ? 'true' : 'false'}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="flex min-w-0 items-center gap-2 text-[0.74rem] font-extrabold text-neo-black">
-                        <LegendSwatch kind="line" color={hueFor(index).solid} />
-                        <span className="truncate">{snapshot.name}</span>
+                      <span className="flex min-w-0 flex-col">
+                        <span className="flex min-w-0 items-center gap-2 text-[0.74rem] font-extrabold text-neo-black">
+                          <LegendSwatch kind="line" color={hueFor(index).solid} />
+                          <span className="truncate">{snapshot.name}</span>
+                        </span>
+                        {staleBadge(snapshot)}
                       </span>
                       <span
                         className={cn(
@@ -791,8 +862,25 @@ export function PlanComparison() {
               <AssumptionsDiff plans={assumptionPlans} />
             )}
 
+            {/* The footnote used to promise "up to 1 200 runs per plan" while
+                every plan actually ran at its own count — 500, or 125 fixed
+                historical paths. It now lists what was really used. */}
             <p className="mt-3 text-[0.6rem] font-medium text-muted-foreground">
-              {tc('runsNote', { runs: COMPARISON_RUNS })}
+              {tc('runsNote', {
+                detail: snapshots
+                  .map((snapshot) =>
+                    snapshot.marketModel === 'historical'
+                      ? tc('runsNoteEntryHistorical', {
+                          name: snapshot.name,
+                          runs: format.number(snapshot.runs),
+                        })
+                      : tc('runsNoteEntry', {
+                          name: snapshot.name,
+                          runs: format.number(snapshot.runs),
+                        })
+                  )
+                  .join(' · '),
+              })}
             </p>
           </>
         )}

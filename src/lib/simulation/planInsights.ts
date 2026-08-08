@@ -45,6 +45,7 @@ const comparableNumericParamKeys = [
   'dsWithdrawalRate',
   'dsCeilingRate',
   'dsFloorRate',
+  'spendingFloorReal',
   'simulationRuns',
 ] as const satisfies readonly (keyof SimulationParams)[]
 
@@ -178,23 +179,25 @@ export function buildPlanInsightMetrics(
 }
 
 /**
- * Stress levers run at a reduced count so they stay responsive while the user
- * drags sliders. That is only safe if whatever they are compared against was
- * measured at the *same* count — see `buildScenarioBaselineParams`.
+ * Stress levers run at the plan's own run count — the same `effectiveRuns` the
+ * dashboard hero was measured at.
+ *
+ * They used to run at `clamp(runs / 2, 150, 500)` for responsiveness, with a
+ * separately re-measured baseline to keep the deltas honest. That made the
+ * panel quote a baseline of its own (94.4 %) underneath a hero reading 95.2 %,
+ * which is indefensible however carefully the delta was computed: two numbers
+ * describing one plan must be one number. Common random numbers make the
+ * lever runs a strict re-use of the hero's scenario set, so the baseline is now
+ * literally the hero's result — no second run, and nothing left to disagree.
  */
 export function scenarioPreviewRuns(params: SimulationParams): number {
-  return Math.max(150, Math.min(500, Math.round(params.simulationRuns * 0.5)))
+  return params.simulationRuns
 }
 
 /**
- * The unchanged plan, re-measured at the levers' preview run count.
- *
- * Comparing a 250-run lever against the dashboard's 500-run headline mixes a
- * real effect with Monte Carlo sampling error, which is how a lever that can
- * only help ("spend 10% less") ends up displaying a negative delta. Running the
- * baseline at the same count makes the difference pure signal: the engine
- * reuses one fixed scenario set across parameter changes, so the two runs see
- * the same market paths and everything that is left is the lever itself.
+ * The unchanged plan at the levers' run count. Identical to `params` now that
+ * the levers no longer reduce the count; kept as the single place that would
+ * have to change if they ever do again.
  */
 export function buildScenarioBaselineParams(params: SimulationParams): SimulationParams {
   return { ...params, simulationRuns: scenarioPreviewRuns(params) }

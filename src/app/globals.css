@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 @config '../../tailwind.config.ts';
 
@@ -100,8 +99,8 @@
     --theme-pattern-opacity: 1;
     --theme-pattern-blend: normal;
     --theme-font-body:
-      'IBM Plex Mono', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --theme-font-heading: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
+      var(--font-plex-mono), var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --theme-font-heading: var(--font-space-grotesk), var(--font-inter), system-ui, -apple-system, sans-serif;
     --theme-letter-spacing-body: 0.01em;
     --theme-heading-spacing: 0.08em;
     --theme-h1-spacing: 0.12em;
@@ -209,8 +208,8 @@
       repeating-linear-gradient(25deg, transparent 0 38px, rgba(255, 82, 178, 0.1) 38px 39px);
     --theme-pattern-size: 100% 100%;
     --theme-pattern-opacity: 0.72;
-    --theme-font-body: 'IBM Plex Mono', 'Inter', ui-monospace, monospace;
-    --theme-font-heading: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --theme-font-body: var(--font-plex-mono), var(--font-inter), ui-monospace, monospace;
+    --theme-font-heading: var(--font-space-grotesk), var(--font-inter), system-ui, sans-serif;
     --theme-letter-spacing-body: 0.02em;
     --theme-heading-transform: uppercase;
     --theme-heading-spacing: 0.11em;
@@ -303,7 +302,7 @@
       linear-gradient(90deg, rgba(0, 112, 192, 0.06) 1px, transparent 1px);
     --theme-pattern-size: 100% 34px, 34px 100%;
     --theme-pattern-opacity: 0.84;
-    --theme-font-body: 'Inter', system-ui, -apple-system, sans-serif;
+    --theme-font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
     --theme-font-heading: Georgia, 'Times New Roman', serif;
     --theme-letter-spacing-body: 0;
     --theme-heading-transform: none;
@@ -405,8 +404,8 @@
       repeating-linear-gradient(60deg, transparent 0 40px, rgba(30, 214, 160, 0.09) 40px 41px);
     --theme-pattern-size: 100% 100%;
     --theme-pattern-opacity: 0.7;
-    --theme-font-body: 'Inter', system-ui, -apple-system, sans-serif;
-    --theme-font-heading: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --theme-font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
+    --theme-font-heading: var(--font-space-grotesk), var(--font-inter), system-ui, sans-serif;
     --theme-letter-spacing-body: 0;
     --theme-heading-transform: none;
     --theme-heading-spacing: 0.01em;
@@ -503,8 +502,8 @@
       repeating-linear-gradient(0deg, transparent 0 22px, rgba(255, 83, 73, 0.08) 22px 23px);
     --theme-pattern-size: 100% 100%;
     --theme-pattern-opacity: 0.75;
-    --theme-font-body: 'Space Grotesk', 'Inter', system-ui, sans-serif;
-    --theme-font-heading: 'IBM Plex Mono', ui-monospace, monospace;
+    --theme-font-body: var(--font-space-grotesk), var(--font-inter), system-ui, sans-serif;
+    --theme-font-heading: var(--font-plex-mono), ui-monospace, monospace;
     --theme-letter-spacing-body: 0.005em;
     --theme-heading-spacing: 0.08em;
     --theme-h1-spacing: 0.1em;
@@ -1545,7 +1544,26 @@ html[data-theme='signal'] .theme-content > .theme-panel-card:nth-child(even) {
   animation: wizard-step-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Indeterminate route-transition bar: shown while a navigation is pending, so
+   "Complete setup" is never a click into silence. */
+@keyframes route-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.animate-route-progress {
+  animation: route-progress 1.1s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .animate-route-progress {
+    animation-duration: 3s !important;
+  }
+
   .animate-step-in,
   .animate-fade-in,
   .animate-fade-in-delayed,

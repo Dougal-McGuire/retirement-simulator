@@ -34,7 +34,8 @@
       "ctaPrimary": "Start planning — it's free",
       "ctaSecondary": "Explore the dashboard",
       "note": "No sign-up. No cloud. Your data never leaves this browser.",
-      "lede": "One average return tells you nothing."
+      "lede": "One average return tells you nothing.",
+      "runsNote": "The chart above is one baked run of the engine at {previewRuns} paths. Your own plan runs {defaultRuns} by default — raise it in the plan editor whenever you want a tighter answer."
     },
     "stats": {
       "scenarios": {
@@ -146,6 +147,13 @@
           "body": "A kind market. Ten times the ending balance of the unlucky case, from the same inputs."
         }
       }
+    },
+    "demo": {
+      "cta": "Explore an example plan",
+      "resume": "Back to the example plan",
+      "opening": "Loading the example…",
+      "hint": "A furnished plan with real windows and a bequest goal. Added alongside your own — rename or delete it any time.",
+      "limit": "You already have the maximum of {max} plans. Delete one to add the example."
     }
   },
   "layout": {
@@ -374,7 +382,8 @@
       "saveAsNew": "Save as new plan",
       "discard": "Discard changes",
       "continue": "Continue",
-      "back": "Keep editing"
+      "back": "Keep editing",
+      "opening": "Opening the dashboard…"
     },
     "cashFlows": {
       "intro": "Everything that flows in or out on top of your salary and pension. Each item can run for life or only between two ages — a rental income that ends, a repair in a single year, care costs late in the plan.",
@@ -448,7 +457,19 @@
           "partnerPension": "Partner’s pension",
           "care": "Care costs",
           "roof": "Roof renovation"
-        }
+        },
+        "added": "Added “{name}” — check the amount and the age window below.",
+        "undo": "Undo"
+      },
+      "defaults": {
+        "health": "Health insurance",
+        "food": "Groceries",
+        "entertainment": "Entertainment",
+        "shopping": "Shopping",
+        "utilities": "Utilities",
+        "vacations": "Vacations",
+        "repairs": "Home repairs",
+        "carMaintenance": "Car maintenance"
       }
     }
   },
@@ -469,7 +490,8 @@
         "medium": "A solid outlook with room to improve—tweak spending or asset allocation for more certainty.",
         "low": "Confidence is strained. Increase savings, revisit expenses, or adjust risk to improve resilience."
       },
-      "confidenceMeta": "Based on {count} stochastic simulations"
+      "confidenceMeta": "Based on {count} stochastic simulations",
+      "subtitleHistorical": "Build, adjust, and monitor retirement plans against every start year of real market history."
     },
     "tabs": {
       "overview": "Overview",
@@ -738,29 +760,37 @@
       },
       "withdrawalStrategy": {
         "label": "Withdrawal Strategy",
-        "tooltip": "Choose whether retirement expenses stay inflation-linked or adjust with Vanguard Dynamic Spending guardrails.",
+        "tooltip": "Four rules for turning a portfolio into an income. They trade spending stability against the chance of running out — the planner below shows both.",
         "options": {
-          "vanguardDynamic": {
-            "label": "Vanguard DS",
-            "description": "Portfolio-linked spending with annual ceiling and floor."
-          },
           "fixedReal": {
-            "label": "Fixed real",
-            "description": "Expenses rise with inflation regardless of market returns."
+            "label": "Fixed real spending",
+            "description": "Spend the same purchasing power every year — steady income, highest risk of running dry."
+          },
+          "vanguardDynamic": {
+            "label": "Dynamic with guardrails (Vanguard)",
+            "description": "Follow the portfolio, but never cut below the floor or raise above the ceiling."
+          },
+          "guytonKlinger": {
+            "label": "Guyton-Klinger guardrails",
+            "description": "Inflation raises as usual, plus a 10% cut or raise once the withdrawal rate drifts 20% off course."
+          },
+          "percentOfPortfolio": {
+            "label": "Percent of portfolio",
+            "description": "Spend a fixed share of the portfolio each year — it can never run dry, but income swings with the market."
           }
         }
       },
       "dsWithdrawalRate": {
-        "label": "DS Withdrawal Rate",
-        "tooltip": "Target percentage of the prior year-end portfolio used to calculate dynamic spending."
+        "label": "Withdrawal rate",
+        "tooltip": "Vanguard: the rate targeted each year. Guyton-Klinger: the initial rate the guardrails are measured against. Percent of portfolio: the rate spent outright."
       },
       "dsCeilingRate": {
-        "label": "DS Ceiling",
-        "tooltip": "Maximum annual increase versus last year’s inflation-adjusted spending."
+        "label": "Spending ceiling",
+        "tooltip": "Largest raise versus last year’s inflation-adjusted spending."
       },
       "dsFloorRate": {
-        "label": "DS Floor",
-        "tooltip": "Maximum annual decrease versus last year’s inflation-adjusted spending."
+        "label": "Spending floor",
+        "tooltip": "Largest cut versus last year’s inflation-adjusted spending."
       },
       "marketModel": {
         "label": "Market model",
@@ -849,6 +879,10 @@
             "label": "Couple (jointly assessed)"
           }
         }
+      },
+      "spendingFloorReal": {
+        "label": "Guaranteed floor (today’s €, per year)",
+        "tooltip": "The percentage rule alone can shrink your income without limit after a crash. This is the annual amount you keep spending regardless — as long as the portfolio lasts. 0 switches it off."
       }
     },
     "saved": {
@@ -911,7 +945,8 @@
       "toAge": "to age {age}",
       "beyond": "beyond {age}",
       "detailP10": "Worst case (P10): age {age}",
-      "detailNone": "No depletion even in the worst 10%"
+      "detailNone": "P10 outcome stays funded past {age}",
+      "detailNoneRisk": "P10 outcome stays funded past {age} · {rate} of runs still deplete"
     },
     "withdrawal": {
       "label": "First-year withdrawal",
@@ -961,12 +996,14 @@
       "savedHint": "Creates a new plan with these parameters. Your current plan stays active.",
       "deltaPoints": "{value} pts",
       "saturated": "Success already {rate} — comparing worst-decile end assets instead.",
-      "worstDecile": "Worst-decile end assets"
+      "worstDecile": "Worst-decile end assets",
+      "baseline": "Baseline {rate} — the dashboard figure, measured over {runs} runs. Every effect below is the change against it.",
+      "baselineHistorical": "Baseline {rate} — the dashboard figure, measured over {runs} historical start years. Every effect below is the change against it."
     }
   },
   "recommendations": {
     "title": "Recommendations",
-    "subtitle": "Rule-based suggestions derived from your plan — estimated uplift in success-rate points",
+    "subtitle": "Derived from this plan — each item names the number that triggered it. Estimated uplift is in success-rate points.",
     "empty": "Run the simulation to see recommendations.",
     "uplift": "+{min}–{max} pts",
     "impact": {
@@ -975,36 +1012,10 @@
       "low": "Low impact"
     },
     "items": {
-      "increaseSavings": {
-        "title": "Increase savings rate",
-        "body": "Your current success rate indicates potential challenges. Consider increasing your annual savings by 10-20% to improve retirement security."
-      },
-      "delayRetirement": {
-        "title": "Delay retirement",
-        "body": "Working an additional 2-3 years could significantly improve your success rate by allowing more time for asset accumulation."
-      },
-      "optimizeMix": {
-        "title": "Optimize investment mix",
-        "body": "Review your asset allocation to ensure an appropriate balance between growth and stability for your risk tolerance."
-      },
-      "reviewSpending": {
-        "title": "Review spending plan",
-        "body": "Your expenses are high relative to savings. Consider reviewing discretionary spending to improve financial flexibility."
-      },
-      "maximizeTaxDeferred": {
-        "title": "Maximize tax-advantaged accounts",
-        "body": "Ensure you are taking full advantage of tax-advantaged retirement accounts to reduce current tax liability and enhance long-term growth."
-      },
       "reduceVolatility": {
-        "title": "Consider volatility reduction",
-        "body": "Your portfolio has high volatility. As you approach retirement, consider gradually shifting to more stable investments.",
         "action": "Turn on the glide path",
         "applied": "Glide path switched on",
         "undo": "Undo"
-      },
-      "reviewInsurance": {
-        "title": "Review insurance coverage",
-        "body": "Evaluate current insurance policies including health, long-term care and life insurance to ensure adequate protection."
       }
     }
   },
@@ -1028,8 +1039,10 @@
       "toggle": "View spending data table",
       "caption": "Monthly post-strategy spending projections during retirement by age and percentile",
       "note": {
-        "dynamic": "Rows show every retirement year using Vanguard Dynamic Spending: first-year expenses start from the plan, then target spending is {withdrawalRate} of the prior year-end portfolio and is bounded by {ceiling} / {floor} guardrails versus inflation-adjusted prior spending. Pension does not set the DS allowance; it offsets how much of the median allowance must come from the portfolio.",
-        "fixed": "Rows show every retirement year using fixed real spending: configured expenses rise with simulated inflation and are not adjusted for portfolio performance. Pension offsets how much of the median allowance must come from the portfolio."
+        "fixedReal": "Rows show every retirement year under fixed real spending: the configured expenses rise with simulated inflation and are not adjusted for portfolio performance. The pension offsets how much of the median allowance must come from the portfolio.",
+        "vanguardDynamic": "Rows show every retirement year under the Vanguard guardrails: the first year starts from the plan, then target spending is {withdrawalRate} of the prior year-end portfolio, bounded by the {ceiling} / {floor} guardrails against inflation-adjusted prior spending. The pension does not set the allowance; it offsets how much of it must come from the portfolio.",
+        "guytonKlinger": "Rows show every retirement year under Guyton-Klinger: spending is inflation-linked, cut by 10% whenever the withdrawal rate runs more than 20% above {withdrawalRate} and raised by 10% whenever it runs more than 20% below. The pension offsets how much of the allowance must come from the portfolio.",
+        "percentOfPortfolio": "Rows show every retirement year under percent of portfolio: spending is {withdrawalRate} of the prior year-end portfolio, with no memory of last year. The pension offsets how much of the allowance must come from the portfolio."
       },
       "headers": {
         "age": "Age",
@@ -1113,11 +1126,11 @@
       "strategyLabel": "Spending rule",
       "readingLabel": "How to read it",
       "reading": "The solid line is the median monthly allowance after strategy rules; the shaded band spans the 10th to 90th percentile of outcomes. Hover any age to also see the median portfolio-funded withdrawal rate after pension offsets.",
-      "dynamic": {
-        "summary": "Vanguard DS starts from the planned first retirement-year budget. Later years target {withdrawalRate} of the prior year-end portfolio, capped to {ceiling} above and {floor} below last year’s inflation-adjusted spending."
-      },
-      "fixed": {
-        "summary": "Fixed real spending keeps the planned budget on an inflation path. Portfolio returns affect whether withdrawals succeed, but they do not change spending."
+      "strategies": {
+        "fixedReal": "Fixed real spending keeps the planned budget on an inflation path. Portfolio returns decide whether the withdrawals succeed, but they never change what is spent.",
+        "vanguardDynamic": "The Vanguard guardrails start from the planned first retirement-year budget. Later years target {withdrawalRate} of the prior year-end portfolio, capped at {ceiling} above and {floor} below last year’s inflation-adjusted spending.",
+        "guytonKlinger": "Guyton-Klinger keeps the planned budget on an inflation path, then cuts 10% whenever the withdrawal rate runs more than 20% above {withdrawalRate}, and adds 10% whenever it runs more than 20% below.",
+        "percentOfPortfolio": "Percent of portfolio spends {withdrawalRate} of the prior year-end portfolio every year. Spending follows the market in both directions; only an explicit floor puts a bottom under it."
       }
     },
     "axis": {
@@ -1917,7 +1930,8 @@
       "modified": "Modified"
     },
     "defaultNames": {
-      "base": "Base plan"
+      "base": "Base plan",
+      "demo": "Example plan"
     },
     "copySuffix": "copy",
     "actions": {
@@ -1981,7 +1995,7 @@
       "needMorePlans": "Create a second plan to unlock side-by-side comparison.",
       "empty": "No comparison yet — pick your plans and press run.",
       "error": "Comparison could not be completed. Please try again.",
-      "runsNote": "Comparison uses up to {runs} runs per plan and never re-runs on parameter changes.",
+      "runsNote": "Path counts used: {detail}. Recomputed only when you press the button.",
       "active": "Active",
       "best": "Best",
       "never": "Never",
@@ -2059,11 +2073,17 @@
           "equityFundExemption": "Partial exemption (Teilfreistellung)",
           "pensionTaxablePortion": "Taxable share of pension",
           "pensionTaxRate": "Income tax on pension",
-          "legacyTargetReal": "Legacy goal (today's €)"
+          "legacyTargetReal": "Legacy goal (today's €)",
+          "spendingFloorReal": "Guaranteed spending floor"
         },
         "differsCount": "{count, plural, one {# difference} other {# differences}}"
       },
-      "selectionChanged": "Selection changed since this comparison ran — run it again for the plans you picked."
+      "selectionChanged": "Selection changed since this comparison ran — run it again for the plans you picked.",
+      "staleBadge": "Stale",
+      "staleDirty": "The active plan has unsaved edits — this row still shows the saved plan.",
+      "staleRanAt": "Run {time}",
+      "runsNoteEntry": "{name}: {runs} runs",
+      "runsNoteEntryHistorical": "{name}: {runs} historical paths"
     },
     "toasts": {
       "planCreatedFrom": "Created “{name}” from “{source}” — selected in Compare plans.",
@@ -2117,12 +2137,17 @@
       },
       "market": {
         "title": "Market & rules",
-        "description": "Return assumptions, German taxes and the withdrawal rule."
+        "description": "Return assumptions and German taxes."
       },
       "cashFlows": {
         "title": "Cash flows",
         "description": "Everything this plan pays out or takes in, and for how long.",
         "incomePointer": "{count, plural, =0 {One-off income lives in the cash-flow card below} =1 {# one-off income, edited in the cash-flow card below} other {# one-off incomes, edited in the cash-flow card below}}"
+      },
+      "withdrawal": {
+        "title": "Withdrawal",
+        "description": "How the portfolio becomes an income.",
+        "pointer": "Withdrawal rule: {strategy} — planned in the withdrawal planner below"
       }
     },
     "summary": {
@@ -2172,12 +2197,90 @@
     "title": "Quick what-if",
     "description": "The four levers that move the outcome most. Every change lands in the working copy.",
     "openEditor": "Edit full plan",
-    "expensesHint": "Scales every expense in this plan proportionally.",
+    "expensesHint": "Scales the {count} lifetime expenses in this plan ({total}/mo) proportionally.",
     "fields": {
       "retirementAge": "Retirement age",
       "annualSavings": "Annual savings",
       "monthlyExpenses": "Monthly expenses",
       "averageROI": "Expected return"
+    },
+    "expensesHintScheduled": "Scales the {count} lifetime expenses ({total}/mo) proportionally. The {scheduled} scheduled flows with an age window are not affected — edit those in the Plan tab."
+  },
+  "withdrawalPlanner": {
+    "title": "Withdrawal planner",
+    "description": "How this plan turns a portfolio into a monthly income — and what that income is allowed to do when markets misbehave.",
+    "strategyLabel": "Strategy",
+    "paramsLabel": "Strategy settings",
+    "noParams": "This strategy has no settings: it simply spends the plan’s budget, inflation-linked.",
+    "stats": {
+      "firstYear": "First retirement year",
+      "firstYearHint": "Median monthly spending at age {age}, today’s €",
+      "floor": "Guaranteed floor",
+      "floorHint": "Least this rule can pay at age {age}, today’s €",
+      "volatility": "Spending spread",
+      "volatilityHint": "P90 ÷ P10 of real spending at age {age}",
+      "success": "Success rate",
+      "successHint": "Share of futures that met the plan’s goal",
+      "none": "None",
+      "unit": "/mo"
+    },
+    "tradeoff": "A lower spread means a more predictable income; a higher success rate means less chance of running out. Move the rate and watch both move.",
+    "corridor": {
+      "title": "Spending corridor",
+      "description": "The shaded band is where 80% of simulated futures land. The dashed lines are not a forecast: they are what the rule itself promises, whatever the market does.",
+      "legend": {
+        "band": "P10–P90 of futures",
+        "median": "Median",
+        "floor": "Planned floor",
+        "ceiling": "Planned ceiling"
+      },
+      "tooltip": {
+        "label": "Age {age}",
+        "p90": "P90",
+        "median": "Median",
+        "p10": "P10",
+        "floor": "Planned floor",
+        "ceiling": "Planned ceiling"
+      },
+      "markers": {
+        "retirement": "Retirement",
+        "pension": "State pension"
+      },
+      "caveat": "The floor holds as long as the portfolio does — it is a rule, not a guarantee from a third party.",
+      "noFloor": "This strategy promises no floor: set one below to put a hard bottom under your income.",
+      "empty": "Run the simulation to see the corridor.",
+      "aria": "Spending corridor from age {retirementAge}: median spending with the P10–P90 band and the strategy’s planned floor and ceiling."
+    },
+    "compare": {
+      "title": "Compare all four strategies",
+      "subtitle": "Same plan, same market paths, four withdrawal rules. This is the trade-off, in numbers.",
+      "run": "Compare strategies",
+      "rerun": "Run again",
+      "running": "Running…",
+      "error": "The strategy comparison failed. Please try again.",
+      "empty": "Run the comparison to see all four strategies side by side.",
+      "stale": "The plan changed since this comparison ran.",
+      "columns": {
+        "strategy": "Strategy",
+        "success": "Success rate",
+        "lifetimeSpending": "Median lifetime spending",
+        "floor": "Guaranteed floor",
+        "volatility": "Spending spread"
+      },
+      "best": "Best",
+      "active": "Active",
+      "apply": "Use this strategy",
+      "none": "—",
+      "runsNote": "Each strategy is run over the same {runs} market paths, so the differences are the rules and nothing else. Lifetime spending is the median path summed in today’s euros; the spread is P90 ÷ P10 at age {age}."
+    }
+  },
+  "welcome": {
+    "title": "New here?",
+    "dismiss": "Dismiss this hint",
+    "chips": {
+      "edit": "Edit your plan → Plan tab",
+      "whatIf": "Try what-ifs → the levers and Quick what-if above",
+      "compare": "Compare futures → Scenarios tab"
     }
   }
 }

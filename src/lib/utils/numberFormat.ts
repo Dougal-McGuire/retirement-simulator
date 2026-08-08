@@ -146,3 +146,36 @@ export function caretIndexForSignificant(
   }
   return formatted.length
 }
+
+/**
+ * Options for a "compact" money figure that stays compact in every locale.
+ *
+ * `notation: 'compact'` is a request, not a promise: German has no short form
+ * for thousands, so 856,841 € renders in full — and `maximumFractionDigits: 1`
+ * then puts a decimal on a six-figure number ("856.841,3 €"), which reads as
+ * spurious precision on a projection. When the locale does not actually
+ * abbreviate a value, fall back to whole euros.
+ */
+export function compactCurrencyOptions(
+  value: number,
+  locale: string,
+  currency = 'EUR'
+): Intl.NumberFormatOptions {
+  const base: Intl.NumberFormatOptions = { style: 'currency', currency }
+  let abbreviates = false
+  try {
+    abbreviates = new Intl.NumberFormat(locale, {
+      ...base,
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    })
+      .formatToParts(value)
+      .some((part) => part.type === 'compact')
+  } catch {
+    abbreviates = false
+  }
+
+  return abbreviates
+    ? { ...base, notation: 'compact', maximumFractionDigits: 1, minimumFractionDigits: 0 }
+    : { ...base, maximumFractionDigits: 0, minimumFractionDigits: 0 }
+}

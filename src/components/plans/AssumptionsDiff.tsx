@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { SimulationParams } from '@/types'
@@ -28,6 +28,8 @@ export function AssumptionsDiff({ plans }: { plans: AssumptionsPlan[] }) {
   const t = useTranslations('plans.comparison.assumptions')
   const formatValue = useAssumptionValueFormatter()
   const [open, setOpen] = useState(false)
+  const [highlighted, setHighlighted] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Cheap enough to derive on every render: a handful of scalar reads per plan.
   const groups = buildAssumptionGroups(plans.map((plan) => plan.params))
@@ -37,37 +39,75 @@ export function AssumptionsDiff({ plans }: { plans: AssumptionsPlan[] }) {
     0
   )
 
+  /**
+   * "4 differences" was a label on a toggle: it told you a number and then made
+   * you hunt for the rows behind it in a 30-row table. Now it opens the table
+   * if needed and scrolls the first highlighted row into view, flashing it so
+   * the eye lands in the right place.
+   */
+  const jumpToFirstDifference = () => {
+    setOpen(true)
+    if (typeof window === 'undefined') return
+
+    let attempts = 0
+    const focusRow = () => {
+      attempts += 1
+      const row = containerRef.current?.querySelector<HTMLElement>('tr[data-differs="true"]')
+      if (!row) {
+        // The collapsible mounts its content asynchronously.
+        if (attempts < 20) window.requestAnimationFrame(focusRow)
+        return
+      }
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setHighlighted(true)
+      window.setTimeout(() => setHighlighted(false), 1600)
+    }
+    window.requestAnimationFrame(focusRow)
+  }
+
   return (
     <Collapsible
       open={open}
       onOpenChange={setOpen}
+      ref={containerRef}
       className="mt-6 border-3 border-neo-black bg-neo-white shadow-neo-sm"
       data-testid="plan-comparison-assumptions"
     >
-      <CollapsibleTrigger className="flex w-full flex-col items-start gap-2 px-4 py-3 text-left transition-neo hover:bg-muted sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-        <span className="min-w-0">
-          <span className="block text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
-            {t('title')}
-          </span>
-          <span className="mt-1 block text-[0.66rem] font-medium text-muted-foreground">
-            {t('description')}
-          </span>
-        </span>
-        <span className="flex shrink-0 items-center gap-2">
-          {differingCount > 0 && (
-            <span className="border-2 border-neo-black bg-warning-50 px-2 py-1 text-[0.58rem] font-extrabold uppercase tracking-[0.12em] text-warning-700">
-              {t('differsCount', { count: differingCount })}
+      {/* The count chip is a sibling of the trigger, not a child: it is its own
+          button (nested buttons are invalid), and it does something different
+          — it opens the table *and* takes the reader to the first row that
+          actually differs, which is the only thing the number is about. */}
+      <div className="flex flex-col items-stretch gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-3">
+        {differingCount > 0 && (
+          <button
+            type="button"
+            data-testid="plan-comparison-differences-chip"
+            onClick={jumpToFirstDifference}
+            className="order-first shrink-0 self-start border-2 border-neo-black bg-warning-50 px-2 py-1 text-[0.58rem] font-extrabold uppercase tracking-[0.12em] text-warning-700 transition-neo hover:-translate-y-[1px] hover:bg-warning-100 sm:order-none"
+          >
+            {t('differsCount', { count: differingCount })}
+          </button>
+        )}
+        <CollapsibleTrigger className="flex min-w-0 flex-1 flex-col items-start gap-2 text-left transition-neo hover:opacity-80 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+          <span className="min-w-0">
+            <span className="block text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+              {t('title')}
             </span>
-          )}
-          <span className="text-[0.6rem] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
-            {open ? t('collapse') : t('expand')}
+            <span className="mt-1 block text-[0.66rem] font-medium text-muted-foreground">
+              {t('description')}
+            </span>
           </span>
-          <ChevronDown
-            aria-hidden="true"
-            className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
-          />
-        </span>
-      </CollapsibleTrigger>
+          <span className="flex shrink-0 items-center gap-2">
+            <span className="text-[0.6rem] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+              {open ? t('collapse') : t('expand')}
+            </span>
+            <ChevronDown
+              aria-hidden="true"
+              className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
+            />
+          </span>
+        </CollapsibleTrigger>
+      </div>
 
       <CollapsibleContent>
         <div className="border-t-2 border-neo-black/15 px-4 pb-4 pt-3">
@@ -114,7 +154,12 @@ export function AssumptionsDiff({ plans }: { plans: AssumptionsPlan[] }) {
                           'border-b border-neo-black/10 text-[0.68rem]',
                           row.differs
                             ? 'bg-warning-50/70 font-extrabold text-neo-black'
-                            : 'font-semibold text-muted-foreground'
+                            : 'font-semibold text-muted-foreground',
+                          // Flashed after a jump from the count chip, so the
+                          // reader's eye lands on the row the number meant.
+                          row.differs &&
+                            highlighted &&
+                            'outline outline-2 outline-offset-[-2px] outline-warning-600'
                         )}
                       >
                         <th

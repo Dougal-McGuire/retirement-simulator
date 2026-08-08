@@ -1,3 +1,5 @@
+import { DEFAULT_PARAMS } from '@/types'
+
 /**
  * Baked output of the app's real Monte Carlo engine.
  *
@@ -7,6 +9,14 @@
  * this one source of truth.
  */
 export const PREVIEW_RUNS = 5000
+
+/**
+ * What a visitor's *own* first plan runs — a different number from
+ * {@link PREVIEW_RUNS}, and the one the landing page has to promise, because
+ * it is the one the dashboard will report back. Read from the shipped defaults
+ * so the two can never drift.
+ */
+export const APP_DEFAULT_RUNS = DEFAULT_PARAMS.simulationRuns
 
 /** Success rate in percent, as returned by the engine. */
 export const PREVIEW_SUCCESS_RATE = 98.14
@@ -55,6 +65,14 @@ export const PREVIEW_SERIES = {
     5064610, 5288744, 5597786, 5785471, 6046058, 6079107,
   ],
 } as const
+
+/**
+ * Years the plan covers — `endAge − currentAge`, the same arithmetic the PDF
+ * prints ("35 yrs"). Not `PREVIEW_AGES.length`, which counts the *ages* on the
+ * grid: 55 through 90 inclusive is 36 points but 35 years, and the stat band
+ * used to claim the larger number.
+ */
+export const PREVIEW_HORIZON_YEARS = PREVIEW_PLAN.endAge - PREVIEW_PLAN.currentAge
 
 /** Terminal (age 90) values, used for the hero callouts. */
 export const PREVIEW_TERMINAL = {

@@ -143,15 +143,20 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
   }
 
   if (!canGenerate) {
+    // Same wrapper as the enabled branch: callers size this control through
+    // `wrapperClassName` and a bare <Button> here would ignore that and blow
+    // out the flex row it sits in.
     return (
-      <Button variant={variant} size={size} disabled className={cn(buttonClassName)}>
-        {children || (
-          <>
-            <FileText className="mr-2 h-4 w-4" />
-            {!results ? t('disabled.noData') : t('disabled.runSimulation')}
-          </>
-        )}
-      </Button>
+      <div className={cn('flex flex-col items-center gap-2', wrapperClassName)}>
+        <Button variant={variant} size={size} disabled className={cn(buttonClassName)}>
+          {children || (
+            <>
+              <FileText className="mr-2 h-4 w-4" />
+              {!results ? t('disabled.noData') : t('disabled.runSimulation')}
+            </>
+          )}
+        </Button>
+      </div>
     )
   }
 

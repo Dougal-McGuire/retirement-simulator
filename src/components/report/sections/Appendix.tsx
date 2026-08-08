@@ -2,6 +2,10 @@ import { ReportSection } from '@/components/report/ReportSection'
 import styles from '@/components/report/ReportPrint.module.css'
 import { fmtNumber } from '@/lib/pdf-generator/formatters'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
+import {
+  withdrawalStrategyLabel,
+  withdrawalStrategySummary,
+} from '@/lib/pdf-generator/withdrawalStrategy'
 
 interface AppendixProps {
   content: ReportContent
@@ -39,12 +43,8 @@ export function Appendix({ content }: AppendixProps) {
           </li>
           <li>
             {isGerman
-              ? assumptions.withdrawalStrategy === 'vanguardDynamic'
-                ? 'Ausgaben folgen Vanguard Dynamic Spending; Steuern auf Kapitalerträge werden am Jahresende gemäß Annahmen berücksichtigt.'
-                : 'Entnahmen folgen real konstanten Ausgaben; Steuern auf Kapitalerträge werden am Jahresende gemäß Annahmen berücksichtigt.'
-              : assumptions.withdrawalStrategy === 'vanguardDynamic'
-                ? 'Spending follows Vanguard Dynamic Spending; capital-gains taxes are applied at year-end per assumptions.'
-                : 'Withdrawals follow fixed real spending; capital-gains taxes are applied at year-end per assumptions.'}
+              ? `Entnahmen folgen der Strategie „${withdrawalStrategyLabel(assumptions.withdrawalStrategy, true)}“ — ${withdrawalStrategySummary(assumptions.withdrawalStrategy, true)} Steuern auf Kapitalerträge werden am Jahresende gemäß Annahmen berücksichtigt.`
+              : `Withdrawals follow the "${withdrawalStrategyLabel(assumptions.withdrawalStrategy, false)}" strategy — ${withdrawalStrategySummary(assumptions.withdrawalStrategy, false)} Capital-gains taxes are applied at year-end per assumptions.`}
           </li>
         </ul>
       </div>

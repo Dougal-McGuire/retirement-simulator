@@ -294,6 +294,13 @@ const rowSpecs: RowSpec[] = [
     read: (p) => p.dsFloorRate,
     optional: true,
   },
+  {
+    key: 'spendingFloorReal',
+    group: 'strategy',
+    kind: 'currency',
+    read: (p) => p.spendingFloorReal,
+    optional: true,
+  },
 
   // Only shown once someone actually wants to leave something behind: a row
   // reading "€0" would suggest the plan has a goal it does not have.
@@ -305,6 +312,21 @@ const rowSpecs: RowSpec[] = [
     optional: true,
   },
 ]
+
+/**
+ * Which strategies actually read a given parameter row.
+ *
+ * A "DS ceiling" row next to two Guyton-Klinger plans is not just noise, it is
+ * a lie: the engine never looks at that number for those plans. Every strategy
+ * parameter therefore declares its readers, and the row only appears when one
+ * of the compared plans runs such a strategy.
+ */
+const strategyRowReaders: Record<string, ReadonlySet<SimulationParams['withdrawalStrategy']>> = {
+  dsWithdrawalRate: new Set(['vanguardDynamic', 'guytonKlinger', 'percentOfPortfolio']),
+  dsCeilingRate: new Set(['vanguardDynamic']),
+  dsFloorRate: new Set(['vanguardDynamic']),
+  spendingFloorReal: new Set(['percentOfPortfolio']),
+}
 
 /** Rows that mean nothing unless at least one compared plan draws a pension. */
 const pensionTaxRowKeys = new Set(['pensionTaxablePortion', 'pensionTaxRate'])
@@ -331,9 +353,12 @@ const isEmptyRow = (spec: RowSpec, values: Array<number | string>, differs: bool
 export function buildAssumptionRows(paramsList: SimulationParams[]): AssumptionRow[] {
   if (paramsList.length === 0) return []
 
-  const usesDynamicSpending = paramsList.some(
-    (params) => params.withdrawalStrategy === 'vanguardDynamic'
-  )
+  const strategiesInPlay = new Set(paramsList.map((params) => params.withdrawalStrategy))
+  const rowIsRead = (key: string) => {
+    const readers = strategyRowReaders[key]
+    if (!readers) return true
+    return [...strategiesInPlay].some((strategy) => readers.has(strategy))
+  }
   // The allocation rows only mean something once a plan actually blends two
   // assets; otherwise they are four constants nobody set.
   const usesGlidePath = paramsList.some((params) => params.glidePathEnabled)
@@ -345,7 +370,7 @@ export function buildAssumptionRows(paramsList: SimulationParams[]): AssumptionR
 
   return rowSpecs
     .filter((spec) => (spec.key === 'marketModel' ? usesHistory : true))
-    .filter((spec) => (spec.key.startsWith('ds') ? usesDynamicSpending : true))
+    .filter((spec) => rowIsRead(spec.key))
     .filter((spec) => (glidePathRowKeys.has(spec.key) ? usesGlidePath : true))
     .filter((spec) => (pensionTaxRowKeys.has(spec.key) ? hasPension : true))
     .map((spec) => {

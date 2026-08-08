@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/select'
 import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
 import { planDisplayName } from '@/lib/plans/planName'
-import { toast } from '@/components/ui/toast'
+import { toast, TOAST_DURATION } from '@/components/ui/toast'
+import { ActionToast } from '@/components/ui/action-toast'
 import {
   useActivePlanId,
   useCreatePlan,
@@ -120,21 +121,23 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
     setDeleteOpen(false)
     toast(
       (instance) => (
-        <span className="flex items-center gap-3 text-sm font-semibold">
-          {t('deleted.toast', { name })}
-          <button
-            type="button"
-            className="border-2 border-neo-black bg-neo-yellow px-2 py-1 text-[0.68rem] font-extrabold uppercase tracking-[0.12em] text-neo-black"
-            onClick={() => {
-              toast.dismiss(instance.id)
-              restorePlan(name, params)
-            }}
-          >
-            {t('actions.undo')}
-          </button>
-        </span>
+        <ActionToast
+          testId="plan-deleted-toast"
+          message={t('deleted.toast', { name })}
+          actions={[
+            {
+              label: t('actions.undo'),
+              tone: 'primary',
+              testId: 'plan-deleted-toast-undo',
+              onClick: () => {
+                toast.dismiss(instance.id)
+                restorePlan(name, params)
+              },
+            },
+          ]}
+        />
       ),
-      { duration: 8000 }
+      { duration: TOAST_DURATION }
     )
   }
 
@@ -217,11 +220,14 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
           </SelectContent>
         </Select>
 
-        <div className="flex shrink-0 items-center gap-1.5">
+        {/* Mobile has no room for the select and the actions on one line, so
+            the actions become a full-width four-up toolbar instead of a short
+            orphaned row of icons hanging under the left edge of the select. */}
+        <div className="grid shrink-0 grid-cols-4 items-center gap-1.5 sm:flex">
           <Button
             variant="outline"
             size="sm"
-            className="h-10 px-3"
+            className="h-10 w-full px-0 sm:w-auto sm:px-3"
             disabled={atLimit}
             title={atLimit ? t('switcher.limit', { max: MAX_PLANS }) : t('actions.new')}
             onClick={() => setNewOpen(true)}
@@ -234,7 +240,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="h-10 w-10 px-0"
+            className="h-10 w-full px-0 sm:w-10"
             aria-label={t('actions.rename')}
             title={t('actions.rename')}
             onClick={() => setRenameOpen(true)}
@@ -245,7 +251,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="h-10 w-10 px-0"
+            className="h-10 w-full px-0 sm:w-10"
             aria-label={t('actions.duplicate')}
             title={atLimit ? t('switcher.limit', { max: MAX_PLANS }) : t('actions.duplicate')}
             disabled={atLimit}
@@ -257,7 +263,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="h-10 w-10 px-0 text-neo-red"
+            className="h-10 w-full px-0 text-neo-red sm:w-10"
             aria-label={t('actions.delete')}
             title={t('actions.delete')}
             disabled={plans.length <= 1}

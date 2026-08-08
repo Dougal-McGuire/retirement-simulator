@@ -1,3 +1,5 @@
+import { compactCurrencyOptions } from '@/lib/utils/numberFormat'
+
 const numberFormatters = new Map<string, Intl.NumberFormat>()
 const dateFormatters = new Map<string, Intl.DateTimeFormat>()
 
@@ -108,13 +110,9 @@ export function fmtSuccessMetric(
  * en-US: €1.2M / €450K — de-DE: 1,2 Mio. € / 450.000 €
  */
 export function fmtCompactCurrency(value: number, locale: string = 'de-DE'): string {
-  const formatted = getNumberFormatter(locale, {
-    style: 'currency',
-    currency: 'EUR',
-    notation: 'compact',
-    maximumFractionDigits: 1,
-    minimumFractionDigits: 0,
-  }).format(value)
+  // German has no short form for thousands, so a six-figure amount renders in
+  // full — and one decimal on it ("856.841,3 €") is spurious precision.
+  const formatted = getNumberFormatter(locale, compactCurrencyOptions(value, locale)).format(value)
 
   if (locale.startsWith('de')) {
     return formatted.replace(`${nbsp}€`, `${nnbsp}€`)

@@ -8,7 +8,10 @@ import { DEFAULT_PARAMS } from '@/types'
 describe('Report content mapping', () => {
   const params = { ...DEFAULT_PARAMS, simulationRuns: 320 }
   const results = runMonteCarloSimulation(params)
-  const reportData = transformToReportData(params, results)
+  // Recommendation text is now written in the report's language by the
+  // generator (their bodies interpolate this plan's figures), so the locale
+  // travels with the transform rather than being applied by lookup afterwards.
+  const reportData = transformToReportData(params, results, undefined, 'de')
   const content = mapReportDataToContent(reportData)
 
   it('keeps success count mathematisch konsistent', () => {
@@ -40,9 +43,7 @@ describe('Report content mapping', () => {
         /Increase Savings Rate|Delay Retirement|Optimize Investment Mix/
       )
       expect(rec.category).not.toMatch(/Savings Strategy|Investment Strategy|Expense Management/)
-      expect(rec.body).not.toMatch(
-        /Your current success rate|Working an additional|Review your asset allocation/
-      )
+      expect(rec.body).not.toMatch(/of runs stay funded|statutory pension|the portfolio carries/)
     })
   })
 })

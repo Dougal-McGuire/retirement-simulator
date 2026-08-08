@@ -10,6 +10,7 @@ import {
   HISTORICAL_MARKET_YEARS,
   type HistoricalMarketYear,
 } from '@/lib/simulation/data/historicalMarket'
+import { DEFAULT_PATH_SEED, effectiveRunCount } from '@/lib/simulation/context'
 import {
   buildCashFlowSeries,
   cashFlowSignature,
@@ -71,7 +72,7 @@ export function hashString(value: string): number {
  * This is the classic "common random numbers" variance-reduction setup: it is
  * what makes side-by-side plan comparisons and stress levers meaningful.
  */
-export const DEFAULT_PATH_SEED = 0x5eed_c0de
+export { DEFAULT_PATH_SEED } from '@/lib/simulation/context'
 
 /**
  * splitmix32-style avalanche. Turns (baseSeed, runIndex) into a well-separated
@@ -120,6 +121,7 @@ export function hashSimulationParams(params: SimulationParams): number {
     dsWithdrawalRate: params.dsWithdrawalRate,
     dsCeilingRate: params.dsCeilingRate,
     dsFloorRate: params.dsFloorRate,
+    spendingFloorReal: params.spendingFloorReal,
     simulationRuns: params.simulationRuns,
     customExpenses: (params.customExpenses ?? []).map((expense) => [
       expense.interval,
@@ -453,6 +455,19 @@ const normalizeMarketModel = (value: unknown): SimulationParams['marketModel'] =
 const normalizeHouseholdType = (value: unknown): SimulationParams['householdType'] =>
   isHouseholdType(value) ? value : 'single'
 
+/**
+ * Guyton-Klinger guardrails, as constants rather than parameters.
+ *
+ * The published rules use ±20% bands around the initial withdrawal rate and
+ * ±10% spending adjustments. Exposing four more sliders would let a user build
+ * a "Guyton-Klinger" that is nothing of the sort, so the bands stay fixed and
+ * only the initial rate (`dsWithdrawalRate`) is the user's to choose.
+ */
+export const GK_UPPER_GUARDRAIL = 1.2
+export const GK_LOWER_GUARDRAIL = 0.8
+export const GK_CAPITAL_PRESERVATION_CUT = 0.1
+export const GK_PROSPERITY_RAISE = 0.1
+
 export function calculateVanguardDynamicAnnualSpending({
   priorYearPortfolioValue,
   previousAnnualSpending,
@@ -478,6 +493,163 @@ export function calculateVanguardDynamicAnnualSpending({
     Math.min(lowerBound, upperBound),
     Math.max(lowerBound, upperBound)
   )
+}
+
+/**
+ * Guyton-Klinger: inflation-linked spending with two guardrails.
+ *
+ * Each year the previous withdrawal is carried forward with inflation, and the
+ * resulting *current withdrawal rate* (tentative withdrawal ÷ portfolio) is
+ * compared against the plan's initial rate:
+ *
+ * - **Capital preservation.** Rate drifted more than 20% above the initial one
+ *   → the inflation raise is skipped *and* spending is cut by 10%.
+ * - **Prosperity.** Rate sits more than 20% below the initial one → spending
+ *   gets the inflation raise plus 10%.
+ * - Otherwise the withdrawal simply keeps its purchasing power.
+ *
+ * Deliberate simplifications versus the published rule set, all in the
+ * direction of "fewer knobs, same shape":
+ *
+ * 1. The *first* retirement year spends the plan's own budget rather than
+ *    `initialWithdrawalRate × portfolio`. The plan already states what the
+ *    household intends to spend; the rate is used purely as the reference the
+ *    guardrails are measured against. This is also what makes the planned
+ *    corridor analytic — see `spendingCorridor.ts`.
+ * 2. No terminal-years suspension: the original rules stop applying capital
+ *    preservation in the last 15 years of the plan. Keeping them on is the
+ *    conservative choice and avoids a horizon-dependent cliff.
+ * 3. The modified-withdrawal rule (skip the raise after a losing year) is
+ *    folded into the capital-preservation branch instead of being a separate
+ *    test on the realised return.
+ * 4. Guardrails are evaluated against the *prior year-end* portfolio, the same
+ *    value `vanguardDynamic` uses, so the two rules see identical information.
+ */
+export function calculateGuytonKlingerAnnualSpending({
+  priorYearPortfolioValue,
+  previousAnnualSpending,
+  inflationFactor,
+  initialWithdrawalRate,
+}: {
+  priorYearPortfolioValue: number
+  previousAnnualSpending: number
+  inflationFactor: number
+  initialWithdrawalRate: number
+}): number {
+  const previous = Math.max(0, previousAnnualSpending)
+  const inflationAdjusted = previous * inflationFactor
+
+  // Without a portfolio there is no rate to compare against; the withdrawal
+  // just keeps its purchasing power and the funding logic handles the rest.
+  if (priorYearPortfolioValue <= 0 || initialWithdrawalRate <= 0) return inflationAdjusted
+
+  const currentRate = inflationAdjusted / priorYearPortfolioValue
+
+  if (currentRate > initialWithdrawalRate * GK_UPPER_GUARDRAIL) {
+    // Capital preservation: no inflation raise this year, and 10% off.
+    return previous * (1 - GK_CAPITAL_PRESERVATION_CUT)
+  }
+
+  if (currentRate < initialWithdrawalRate * GK_LOWER_GUARDRAIL) {
+    // Prosperity: the portfolio has run away from the plan, spend more of it.
+    return inflationAdjusted * (1 + GK_PROSPERITY_RAISE)
+  }
+
+  return inflationAdjusted
+}
+
+/**
+ * Pure percentage-of-portfolio: spend `withdrawalRate` of the prior year-end
+ * portfolio, every year, with no memory of last year's spending.
+ *
+ * Mathematically this rule can never deplete the portfolio — it only ever takes
+ * a fraction of what is left — so its risk shows up as *spending* risk instead:
+ * a 40% crash cuts the household's income by 40% the following year. The
+ * optional `floorAnnualReal` (today's euros, re-priced with this path's own
+ * `inflationIndex`) is the answer to that, and it is the only way this strategy
+ * can run out of money.
+ */
+export function calculatePercentOfPortfolioAnnualSpending({
+  priorYearPortfolioValue,
+  withdrawalRate,
+  floorAnnualReal,
+  inflationIndex,
+}: {
+  priorYearPortfolioValue: number
+  withdrawalRate: number
+  /** Floor in today's euros per year. 0 = no floor. */
+  floorAnnualReal: number
+  /** Cumulative price level of this path, relative to the plan's first year. */
+  inflationIndex: number
+}): number {
+  const target = Math.max(0, priorYearPortfolioValue) * Math.max(0, withdrawalRate)
+  const floor = Math.max(0, floorAnnualReal) * Math.max(0, inflationIndex)
+  return Math.max(target, floor)
+}
+
+/**
+ * The withdrawal-strategy switch: one year's *baseline* spending decision.
+ *
+ * Returns the household's ordinary living costs for this year in nominal euros.
+ * Scheduled cash flows are added by the caller and never pass through here.
+ *
+ * Consumes no randomness, which is what lets a new strategy be added without
+ * disturbing the common-random-numbers scenario set: `fixedReal` and
+ * `vanguardDynamic` still evaluate exactly the arithmetic they always did.
+ */
+export function applyWithdrawalStrategy({
+  strategy,
+  baselineAnnualSpending,
+  priorYearPortfolioValue,
+  previousAnnualSpending,
+  inflationFactor,
+  inflationIndex,
+  params,
+}: {
+  strategy: SimulationParams['withdrawalStrategy']
+  /** The plan's own inflation-linked budget for this year. */
+  baselineAnnualSpending: number
+  priorYearPortfolioValue: number
+  /** Last year's rule output, or null in the first retirement year. */
+  previousAnnualSpending: number | null
+  /** Price change between last year and this one. */
+  inflationFactor: number
+  /** Cumulative price level since the plan's first year. */
+  inflationIndex: number
+  params: SimulationParams
+}): number {
+  switch (strategy) {
+    case 'vanguardDynamic':
+      return previousAnnualSpending === null
+        ? baselineAnnualSpending
+        : calculateVanguardDynamicAnnualSpending({
+            priorYearPortfolioValue,
+            previousAnnualSpending,
+            inflationFactor,
+            withdrawalRate: params.dsWithdrawalRate,
+            ceilingRate: params.dsCeilingRate,
+            floorRate: params.dsFloorRate,
+          })
+    case 'guytonKlinger':
+      return previousAnnualSpending === null
+        ? baselineAnnualSpending
+        : calculateGuytonKlingerAnnualSpending({
+            priorYearPortfolioValue,
+            previousAnnualSpending,
+            inflationFactor,
+            initialWithdrawalRate: params.dsWithdrawalRate,
+          })
+    case 'percentOfPortfolio':
+      return calculatePercentOfPortfolioAnnualSpending({
+        priorYearPortfolioValue,
+        withdrawalRate: params.dsWithdrawalRate,
+        floorAnnualReal: params.spendingFloorReal,
+        inflationIndex,
+      })
+    case 'fixedReal':
+    default:
+      return baselineAnnualSpending
+  }
 }
 
 function normalizeSimulationParams(params: SimulationParams): SimulationParams {
@@ -578,6 +750,7 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
     dsWithdrawalRate: clamp(sanitizeFiniteNumber(params.dsWithdrawalRate, 0.05), 0.02, 0.08),
     dsCeilingRate: clamp(sanitizeFiniteNumber(params.dsCeilingRate, 0.05), 0, 0.15),
     dsFloorRate: clamp(sanitizeFiniteNumber(params.dsFloorRate, -0.025), -0.15, 0),
+    spendingFloorReal: Math.max(0, sanitizeFiniteNumber(params.spendingFloorReal, 0)),
     simulationRuns: Math.max(1, Math.round(sanitizeFiniteNumber(params.simulationRuns, 1))),
   }
 }
@@ -616,7 +789,12 @@ type SimulationSchedule = {
    */
   flows: CashFlowSeries
   effectiveRetirementAge: number
-  usesDynamicSpending: boolean
+  /**
+   * True for every strategy except `fixedReal`, i.e. whenever the distribution
+   * phase has to carry last year's decision forward instead of simply spending
+   * the inflated budget.
+   */
+  usesRuleBasedSpending: boolean
   /** Sparerpauschbetrag available in each single year (couple = doubled). */
   annualAllowance: number
   /** Teilfreistellung on realised gains. */
@@ -637,7 +815,7 @@ function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
     baseAnnualExpense: flows.baselineAnnual,
     flows,
     effectiveRetirementAge: Math.max(params.retirementAge, params.currentAge),
-    usesDynamicSpending: params.withdrawalStrategy === 'vanguardDynamic',
+    usesRuleBasedSpending: params.withdrawalStrategy !== 'fixedReal',
     annualAllowance: annualTaxAllowance(params),
     exemption: clamp(params.equityFundExemption ?? 0, 0, 1),
     netPensionAnnual: netAnnualPension(params),
@@ -684,7 +862,7 @@ function runSingleSimulation(
    */
   let inflationIndex = 1
 
-  const { effectiveRetirementAge, usesDynamicSpending, flows, annualAllowance, exemption } =
+  const { effectiveRetirementAge, usesRuleBasedSpending, flows, annualAllowance, exemption } =
     schedule
   const taxRate = Math.max(0, params.capitalGainsTax / 100)
 
@@ -792,18 +970,20 @@ function runSingleSimulation(
        * A roof repair is not a lifestyle decision the Vanguard ceiling should
        * clip, and it must not raise next year's floor either — so the flows
        * ride on top of the rule rather than through it.
+       *
+       * Every rule except `percentOfPortfolio` needs a previous year to work
+       * from, so the first retirement year always spends the plan's own budget.
+       * `percentOfPortfolio` has no memory and starts responding immediately.
        */
-      const guardrailedAnnualSpending: number =
-        usesDynamicSpending && previousDynamicAnnualSpending !== null
-          ? calculateVanguardDynamicAnnualSpending({
-              priorYearPortfolioValue,
-              previousAnnualSpending: previousDynamicAnnualSpending,
-              inflationFactor: dynamicSpendingInflationFactor,
-              withdrawalRate: params.dsWithdrawalRate,
-              ceilingRate: params.dsCeilingRate,
-              floorRate: params.dsFloorRate,
-            })
-          : baselineAnnualExpenseThisYear
+      const guardrailedAnnualSpending: number = applyWithdrawalStrategy({
+        strategy: params.withdrawalStrategy,
+        baselineAnnualSpending: baselineAnnualExpenseThisYear,
+        priorYearPortfolioValue,
+        previousAnnualSpending: previousDynamicAnnualSpending,
+        inflationFactor: dynamicSpendingInflationFactor,
+        inflationIndex,
+        params,
+      })
 
       const totalAnnualExpenseThisYear = guardrailedAnnualSpending + extraExpense
 
@@ -850,7 +1030,7 @@ function runSingleSimulation(
       inflationIndex *= inflationFactor
       currentMonthlyExpense = baseMonthlyExpense * inflationIndex
       currentAnnualExpense = baseAnnualExpense * inflationIndex
-      if (usesDynamicSpending) {
+      if (usesRuleBasedSpending) {
         // Anchored to the guardrailed baseline, not to the total: a one-off
         // expense must not become next year's spending floor.
         previousDynamicAnnualSpending = guardrailedAnnualSpending
@@ -921,11 +1101,10 @@ export function runMonteCarloSimulation(
    * asking for 5 000 of 125 possible histories would just repeat each one 40
    * times and pretend the sample was bigger than it is. `simulationRuns` is left
    * untouched on the params so switching back to Monte Carlo restores the
-   * user's chosen count.
+   * user's chosen count. Shared with every surface that describes the run —
+   * see `effectiveRunCount` in `simulation/context.ts`.
    */
-  const effectiveRuns = usesHistory
-    ? HISTORICAL_MARKET_YEARS.length
-    : normalizedParams.simulationRuns
+  const effectiveRuns = effectiveRunCount(normalizedParams)
 
   const schedule = buildSimulationSchedule(normalizedParams)
 

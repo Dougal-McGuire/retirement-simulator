@@ -48,6 +48,13 @@ function AuthUnavailable({ className, compact }: AuthMenuProps) {
   const t = useTranslations('auth')
   const label = t('notConfigured')
 
+  // On a 390px toolbar a permanently disabled icon button says nothing and
+  // costs 52px that the report button and the menu trigger both need — it was
+  // what pushed the menu trigger past the header's right edge. The desktop
+  // strip still shows the labelled disabled state, where it has room to
+  // explain itself.
+  if (compact) return null
+
   return (
     <Tooltip>
       {/* Disabled buttons swallow pointer events, so the span carries the trigger. */}

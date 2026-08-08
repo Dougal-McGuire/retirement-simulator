@@ -1,7 +1,7 @@
 import type { Plan } from '@/types'
 
 /** Translation keys that built-in plans may carry in `nameKey`. */
-const BUILT_IN_NAME_KEYS = ['base'] as const
+const BUILT_IN_NAME_KEYS = ['base', 'demo'] as const
 
 type BuiltInNameKey = (typeof BUILT_IN_NAME_KEYS)[number]
 

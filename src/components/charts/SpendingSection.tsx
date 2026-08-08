@@ -27,10 +27,7 @@ export function SpendingSection({ results }: SpendingSectionProps) {
   const ages = useMemo(() => spendingData.map((d) => d.age), [spendingData])
   const { indexRange, onBrushChange, resetZoom } = useBrushRange(ages)
 
-  const spendingTableNoteKey =
-    results.params.withdrawalStrategy === 'vanguardDynamic'
-      ? 'spendingTable.note.dynamic'
-      : 'spendingTable.note.fixed'
+  const spendingTableNoteKey = `spendingTable.note.${results.params.withdrawalStrategy}`
 
   // The pension is a fixed nominal amount, so in today's euros it shrinks with
   // the median realised price level rather than staying flat.

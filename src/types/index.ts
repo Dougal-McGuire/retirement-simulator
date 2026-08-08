@@ -1,4 +1,27 @@
-export const WITHDRAWAL_STRATEGIES = ['fixedReal', 'vanguardDynamic'] as const
+/**
+ * The withdrawal-strategy library.
+ *
+ * Order is the display order of the strategy picker: from the most predictable
+ * rule to the most market-responsive one.
+ *
+ * - `fixedReal`: spend the plan's budget, inflation-linked, whatever the market
+ *   does. Maximum spending stability, maximum depletion risk.
+ * - `vanguardDynamic`: aim at `dsWithdrawalRate` of the prior year-end
+ *   portfolio, but never move more than `dsCeilingRate` up or `dsFloorRate`
+ *   down versus last year's inflation-adjusted spending.
+ * - `guytonKlinger`: inflation-linked like `fixedReal`, with two guardrails
+ *   that cut or raise spending by 10% once the realised withdrawal rate has
+ *   drifted ±20% away from `dsWithdrawalRate`.
+ * - `percentOfPortfolio`: spend `dsWithdrawalRate` of the portfolio every year,
+ *   full stop. Cannot deplete, but spending swings with the market — unless the
+ *   optional `spendingFloorReal` puts a floor under it.
+ */
+export const WITHDRAWAL_STRATEGIES = [
+  'fixedReal',
+  'vanguardDynamic',
+  'guytonKlinger',
+  'percentOfPortfolio',
+] as const
 
 export type WithdrawalStrategy = (typeof WITHDRAWAL_STRATEGIES)[number]
 
@@ -129,9 +152,24 @@ export interface SimulationParams {
 
   // Withdrawal strategy
   withdrawalStrategy: WithdrawalStrategy
+  /**
+   * Target withdrawal rate. Read by `vanguardDynamic` (the rate it aims at),
+   * `guytonKlinger` (the *initial* rate its guardrails are measured against)
+   * and `percentOfPortfolio` (the rate it spends outright). Ignored by
+   * `fixedReal`.
+   */
   dsWithdrawalRate: number
+  /** `vanguardDynamic` only: largest real raise versus last year (0.05 = +5%). */
   dsCeilingRate: number
+  /** `vanguardDynamic` only: largest real cut versus last year (−0.025 = −2.5%). */
   dsFloorRate: number
+  /**
+   * `percentOfPortfolio` only: a spending floor in **today's** euros per year.
+   * The percentage rule alone can shrink spending without limit after a crash;
+   * this is the "whatever happens I still spend this much" line, re-priced with
+   * the path's realised inflation. 0 (the default) switches it off.
+   */
+  spendingFloorReal: number
 
   // Simulation settings
   simulationRuns: number
@@ -272,6 +310,11 @@ export interface SimulationStore {
   /** Last known success rate per plan id, used to enrich the plan switcher. */
   planSuccessRates: Record<string, number>
   results: SimulationResults | null
+  /**
+   * Wall-clock time `results` were produced. Feeds the simulation context so
+   * every surface can date the numbers it is showing.
+   */
+  resultsComputedAt: number | null
   isLoading: boolean
   error: string | null
   savedSetups: SavedSetup[]
@@ -295,7 +338,7 @@ export interface SimulationStore {
   createPlan: (
     name: string,
     params?: SimulationParams,
-    options?: { activate?: boolean }
+    options?: { activate?: boolean; nameKey?: string }
   ) => string | null
   renamePlan: (id: string, name: string) => void
   /** Copies a plan (params included) under a new name and activates the copy. */
@@ -332,6 +375,8 @@ export interface CustomExpense {
   name: string
   amount: number
   interval: ExpenseInterval
+  /** See {@link CashFlow.nameKey} — projected through from the flow. */
+  nameKey?: string
 }
 
 export const CASHFLOW_FREQUENCIES = ['monthly', 'annual', 'once'] as const
@@ -361,6 +406,16 @@ export interface CashFlow {
   id: string
   kind: CashFlowKind
   name: string
+  /**
+   * Translation key for a flow the app seeded (the eight default expenses).
+   * Same contract as {@link Plan.nameKey}: while it is set the UI and the
+   * report show the localised label, so a German user reads "Lebensmittel"
+   * rather than "Groceries". It is dropped the moment the user edits the name,
+   * after which their own text is shown verbatim in every language.
+   *
+   * `name` always holds a usable fallback, so a flow never renders blank.
+   */
+  nameKey?: string
   /** Amount per occurrence, in today's euros. */
   amount: number
   frequency: CashFlowFrequency
@@ -423,35 +478,94 @@ export const DEFAULT_PARAMS: SimulationParams = {
   equityAllocationEnd: 0.4,
   bondReturn: 0.03,
   bondVolatility: 0.06,
+  // `nameKey` makes these eight follow the UI language (see `CashFlow.nameKey`);
+  // the English `name` stays as the fallback and as the stable identity used by
+  // the report's category matching.
   customExpenses: [
-    { id: 'health', name: 'Health Insurance', amount: 1300, interval: 'monthly' },
-    { id: 'food', name: 'Groceries', amount: 1200, interval: 'monthly' },
-    { id: 'entertainment', name: 'Entertainment', amount: 300, interval: 'monthly' },
-    { id: 'shopping', name: 'Shopping', amount: 500, interval: 'monthly' },
-    { id: 'utilities', name: 'Utilities', amount: 400, interval: 'monthly' },
-    { id: 'vacations', name: 'Vacations', amount: 12000, interval: 'annual' },
-    { id: 'repairs', name: 'Home Repairs', amount: 5000, interval: 'annual' },
-    { id: 'carMaintenance', name: 'Car Maintenance', amount: 1500, interval: 'annual' },
+    { id: 'health', nameKey: 'health', name: 'Health Insurance', amount: 1300, interval: 'monthly' },
+    { id: 'food', nameKey: 'food', name: 'Groceries', amount: 1200, interval: 'monthly' },
+    {
+      id: 'entertainment',
+      nameKey: 'entertainment',
+      name: 'Entertainment',
+      amount: 300,
+      interval: 'monthly',
+    },
+    { id: 'shopping', nameKey: 'shopping', name: 'Shopping', amount: 500, interval: 'monthly' },
+    { id: 'utilities', nameKey: 'utilities', name: 'Utilities', amount: 400, interval: 'monthly' },
+    { id: 'vacations', nameKey: 'vacations', name: 'Vacations', amount: 12000, interval: 'annual' },
+    { id: 'repairs', nameKey: 'repairs', name: 'Home Repairs', amount: 5000, interval: 'annual' },
+    {
+      id: 'carMaintenance',
+      nameKey: 'carMaintenance',
+      name: 'Car Maintenance',
+      amount: 1500,
+      interval: 'annual',
+    },
   ],
   // The same eight expenses as unified cash flows — `customExpenses` above is
   // the lifetime-expense projection of this list, regenerated on every write.
   cashFlows: [
-    { id: 'health', kind: 'expense', name: 'Health Insurance', amount: 1300, frequency: 'monthly' },
-    { id: 'food', kind: 'expense', name: 'Groceries', amount: 1200, frequency: 'monthly' },
+    {
+      id: 'health',
+      kind: 'expense',
+      nameKey: 'health',
+      name: 'Health Insurance',
+      amount: 1300,
+      frequency: 'monthly',
+    },
+    {
+      id: 'food',
+      kind: 'expense',
+      nameKey: 'food',
+      name: 'Groceries',
+      amount: 1200,
+      frequency: 'monthly',
+    },
     {
       id: 'entertainment',
       kind: 'expense',
+      nameKey: 'entertainment',
       name: 'Entertainment',
       amount: 300,
       frequency: 'monthly',
     },
-    { id: 'shopping', kind: 'expense', name: 'Shopping', amount: 500, frequency: 'monthly' },
-    { id: 'utilities', kind: 'expense', name: 'Utilities', amount: 400, frequency: 'monthly' },
-    { id: 'vacations', kind: 'expense', name: 'Vacations', amount: 12000, frequency: 'annual' },
-    { id: 'repairs', kind: 'expense', name: 'Home Repairs', amount: 5000, frequency: 'annual' },
+    {
+      id: 'shopping',
+      kind: 'expense',
+      nameKey: 'shopping',
+      name: 'Shopping',
+      amount: 500,
+      frequency: 'monthly',
+    },
+    {
+      id: 'utilities',
+      kind: 'expense',
+      nameKey: 'utilities',
+      name: 'Utilities',
+      amount: 400,
+      frequency: 'monthly',
+    },
+    {
+      id: 'vacations',
+      kind: 'expense',
+      nameKey: 'vacations',
+      name: 'Vacations',
+      amount: 12000,
+      frequency: 'annual',
+    },
+    {
+      id: 'repairs',
+      kind: 'expense',
+      nameKey: 'repairs',
+      name: 'Home Repairs',
+      amount: 5000,
+      frequency: 'annual',
+    },
     {
       id: 'carMaintenance',
       kind: 'expense',
+      nameKey: 'carMaintenance',
       name: 'Car Maintenance',
       amount: 1500,
       frequency: 'annual',
@@ -461,5 +575,7 @@ export const DEFAULT_PARAMS: SimulationParams = {
   dsWithdrawalRate: 0.05,
   dsCeilingRate: 0.05,
   dsFloorRate: -0.025,
+  // Neutral: no floor, so adding the parameter changed no shipped scenario.
+  spendingFloorReal: 0,
   simulationRuns: 500,
 }

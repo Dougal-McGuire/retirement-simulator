@@ -68,14 +68,13 @@ export function SpendingChart({
   const formatPercentage = (value: number | null): string =>
     value == null ? '—' : percentageFormatter.format(value)
 
-  const isDynamicSpending = withdrawalStrategy === 'vanguardDynamic'
-  const strategySummary = isDynamicSpending
-    ? t('explanation.dynamic.summary', {
-        withdrawalRate: formatPercentage(dsWithdrawalRate),
-        ceiling: formatPercentage(dsCeilingRate),
-        floor: formatPercentage(dsFloorRate),
-      })
-    : t('explanation.fixed.summary')
+  // One paragraph per strategy: the values are handed to every one of them and
+  // each message uses only the ones its own rule actually reads.
+  const strategySummary = t(`explanation.strategies.${withdrawalStrategy}`, {
+    withdrawalRate: formatPercentage(dsWithdrawalRate),
+    ceiling: formatPercentage(dsCeilingRate),
+    floor: formatPercentage(dsFloorRate),
+  })
 
   const hue = fanHue.spending
 

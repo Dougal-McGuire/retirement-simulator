@@ -20,7 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { toast, TOAST_DURATION } from '@/components/ui/toast'
+import { ActionToast } from '@/components/ui/action-toast'
 import { useGroupedNumber } from './useGroupedNumber'
+import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import { cn } from '@/lib/utils'
 
 /**
@@ -65,6 +68,16 @@ interface DraftState {
   endAge: string
   inflationLinked: boolean
   growthRate: string
+  /**
+   * Translation key of a seeded flow, plus the label the form was opened with.
+   * A save that leaves the name untouched keeps the key (so the row goes on
+   * following the UI language); typing anything else drops it and the user's
+   * own text wins in every language from then on.
+   */
+  nameKey?: string
+  nameSeed: string
+  /** Canonical stored name behind `nameSeed`, restored when the key survives. */
+  storedName: string
 }
 
 const emptyDraft = (kind: CashFlowKind = 'expense'): DraftState => ({
@@ -76,17 +89,26 @@ const emptyDraft = (kind: CashFlowKind = 'expense'): DraftState => ({
   endAge: '',
   inflationLinked: true,
   growthRate: '',
+  nameSeed: '',
+  storedName: '',
 })
 
-const draftFromFlow = (flow: CashFlow, formatAmount: (value: number) => string): DraftState => ({
+const draftFromFlow = (
+  flow: CashFlow,
+  formatAmount: (value: number) => string,
+  displayName: string
+): DraftState => ({
   kind: flow.kind,
-  name: flow.name,
+  name: displayName,
   amount: formatAmount(flow.amount),
   frequency: flow.frequency,
   startAge: flow.startAge === undefined ? '' : String(flow.startAge),
   endAge: flow.endAge === undefined ? '' : String(flow.endAge),
   inflationLinked: flow.inflationLinked !== false,
   growthRate: flow.growthRate ? String(Number((flow.growthRate * 100).toFixed(2))) : '',
+  ...(flow.nameKey !== undefined ? { nameKey: flow.nameKey } : {}),
+  nameSeed: displayName,
+  storedName: flow.name,
 })
 
 const parseAge = (value: string): number | undefined => {
@@ -130,11 +152,21 @@ export function CashFlowList({
       maximumFractionDigits: 0,
     })
 
+  /** Seeded flows follow the UI language; user-named ones render verbatim. */
+  const displayName = (flow: CashFlow) =>
+    cashFlowDisplayName(flow, (key) => t(`defaults.${key}`))
+
   // Templates already in the list would only create duplicates.
   const availableTemplates = useMemo(() => {
-    const present = new Set(safeFlows.map((flow) => flow.name.trim().toLowerCase()))
+    const present = new Set(
+      safeFlows.map((flow) =>
+        cashFlowDisplayName(flow, (key) => t(`defaults.${key}`))
+          .trim()
+          .toLowerCase()
+      )
+    )
     return (templates ?? []).filter((template) => !present.has(template.name.trim().toLowerCase()))
-  }, [safeFlows, templates])
+  }, [safeFlows, templates, t])
 
   const totals = useMemo(() => {
     let income = 0
@@ -162,10 +194,15 @@ export function CashFlowList({
     const startAge = parseAge(state.startAge)
     const endAgeValue = state.frequency === 'once' ? undefined : parseAge(state.endAge)
 
+    // Untouched seeded name: keep the key and the canonical stored name, so a
+    // pure amount edit does not freeze the row into the current language.
+    const keepsKey = state.nameKey !== undefined && name === state.nameSeed.trim()
+
     const flow: CashFlow = {
       id: id ?? createId(),
       kind: state.kind,
-      name,
+      name: keepsKey ? state.storedName : name,
+      ...(keepsKey ? { nameKey: state.nameKey } : {}),
       amount,
       frequency: state.frequency,
       ...(startAge !== undefined ? { startAge } : {}),
@@ -184,21 +221,59 @@ export function CashFlowList({
     setDraft(emptyDraft(draft.kind))
   }
 
+  /**
+   * A template is a starting point, not an answer: "care costs, ages 80–90" is
+   * a guess about *this* person. So the new row opens straight into its edit
+   * form with the window fields focused, and the add is undoable — clicking a
+   * template can no longer silently plant numbers the user never chose.
+   */
   const handleAddTemplate = (template: CashFlowTemplate) => {
-    onChange([
-      ...safeFlows,
-      {
-        id: createId(),
-        kind: template.kind,
-        name: template.name,
-        amount: template.amount,
-        frequency: template.frequency,
-        ...(template.startAge !== undefined ? { startAge: template.startAge } : {}),
-        ...(template.endAge !== undefined && template.frequency !== 'once'
-          ? { endAge: template.endAge }
-          : {}),
-      },
-    ])
+    const previous = safeFlows
+    const flow: CashFlow = {
+      id: createId(),
+      kind: template.kind,
+      name: template.name,
+      amount: template.amount,
+      frequency: template.frequency,
+      ...(template.startAge !== undefined ? { startAge: template.startAge } : {}),
+      ...(template.endAge !== undefined && template.frequency !== 'once'
+        ? { endAge: template.endAge }
+        : {}),
+    }
+
+    onChange([...previous, flow])
+    setEditDraft(draftFromFlow(flow, editAmountField.format, flow.name))
+    setEditingId(flow.id)
+
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        const target = document.getElementById(`cashflow-start-${flow.id}`)
+        target?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        target?.focus({ preventScroll: true })
+      })
+    }
+
+    toast(
+      (instance) => (
+        <ActionToast
+          testId="cashflow-template-toast"
+          message={t('templates.added', { name: template.name })}
+          actions={[
+            {
+              label: t('templates.undo'),
+              tone: 'primary',
+              testId: 'cashflow-template-undo',
+              onClick: () => {
+                toast.dismiss(instance.id)
+                setEditingId(null)
+                onChange(previous)
+              },
+            },
+          ]}
+        />
+      ),
+      { duration: TOAST_DURATION }
+    )
   }
 
   const handleRemove = (id: string) => {
@@ -486,7 +561,7 @@ export function CashFlowList({
                 return (
                   <div key={flow.id} className="flex items-center gap-2">
                     <span className="w-24 shrink-0 truncate text-[0.55rem] font-bold uppercase tracking-[0.1em] text-neo-black sm:w-32">
-                      {flow.name}
+                      {displayName(flow)}
                     </span>
                     <span className="relative h-3 flex-1 border-2 border-neo-black/20 bg-muted/40">
                       <span
@@ -496,7 +571,7 @@ export function CashFlowList({
                           flow.frequency === 'once' && 'border-x-2'
                         )}
                         style={geometry}
-                        title={`${flow.name} · ${windowLabel(flow)}`}
+                        title={`${displayName(flow)} · ${windowLabel(flow)}`}
                       />
                     </span>
                   </div>
@@ -557,7 +632,7 @@ export function CashFlowList({
                               aria-label={t('kind.expense')}
                             />
                           )}
-                          {flow.name}
+                          {displayName(flow)}
                         </span>
                         <span className="mt-0.5 block text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                           {/* Narrow screens fold the period column into this line. */}
@@ -587,9 +662,11 @@ export function CashFlowList({
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-neo-black hover:bg-neo-blue hover:text-neo-white"
-                            aria-label={`${t('actions.edit')}: ${flow.name}`}
+                            aria-label={`${t('actions.edit')}: ${displayName(flow)}`}
                             onClick={() => {
-                              setEditDraft(draftFromFlow(flow, editAmountField.format))
+                              setEditDraft(
+                                draftFromFlow(flow, editAmountField.format, displayName(flow))
+                              )
                               setEditingId(flow.id)
                             }}
                           >
@@ -600,7 +677,7 @@ export function CashFlowList({
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-neo-black hover:bg-neo-red hover:text-neo-white"
-                            aria-label={`${t('actions.remove')}: ${flow.name}`}
+                            aria-label={`${t('actions.remove')}: ${displayName(flow)}`}
                             onClick={() => handleRemove(flow.id)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />

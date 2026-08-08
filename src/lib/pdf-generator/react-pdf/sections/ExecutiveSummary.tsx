@@ -65,7 +65,7 @@ function DataRow({
 }
 
 export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSummaryProps) {
-  const { profile, expenses, assumptions, finances } = content
+  const { profile, expenses, assumptions, finances, simulation } = content
   const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
   const isGerman = content.locale !== 'en'
 
@@ -156,10 +156,19 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
               }}
             />
           </View>
+          {/* Counts come from the simulation context, so a historical backtest
+              reports 118/125 real start years rather than a fabricated
+              "472 / 500" that no Monte Carlo ever ran. */}
           <Text style={styles.kpiDescription}>
-            {fmtNumber(profile.success.successCount, { locale })} /{' '}
-            {fmtNumber(profile.success.trials, { locale })}
-            {isGerman ? ' Läufe erfolgreich' : ' successful runs'}
+            {fmtNumber(simulation.successCount, { locale })} /{' '}
+            {fmtNumber(simulation.effectiveRuns, { locale })}
+            {simulation.marketModel === 'historical'
+              ? isGerman
+                ? ' historische Startjahre erfolgreich'
+                : ' historical start years succeed'
+              : isGerman
+                ? ' Läufe erfolgreich'
+                : ' successful runs'}
           </Text>
         </View>
 
@@ -181,8 +190,8 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
           <Text style={styles.kpiValue}>{fmtCurrency(annualSpend, locale)}</Text>
           <Text style={styles.kpiDescription}>
             {isGerman
-              ? `Ausgaben pro Jahr · ${fmtNumber(expenses.horizonYears, { locale })} Jahre Horizont`
-              : `Spending per year · ${fmtNumber(expenses.horizonYears, { locale })} year horizon`}
+              ? `Ausgaben pro Jahr · ${fmtNumber(simulation.horizonYears, { locale })} Jahre Horizont`
+              : `Spending per year · ${fmtNumber(simulation.horizonYears, { locale })} year horizon`}
           </Text>
         </View>
       </View>

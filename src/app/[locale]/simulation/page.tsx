@@ -25,6 +25,7 @@ import { PlanComparison } from '@/components/plans/PlanComparison'
 import { PlanEditor } from '@/components/plans/PlanEditor'
 import { QuickAdjustBar } from '@/components/plans/QuickAdjustBar'
 import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
+import { WelcomeStrip } from '@/components/navigation/WelcomeStrip'
 import { AuthMenu } from '@/components/auth/AuthMenu'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { MobileMenu } from '@/components/navigation/MobileMenu'
@@ -34,6 +35,20 @@ import { ChartSkeleton } from '@/components/ui/skeleton'
 import { HISTORICAL_PATH_COUNT } from '@/lib/simulation/data/historicalMarket'
 
 type TabValue = 'overview' | 'details' | 'scenarios' | 'plan'
+
+/**
+ * Height of whatever sticky chrome currently overlaps the top of the viewport
+ * (the mobile parameter-drawer trigger; nothing at `lg`). Measured rather than
+ * hard-coded so a taller label or a different font never re-opens the bug where
+ * the tab strip parks underneath it and stops taking taps.
+ */
+function stickyChromeHeight(): number {
+  if (typeof document === 'undefined') return 0
+  const bar = document.querySelector('[data-sticky-chrome="true"]')
+  if (!bar) return 0
+  const rect = bar.getBoundingClientRect()
+  return rect.top <= 1 && rect.height > 0 ? rect.height : 0
+}
 
 export default function SimulationPage() {
   const t = useTranslations('simulation')
@@ -80,7 +95,13 @@ export default function SimulationPage() {
   }, []) // Empty deps - only run once on mount
 
   /** Brings the freshly selected tab body into view instead of leaving the
-   *  reader staring at the section they just left (POLISH e08). */
+   *  reader staring at the section they just left (POLISH e08).
+   *
+   *  The mobile parameter drawer's trigger is `sticky top-0`, so "the top of
+   *  the viewport" is not a safe resting place for the tab strip: parking it
+   *  there hid the first row of tabs under an opaque bar and the next tap
+   *  landed on the bar instead of a tab. `scroll-mt` on the anchor keeps the
+   *  strip below it, and the same offset decides whether a scroll is needed. */
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value as TabValue)
 
@@ -88,8 +109,9 @@ export default function SimulationPage() {
     window.requestAnimationFrame(() => {
       const node = tabsRef.current
       if (!node) return
+      const stickyOffset = stickyChromeHeight()
       const { top } = node.getBoundingClientRect()
-      const alreadyComfortable = top >= 0 && top <= window.innerHeight * 0.3
+      const alreadyComfortable = top >= stickyOffset && top <= window.innerHeight * 0.3
       if (alreadyComfortable) return
       node.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
@@ -185,7 +207,9 @@ export default function SimulationPage() {
                       {t('header.title')}
                     </h1>
                     <p className="mt-4 hidden max-w-2xl font-medium text-foreground/80 sm:block">
-                      {t('header.subtitle')}
+                      {/* "live Monte Carlo confidence" is simply untrue in
+                          historical mode, where nothing is sampled. */}
+                      {usesHistory ? t('header.subtitleHistorical') : t('header.subtitle')}
                     </p>
                     {successMessage && (
                       <span className="neo-chip mt-3 bg-neo-white px-3 py-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] shadow-neo-sm sm:mt-5 sm:px-5 sm:py-2 sm:text-[0.68rem] sm:tracking-[0.24em]">
@@ -216,22 +240,29 @@ export default function SimulationPage() {
                 </div>
 
                 {/* Mobile Actions */}
-                <div className="theme-mobile-actions flex items-center gap-3 lg:hidden">
-                  <AuthMenu compact />
+                {/* Mobile Actions — every child either shrinks (`min-w-0`) or
+                    refuses to (`shrink-0`); without that the report button's
+                    nowrap label pushed the menu trigger past the header's
+                    right edge, where `overflow-hidden` clipped it. */}
+                <div className="theme-mobile-actions flex items-center gap-2 lg:hidden">
+                  <AuthMenu compact className="shrink-0" />
                   <GenerateReportButton
                     results={results}
                     params={params}
                     disabled={isLoading}
                     variant="default"
                     size="lg"
-                    buttonClassName="flex-1 min-h-[44px]"
+                    wrapperClassName="min-w-0 flex-1"
+                    buttonClassName="w-full min-w-0 min-h-[44px] px-3"
                   />
-                  <MobileMenu
-                    results={results}
-                    params={params}
-                    isLoading={isLoading}
-                    showSetupLink
-                  />
+                  <div className="shrink-0">
+                    <MobileMenu
+                      results={results}
+                      params={params}
+                      isLoading={isLoading}
+                      showSetupLink
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -248,6 +279,9 @@ export default function SimulationPage() {
           <ParameterSidebar className="theme-parameter-sidebar" />
 
           <div className="theme-content theme-simulation-content space-y-6">
+            {/* First visit only: where the three things this tool does live. */}
+            <WelcomeStrip onOpenTab={handleTabChange} />
+
             <PlanHealthHero
               params={params}
               results={results}
@@ -258,7 +292,7 @@ export default function SimulationPage() {
             <QuickAdjustBar onOpenEditor={() => handleTabChange('plan')} />
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-              <div ref={tabsRef} className="scroll-mt-4">
+              <div ref={tabsRef} className="scroll-mt-[4.75rem] lg:scroll-mt-4">
                 <TabsList className="grid w-full grid-cols-2 border-3 border-neo-black bg-neo-white shadow-neo sm:grid-cols-4">
                   <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
                   <TabsTrigger value="details">{t('tabs.details')}</TabsTrigger>

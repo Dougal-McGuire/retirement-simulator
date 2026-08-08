@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ArrowLeft, ArrowRight, Check } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react'
 import { useTranslations, useFormatter } from 'next-intl'
 import { Link, useRouter } from '@/navigation'
 import { Button } from '@/components/ui/button'
@@ -37,6 +37,13 @@ const STORAGE_KEY = 'retirement-setup-progress'
 
 export default function SetupPage() {
   const router = useRouter()
+  /**
+   * Finishing the wizard compiles and renders the dashboard route, which in
+   * development is seconds of a frozen button and no feedback at all. The
+   * transition keeps the click acknowledged (spinner on the button it was
+   * aimed at, progress bar across the top) until the new route paints.
+   */
+  const [isNavigating, startNavigation] = useTransition()
   const t = useTranslations('setup')
   const tStatus = useTranslations('stepStatus')
   const tUi = useTranslations('ui')
@@ -153,7 +160,9 @@ export default function SetupPage() {
   const finishSetup = () => {
     // Data is already in simulation store, just clear progress and navigate
     localStorage.removeItem(STORAGE_KEY)
-    router.push('/simulation')
+    startNavigation(() => {
+      router.push('/simulation')
+    })
   }
 
   /** First run: name the built-in plan and keep everything just configured. */
@@ -582,6 +591,20 @@ export default function SetupPage() {
 
   return (
     <div className="app-page app-page-setup relative min-h-screen pb-16">
+      {/* Route-transition indicator: the dashboard route can take a moment to
+          compile and render, and without this the wizard simply appears to
+          have swallowed the click. */}
+      {isNavigating && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="route-transition"
+          className="fixed inset-x-0 top-0 z-[60] h-1 overflow-hidden bg-neo-black/10"
+        >
+          <span className="block h-full w-1/3 animate-route-progress bg-neo-blue" />
+          <span className="sr-only">{t('finish.opening')}</span>
+        </div>
+      )}
       <header id="navigation" className="theme-page-header relative z-10 pt-12 pb-10">
         <div className="theme-container mx-auto max-w-[90rem] px-2 sm:px-3 lg:px-4">
           <div
@@ -879,8 +902,15 @@ export default function SetupPage() {
             </Button>
 
             {isFirstRun ? (
-              <Button size="sm" data-testid="wizard-finish-continue" onClick={handleFirstRunFinish}>
-                {t('finish.continue')}
+              <Button
+                size="sm"
+                data-testid="wizard-finish-continue"
+                onClick={handleFirstRunFinish}
+                disabled={isNavigating}
+                aria-busy={isNavigating}
+              >
+                {isNavigating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isNavigating ? t('finish.opening') : t('finish.continue')}
               </Button>
             ) : (
               <>
@@ -890,6 +920,7 @@ export default function SetupPage() {
                     size="sm"
                     className="text-neo-red"
                     data-testid="wizard-finish-discard"
+                    disabled={isNavigating}
                     onClick={() => {
                       revertPlanDraft()
                       setSavePlanOpen(false)
@@ -910,13 +941,18 @@ export default function SetupPage() {
                 <Button
                   size="sm"
                   data-testid="wizard-finish-update"
+                  disabled={isNavigating}
+                  aria-busy={isNavigating}
                   onClick={() => {
                     savePlanDraft()
                     setSavePlanOpen(false)
                     finishSetup()
                   }}
                 >
-                  {t('finish.update', { name: activePlanName })}
+                  {isNavigating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isNavigating
+                    ? t('finish.opening')
+                    : t('finish.update', { name: activePlanName })}
                 </Button>
               </>
             )}

@@ -5,6 +5,7 @@ import { useFormatter } from 'next-intl'
 import type { ChartDataPoint, SimulationResults } from '@/types'
 import type { BandPoint } from '@/components/charts/AssetsChart'
 import { useSetAutoRunSuspended } from '@/lib/stores/simulationStore'
+import { useCompactCurrency } from '@/lib/hooks/useCompactCurrency'
 
 /**
  * True when the results carry the real-terms series, i.e. were produced by an
@@ -122,16 +123,10 @@ export function useChartFormatters() {
     [format]
   )
 
+  const compactCurrency = useCompactCurrency()
   const formatCurrencyShort = useCallback(
-    (value: number) =>
-      format.number(value, {
-        style: 'currency',
-        currency: 'EUR',
-        notation: 'compact',
-        maximumFractionDigits: 1,
-        minimumFractionDigits: 0,
-      }),
-    [format]
+    (value: number) => compactCurrency(value),
+    [compactCurrency]
   )
 
   const formatPercent = useCallback(

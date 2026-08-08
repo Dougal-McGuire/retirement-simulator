@@ -97,6 +97,43 @@ describe('assumption rows', () => {
     expect(rowByKey(mixed, 'dsWithdrawalRate')?.values).toEqual([0.05, 0.05])
   })
 
+  it('shows only the strategy parameters the compared strategies actually read', () => {
+    // Guyton-Klinger reads the initial rate but never the Vanguard guardrails,
+    // and a "DS ceiling" row next to it would state an assumption the engine
+    // did not apply.
+    const gk = buildAssumptionRows([
+      withParams({ withdrawalStrategy: 'guytonKlinger' }),
+      withParams({ withdrawalStrategy: 'guytonKlinger', dsWithdrawalRate: 0.04 }),
+    ])
+    expect(rowByKey(gk, 'dsWithdrawalRate')?.values).toEqual([0.05, 0.04])
+    expect(rowByKey(gk, 'dsCeilingRate')).toBeUndefined()
+    expect(rowByKey(gk, 'dsFloorRate')).toBeUndefined()
+    expect(rowByKey(gk, 'spendingFloorReal')).toBeUndefined()
+
+    // The percentage rule is the only reader of the real spending floor.
+    const percent = buildAssumptionRows([
+      withParams({ withdrawalStrategy: 'percentOfPortfolio', spendingFloorReal: 36000 }),
+      withParams({ withdrawalStrategy: 'percentOfPortfolio' }),
+    ])
+    expect(rowByKey(percent, 'spendingFloorReal')?.values).toEqual([36000, 0])
+    expect(rowByKey(percent, 'spendingFloorReal')?.kind).toBe('currency')
+    expect(rowByKey(percent, 'dsCeilingRate')).toBeUndefined()
+
+    // ...and it is dropped again when nobody set one.
+    const noFloor = buildAssumptionRows([
+      withParams({ withdrawalStrategy: 'percentOfPortfolio' }),
+      withParams({ withdrawalStrategy: 'percentOfPortfolio' }),
+    ])
+    expect(rowByKey(noFloor, 'spendingFloorReal')).toBeUndefined()
+
+    // One reader among the compared plans is enough to justify the row.
+    const mixed = buildAssumptionRows([
+      withParams({ withdrawalStrategy: 'fixedReal' }),
+      withParams({ withdrawalStrategy: 'percentOfPortfolio', spendingFloorReal: 24000 }),
+    ])
+    expect(rowByKey(mixed, 'spendingFloorReal')?.values).toEqual([0, 24000])
+  })
+
   it('hides the market model until a plan leaves Monte Carlo', () => {
     const bothDefault = buildAssumptionRows([withParams({}), withParams({})])
     expect(rowByKey(bothDefault, 'marketModel')).toBeUndefined()
@@ -275,36 +312,44 @@ describe('assumption rows are translatable', () => {
     ['de', de],
   ] as const
 
-  const allRows = buildAssumptionRows([
-    withParams({
-      marketModel: 'historical',
-      glidePathEnabled: true,
-      householdType: 'couple',
-      legacyTargetReal: 250000,
-      // Also forces the optional cash-flow rows to be emitted.
-      cashFlows: [
-        ...DEFAULT_PARAMS.cashFlows,
-        {
-          id: 'rent',
-          kind: 'income',
-          name: 'Rent',
-          amount: 900,
-          frequency: 'monthly',
-          startAge: 62,
-          endAge: 70,
-        },
-        {
-          id: 'roof',
-          kind: 'expense',
-          name: 'Roof',
-          amount: 30000,
-          frequency: 'once',
-          startAge: 64,
-        },
-      ],
-    }),
-    withParams({}),
-  ])
+  const allRows = [
+    ...buildAssumptionRows([
+      // The percentage rule is the only reader of `spendingFloorReal`, so the
+      // catalogue guard only sees that row through a plan that uses it.
+      withParams({ withdrawalStrategy: 'percentOfPortfolio', spendingFloorReal: 30000 }),
+      withParams({ withdrawalStrategy: 'guytonKlinger' }),
+    ]),
+    ...buildAssumptionRows([
+      withParams({
+        marketModel: 'historical',
+        glidePathEnabled: true,
+        householdType: 'couple',
+        legacyTargetReal: 250000,
+        // Also forces the optional cash-flow rows to be emitted.
+        cashFlows: [
+          ...DEFAULT_PARAMS.cashFlows,
+          {
+            id: 'rent',
+            kind: 'income',
+            name: 'Rent',
+            amount: 900,
+            frequency: 'monthly',
+            startAge: 62,
+            endAge: 70,
+          },
+          {
+            id: 'roof',
+            kind: 'expense',
+            name: 'Roof',
+            amount: 30000,
+            frequency: 'once',
+            startAge: 64,
+          },
+        ],
+      }),
+      withParams({}),
+    ]),
+  ]
 
   it.each(catalogues)('%s labels every row the diff can emit', (_locale, messages) => {
     const rowLabels = messages.plans.comparison.assumptions.rows as Record<string, string>
@@ -318,7 +363,9 @@ describe('assumption rows are translatable', () => {
       toggle: Record<string, string>
       fields: {
         marketModel: { options: Record<string, { label: string }> }
-        withdrawalStrategy: { options: Record<string, { label: string }> }
+        withdrawalStrategy: {
+          options: Record<string, { label: string; description: string }>
+        }
       }
     }
 
@@ -329,6 +376,45 @@ describe('assumption rows are translatable', () => {
     }
     for (const strategy of WITHDRAWAL_STRATEGIES) {
       expect(controls.fields.withdrawalStrategy.options[strategy]?.label).toBeTruthy()
+      expect(controls.fields.withdrawalStrategy.options[strategy]?.description).toBeTruthy()
+    }
+  })
+
+  /**
+   * Two dashboard surfaces explain the active rule in prose, keyed by the
+   * strategy id. A missing entry there renders the raw key, which is the exact
+   * failure mode a new strategy invites.
+   */
+  it.each(catalogues)(
+    '%s explains every strategy on the spending surfaces',
+    (_locale, messages) => {
+      const chart = messages.spendingChart.explanation.strategies as Record<string, string>
+      const table = messages.simulationChart.spendingTable.note as Record<string, string>
+
+      for (const strategy of WITHDRAWAL_STRATEGIES) {
+        expect(chart[strategy]).toBeTruthy()
+        expect(table[strategy]).toBeTruthy()
+      }
+    }
+  )
+
+  it.each(catalogues)('%s labels the whole withdrawal planner', (_locale, messages) => {
+    const planner = messages.withdrawalPlanner as unknown as {
+      title: string
+      corridor: { legend: Record<string, string>; tooltip: Record<string, string> }
+      compare: { columns: Record<string, string> }
+      stats: Record<string, string>
+    }
+
+    expect(planner.title).toBeTruthy()
+    for (const key of ['band', 'median', 'floor', 'ceiling']) {
+      expect(planner.corridor.legend[key]).toBeTruthy()
+    }
+    for (const key of ['strategy', 'success', 'lifetimeSpending', 'floor', 'volatility']) {
+      expect(planner.compare.columns[key]).toBeTruthy()
+    }
+    for (const key of ['firstYear', 'floor', 'volatility', 'success']) {
+      expect(planner.stats[key]).toBeTruthy()
     }
   })
 })

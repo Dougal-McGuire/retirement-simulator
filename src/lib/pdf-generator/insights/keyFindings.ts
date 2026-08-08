@@ -21,7 +21,7 @@ export interface KeyFinding {
  * a number the reader can check against the tables later in the report.
  */
 export function deriveKeyFindings(content: ReportContent): KeyFinding[] {
-  const { profile, projections, expenses, finances, assumptions } = content
+  const { profile, projections, expenses, finances, assumptions, simulation } = content
   const isGerman = content.locale !== 'en'
   const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
 
@@ -32,8 +32,33 @@ export function deriveKeyFindings(content: ReportContent): KeyFinding[] {
   const pensionAnnual = finances.monthlyPension * 12
   const money = (value: number) => fmtCurrency(value, locale)
   const num = (value: number) => fmtNumber(value, { locale })
+  // A historical backtest has no "simulation runs" — it has start years. Every
+  // count in this list is the context's, and so is the word used for it.
+  const isHistorical = simulation.marketModel === 'historical'
+  const pathWord = isHistorical
+    ? isGerman
+      ? 'historischen Startjahre'
+      : 'historical start years'
+    : isGerman
+      ? 'Simulationsläufe'
+      : 'simulation runs'
+  const pathWordShort = isHistorical
+    ? isGerman
+      ? 'Startjahre'
+      : 'start years'
+    : isGerman
+      ? 'Läufe'
+      : 'runs'
 
-  // 1 — Where the plan sits relative to the usual comfort band.
+  // 1 — Where the plan sits relative to the usual comfort band. With a bequest
+  // goal the headline answers a harder question, so the finding says so and
+  // names the pure-survival number alongside it.
+  const legacyNote =
+    simulation.successDefinition === 'legacyConditioned'
+      ? isGerman
+        ? ` Gemessen inklusive Nachlassziel von ${money(simulation.legacyTargetReal)}; ohne dieses Ziel reicht das Kapital in ${fmtPercent(simulation.depletionSuccessRate, 1, locale)} der ${pathWordShort}.`
+        : ` Measured including the ${money(simulation.legacyTargetReal)} bequest goal; without it capital lasts in ${fmtPercent(simulation.depletionSuccessRate, 1, locale)} of ${pathWordShort}.`
+      : ''
   const rate = success.successRate
   const ratePct = fmtPercent(rate, 1, locale)
   if (rate >= 0.9) {
@@ -41,24 +66,24 @@ export function deriveKeyFindings(content: ReportContent): KeyFinding[] {
       id: 'successBand',
       tone: 'positive',
       text: isGerman
-        ? `${ratePct} der ${num(success.trials)} Simulationsläufe tragen den Plan bis Alter ${person.horizonAge} — deutlich über der üblichen Komfortschwelle von 85 %.`
-        : `${ratePct} of ${num(success.trials)} simulation runs fund the plan to age ${person.horizonAge} — comfortably above the usual 85% threshold.`,
+        ? `${ratePct} der ${num(success.trials)} ${pathWord} tragen den Plan bis Alter ${person.horizonAge} — deutlich über der üblichen Komfortschwelle von 85 %.${legacyNote}`
+        : `${ratePct} of ${num(success.trials)} ${pathWord} fund the plan to age ${person.horizonAge} — comfortably above the usual 85% threshold.${legacyNote}`,
     })
   } else if (rate >= 0.75) {
     findings.push({
       id: 'successBand',
       tone: 'neutral',
       text: isGerman
-        ? `${ratePct} der ${num(success.trials)} Läufe tragen bis Alter ${person.horizonAge}; ${num(success.trials - success.successCount)} Läufe laufen vorher leer — tragfähig, aber ohne großen Puffer.`
-        : `${ratePct} of ${num(success.trials)} runs last to age ${person.horizonAge}; ${num(success.trials - success.successCount)} run dry earlier — workable, but without much buffer.`,
+        ? `${ratePct} der ${num(success.trials)} ${pathWordShort} tragen bis Alter ${person.horizonAge}; ${num(success.trials - success.successCount)} verfehlen das Ziel — tragfähig, aber ohne großen Puffer.${legacyNote}`
+        : `${ratePct} of ${num(success.trials)} ${pathWordShort} last to age ${person.horizonAge}; ${num(success.trials - success.successCount)} miss the goal — workable, but without much buffer.${legacyNote}`,
     })
   } else {
     findings.push({
       id: 'successBand',
       tone: 'risk',
       text: isGerman
-        ? `Nur ${ratePct} der ${num(success.trials)} Läufe tragen bis Alter ${person.horizonAge}; ${num(success.trials - success.successCount)} Läufe erschöpfen das Vermögen vorher.`
-        : `Only ${ratePct} of ${num(success.trials)} runs last to age ${person.horizonAge}; ${num(success.trials - success.successCount)} exhaust capital before then.`,
+        ? `Nur ${ratePct} der ${num(success.trials)} ${pathWordShort} tragen bis Alter ${person.horizonAge}; ${num(success.trials - success.successCount)} verfehlen das Ziel.${legacyNote}`
+        : `Only ${ratePct} of ${num(success.trials)} ${pathWordShort} last to age ${person.horizonAge}; ${num(success.trials - success.successCount)} miss the goal.${legacyNote}`,
     })
   }
 
@@ -75,10 +100,18 @@ export function deriveKeyFindings(content: ReportContent): KeyFinding[] {
   } else {
     findings.push({
       id: 'depletion',
-      tone: 'positive',
+      tone: simulation.depletionRisk > 0.0005 ? 'neutral' : 'positive',
       text: isGerman
-        ? `Selbst der konservative P10-Pfad bleibt bis Alter ${person.horizonAge} positiv; ein vorzeitiger Kapitalverzehr tritt in diesem Szenario nicht auf.`
-        : `Even the conservative P10 path stays positive to age ${person.horizonAge}; no early depletion occurs in that scenario.`,
+        ? `Der konservative P10-Pfad bleibt bis Alter ${person.horizonAge} positiv; ${
+            simulation.depletionRisk > 0.0005
+              ? `in ${fmtPercent(simulation.depletionRisk, 1, locale)} der ${pathWordShort} ist das Kapital dennoch vorher aufgebraucht`
+              : 'kein einziger Lauf erschöpft das Kapital vorher'
+          }.`
+        : `The conservative P10 path stays positive to age ${person.horizonAge}; ${
+            simulation.depletionRisk > 0.0005
+              ? `capital is still exhausted earlier in ${fmtPercent(simulation.depletionRisk, 1, locale)} of ${pathWordShort}`
+              : 'not a single run exhausts capital before then'
+          }.`,
     })
   }
 
@@ -121,8 +154,12 @@ export function deriveKeyFindings(content: ReportContent): KeyFinding[] {
       id: 'medianPath',
       tone: growth >= 0 ? 'positive' : 'neutral',
       text: isGerman
-        ? `Der Medianpfad entwickelt sich von ${money(startMedian)} heute auf ${money(endMedian)} mit ${fmtPercent(assumptions.expectedReturn, 1, locale)} Renditeerwartung (${growthPct} nominal).`
-        : `The median path moves from ${money(startMedian)} today to ${money(endMedian)} at a ${fmtPercent(assumptions.expectedReturn, 1, locale)} expected return (${growthPct} nominal).`,
+        ? isHistorical
+          ? `Der Medianpfad entwickelt sich von ${money(startMedian)} heute auf ${money(endMedian)} über die ${num(simulation.effectiveRuns)} historischen Verläufe (${growthPct} nominal).`
+          : `Der Medianpfad entwickelt sich von ${money(startMedian)} heute auf ${money(endMedian)} mit ${fmtPercent(assumptions.expectedReturn, 1, locale)} Renditeerwartung (${growthPct} nominal).`
+        : isHistorical
+          ? `The median path moves from ${money(startMedian)} today to ${money(endMedian)} across the ${num(simulation.effectiveRuns)} historical replays (${growthPct} nominal).`
+          : `The median path moves from ${money(startMedian)} today to ${money(endMedian)} at a ${fmtPercent(assumptions.expectedReturn, 1, locale)} expected return (${growthPct} nominal).`,
     })
   }
 

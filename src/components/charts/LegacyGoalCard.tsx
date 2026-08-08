@@ -6,6 +6,7 @@ import type { SimulationParams, SimulationResults } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
 import { useUpdateParams } from '@/lib/stores/simulationStore'
+import { useCompactCurrency } from '@/lib/hooks/useCompactCurrency'
 import { cn } from '@/lib/utils'
 
 interface LegacyGoalCardProps {
@@ -30,14 +31,9 @@ export function LegacyGoalCard({ params, results }: LegacyGoalCardProps) {
   const target = Math.max(0, params.legacyTargetReal ?? 0)
   const active = target > 0
 
-  const formatCurrency = (value: number) =>
-    format.number(value, {
-      style: 'currency',
-      currency: 'EUR',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-      minimumFractionDigits: 0,
-    })
+  // Compact where the locale abbreviates, whole euros where it does not —
+  // German would otherwise render "856.841,3 €".
+  const formatCurrency = useCompactCurrency()
   const formatPercent = (value: number) =>
     format.number(value / 100, {
       style: 'percent',

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { WITHDRAWAL_STRATEGIES } from '@/types'
 
 export const ReportLocaleSchema = z.enum(['en', 'de'])
 export type ReportLocale = z.infer<typeof ReportLocaleSchema>
@@ -37,6 +38,9 @@ export const SpendingSchema = z.object({
       z.object({
         id: z.string(),
         name: z.string(),
+        // Translation key for a flow the app seeded, so the report can print
+        // "Lebensmittel" instead of "Groceries". Absent once renamed.
+        nameKey: z.string().max(64).optional(),
         amount: z.number().min(0).max(1_000_000),
         interval: z.enum(['monthly', 'annual']),
       })
@@ -53,6 +57,7 @@ export const SpendingSchema = z.object({
         id: z.string(),
         kind: z.enum(['income', 'expense']),
         name: z.string(),
+        nameKey: z.string().max(64).optional(),
         amount: z.number().min(0).max(100_000_000),
         frequency: z.enum(['monthly', 'annual', 'once']),
         startAge: z.number().min(0).max(120).optional(),
@@ -69,7 +74,9 @@ export const AssumptionsSchema = z.object({
   roiStdev: z.number().min(0).max(0.5),
   inflationMean: z.number().min(-0.05).max(0.15),
   inflationStdev: z.number().min(0).max(0.1),
-  withdrawalStrategy: z.enum(['fixedReal', 'vanguardDynamic']).default('vanguardDynamic'),
+  // Sourced from the app's own strategy list so a new strategy cannot ship
+  // without the report being able to name it.
+  withdrawalStrategy: z.enum(WITHDRAWAL_STRATEGIES).default('vanguardDynamic'),
   /**
    * Market model and allocation glide path. Defaulted so reports generated
    * before these existed still validate as "Monte Carlo, single asset".
@@ -83,6 +90,8 @@ export const AssumptionsSchema = z.object({
   dsWithdrawalRate: z.number().min(0).max(1).default(0.05),
   dsCeilingRate: z.number().min(0).max(1).default(0.05),
   dsFloorRate: z.number().min(-1).max(0).default(-0.025),
+  /** `percentOfPortfolio` spending floor, today's euros per year. */
+  spendingFloorReal: z.number().min(0).default(0),
   // Fix absurd tax rates like 2625% -> cap at 80%
   capGainsTaxRatePct: z
     .number()
@@ -110,6 +119,35 @@ export const AssumptionsSchema = z.object({
   pensionTaxRate: z.number().min(0).max(1).default(0),
   legacyTargetReal: z.number().min(0).default(0),
   mcRuns: z.number().min(100).max(100_000),
+})
+
+/**
+ * The simulation context: what the engine actually did, carried verbatim from
+ * the app so the report cannot invent a run count, a market model or a success
+ * definition of its own.
+ *
+ * Optional as a whole — a payload from an older client simply lacks it, and
+ * `mapReportDataToContent` reconstructs the best available approximation from
+ * `assumptions` + `projections` instead of failing validation.
+ */
+export const SimulationSchema = z.object({
+  marketModel: z.enum(['monteCarlo', 'historical']).default('monteCarlo'),
+  /** Paths really run: `simulationRuns` under Monte Carlo, 125 under historical. */
+  effectiveRuns: z.number().min(1).max(1_000_000),
+  successDefinition: z.enum(['legacyConditioned', 'depletion']).default('depletion'),
+  successRatePct: z.number().min(0).max(100),
+  depletionSuccessRatePct: z.number().min(0).max(100),
+  depletionRiskPct: z.number().min(0).max(100).default(0),
+  successCount: z.number().min(0),
+  /** Simulated years, taken from the engine's age grid (inclusive of both ends). */
+  horizonYears: z.number().min(1).max(120),
+  legacyTargetReal: z.number().min(0).default(0),
+  seedLabel: z.string().default(''),
+  paramsFingerprint: z.string().default(''),
+  computedAt: z.string().optional(),
+  historicalPathCount: z.number().min(1).default(125),
+  historicalFirstYear: z.number().default(1900),
+  historicalLastYear: z.number().default(2024),
 })
 
 export const MilestoneSchema = z.object({
@@ -180,6 +218,7 @@ export const ReportDataSchema = z.object({
   finances: FinancesSchema,
   spending: SpendingSchema,
   assumptions: AssumptionsSchema,
+  simulation: SimulationSchema.optional(),
   projections: ProjectionsSchema,
   summary: SummarySchema,
   recommendations: z.array(RecommendationSchema),
@@ -202,6 +241,7 @@ export type Person = z.infer<typeof PersonSchema>
 export type Finances = z.infer<typeof FinancesSchema>
 export type Spending = z.infer<typeof SpendingSchema>
 export type Assumptions = z.infer<typeof AssumptionsSchema>
+export type SimulationMeta = z.infer<typeof SimulationSchema>
 export type Milestone = z.infer<typeof MilestoneSchema>
 export type Projections = z.infer<typeof ProjectionsSchema>
 export type Recommendation = z.infer<typeof RecommendationSchema>

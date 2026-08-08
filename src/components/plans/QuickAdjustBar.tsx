@@ -65,6 +65,9 @@ export function QuickAdjustBar({ onOpenEditor, className }: QuickAdjustBarProps)
   )
   const monthlyAnchor = Math.max(1000, Math.round(planCombined.combinedMonthly * 2))
   const monthlyNow = Math.round(combined.combinedMonthly)
+  /** How many items the lever actually touches — the lifetime expenses only. */
+  const scaledCount = expenses.length
+  const windowedCount = (params.cashFlows ?? []).length - scaledCount
 
   const scaleExpenses = (targetMonthly: number) => {
     const base = scaleBaseRef.current ?? { source: expenses, monthly: combined.combinedMonthly }
@@ -144,7 +147,20 @@ export function QuickAdjustBar({ onOpenEditor, className }: QuickAdjustBarProps)
           valueLabel={formatCurrency(monthlyNow)}
           minLabel={formatCurrency(0)}
           maxLabel={formatCurrency(monthlyAnchor)}
-          helpText={t('expensesHint')}
+          // The lever writes `customExpenses`, which is the *lifetime* expense
+          // projection: a flow with an age window (care costs at 80–90, a roof
+          // in one year) is not in it and does not move. Saying "every expense
+          // in this plan" was simply wrong, and the caption now names both the
+          // number of items it does scale and their total.
+          helpText={
+            windowedCount > 0
+              ? t('expensesHintScheduled', {
+                  count: scaledCount,
+                  total: formatCurrency(monthlyNow),
+                  scheduled: windowedCount,
+                })
+              : t('expensesHint', { count: scaledCount, total: formatCurrency(monthlyNow) })
+          }
         />
         <WizardSliderField
           id="quick-averageROI"

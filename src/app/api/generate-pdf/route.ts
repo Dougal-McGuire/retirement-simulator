@@ -95,6 +95,8 @@ const SimulationParamsSchema = z.object({
   dsWithdrawalRate: z.number(),
   dsCeilingRate: z.number(),
   dsFloorRate: z.number(),
+  // Defaulted: older clients post parameter sets that predate the floor.
+  spendingFloorReal: z.number().default(0),
   simulationRuns: z.number(),
 })
 
@@ -112,6 +114,11 @@ const SimulationResultsSchema = z
     assetPercentiles: PercentileDataSchema,
     spendingPercentiles: PercentileDataSchema,
     successRate: z.number(),
+    // Carried through so the report's simulation context can state the real
+    // depletion risk and the pure-survival rate. Optional: an older client
+    // posts neither, and the context falls back to `successRate`.
+    depletionSuccessRate: z.number().optional(),
+    depletionByAge: z.array(z.number()).optional(),
     params: SimulationParamsSchema.optional(),
   })
   .superRefine((results, ctx) => {
@@ -221,7 +228,10 @@ export async function POST(req: NextRequest) {
       const generated = transformToReportData(
         freshParams,
         { ...validResults, params: freshParams },
-        planName
+        planName,
+        // Recommendations quote this plan's own numbers, so they are written in
+        // the report's language up front instead of being translated by lookup.
+        requestedLocale === 'de' ? 'de' : 'en'
       )
       const parsed = ReportDataSchema.safeParse({ ...generated, locale: requestedLocale })
       if (!parsed.success) {

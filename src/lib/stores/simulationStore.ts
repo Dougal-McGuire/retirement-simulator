@@ -103,6 +103,7 @@ const numericParamKeys = [
   'dsWithdrawalRate',
   'dsCeilingRate',
   'dsFloorRate',
+  'spendingFloorReal',
   'simulationRuns',
 ] satisfies NumericParamKey[]
 
@@ -179,11 +180,18 @@ const sanitizeCustomExpenses = (expenses: unknown): CustomExpense[] => {
       const expense = entry as {
         id?: unknown
         name?: unknown
+        nameKey?: unknown
         amount?: unknown
         interval?: unknown
       }
       const rawId = typeof expense.id === 'string' ? expense.id : ''
       const rawName = typeof expense.name === 'string' ? expense.name : ''
+      // Preserved so a seeded expense keeps following the UI language across a
+      // round trip through storage (see `CashFlow.nameKey`).
+      const rawNameKey =
+        typeof expense.nameKey === 'string' && expense.nameKey.trim() !== ''
+          ? expense.nameKey.trim()
+          : undefined
       const rawAmount = Number(expense.amount)
       const rawInterval =
         expense.interval === 'monthly' || expense.interval === 'annual'
@@ -195,6 +203,7 @@ const sanitizeCustomExpenses = (expenses: unknown): CustomExpense[] => {
       return {
         id: rawId,
         name: rawName,
+        ...(rawNameKey !== undefined ? { nameKey: rawNameKey } : {}),
         amount: Math.max(0, rawAmount),
         interval: rawInterval,
       }
@@ -465,6 +474,7 @@ export const useSimulationStore = create<SimulationStore>()(
         isDirty: false,
         planSuccessRates: {},
         results: null,
+        resultsComputedAt: null,
         isLoading: false,
         error: null,
         savedSetups: plansToSavedSetups([defaultPlan]),
@@ -499,7 +509,11 @@ export const useSimulationStore = create<SimulationStore>()(
           requestRun()
         },
 
-        createPlan: (name: string, params?: SimulationParams, options?: { activate?: boolean }) => {
+        createPlan: (
+          name: string,
+          params?: SimulationParams,
+          options?: { activate?: boolean; nameKey?: string }
+        ) => {
           const { plans, params: currentParams } = get()
           if (plans.length >= MAX_PLANS) {
             set({ error: 'planLimitReached' })
@@ -509,6 +523,9 @@ export const useSimulationStore = create<SimulationStore>()(
           const plan = makePlan({
             id: createPlanId(plans),
             name: uniquePlanName(name, plans),
+            // Built-in plans (the demo) carry a key so their name follows the
+            // UI language until the user renames them.
+            nameKey: options?.nameKey,
             params: normalizePersistedParams(params ?? currentParams),
           })
 
@@ -697,6 +714,7 @@ export const useSimulationStore = create<SimulationStore>()(
 
             set((state) => ({
               results,
+              resultsComputedAt: Date.now(),
               isLoading: false,
               error: null,
               // A clean run describes the stored plan, so the switcher can show
@@ -797,6 +815,7 @@ export const useSimulationStore = create<SimulationStore>()(
         clearResults: () => {
           set({
             results: null,
+            resultsComputedAt: null,
             error: null,
           })
         },

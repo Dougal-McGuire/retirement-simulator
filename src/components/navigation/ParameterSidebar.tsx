@@ -31,6 +31,7 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
       {/* Mobile sheet trigger: docked in the document flow (sticky under the
           header) so it can never cover the tabs, the gauge or a chart. */}
       <div
+        data-sticky-chrome="true"
         className={`sticky top-0 z-30 -mx-2 mb-2 border-b-2 border-neo-black bg-background px-2 py-2 sm:-mx-3 sm:px-3 lg:hidden ${className}`}
       >
         <Sheet open={isOpen} onOpenChange={setIsOpen}>

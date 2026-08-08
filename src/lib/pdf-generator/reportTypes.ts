@@ -6,6 +6,9 @@ import type {
   Summary,
 } from '@/lib/pdf-generator/schema/reportData'
 
+import type { WithdrawalStrategy } from '@/types'
+import { localizeCashFlowName } from '@/lib/plans/cashFlowName'
+
 export type { ReportLocale } from '@/lib/pdf-generator/schema/reportData'
 
 type SummaryBridge = NonNullable<Summary>['bridge']
@@ -21,53 +24,6 @@ const PLAN_HEALTH_REASONS_DE: Record<string, string> = {
   'moderate bridge drawdown': 'Überbrückungsphase benötigt moderaten Kapitalverzehr',
   'high success probability': 'Hohe Erfolgswahrscheinlichkeit im Simulationsergebnis',
   'balanced assumptions': 'Ausgewogene Markt- und Ausgabenannahmen',
-}
-
-const ACTION_TRANSLATIONS_DE: Record<string, string> = {
-  'Increase Savings Rate': 'Sparquote erhöhen',
-  'Delay Retirement': 'Ruhestand verschieben',
-  'Optimize Investment Mix': 'Anlagestruktur optimieren',
-  'Review Spending Plan': 'Ausgabenplan überprüfen',
-  'Maximize Tax-Deferred Contributions': 'Steuerbegünstigte Beiträge maximieren',
-  'Consider Volatility Reduction': 'Volatilität schrittweise reduzieren',
-  'Review Insurance Coverage': 'Versicherungsschutz überprüfen',
-}
-
-const RECOMMENDATION_TITLES_DE: Record<string, string> = {
-  'Increase Savings Rate': 'Sparquote erhöhen',
-  'Delay Retirement': 'Ruhestand um 2–3 Jahre verschieben',
-  'Optimize Investment Mix': 'Portfolioausrichtung neu kalibrieren',
-  'Review Spending Plan': 'Ausgabenplan straffen',
-  'Maximize Tax-Deferred Contributions': 'Steuerlich geförderte Beiträge ausschöpfen',
-  'Consider Volatility Reduction': 'Volatilität reduzieren',
-  'Review Insurance Coverage': 'Versorgungsschutz aktualisieren',
-}
-
-const RECOMMENDATION_CATEGORIES_DE: Record<string, string> = {
-  'Savings Strategy': 'Sparstrategie',
-  Timing: 'Zeitplanung',
-  'Investment Strategy': 'Investmentstrategie',
-  'Expense Management': 'Ausgabenmanagement',
-  'Tax Planning': 'Steuerplanung',
-  'Risk Management': 'Risikomanagement',
-  Protection: 'Absicherung',
-}
-
-const RECOMMENDATION_BODIES_DE: Record<string, string> = {
-  'Your current success rate indicates potential challenges. Consider increasing your annual savings by 10-20% to improve retirement security.':
-    'Die Erfolgswahrscheinlichkeit profitiert von einer höheren Sparquote. Zusätzliche 10–20\u202f% p.a. stabilisieren den Kapitalpuffer.',
-  'Working an additional 2-3 years could significantly improve your success rate by allowing more time for asset accumulation.':
-    'Ein längerer Erwerbszeitraum von 2–3 Jahren erhöht Vermögensaufbau und Erfolgschance deutlich.',
-  'Review your asset allocation to ensure appropriate balance between growth and stability for your risk tolerance.':
-    'Überprüfen Sie die Asset Allocation, um Rendite- und Risikobeiträge besser auszubalancieren.',
-  'Your expenses are high relative to savings. Consider reviewing discretionary spending to improve financial flexibility.':
-    'Variable Ausgaben belasten die Liquidität. Priorisieren Sie Budgetdisziplin bei Freizeit- und Konsumpositionen.',
-  'Ensure you are taking full advantage of tax-advantaged retirement accounts to reduce current tax liability and enhance long-term growth.':
-    'Nutzen Sie steuerbegünstigte Konten vollständig, um Nettorendite und Vermögenswachstum zu steigern.',
-  'Your portfolio has high volatility. As you approach retirement, consider gradually shifting to more stable investments.':
-    'Verringern Sie die Portfoliovolatilität schrittweise, um Sequenzrisiken beim Übergang in den Ruhestand zu begrenzen.',
-  'Evaluate current insurance policies including health, long-term care, and life insurance to ensure adequate protection.':
-    'Prüfen Sie Kranken-, Pflege- und Lebensversicherung auf aktuelle Deckungslücken.',
 }
 
 const RECOMMENDATION_IMPACT_DE: Record<string, string> = {
@@ -187,6 +143,34 @@ export interface ReportMetadata {
   planName?: string
 }
 
+/**
+ * What the engine actually did, as printed. Mirrors `SimulationContext` from
+ * the app; every mode-aware string in the report reads from this and nothing
+ * else, which is what keeps a historical backtest from being described as a
+ * Monte Carlo with 500 lognormal draws.
+ */
+export interface ReportSimulation {
+  marketModel: 'monteCarlo' | 'historical'
+  effectiveRuns: number
+  successDefinition: 'legacyConditioned' | 'depletion'
+  /** 0..1 — the headline rate under `successDefinition`. */
+  successRate: number
+  /** 0..1 — plain survival, ignoring any bequest goal. */
+  depletionSuccessRate: number
+  /** 0..1 — share of runs whose assets were exhausted. */
+  depletionRisk: number
+  successCount: number
+  /** Simulated years, from the engine's age grid. */
+  horizonYears: number
+  legacyTargetReal: number
+  seedLabel: string
+  historicalPathCount: number
+  historicalFirstYear: number
+  historicalLastYear: number
+  /** True when the payload carried a real context rather than a reconstruction. */
+  fromContext: boolean
+}
+
 export interface ReportProfile {
   householdName?: string
   analyst?: string
@@ -215,10 +199,12 @@ export interface ReportAssumptions {
   returnVolatility: number
   inflation: number
   inflationVolatility: number
-  withdrawalStrategy: 'fixedReal' | 'vanguardDynamic'
+  withdrawalStrategy: WithdrawalStrategy
   dsWithdrawalRate: number
   dsCeilingRate: number
   dsFloorRate: number
+  /** `percentOfPortfolio` spending floor, today's euros per year. */
+  spendingFloorReal: number
   capitalGainsTax: number
   /** Sparerpauschbetrag per year, already doubled for a couple. */
   taxAllowance: number
@@ -266,8 +252,16 @@ export interface ReportCashFlow {
 }
 
 export interface ReportExpenses {
+  /** Simulated years — the count of ages the engine ran, not the age span. */
   horizonYears: number
+  /**
+   * Every euro of planned spending across the horizon: recurring budget × years
+   * **plus** the scheduled flows (care costs, one-off repairs), which used to be
+   * silently excluded even though the report lists them a section earlier.
+   */
   totalHorizonAmount: number
+  /** The scheduled-flow part of `totalHorizonAmount`; 0 when there are none. */
+  scheduledExpenseTotal: number
   annualTotal: number
   monthlyTotal: number
   monthlyCategories: ReportExpensesCategory[]
@@ -299,6 +293,7 @@ export interface ReportContent {
   profile: ReportProfile
   finances: ReportFinances
   assumptions: ReportAssumptions
+  simulation: ReportSimulation
   projections: ReportProjections
   expenses: ReportExpenses
   scenarios: ReportScenario[]
@@ -314,9 +309,48 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
   const locale = normaliseLocale(data.locale)
 
   const summary = data.summary
-  const trials = data.assumptions.mcRuns
-  const successRate = data.projections.successRatePct / 100
-  const successCount = Math.round(successRate * trials)
+
+  // The simulation context, or the closest honest reconstruction of it for a
+  // payload generated before the context existed. Note the fallback still
+  // refuses to claim `mcRuns` paths under the historical model: that model has
+  // exactly as many paths as the series has start years, whatever was asked for.
+  const stored = data.simulation
+  const historicalPathCount = stored?.historicalPathCount ?? 125
+  const marketModel = stored?.marketModel ?? data.assumptions.marketModel
+  const simulation: ReportSimulation = {
+    marketModel,
+    effectiveRuns:
+      stored?.effectiveRuns ??
+      (marketModel === 'historical' ? historicalPathCount : data.assumptions.mcRuns),
+    successDefinition:
+      stored?.successDefinition ??
+      (data.assumptions.legacyTargetReal > 0 ? 'legacyConditioned' : 'depletion'),
+    successRate: (stored?.successRatePct ?? data.projections.successRatePct) / 100,
+    depletionSuccessRate:
+      (stored?.depletionSuccessRatePct ?? data.projections.successRatePct) / 100,
+    depletionRisk:
+      (stored?.depletionRiskPct ?? 100 - data.projections.successRatePct) / 100,
+    successCount: 0,
+    horizonYears:
+      stored?.horizonYears ??
+      // The engine simulates every age from `currentAge` through `horizonAge`
+      // inclusive, so the number of spending years is the count of milestones,
+      // not the span between the two ages.
+      (data.projections.milestones.length ||
+        Math.max(1, data.person.horizonAge - data.person.currentAge + 1)),
+    legacyTargetReal: stored?.legacyTargetReal ?? data.assumptions.legacyTargetReal,
+    seedLabel: stored?.seedLabel ?? '',
+    historicalPathCount,
+    historicalFirstYear: stored?.historicalFirstYear ?? 1900,
+    historicalLastYear: stored?.historicalLastYear ?? 2024,
+    fromContext: stored !== undefined,
+  }
+  simulation.successCount =
+    stored?.successCount ?? Math.round(simulation.successRate * simulation.effectiveRuns)
+
+  const trials = simulation.effectiveRuns
+  const successRate = simulation.successRate
+  const successCount = simulation.successCount
 
   const monthlyTotals = data.spending.monthly
   const annualTotals = data.spending.annual
@@ -337,8 +371,28 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
   const monthlyTotal = customExpenses.length > 0 ? monthlyTotalFromCustom : monthlyTotalFallback
   const annualTotal = customExpenses.length > 0 ? annualTotalFromCustom : annualTotalFallback
   const yearlyTotal = monthlyTotal * 12 + annualTotal
-  const horizonYears = Math.max(0, data.person.horizonAge - data.person.currentAge)
-  const totalHorizonAmount = yearlyTotal * horizonYears
+  const horizonYears = simulation.horizonYears
+
+  // "Total horizon need" has to mean every euro the plan expects to spend.
+  // Leaving the scheduled flows out made the figure contradict the care-cost
+  // table printed one section earlier, which the reader had just read.
+  const scheduledFlows = data.spending.cashFlows ?? []
+  const flowYears = (flow: (typeof scheduledFlows)[number]) => {
+    const from = Math.max(flow.startAge ?? data.person.currentAge, data.person.currentAge)
+    const to = Math.min(flow.endAge ?? data.person.horizonAge, data.person.horizonAge)
+    return Math.max(0, to - from + 1)
+  }
+  const scheduledExpenseTotal = scheduledFlows
+    .filter((flow) => flow.kind === 'expense')
+    .reduce((sum, flow) => {
+      if (flow.frequency === 'once') {
+        const age = flow.startAge ?? data.person.currentAge
+        const inHorizon = age >= data.person.currentAge && age <= data.person.horizonAge
+        return sum + (inHorizon ? flow.amount : 0)
+      }
+      return sum + flow.amount * (flow.frequency === 'monthly' ? 12 : 1) * flowYears(flow)
+    }, 0)
+  const totalHorizonAmount = yearlyTotal * horizonYears + scheduledExpenseTotal
 
   const pickMilestones = data.projections.milestones.map((m) => ({
     age: m.age,
@@ -368,12 +422,11 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
     return summary.planHealthLabel
   })()
 
-  const highlightsRaw = summary?.topActions ?? []
-  const highlights = highlightsRaw.length
-    ? locale === 'de'
-      ? highlightsRaw.map((action) => ACTION_TRANSLATIONS_DE[action] ?? DEFAULT_HIGHLIGHT.de)
-      : highlightsRaw
-    : []
+  // Recommendation text now arrives already written in the report's language
+  // (see `generateRecommendations`), because every body interpolates this
+  // plan's own figures — a table keyed on the English sentence could not carry
+  // them and silently replaced any unrecognised item with a generic line.
+  const highlights = (summary?.topActions ?? []).filter((action) => action.trim() !== '')
 
   const expensesShare = (value: number, total: number) => (total > 0 ? value / total : 0)
   let monthlyCategories: ReportExpensesCategory[]
@@ -384,7 +437,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       .filter((item) => item.interval === 'monthly')
       .map((item) => ({
         id: item.id,
-        label: item.name,
+        label: localizeCashFlowName(item, locale),
         interval: 'monthly' as const,
         originalAmount: item.amount,
         annualAmount: item.amount * 12,
@@ -396,7 +449,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       .filter((item) => item.interval === 'annual')
       .map((item) => ({
         id: item.id,
-        label: item.name,
+        label: localizeCashFlowName(item, locale),
         interval: 'annual' as const,
         originalAmount: item.amount,
         annualAmount: item.amount,
@@ -464,6 +517,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       dsWithdrawalRate: data.assumptions.dsWithdrawalRate,
       dsCeilingRate: data.assumptions.dsCeilingRate,
       dsFloorRate: data.assumptions.dsFloorRate,
+      spendingFloorReal: data.assumptions.spendingFloorReal,
       capitalGainsTax: data.assumptions.capGainsTaxRatePct,
       taxAllowance:
         data.assumptions.householdType === 'couple'
@@ -480,32 +534,32 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       milestones: pickMilestones,
       exhaustionAge: pickMilestones.find((m) => m.p10 <= 0)?.age,
     },
+    simulation,
     expenses: {
       horizonYears,
       totalHorizonAmount,
+      scheduledExpenseTotal,
       annualTotal,
       monthlyTotal,
       monthlyCategories,
       annualCategories,
       allCategories,
-      scheduledFlows: data.spending.cashFlows ?? [],
+      // Seeded flows follow the report's language; user-named ones are verbatim.
+      // `nameKey` is resolved here and dropped: downstream sections render a
+      // label, never a key.
+      scheduledFlows: (data.spending.cashFlows ?? []).map(({ nameKey: _key, ...flow }) => ({
+        ...flow,
+        name: localizeCashFlowName({ name: flow.name, nameKey: _key }, locale),
+      })),
     },
     scenarios,
     recommendations: {
-      uplifts: (summary?.topActionsDetailed ?? []).map((uplift) => ({
-        ...uplift,
-        title:
-          locale === 'de' ? (RECOMMENDATION_TITLES_DE[uplift.title] ?? uplift.title) : uplift.title,
-      })),
+      uplifts: summary?.topActionsDetailed ?? [],
+      // Only the impact tag is still a fixed vocabulary, so only it is mapped.
       primary:
         locale === 'de'
           ? data.recommendations.map((rec) => ({
               ...rec,
-              title: RECOMMENDATION_TITLES_DE[rec.title] ?? DEFAULT_HIGHLIGHT.de,
-              category: RECOMMENDATION_CATEGORIES_DE[rec.category] ?? 'Allgemeine Strategie',
-              body:
-                RECOMMENDATION_BODIES_DE[rec.body] ??
-                'Vertiefte Analyse empfohlen, um konkrete Handlungsschritte zu definieren.',
               impactLabel: RECOMMENDATION_IMPACT_DE[rec.impact] ?? rec.impact,
             }))
           : data.recommendations,

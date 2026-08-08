@@ -13,6 +13,8 @@ import {
   fmtNumber,
   fmtPercent,
 } from '@/lib/pdf-generator/formatters'
+import { withdrawalStrategyLabel } from '@/lib/pdf-generator/withdrawalStrategy'
+import { buildMethodologyCopy } from '@/lib/pdf-generator/methodologyCopy'
 import './fonts'
 
 interface RetirementReportProps {
@@ -38,14 +40,21 @@ function AppendixSection({
   intlLocale: string
   sectionNumber: string
 }) {
-  const { assumptions, profile, expenses, finances } = content
+  const { assumptions, profile, expenses, finances, simulation } = content
   const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
+  const isHistorical = simulation.marketModel === 'historical'
+  const runsLabel = fmtNumber(simulation.effectiveRuns, { locale: intlLocale })
+  const legacyConditioned = simulation.successDefinition === 'legacyConditioned'
+  // Every "how the number was produced" sentence comes from one place.
+  const copy = buildMethodologyCopy(content)
+
+  const { methodology: methodologyText, successRate: successGlossaryText } = copy
 
   const glossary: Array<{ term: string; text: string }> = isGerman
     ? [
         {
           term: 'Erfolgsquote',
-          text: `Anteil der Simulationsläufe, in denen das Vermögen bis Alter ${profile.person.horizonAge} nicht aufgebraucht ist.`,
+          text: successGlossaryText,
         },
         {
           term: 'Planungs-Score',
@@ -71,7 +80,7 @@ function AppendixSection({
     : [
         {
           term: 'Success rate',
-          text: `Share of simulation runs in which capital is not exhausted before age ${profile.person.horizonAge}.`,
+          text: successGlossaryText,
         },
         {
           term: 'Plan score',
@@ -95,19 +104,7 @@ function AppendixSection({
         },
       ]
 
-  const limitations = isGerman
-    ? [
-        'Renditen und Inflation werden als unabhängig gezogen; historische Autokorrelation und Sequenzrisiken im Übergangsjahr werden nicht nachgebildet.',
-        'Steuern werden pauschal mit einem Satz auf Kapitalerträge berücksichtigt; Freibeträge, Teilfreistellungen und Progressionseffekte bleiben unberücksichtigt.',
-        'Die Rentenhöhe wird nominal fortgeschrieben; abweichende Rentenanpassungen ändern die Ergebnisse.',
-        'Ausgaben werden mit der Inflationsannahme fortgeschrieben; Pflegekosten oder einmalige Sonderausgaben sind nur enthalten, soweit sie erfasst wurden.',
-      ]
-    : [
-        'Returns and inflation are drawn independently; historical autocorrelation and sequence-of-returns effects around the transition year are not reproduced.',
-        'Taxes are applied as a flat rate on capital gains; allowances, partial exemptions and progressive effects are not modelled.',
-        'The pension is carried forward in nominal terms; different indexation would change the outcome.',
-        'Spending is indexed with the inflation assumption; care costs and one-off items are only included where they were entered.',
-      ]
+  const limitations = copy.limitations
 
   const parameterRecap: Array<{ label: string; value: string }> = [
     {
@@ -135,8 +132,34 @@ function AppendixSection({
       value: `${fmtPercent(assumptions.inflation, 1, intlLocale)} / ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)}`,
     },
     {
-      label: isGerman ? 'Simulationsläufe' : 'Simulation runs',
-      value: fmtNumber(assumptions.simulationRuns, { locale: intlLocale }),
+      label: isGerman ? 'Marktmodell' : 'Market model',
+      value: isHistorical
+        ? isGerman
+          ? `Historisch ${simulation.historicalFirstYear}–${simulation.historicalLastYear}`
+          : `Historical ${simulation.historicalFirstYear}–${simulation.historicalLastYear}`
+        : isGerman
+          ? 'Monte Carlo (lognormal)'
+          : 'Monte Carlo (lognormal)',
+    },
+    {
+      label: isHistorical
+        ? isGerman
+          ? 'Historische Pfade'
+          : 'Historical paths'
+        : isGerman
+          ? 'Simulationsläufe'
+          : 'Simulation runs',
+      value: runsLabel,
+    },
+    {
+      label: isGerman ? 'Erfolgsdefinition' : 'Success defined as',
+      value: legacyConditioned
+        ? isGerman
+          ? 'Überleben + Nachlassziel'
+          : 'survival + bequest goal'
+        : isGerman
+          ? 'Kapital nicht aufgebraucht'
+          : 'capital not exhausted',
     },
   ]
 
@@ -186,13 +209,11 @@ function AppendixSection({
         }
       />
 
-      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
         <View style={[styles.card, { width: '55%', marginRight: 10, marginBottom: 0 }]}>
         <Text style={styles.cardTitle}>{isGerman ? 'Methodik' : 'Methodology'}</Text>
-        <Text style={{ fontSize: 7.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
-          {isGerman
-            ? `Die Analyse basiert auf einer Monte-Carlo-Simulation mit ${fmtNumber(assumptions.simulationRuns, { locale: intlLocale })} unabhängigen Läufen. Marktrenditen werden als lognormalverteilte Zufallsgrößen mit einem Erwartungswert von ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} p.a. und einer Volatilität von ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)} modelliert; die Inflation folgt einem Erwartungswert von ${fmtPercent(assumptions.inflation, 1, intlLocale)} bei ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)} Volatilität. In der Entnahmephase kommt die Strategie „${assumptions.withdrawalStrategy === 'vanguardDynamic' ? 'Vanguard Dynamic Spending' : 'Real konstante Ausgaben'}“ zur Anwendung; Kapitalerträge werden mit ${fmtPercent(assumptions.capitalGainsTax / 100, 1, intlLocale)} besteuert.`
-            : `The analysis is based on a Monte Carlo simulation with ${fmtNumber(assumptions.simulationRuns, { locale: intlLocale })} independent runs. Market returns are modelled as lognormally distributed random variables with an expected value of ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} p.a. and a volatility of ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}; inflation follows an expected value of ${fmtPercent(assumptions.inflation, 1, intlLocale)} with ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)} volatility. The drawdown phase applies the "${assumptions.withdrawalStrategy === 'vanguardDynamic' ? 'Vanguard Dynamic Spending' : 'Fixed real spending'}" strategy; capital gains are taxed at ${fmtPercent(assumptions.capitalGainsTax / 100, 1, intlLocale)}.`}
+        <Text style={{ fontSize: 7.2, color: tokens.colors.ink[700], lineHeight: 1.42 }}>
+          {methodologyText}
         </Text>
         </View>
 
@@ -217,7 +238,7 @@ function AppendixSection({
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
         <View style={[styles.card, { width: '42%', marginRight: 10, marginBottom: 0 }]}>
           <Text style={styles.cardTitle}>
             {isGerman ? 'Perzentile richtig lesen' : 'How to Read Percentiles'}
@@ -231,7 +252,7 @@ function AppendixSection({
                   </Text>
                 </TableCell>
                 <TableCell width="80%">
-                  <Text style={{ fontSize: 7, lineHeight: 1.4 }}>{row.text}</Text>
+                  <Text style={{ fontSize: 6.8, lineHeight: 1.3 }}>{row.text}</Text>
                 </TableCell>
               </TableRow>
             ))}
@@ -241,15 +262,15 @@ function AppendixSection({
         <View style={[styles.card, { flex: 1, marginBottom: 0 }]}>
           <Text style={styles.cardTitle}>{isGerman ? 'Glossar' : 'Glossary'}</Text>
           {glossary.map((entry) => (
-            <View key={entry.term} style={{ marginBottom: 4 }}>
-              <Text style={{ fontSize: 7.5, fontWeight: 600, color: tokens.colors.ink[900] }}>
+            <View key={entry.term} style={{ marginBottom: 3 }}>
+              <Text style={{ fontSize: 7.2, fontWeight: 600, color: tokens.colors.ink[900] }}>
                 {entry.term}
               </Text>
               <Text
                 style={{
-                  fontSize: 6.8,
+                  fontSize: 6.6,
                   color: tokens.colors.ink[600],
-                  lineHeight: 1.35,
+                  lineHeight: 1.3,
                   marginTop: 1,
                 }}
               >
@@ -260,41 +281,40 @@ function AppendixSection({
         </View>
       </View>
 
-      <View style={[styles.card, { marginBottom: 0 }]}>
-        <Text style={[styles.cardTitle, { marginBottom: 5 }]}>
-          {isGerman ? 'Grenzen des Modells' : 'Limits of the Model'}
-        </Text>
-        {limitations.map((limitation) => (
-          <View key={limitation} style={{ flexDirection: 'row', marginBottom: 3 }}>
-            <View
-              style={{
-                width: 4,
-                height: 4,
-                backgroundColor: tokens.colors.brand.yellow,
-                marginTop: 3.5,
-                marginRight: 6,
-              }}
-            />
-            <Text style={{ flex: 1, fontSize: 7, color: tokens.colors.ink[600], lineHeight: 1.45 }}>
-              {limitation}
-            </Text>
-          </View>
-        ))}
+      {/* Limits and the legal note sit side by side: stacked, the German
+          appendix spilled four lines onto a page of its own. */}
+      <View style={{ flexDirection: 'row' }}>
+        <View style={[styles.card, { width: '63%', marginRight: 10, marginBottom: 0 }]}>
+          <Text style={[styles.cardTitle, { marginBottom: 5 }]}>
+            {isGerman ? 'Grenzen des Modells' : 'Limits of the Model'}
+          </Text>
+          {limitations.map((limitation) => (
+            <View key={limitation} style={{ flexDirection: 'row', marginBottom: 3 }}>
+              <View
+                style={{
+                  width: 4,
+                  height: 4,
+                  backgroundColor: tokens.colors.brand.yellow,
+                  marginTop: 3.5,
+                  marginRight: 6,
+                }}
+              />
+              <Text
+                style={{ flex: 1, fontSize: 6.8, color: tokens.colors.ink[600], lineHeight: 1.35 }}
+              >
+                {limitation}
+              </Text>
+            </View>
+          ))}
+        </View>
 
-        <View
-          style={{
-            marginTop: 6,
-            paddingTop: 6,
-            borderTopWidth: 0.5,
-            borderTopColor: tokens.colors.ink[200],
-          }}
-        >
+        <View style={[styles.cardMuted, { flex: 1, marginBottom: 0 }]}>
           <Text
-            style={{ fontSize: 8, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 2 }}
+            style={{ fontSize: 8, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 3 }}
           >
             {isGerman ? 'Wichtiger Hinweis' : 'Important Note'}
           </Text>
-          <Text style={{ fontSize: 7, color: tokens.colors.ink[600], lineHeight: 1.45 }}>
+          <Text style={{ fontSize: 6.6, color: tokens.colors.ink[600], lineHeight: 1.35 }}>
             {isGerman
               ? 'Dieser Bericht dient ausschließlich der Information und stellt keine Anlage-, Steuer- oder Rechtsberatung dar. Alle Projektionen sind modellbasierte Schätzungen; tatsächliche Ergebnisse können erheblich abweichen. Vergangene Wertentwicklungen sind kein verlässlicher Indikator für zukünftige Ergebnisse.'
               : 'This report is provided for information purposes only and does not constitute investment, tax, or legal advice. All projections are model-based estimates; actual outcomes may differ materially. Past performance is not a reliable indicator of future results.'}
@@ -306,7 +326,8 @@ function AppendixSection({
 }
 
 export function RetirementReport({ content }: RetirementReportProps) {
-  const { metadata, profile, expenses, assumptions, projections } = content
+  const { metadata, profile, expenses, assumptions, projections, simulation } = content
+  const isHistoricalModel = simulation.marketModel === 'historical'
   const intlLocale = content.locale === 'en' ? 'en-US' : 'de-DE'
   const isGerman = content.locale !== 'en'
 
@@ -413,7 +434,10 @@ export function RetirementReport({ content }: RetirementReportProps) {
         {
           step: 'Schritt 1',
           title: 'Erfolgsquote prüfen',
-          text: 'Sie zeigt, in wie vielen der Simulationsläufe das Vermögen bis zum Planungsende reicht. Ab 85 % gilt ein Plan üblicherweise als tragfähig.',
+          text:
+            simulation.successDefinition === 'legacyConditioned'
+              ? `Sie zeigt, in wie vielen Läufen das Vermögen bis zum Planungsende reicht UND das Nachlassziel erreicht wird. Reines Überleben des Kapitals liegt bei ${fmtPercent(simulation.depletionSuccessRate, 1, intlLocale)}. Ab 85 % gilt ein Plan üblicherweise als tragfähig.`
+              : 'Sie zeigt, in wie vielen der Läufe das Vermögen bis zum Planungsende reicht. Ab 85 % gilt ein Plan üblicherweise als tragfähig.',
         },
         {
           step: 'Schritt 2',
@@ -430,7 +454,10 @@ export function RetirementReport({ content }: RetirementReportProps) {
         {
           step: 'Step 1',
           title: 'Check the success rate',
-          text: 'It shows how many simulation runs keep capital alive to the planning horizon. Above 85% a plan is usually considered sustainable.',
+          text:
+            simulation.successDefinition === 'legacyConditioned'
+              ? `It shows how many runs keep capital alive to the horizon AND meet the bequest goal. Plain survival of the capital sits at ${fmtPercent(simulation.depletionSuccessRate, 1, intlLocale)}. Above 85% a plan is usually considered sustainable.`
+              : 'It shows how many runs keep capital alive to the planning horizon. Above 85% a plan is usually considered sustainable.',
         },
         {
           step: 'Step 2',
@@ -491,14 +518,26 @@ export function RetirementReport({ content }: RetirementReportProps) {
       title={documentTitle}
       subject={
         isGerman
-          ? 'Monte-Carlo Analyse Ruhestandsplanung'
-          : 'Monte Carlo retirement planning analysis'
+          ? isHistoricalModel
+            ? 'Historischer Backtest Ruhestandsplanung'
+            : 'Monte-Carlo Analyse Ruhestandsplanung'
+          : isHistoricalModel
+            ? 'Historical backtest retirement planning analysis'
+            : 'Monte Carlo retirement planning analysis'
       }
     >
       <CoverPage
         brand={brandName}
         classification={isGerman ? 'Vertraulich' : 'Confidential'}
-        overline={isGerman ? 'Monte-Carlo-Analyse · Ruhestandsplanung' : 'Monte Carlo Analysis · Retirement Planning'}
+        overline={
+          isGerman
+            ? isHistoricalModel
+              ? `Historischer Backtest ${simulation.historicalFirstYear}–${simulation.historicalLastYear} · Ruhestandsplanung`
+              : 'Monte-Carlo-Analyse · Ruhestandsplanung'
+            : isHistoricalModel
+              ? `Historical Backtest ${simulation.historicalFirstYear}–${simulation.historicalLastYear} · Retirement Planning`
+              : 'Monte Carlo Analysis · Retirement Planning'
+        }
         title={reportTitle}
         planLabel={planName ? `${planLabel}: ${planName}` : undefined}
         subtitle={
@@ -513,8 +552,12 @@ export function RetirementReport({ content }: RetirementReportProps) {
             label: isGerman ? 'Erfolgsquote' : 'Success Rate',
             value: fmtPercent(successRate, 1, intlLocale),
             caption: isGerman
-              ? `${fmtNumber(assumptions.simulationRuns, { locale: intlLocale })} Simulationen`
-              : `${fmtNumber(assumptions.simulationRuns, { locale: intlLocale })} simulations`,
+              ? isHistoricalModel
+                ? `${fmtNumber(simulation.effectiveRuns, { locale: intlLocale })} historische Startjahre`
+                : `${fmtNumber(simulation.effectiveRuns, { locale: intlLocale })} Simulationen`
+              : isHistoricalModel
+                ? `${fmtNumber(simulation.effectiveRuns, { locale: intlLocale })} historical start years`
+                : `${fmtNumber(simulation.effectiveRuns, { locale: intlLocale })} simulations`,
           },
           {
             label: isGerman ? 'Median am Horizont' : 'Median at Horizon',
@@ -555,12 +598,7 @@ export function RetirementReport({ content }: RetirementReportProps) {
           { label: isGerman ? 'Erstellt am' : 'Generated', value: generatedLong },
           {
             label: isGerman ? 'Entnahmestrategie' : 'Withdrawal Strategy',
-            value:
-              assumptions.withdrawalStrategy === 'vanguardDynamic'
-                ? 'Vanguard Dynamic'
-                : isGerman
-                  ? 'Real konstant'
-                  : 'Fixed real',
+            value: withdrawalStrategyLabel(assumptions.withdrawalStrategy, isGerman),
           },
           {
             label: 'Version',
@@ -628,7 +666,13 @@ export function RetirementReport({ content }: RetirementReportProps) {
                 <Text style={styles.kpiLabel}>{isGerman ? 'Erfolgsquote' : 'Success Rate'}</Text>
                 <Text style={styles.kpiValue}>{fmtPercent(successRate, 1, intlLocale)}</Text>
                 <Text style={styles.kpiDescription}>
-                  {isGerman ? 'Anteil erfolgreicher Läufe' : 'Share of successful runs'}
+                  {simulation.successDefinition === 'legacyConditioned'
+                    ? isGerman
+                      ? 'Kapital reicht + Nachlassziel erreicht'
+                      : 'capital lasts + bequest goal met'
+                    : isGerman
+                      ? 'Anteil der Läufe ohne Kapitalerschöpfung'
+                      : 'share of runs with no depletion'}
                 </Text>
               </View>
               <View style={[styles.cardMuted, { flex: 1, marginRight: 10, marginBottom: 0 }]} wrap={false}>
@@ -650,12 +694,24 @@ export function RetirementReport({ content }: RetirementReportProps) {
                 </Text>
               </View>
               <View style={[styles.cardMuted, { flex: 1, marginBottom: 0 }]} wrap={false}>
-                <Text style={styles.kpiLabel}>{isGerman ? 'Simulationen' : 'Simulations'}</Text>
+                <Text style={styles.kpiLabel}>
+                  {isHistoricalModel
+                    ? isGerman
+                      ? 'Historische Pfade'
+                      : 'Historical Paths'
+                    : isGerman
+                      ? 'Simulationen'
+                      : 'Simulations'}
+                </Text>
                 <Text style={styles.kpiValue}>
-                  {fmtNumber(assumptions.simulationRuns, { locale: intlLocale })}
+                  {fmtNumber(simulation.effectiveRuns, { locale: intlLocale })}
                 </Text>
                 <Text style={styles.kpiDescription}>
-                  {isGerman ? 'Monte-Carlo-Läufe' : 'Monte Carlo runs'}
+                  {isHistoricalModel
+                    ? `${simulation.historicalFirstYear}–${simulation.historicalLastYear}`
+                    : isGerman
+                      ? 'Monte-Carlo-Läufe'
+                      : 'Monte Carlo runs'}
                 </Text>
               </View>
             </View>

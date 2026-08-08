@@ -27,7 +27,18 @@ export interface ComparisonSnapshot {
   medianAssets: Array<number | null>
   /** Signature of the parameters this snapshot was produced from. */
   fingerprint: string
+  /**
+   * Paths the engine really ran for this plan — the plan's own run count under
+   * Monte Carlo, the fixed historical path count under `historical`. Printed in
+   * the footnote, so it must be the effective number, not the requested one.
+   */
   runs: number
+  /**
+   * Market model the snapshot was produced with. Optional: snapshots persisted
+   * before this field existed predate the historical model being selectable
+   * per plan, so treating them as Monte Carlo is exactly right.
+   */
+  marketModel?: 'monteCarlo' | 'historical'
   /** Wall-clock time of the run, shown next to stale results. */
   ranAt: number
 }

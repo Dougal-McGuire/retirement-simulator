@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { Lightbulb } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import type { SimulationParams, SimulationResults } from '@/types'
 import {
   estimateRecommendationUplift,
@@ -10,7 +10,8 @@ import {
 } from '@/lib/insights/recommendations'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { toast } from '@/components/ui/toast'
+import { toast, TOAST_DURATION } from '@/components/ui/toast'
+import { ActionToast } from '@/components/ui/action-toast'
 import { useUpdateParams } from '@/lib/stores/simulationStore'
 import { cn } from '@/lib/utils'
 
@@ -27,6 +28,7 @@ const impactClasses: Record<'High' | 'Medium' | 'Low', string> = {
 
 export function RecommendationList({ params, results }: RecommendationListProps) {
   const t = useTranslations('recommendations')
+  const locale = useLocale()
   const updateParams = useUpdateParams()
 
   /**
@@ -39,27 +41,31 @@ export function RecommendationList({ params, results }: RecommendationListProps)
     updateParams({ glidePathEnabled: true })
     toast(
       (instance) => (
-        <span className="flex items-center gap-3 text-sm font-semibold">
-          {t('items.reduceVolatility.applied')}
-          <button
-            type="button"
-            className="border-2 border-neo-black bg-neo-yellow px-2 py-1 text-[0.68rem] font-extrabold uppercase tracking-[0.12em] text-neo-black"
-            onClick={() => {
-              toast.dismiss(instance.id)
-              updateParams({ glidePathEnabled: previous })
-            }}
-          >
-            {t('items.reduceVolatility.undo')}
-          </button>
-        </span>
+        <ActionToast
+          testId="glide-path-toast"
+          message={t('items.reduceVolatility.applied')}
+          actions={[
+            {
+              label: t('items.reduceVolatility.undo'),
+              tone: 'primary',
+              testId: 'glide-path-toast-undo',
+              onClick: () => {
+                toast.dismiss(instance.id)
+                updateParams({ glidePathEnabled: previous })
+              },
+            },
+          ]}
+        />
       ),
-      { duration: 8000 }
+      { duration: TOAST_DURATION }
     )
   }
 
+  // Bodies quote this plan's own figures, so they are produced in the reader's
+  // language rather than looked up by sentence — see `generateRecommendations`.
   const recommendations = useMemo(
-    () => (results ? generateRecommendations(params, results) : []),
-    [params, results]
+    () => (results ? generateRecommendations(params, results, locale === 'de' ? 'de' : 'en') : []),
+    [params, results, locale]
   )
 
   return (
@@ -85,7 +91,7 @@ export function RecommendationList({ params, results }: RecommendationListProps)
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-neo-black">
-                      {t(`items.${rec.id}.title`)}
+                      {rec.title}
                     </p>
                     <span className="flex items-center gap-2">
                       {uplift && (
@@ -103,8 +109,11 @@ export function RecommendationList({ params, results }: RecommendationListProps)
                       </span>
                     </span>
                   </div>
-                  <p className="mt-2 text-xs font-medium text-muted-foreground">
-                    {t(`items.${rec.id}.body`)}
+                  <p className="mt-2 text-xs font-medium leading-relaxed text-muted-foreground">
+                    {rec.body}
+                  </p>
+                  <p className="mt-2 text-[0.58rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    {rec.category}
                   </p>
                   {rec.id === 'reduceVolatility' && !params.glidePathEnabled && (
                     <Button

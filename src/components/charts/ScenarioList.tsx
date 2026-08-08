@@ -6,7 +6,6 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { MAX_PLANS, type SimulationParams, type SimulationResults } from '@/types'
 import {
   areSimulationParamsEqual,
-  buildScenarioBaselineParams,
   buildScenarioParams,
   getPlanHealth,
   type PlanHealth,
@@ -14,7 +13,8 @@ import {
 import { diffParams } from '@/lib/simulation/planDiff'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { toast } from '@/components/ui/toast'
+import { toast, TOAST_DURATION } from '@/components/ui/toast'
+import { ActionToast } from '@/components/ui/action-toast'
 import { ScenarioPlanDialog } from '@/components/plans/ScenarioPlanDialog'
 import { planDisplayName } from '@/lib/plans/planName'
 import {
@@ -24,7 +24,9 @@ import {
   useSetActivePlan,
   useSimulationStore,
 } from '@/lib/stores/simulationStore'
+import { useSimulationContext } from '@/lib/stores/useSimulationContext'
 import { useSetComparisonSelection } from '@/lib/stores/comparisonStore'
+import { useCompactCurrency } from '@/lib/hooks/useCompactCurrency'
 import { cn } from '@/lib/utils'
 
 interface ScenarioListProps {
@@ -57,6 +59,13 @@ const SATURATION_THRESHOLD = 99
 const terminalP10 = (results: SimulationResults) =>
   results.assetPercentiles.p10[Math.max(0, results.ages.length - 1)] ?? 0
 
+/**
+ * Levers now run at the plan's full count, so a slider drag would queue three
+ * full simulations per keystroke. Waiting for the parameters to settle costs
+ * nothing the user can perceive and keeps the honest run count affordable.
+ */
+const LEVER_DEBOUNCE_MS = 300
+
 export function ScenarioList({ params, results, isLoading }: ScenarioListProps) {
   const t = useTranslations('planDashboard')
   const tPlans = useTranslations('plans')
@@ -75,7 +84,10 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
   const activePlan = plans.find((plan) => plan.id === activePlanId)
   const sourceName = activePlan ? planDisplayName(activePlan, tPlans) : tPlans('label')
 
-  const isSaturated = (results?.successRate ?? 0) >= SATURATION_THRESHOLD
+  // The one simulation context: the levers quote the hero's success rate as
+  // their baseline instead of re-measuring one of their own.
+  const context = useSimulationContext()
+  const isSaturated = context.successRate >= SATURATION_THRESHOLD
 
   const formatPercent = (value: number) =>
     format.number(value / 100, {
@@ -89,15 +101,11 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
       value: `${value >= 0 ? '+' : '−'}${format.number(Math.abs(value), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`,
     })
 
-  // Rounded first: locales that do not abbreviate thousands (German keeps
-  // "949.171 €") would otherwise render a stray decimal.
+  // Locales that do not abbreviate thousands (German keeps "949.171 €") drop
+  // the decimal entirely — see `compactCurrencyOptions`.
+  const compactCurrency = useCompactCurrency()
   const formatSignedCurrency = (value: number) =>
-    `${value >= 0 ? '+' : '−'}${format.number(Math.round(Math.abs(value)), {
-      style: 'currency',
-      currency: 'EUR',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-    })}`
+    `${value >= 0 ? '+' : '−'}${compactCurrency(Math.round(Math.abs(value)))}`
 
   const formatCurrency = (value: number) =>
     format.number(value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
@@ -126,42 +134,26 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
     // Read the stored name back: duplicates get a suffix on the way in.
     const createdName =
       useSimulationStore.getState().plans.find((plan) => plan.id === newPlanId)?.name ?? name
-    toast.custom(
+    toast(
       (instance) => (
-        <div
-          className={cn(
-            'flex max-w-[22rem] flex-col gap-2 border-2 border-neo-black bg-neo-white px-4 py-3 shadow-neo',
-            instance.visible ? 'animate-in fade-in' : 'opacity-0'
-          )}
-          data-testid="plan-created-toast"
-        >
-          <p className="text-[0.72rem] font-semibold text-neo-black">
-            {tToast('planCreatedFrom', { name: createdName, source: sourceName })}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              className="h-8 px-3 text-[0.6rem]"
-              onClick={() => {
+        <ActionToast
+          testId="plan-created-toast"
+          message={tToast('planCreatedFrom', { name: createdName, source: sourceName })}
+          actions={[
+            {
+              label: tToast('switchToPlan'),
+              tone: 'primary',
+              testId: 'plan-created-toast-switch',
+              onClick: () => {
                 setActivePlan(newPlanId)
                 toast.dismiss(instance.id)
-              }}
-              data-testid="plan-created-toast-switch"
-            >
-              {tToast('switchToPlan')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 px-3 text-[0.6rem]"
-              onClick={() => toast.dismiss(instance.id)}
-            >
-              {tToast('dismiss')}
-            </Button>
-          </div>
-        </div>
+              },
+            },
+            { label: tToast('dismiss'), onClick: () => toast.dismiss(instance.id) },
+          ]}
+        />
       ),
-      { duration: 8000 }
+      { duration: TOAST_DURATION }
     )
   }
 
@@ -179,12 +171,11 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
 
     const loadScenarios = async () => {
       const { runSimulationInClient } = await import('@/lib/simulation/workerClient')
-      // Levers run at a reduced count for responsiveness, so the reference has
-      // to be the unchanged plan measured the same way. Comparing against the
-      // dashboard's full-count headline would fold sampling error into every
-      // delta and can flip the sign of a lever that only ever helps.
-      const baseline = await runSimulationInClient(buildScenarioBaselineParams(params))
-      const baseWorstDecile = terminalP10(baseline)
+      // The baseline IS the dashboard result — same parameters, same run count,
+      // same fixed scenario set, therefore bit-identical had we re-run it. Any
+      // separately measured reference could only ever contradict the hero.
+      const baselineSuccessRate = results.successRate
+      const baseWorstDecile = terminalP10(results)
       const nextScenarios = await Promise.all(
         scenarioParams.map(async (scenario) => {
           const scenarioResults = await runSimulationInClient(scenario.params)
@@ -192,7 +183,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
           return {
             id: scenario.id,
             successRate: scenarioResults.successRate,
-            delta: scenarioResults.successRate - baseline.successRate,
+            delta: scenarioResults.successRate - baselineSuccessRate,
             worstDecileEnd,
             worstDecileDelta: worstDecileEnd - baseWorstDecile,
           }
@@ -210,15 +201,19 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
       setScenarioStatus('ready')
     }
 
-    void loadScenarios().catch(() => {
-      if (!cancelled) {
-        setScenarios([])
-        setScenarioStatus('idle')
-      }
-    })
+    // Full-count levers are expensive; let a slider drag settle first.
+    const timer = setTimeout(() => {
+      void loadScenarios().catch(() => {
+        if (!cancelled) {
+          setScenarios([])
+          setScenarioStatus('idle')
+        }
+      })
+    }, LEVER_DEBOUNCE_MS)
 
     return () => {
       cancelled = true
+      clearTimeout(timer)
     }
   }, [isLoading, params, results])
 
@@ -241,12 +236,33 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
           </span>
         </div>
 
+        {/* The reference every delta below is measured against, stated in full.
+            It is the hero's number verbatim, at the hero's run count. */}
+        {context.hasResults && (
+          <p
+            className="mt-3 border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.66rem] font-semibold text-neo-black"
+            data-testid="stress-lever-baseline"
+            data-baseline={context.successRate}
+            data-runs={context.effectiveRuns}
+          >
+            {context.marketModel === 'historical'
+              ? t('scenarios.baselineHistorical', {
+                  rate: formatPercent(context.successRate),
+                  runs: format.number(context.effectiveRuns),
+                })
+              : t('scenarios.baseline', {
+                  rate: formatPercent(context.successRate),
+                  runs: format.number(context.effectiveRuns),
+                })}
+          </p>
+        )}
+
         {isSaturated && scenarioStatus === 'ready' && results && (
           <p
             className="mt-3 border-2 border-success-600 bg-success-50 px-3 py-2 text-[0.66rem] font-semibold text-success-700"
             data-testid="stress-lever-saturated"
           >
-            {t('scenarios.saturated', { rate: formatPercent(results.successRate) })}
+            {t('scenarios.saturated', { rate: formatPercent(context.successRate) })}
           </p>
         )}
 
