@@ -423,6 +423,9 @@ test.describe('German taxes and the legacy goal', () => {
       .poll(async () => (await funded.innerText()) === (await survives.innerText()))
       .toBe(false)
   })
+})
+
+test.describe('onboarding, overlays and template ergonomics', () => {
 
   test('greets a first-time visitor once and never again', async ({ page }) => {
     await page.goto('/en/simulation')
