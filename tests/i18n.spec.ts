@@ -40,11 +40,16 @@ test.describe('i18n routing', () => {
     await page.getByTestId('tab-plan').click()
 
     const list = page.getByTestId('cashflow-list')
+    // The seeded "Groceries" flow keeps the id `food`, so its edit form fields
+    // are addressable directly — `.last()` would find the always-present add
+    // form further down the card.
     await list.getByRole('button', { name: /^Edit: Groceries/ }).click()
-    const nameField = page.locator('input[id^="cashflow-name-"]').last()
-    await nameField.fill('Wocheneinkauf')
-    await page.locator('[data-testid^="cashflow-save-"]').click()
+    await page.locator('#cashflow-name-food').fill('Wocheneinkauf')
+    await page.getByTestId('cashflow-save-food').click()
     await expect(list).toContainText('Wocheneinkauf')
+
+    // Commit the working copy so the rename survives the reload.
+    await page.getByTestId('plan-editor-save').click()
 
     await page.goto('/de/simulation')
     await page.getByTestId('tab-plan').click()
