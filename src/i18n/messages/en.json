@@ -186,10 +186,9 @@
     "label": "Theme",
     "options": {
       "neo": "Neo Brutal",
-      "aurora": "Aurora Quant",
-      "ledger": "Calm Ledger",
-      "prism": "Prism Glass",
-      "signal": "Signal Bloom"
+      "klar": "Clear",
+      "elegant": "Elegant",
+      "spiel": "Playful"
     }
   },
   "setup": {

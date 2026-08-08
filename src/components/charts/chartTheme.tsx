@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
  * Shared visual language for the simulation dashboard charts.
  *
  * All colors are derived from the active theme's `--neo-*-rgb` tokens so the
- * charts adapt automatically to every theme (including the dark "aurora" one)
+ * charts adapt automatically to every theme (including the dark "elegant" one)
  * without hard-coding palette values.
  */
 
