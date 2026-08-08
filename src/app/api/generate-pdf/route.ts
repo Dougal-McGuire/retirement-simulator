@@ -33,6 +33,9 @@ const PERCENTILE_GROUPS = ['assetPercentiles', 'spendingPercentiles'] as const
 const CustomExpenseSchema = z.object({
   id: z.string(),
   name: z.string(),
+  // Translation key for a flow the app seeded. Without it here Zod would strip
+  // the key on the way in and the German report would print "Groceries".
+  nameKey: z.string().max(64).optional(),
   amount: z.number(),
   interval: z.enum(EXPENSE_INTERVALS),
 })
@@ -41,6 +44,7 @@ const CashFlowSchema = z.object({
   id: z.string(),
   kind: z.enum(CASHFLOW_KINDS),
   name: z.string(),
+  nameKey: z.string().max(64).optional(),
   amount: z.number(),
   frequency: z.enum(CASHFLOW_FREQUENCIES),
   startAge: z.number().optional(),
