@@ -203,7 +203,12 @@ export default function SimulationPage() {
                     <VersionInfo />
                   </div>
                   <div>
-                    <h1 className="text-3xl font-black tracking-[0.14em] sm:text-4xl">
+                    {/* "Ruhestandssimulation" is one 20-character compound
+                        with no break opportunity: at 390px it ran straight out
+                        of the (overflow-hidden) hero. Anywhere-wrapping plus
+                        tighter tracking on small screens keeps every locale
+                        inside the card. */}
+                    <h1 className="text-2xl font-black tracking-[0.06em] [overflow-wrap:anywhere] sm:text-4xl sm:tracking-[0.14em]">
                       {t('header.title')}
                     </h1>
                     <p className="mt-4 hidden max-w-2xl font-medium text-foreground/80 sm:block">
