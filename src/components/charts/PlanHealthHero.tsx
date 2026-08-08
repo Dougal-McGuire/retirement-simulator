@@ -244,19 +244,24 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
                   ? t('success.captionLegacy', { amount: formatCurrency(legacyTarget) })
                   : t('success.caption')}
               </p>
-              {results && context.successDefinition === 'legacyConditioned' && (
-                <p
-                  className="mt-2 text-[0.68rem] font-semibold leading-snug text-muted-foreground"
-                  data-testid="hero-depletion-detail"
-                >
-                  {t('success.depletionDetail', {
-                    rate: format.number(context.depletionSuccessRate / 100, {
-                      style: 'percent',
-                      maximumFractionDigits: 1,
-                    }),
-                  })}
-                </p>
-              )}
+              {/* Only when the two definitions really are two numbers: results
+                  persisted before the field existed have no survival rate of
+                  their own, and echoing the headline back would say nothing. */}
+              {results &&
+                context.successDefinition === 'legacyConditioned' &&
+                results.depletionSuccessRate !== undefined && (
+                  <p
+                    className="mt-2 text-[0.68rem] font-semibold leading-snug text-muted-foreground"
+                    data-testid="hero-depletion-detail"
+                  >
+                    {t('success.depletionDetail', {
+                      rate: format.number(context.depletionSuccessRate / 100, {
+                        style: 'percent',
+                        maximumFractionDigits: 1,
+                      }),
+                    })}
+                  </p>
+                )}
               {results && (
                 <p
                   className="mt-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
