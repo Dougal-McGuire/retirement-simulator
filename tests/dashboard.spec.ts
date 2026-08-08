@@ -423,4 +423,105 @@ test.describe('German taxes and the legacy goal', () => {
       .poll(async () => (await funded.innerText()) === (await survives.innerText()))
       .toBe(false)
   })
+
+  test('greets a first-time visitor once and never again', async ({ page }) => {
+    await page.goto('/en/simulation')
+
+    const strip = page.getByTestId('welcome-strip')
+    await expect(strip).toBeVisible()
+
+    // Each chip names where the thing it describes actually lives.
+    await strip.getByTestId('welcome-chip-compare').click()
+    await expect(page.getByRole('tab', { name: 'Scenarios & advice' })).toHaveAttribute(
+      'data-state',
+      'active'
+    )
+
+    await strip.getByTestId('welcome-dismiss').click()
+    await expect(strip).toHaveCount(0)
+
+    // The dismissal is persisted, so a reload does not bring it back.
+    await page.reload()
+    await expect(page.getByTestId('welcome-strip')).toHaveCount(0)
+  })
+
+  test('renders toasts as a fixed overlay rather than inside the page flow', async ({ page }) => {
+    await page.goto('/en/simulation')
+    await page.getByRole('tab', { name: 'Scenarios & advice' }).click()
+    await page.getByTestId('stress-lever-save').first().click()
+    await page.getByTestId('scenario-plan-dialog').getByTestId('scenario-plan-confirm').click()
+
+    const toast = page.getByTestId('plan-created-toast')
+    await expect(toast).toBeVisible()
+
+    // Bottom-right of the viewport, out of the reading column — not wedged
+    // over the tab strip where it used to land.
+    const box = (await toast.boundingBox())!
+    const viewport = page.viewportSize()!
+    expect(box.y).toBeGreaterThan(viewport.height / 2)
+    expect(box.x + box.width).toBeGreaterThan(viewport.width * 0.6)
+
+    // And it is inside a `position: fixed` container, so scrolling cannot move
+    // it into the content.
+    const positioned = await toast.evaluate((node) => {
+      let el: HTMLElement | null = node as HTMLElement
+      while (el) {
+        if (getComputedStyle(el).position === 'fixed') return true
+        el = el.parentElement
+      }
+      return false
+    })
+    expect(positioned).toBe(true)
+  })
+
+  test('opens a cash-flow template in edit mode and lets the add be undone', async ({ page }) => {
+    await page.goto('/en/simulation')
+    await page.getByTestId('tab-plan').click()
+
+    const list = page.getByTestId('cashflow-list')
+    const rowsBefore = await list.locator('tbody tr').count()
+
+    await list.getByRole('button', { name: /Care costs/ }).click()
+
+    // The new row opens straight into its form with the age window focused —
+    // "80–90" is a guess about this person, not an answer.
+    const startField = page.locator('input[id^="cashflow-start-"]').last()
+    await expect(startField).toBeFocused()
+    await expect(startField).toHaveValue(/\d+/)
+
+    const toast = page.getByTestId('cashflow-template-toast')
+    await expect(toast).toBeVisible()
+    await toast.getByTestId('cashflow-template-undo').click()
+
+    await expect(list.locator('tbody tr')).toHaveCount(rowsBefore)
+  })
+
+  test('states what the monthly-expenses lever actually scales', async ({ page }) => {
+    await page.goto('/en/simulation')
+
+    // The lever writes the lifetime expenses only; the caption has to say so
+    // and show the total it covers.
+    await expect(page.getByTestId('quick-adjust')).toContainText(
+      /Scales the \d+ lifetime expenses/
+    )
+  })
+
+  test('jumps from the differences chip to the first differing row', async ({ page }) => {
+    await page.goto('/en/simulation')
+    await page.getByRole('tab', { name: 'Scenarios & advice' }).click()
+
+    await page.getByTestId('stress-lever-save').first().click()
+    await page.getByTestId('scenario-plan-dialog').getByTestId('scenario-plan-confirm').click()
+    await page.getByTestId('plan-created-toast').getByRole('button', { name: 'Dismiss' }).click()
+
+    await page.getByRole('button', { name: /Run comparison|Run again/ }).click()
+
+    const chip = page.getByTestId('plan-comparison-differences-chip')
+    await expect(chip).toBeVisible()
+    await chip.click()
+
+    // The table opens and the first highlighted row is brought into view.
+    const row = page.locator('tr[data-differs="true"]').first()
+    await expect(row).toBeInViewport()
+  })
 })

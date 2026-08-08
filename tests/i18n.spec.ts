@@ -22,6 +22,37 @@ test.describe('i18n routing', () => {
     await expect(page.getByRole('button', { name: 'Keine Daten' })).toBeVisible()
   })
 
+  test('localises the seeded cash-flow names in German', async ({ page }) => {
+    await page.goto('/de/simulation')
+    await page.getByTestId('tab-plan').click()
+
+    // The eight default flows carry a `nameKey`, so they follow the UI
+    // language instead of rendering the English strings stored in the plan.
+    const list = page.getByTestId('cashflow-list')
+    await expect(list).toContainText('Krankenversicherung')
+    await expect(list).toContainText('Lebensmittel')
+    await expect(list).not.toContainText('Health Insurance')
+    await expect(list).not.toContainText('Groceries')
+  })
+
+  test('keeps a user-renamed flow verbatim in every language', async ({ page }) => {
+    await page.goto('/en/simulation')
+    await page.getByTestId('tab-plan').click()
+
+    const list = page.getByTestId('cashflow-list')
+    await list.getByRole('button', { name: /^Edit: Groceries/ }).click()
+    const nameField = page.locator('input[id^="cashflow-name-"]').last()
+    await nameField.fill('Wocheneinkauf')
+    await page.locator('[data-testid^="cashflow-save-"]').click()
+    await expect(list).toContainText('Wocheneinkauf')
+
+    await page.goto('/de/simulation')
+    await page.getByTestId('tab-plan').click()
+    // The user's own text wins over the seeded translation.
+    await expect(page.getByTestId('cashflow-list')).toContainText('Wocheneinkauf')
+    await expect(page.getByTestId('cashflow-list')).not.toContainText('Lebensmittel')
+  })
+
   test('renders English translations on setup page', async ({ page }) => {
     await page.goto('/en/setup')
     await expect(page.getByRole('heading', { level: 1, name: 'Setup' })).toBeVisible()
