@@ -165,12 +165,15 @@ export default function SetupPage() {
     })
   }
 
-  /** First run: name the built-in plan and keep everything just configured. */
+  /** First run: name the built-in plan and keep everything just configured.
+   *
+   *  The dialog deliberately stays open: it unmounts when the new route paints,
+   *  and until then its button is the thing the user clicked, so that is where
+   *  the pending state belongs. */
   const handleFirstRunFinish = () => {
     const trimmed = planNameDraft.trim()
     if (trimmed && activePlan) renamePlan(activePlan.id, trimmed)
     savePlanDraft()
-    setSavePlanOpen(false)
     finishSetup()
   }
 
@@ -861,7 +864,12 @@ export default function SetupPage() {
       {/* The wizard edits the same working copy as the dashboard, so finishing
           is an explicit decision: update the plan, branch off a new one, or
           throw the session away. Nothing is written until one is picked. */}
-      <Dialog open={savePlanOpen} onOpenChange={setSavePlanOpen}>
+      <Dialog
+        open={savePlanOpen}
+        // Not dismissable mid-navigation: closing it would hide the only
+        // feedback that the click was received.
+        onOpenChange={(open) => !isNavigating && setSavePlanOpen(open)}
+      >
         <DialogContent className="bg-neo-white sm:max-w-[32rem]" data-testid="wizard-finish-dialog">
           <DialogHeader>
             <DialogTitle>
@@ -897,7 +905,12 @@ export default function SetupPage() {
           )}
 
           <DialogFooter className="sm:flex-wrap">
-            <Button variant="outline" size="sm" onClick={() => setSavePlanOpen(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isNavigating}
+              onClick={() => setSavePlanOpen(false)}
+            >
               {t('finish.back')}
             </Button>
 
@@ -923,7 +936,6 @@ export default function SetupPage() {
                     disabled={isNavigating}
                     onClick={() => {
                       revertPlanDraft()
-                      setSavePlanOpen(false)
                       finishSetup()
                     }}
                   >
@@ -945,7 +957,6 @@ export default function SetupPage() {
                   aria-busy={isNavigating}
                   onClick={() => {
                     savePlanDraft()
-                    setSavePlanOpen(false)
                     finishSetup()
                   }}
                 >
@@ -971,7 +982,6 @@ export default function SetupPage() {
         confirmLabel={tPlans('dialogs.wizard.save')}
         onConfirm={(name) => {
           createPlan(name)
-          setSavePlanOpen(false)
           finishSetup()
         }}
       />
