@@ -13,7 +13,12 @@ const TabsList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
-    className={cn('inline-flex h-auto items-center gap-0 bg-transparent p-0', className)}
+    // `@container` turns the list itself into the query context, so triggers
+    // size against the panel that holds them (a 390px drawer, a sidebar, the
+    // full-width dashboard) instead of the viewport. Without it a segmented
+    // control inside a narrow drawer renders viewport-sized labels and the
+    // three captions collide into one another.
+    className={cn('@container inline-flex h-auto items-center gap-0 bg-transparent p-0', className)}
     {...props}
   />
 ))
@@ -26,7 +31,12 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex h-auto min-h-16 w-full items-center justify-center whitespace-normal break-words px-6 py-2 text-center text-[0.78rem] font-extrabold uppercase leading-tight tracking-[0.22em] transition-neo focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-neo-white text-neo-black data-[state=inactive]:hover:bg-neo-yellow/15',
+      // Padding, size and tracking step up with the *container* width so labels
+      // always fit: cramped-but-legible in a narrow drawer, roomy on desktop.
+      'inline-flex h-auto min-h-12 w-full min-w-0 items-center justify-center whitespace-normal break-words px-1.5 py-2 text-center text-[0.6rem] font-extrabold uppercase leading-tight tracking-[0.04em] transition-neo focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-neo-white text-neo-black data-[state=inactive]:hover:bg-neo-yellow/15',
+      '@sm:min-h-14 @sm:px-2 @sm:text-[0.66rem] @sm:tracking-[0.08em]',
+      '@lg:min-h-16 @lg:px-4 @lg:text-[0.72rem] @lg:tracking-[0.14em]',
+      '@2xl:px-6 @2xl:text-[0.78rem] @2xl:tracking-[0.22em]',
       'data-[state=active]:bg-neo-black data-[state=active]:text-neo-white data-[state=active]:shadow-neo',
       className
     )}

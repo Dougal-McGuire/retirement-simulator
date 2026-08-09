@@ -168,13 +168,18 @@ interface TableRowProps {
   children: React.ReactNode
   header?: boolean
   alt?: boolean
+  total?: boolean
   style?: Style | Style[]
 }
 
-export function TableRow({ children, header, style }: TableRowProps) {
-  // Removed alt background for faster rendering
-  const rowStyle = header ? styles.tableHeader : styles.tableRow
-  return <View style={mergeStyles(rowStyle, style)}>{children}</View>
+export function TableRow({ children, header, alt, total, style }: TableRowProps) {
+  const rowStyle = header ? styles.tableHeader : total ? styles.tableRowTotal : styles.tableRow
+  const base = alt && !header && !total ? [rowStyle, styles.tableRowAlt] : [rowStyle]
+  return (
+    <View style={style ? [...base, ...(Array.isArray(style) ? style : [style])] : base}>
+      {children}
+    </View>
+  )
 }
 
 interface TableCellProps {
@@ -263,6 +268,35 @@ export function Section({ title, lead, children, style }: SectionProps) {
         {lead && <Text style={styles.sectionLead}>{lead}</Text>}
       </View>
       {children}
+    </View>
+  )
+}
+
+// ============================================================================
+// SectionHeader — numbered overline + title + lead + rule
+// ============================================================================
+
+interface SectionHeaderProps {
+  number?: string
+  overline?: string
+  title: string
+  lead?: string
+  style?: Style | Style[]
+}
+
+export function SectionHeader({ number, overline, title, lead, style }: SectionHeaderProps) {
+  return (
+    <View style={mergeStyles(styles.sectionHeaderBlock, style)}>
+      {(number || overline) && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+          <View style={styles.brandMark} />
+          <Text style={[styles.overline, { marginBottom: 0 }]}>
+            {[number, overline].filter(Boolean).join('  ·  ')}
+          </Text>
+        </View>
+      )}
+      <Text style={styles.h2}>{title}</Text>
+      {lead && <Text style={styles.sectionLead}>{lead}</Text>}
     </View>
   )
 }

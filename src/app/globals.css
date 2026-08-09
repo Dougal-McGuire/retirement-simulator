@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 @config '../../tailwind.config.ts';
 
@@ -100,8 +99,10 @@
     --theme-pattern-opacity: 1;
     --theme-pattern-blend: normal;
     --theme-font-body:
-      'IBM Plex Mono', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --theme-font-heading: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
+      var(--font-plex-mono), var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont,
+      'Segoe UI', sans-serif;
+    --theme-font-heading:
+      var(--font-space-grotesk), var(--font-inter), system-ui, -apple-system, sans-serif;
     --theme-letter-spacing-body: 0.01em;
     --theme-heading-spacing: 0.08em;
     --theme-h1-spacing: 0.12em;
@@ -114,406 +115,315 @@
     --scrollbar-thumb-hover: rgba(5, 8, 15, 0.4);
   }
 
-  html[data-theme='aurora'] {
-    color-scheme: dark;
-    --background: 230 46% 7%;
-    --foreground: 170 54% 92%;
-    --card: 229 40% 10%;
-    --card-foreground: 170 54% 92%;
-    --popover: 229 40% 10%;
-    --popover-foreground: 170 54% 92%;
-    --primary: 184 100% 56%;
-    --primary-foreground: 230 46% 7%;
-    --secondary: 76 100% 65%;
-    --secondary-foreground: 230 46% 7%;
-    --muted: 228 27% 17%;
-    --muted-foreground: 177 27% 72%;
-    --accent: 320 100% 66%;
-    --accent-foreground: 230 46% 7%;
-    --destructive: 336 100% 66%;
-    --destructive-foreground: 230 46% 7%;
-    --border: 173 78% 82%;
-    --input: 173 78% 82%;
-    --ring: 184 100% 56%;
-    --chart-1: 184 100% 56%;
-    --chart-2: 76 100% 65%;
-    --chart-3: 320 100% 66%;
-    --chart-4: 146 100% 66%;
-    --chart-5: 252 100% 75%;
-    --neo-black-rgb: 185 253 244;
-    --neo-white-rgb: 8 17 31;
-    --neo-yellow-rgb: 220 255 77;
-    --neo-blue-rgb: 25 230 255;
-    --neo-red-rgb: 255 82 178;
-    --neo-green-rgb: 80 255 146;
-    --neo-pink-rgb: 255 106 213;
-    --neo-purple-rgb: 143 124 255;
-    --neo-cyan-rgb: 0 245 212;
-    --neo-orange-rgb: 255 184 107;
-    --neo-surface: #08111f;
-    --neo-surface-muted: #0e1c30;
-    --neo-grid-line: rgba(185, 253, 244, 0.1);
-    --shadow-neo-xs: 0 0 0 1px rgba(185, 253, 244, 0.5), 0 0 10px rgba(25, 230, 255, 0.14);
-    --shadow-neo-sm: 0 0 0 1px rgba(185, 253, 244, 0.55), 0 0 18px rgba(25, 230, 255, 0.18);
-    --shadow-neo:
-      0 0 0 1px rgba(185, 253, 244, 0.68), 0 0 24px rgba(25, 230, 255, 0.2),
-      0 14px 30px rgba(0, 0, 0, 0.35);
-    --shadow-neo-md:
-      0 0 0 1px rgba(185, 253, 244, 0.7), 0 0 34px rgba(25, 230, 255, 0.24),
-      0 18px 44px rgba(0, 0, 0, 0.38);
-    --shadow-neo-lg:
-      0 0 0 1px rgba(185, 253, 244, 0.72), 0 0 48px rgba(255, 82, 178, 0.2),
-      0 24px 60px rgba(0, 0, 0, 0.45);
-    --shadow-neo-xl:
-      0 0 0 1px rgba(185, 253, 244, 0.74), 0 0 70px rgba(25, 230, 255, 0.28),
-      0 34px 80px rgba(0, 0, 0, 0.5);
-    --shadow-neo-mobile: var(--shadow-neo-sm);
-    --shadow-neo-mobile-md: var(--shadow-neo);
-    --shadow-neo-mobile-lg: var(--shadow-neo-md);
-    --shadow-neo-yellow: 0 0 22px rgba(220, 255, 77, 0.36);
-    --shadow-neo-blue: 0 0 24px rgba(25, 230, 255, 0.36);
-    --shadow-neo-red: 0 0 24px rgba(255, 82, 178, 0.36);
-    --shadow-neo-green: 0 0 24px rgba(80, 255, 146, 0.34);
-    --shadow-neo-pink: 0 0 24px rgba(255, 106, 213, 0.34);
-    --shadow-neo-purple: 0 0 24px rgba(143, 124, 255, 0.34);
+  /* ------------------------------------------------------------------ */
+  /* KLAR — a light, data-first analyst workspace.                        */
+  /* Near-white ground, a real neutral gray hierarchy, one decisive blue, */
+  /* hairline borders instead of hard shadows. Maximum data-ink.         */
+  /* ------------------------------------------------------------------ */
+  html[data-theme='klar'] {
+    color-scheme: light;
+    --background: 220 25% 98%;
+    --foreground: 222 30% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 30% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 30% 12%;
+    --primary: 224 79% 44%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 60% 96%;
+    --secondary-foreground: 224 72% 32%;
+    --muted: 220 20% 95%;
+    --muted-foreground: 220 13% 38%;
+    --accent: 224 79% 44%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 74% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 18% 89%;
+    --input: 220 18% 84%;
+    --ring: 224 79% 44%;
+    --chart-1: 224 79% 44%;
+    --chart-2: 272 74% 59%;
+    --chart-3: 0 74% 50%;
+    --chart-4: 160 100% 25%;
+    --chart-5: 187 82% 30%;
+    --neo-black-rgb: 22 28 41;
+    --neo-white-rgb: 255 255 255;
+    --neo-yellow-rgb: 244 183 64;
+    --neo-blue-rgb: 23 71 201;
+    --neo-red-rgb: 220 38 38;
+    --neo-green-rgb: 0 128 85;
+    --neo-pink-rgb: 190 38 130;
+    --neo-purple-rgb: 151 77 225;
+    --neo-cyan-rgb: 14 116 130;
+    --neo-orange-rgb: 194 80 16;
+    --neo-border-strong: #e3e7ed;
+    --neo-surface: #ffffff;
+    --neo-surface-muted: #f4f6f9;
+    --neo-grid-line: rgba(22, 28, 41, 0.045);
+    --shadow-neo-xs: 0 1px 2px rgba(22, 28, 41, 0.06);
+    --shadow-neo-sm: 0 1px 2px rgba(22, 28, 41, 0.05), 0 1px 3px rgba(22, 28, 41, 0.07);
+    --shadow-neo: 0 1px 2px rgba(22, 28, 41, 0.05), 0 4px 12px rgba(22, 28, 41, 0.06);
+    --shadow-neo-md: 0 1px 2px rgba(22, 28, 41, 0.05), 0 8px 22px rgba(22, 28, 41, 0.07);
+    --shadow-neo-lg: 0 2px 4px rgba(22, 28, 41, 0.05), 0 16px 36px rgba(22, 28, 41, 0.08);
+    --shadow-neo-xl: 0 4px 8px rgba(22, 28, 41, 0.05), 0 28px 60px rgba(22, 28, 41, 0.09);
+    --shadow-neo-mobile: var(--shadow-neo-xs);
+    --shadow-neo-mobile-md: var(--shadow-neo-sm);
+    --shadow-neo-mobile-lg: var(--shadow-neo);
+    --shadow-neo-yellow: 0 6px 18px rgba(244, 183, 64, 0.28);
+    --shadow-neo-blue: 0 6px 18px rgba(23, 71, 201, 0.18);
+    --shadow-neo-red: 0 6px 18px rgba(220, 38, 38, 0.16);
+    --shadow-neo-green: 0 6px 18px rgba(0, 128, 85, 0.16);
+    --shadow-neo-pink: 0 6px 18px rgba(190, 38, 130, 0.16);
+    --shadow-neo-purple: 0 6px 18px rgba(151, 77, 225, 0.16);
     --theme-border-width: 1px;
     --theme-border-thin: 1px;
-    --theme-radius-panel: 0px;
-    --theme-radius-control: 0px;
-    --theme-radius-chip: 0px;
-    --theme-panel-padding: 1.35rem;
-    --theme-card-header-padding: 1.1rem 1.35rem;
-    --theme-card-body-padding: 1.35rem;
+    --theme-radius-panel: 10px;
+    --theme-radius-control: 6px;
+    --theme-radius-chip: 6px;
+    --theme-panel-padding: 1.5rem;
+    --theme-card-header-padding: 1rem 1.25rem;
+    --theme-card-body-padding: 1.25rem;
     --theme-page-gap: 1.25rem;
     --theme-content-gap: 1rem;
-    --theme-panel-clip: polygon(
-      0 0,
-      calc(100% - 18px) 0,
-      100% 18px,
-      100% 100%,
-      18px 100%,
-      0 calc(100% - 18px)
-    );
-    --theme-card-backdrop: blur(14px);
-    --theme-control-transform: uppercase;
-    --theme-ui-letter-spacing: 0.16em;
-    --theme-chip-spacing: 0.18em;
-    --theme-hover-x: 0px;
-    --theme-hover-y: -1px;
-    --theme-hero-transform: none;
-    --theme-panel-transform: none;
-    --theme-focus: var(--neo-cyan);
-    --theme-bg-layer: linear-gradient(135deg, #060812 0%, #0b1827 46%, #07180f 100%);
-    --theme-pattern-image:
-      repeating-linear-gradient(115deg, transparent 0 22px, rgba(25, 230, 255, 0.13) 22px 23px),
-      repeating-linear-gradient(25deg, transparent 0 38px, rgba(255, 82, 178, 0.1) 38px 39px);
-    --theme-pattern-size: 100% 100%;
-    --theme-pattern-opacity: 0.72;
-    --theme-font-body: 'IBM Plex Mono', 'Inter', ui-monospace, monospace;
-    --theme-font-heading: 'Space Grotesk', 'Inter', system-ui, sans-serif;
-    --theme-letter-spacing-body: 0.02em;
-    --theme-heading-transform: uppercase;
-    --theme-heading-spacing: 0.11em;
-    --theme-h1-spacing: 0.14em;
-    --chart-axis: var(--neo-black);
-    --chart-brush: #596579;
-    --chart-retirement: var(--neo-red);
-    --chart-pension: var(--neo-green);
-    --scrollbar-thumb: rgba(185, 253, 244, 0.28);
-    --scrollbar-thumb-hover: rgba(25, 230, 255, 0.55);
-  }
-
-  html[data-theme='ledger'] {
-    color-scheme: light;
-    --background: 195 60% 97%;
-    --foreground: 196 44% 13%;
-    --card: 190 60% 99%;
-    --card-foreground: 196 44% 13%;
-    --popover: 190 60% 99%;
-    --popover-foreground: 196 44% 13%;
-    --primary: 205 100% 38%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 77 100% 67%;
-    --secondary-foreground: 196 44% 13%;
-    --muted: 190 28% 89%;
-    --muted-foreground: 194 24% 36%;
-    --accent: 350 84% 59%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 350 84% 59%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 196 44% 18%;
-    --input: 196 44% 18%;
-    --ring: 205 100% 38%;
-    --chart-1: 205 100% 38%;
-    --chart-2: 77 100% 46%;
-    --chart-3: 350 84% 59%;
-    --chart-4: 166 100% 29%;
-    --chart-5: 249 61% 57%;
-    --neo-black-rgb: 18 48 54;
-    --neo-white-rgb: 250 254 255;
-    --neo-yellow-rgb: 211 255 87;
-    --neo-blue-rgb: 0 112 192;
-    --neo-red-rgb: 236 65 92;
-    --neo-green-rgb: 0 150 115;
-    --neo-pink-rgb: 224 82 160;
-    --neo-purple-rgb: 92 75 214;
-    --neo-cyan-rgb: 0 174 204;
-    --neo-orange-rgb: 255 151 77;
-    --neo-surface: #fafeff;
-    --neo-surface-muted: #edf8f6;
-    --neo-grid-line: rgba(18, 48, 54, 0.07);
-    --shadow-neo-xs: 0 1px 0 var(--neo-black);
-    --shadow-neo-sm: 0 2px 0 var(--neo-black), 0 8px 18px rgba(18, 48, 54, 0.1);
-    --shadow-neo: 0 2px 0 var(--neo-black), 0 14px 28px rgba(18, 48, 54, 0.12);
-    --shadow-neo-md: 0 3px 0 var(--neo-black), 0 18px 38px rgba(18, 48, 54, 0.14);
-    --shadow-neo-lg: 0 4px 0 var(--neo-black), 0 24px 52px rgba(18, 48, 54, 0.16);
-    --shadow-neo-xl: 0 5px 0 var(--neo-black), 0 34px 70px rgba(18, 48, 54, 0.18);
-    --shadow-neo-mobile: var(--shadow-neo-sm);
-    --shadow-neo-mobile-md: var(--shadow-neo);
-    --shadow-neo-mobile-lg: var(--shadow-neo-md);
-    --shadow-neo-yellow: 0 3px 0 var(--neo-yellow), 0 14px 26px rgba(211, 255, 87, 0.2);
-    --shadow-neo-blue: 0 3px 0 var(--neo-blue), 0 14px 26px rgba(0, 112, 192, 0.18);
-    --shadow-neo-red: 0 3px 0 var(--neo-red), 0 14px 26px rgba(236, 65, 92, 0.18);
-    --shadow-neo-green: 0 3px 0 var(--neo-green), 0 14px 26px rgba(0, 150, 115, 0.18);
-    --shadow-neo-pink: 0 3px 0 var(--neo-pink), 0 14px 26px rgba(224, 82, 160, 0.18);
-    --shadow-neo-purple: 0 3px 0 var(--neo-purple), 0 14px 26px rgba(92, 75, 214, 0.18);
-    --theme-border-width: 1px;
-    --theme-border-thin: 1px;
-    --theme-radius-panel: 8px;
-    --theme-radius-control: 4px;
-    --theme-radius-chip: 999px;
-    --theme-panel-padding: 1.15rem;
-    --theme-card-header-padding: 0.85rem 1rem;
-    --theme-card-body-padding: 1rem;
-    --theme-page-gap: 1rem;
-    --theme-content-gap: 0.9rem;
     --theme-panel-clip: none;
     --theme-card-backdrop: none;
     --theme-control-transform: none;
-    --theme-ui-letter-spacing: 0.02em;
-    --theme-chip-spacing: 0.03em;
+    --theme-ui-letter-spacing: 0;
+    --theme-chip-spacing: 0.01em;
     --theme-hover-x: 0px;
     --theme-hover-y: -1px;
     --theme-hero-transform: none;
     --theme-panel-transform: none;
     --theme-focus: var(--neo-blue);
-    --theme-bg-layer: linear-gradient(180deg, #f7fdff 0%, #f1fbf8 100%);
+    --theme-bg-layer: linear-gradient(180deg, #fbfcfe 0%, #f4f6fa 100%);
     --theme-pattern-image:
-      linear-gradient(180deg, rgba(18, 48, 54, 0.06) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 112, 192, 0.06) 1px, transparent 1px);
-    --theme-pattern-size: 100% 34px, 34px 100%;
-    --theme-pattern-opacity: 0.84;
-    --theme-font-body: 'Inter', system-ui, -apple-system, sans-serif;
-    --theme-font-heading: Georgia, 'Times New Roman', serif;
+      linear-gradient(90deg, var(--neo-grid-line) 1px, transparent 1px),
+      linear-gradient(180deg, var(--neo-grid-line) 1px, transparent 1px);
+    --theme-pattern-size: 64px 64px;
+    --theme-pattern-opacity: 0.6;
+    --theme-font-body: var(--font-inter), system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --theme-font-heading: var(--font-inter), system-ui, -apple-system, sans-serif;
     --theme-letter-spacing-body: 0;
     --theme-heading-transform: none;
-    --theme-heading-spacing: 0;
-    --theme-h1-spacing: 0;
+    --theme-heading-spacing: -0.011em;
+    --theme-h1-spacing: -0.022em;
     --chart-axis: var(--neo-black);
-    --chart-brush: #78919a;
+    --chart-brush: #94a3b8;
     --chart-retirement: var(--neo-red);
     --chart-pension: var(--neo-green);
-    --scrollbar-thumb: rgba(18, 48, 54, 0.22);
-    --scrollbar-thumb-hover: rgba(18, 48, 54, 0.42);
+    --scrollbar-thumb: rgba(22, 28, 41, 0.18);
+    --scrollbar-thumb-hover: rgba(22, 28, 41, 0.34);
   }
 
-  html[data-theme='prism'] {
-    color-scheme: light;
-    --background: 250 100% 99%;
-    --foreground: 248 30% 17%;
-    --card: 0 0% 100%;
-    --card-foreground: 248 30% 17%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 248 30% 17%;
-    --primary: 252 100% 63%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 181 76% 58%;
-    --secondary-foreground: 248 30% 17%;
-    --muted: 244 65% 94%;
-    --muted-foreground: 248 17% 43%;
-    --accent: 331 100% 65%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 341 100% 65%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 248 30% 27%;
-    --input: 248 30% 27%;
-    --ring: 252 100% 63%;
-    --chart-1: 252 100% 63%;
-    --chart-2: 181 76% 58%;
-    --chart-3: 341 100% 65%;
-    --chart-4: 162 75% 48%;
-    --chart-5: 274 100% 66%;
-    --neo-black-rgb: 50 44 99;
-    --neo-white-rgb: 255 255 255;
-    --neo-yellow-rgb: 146 255 190;
-    --neo-blue-rgb: 106 86 255;
-    --neo-red-rgb: 255 78 137;
-    --neo-green-rgb: 30 214 160;
-    --neo-pink-rgb: 255 110 204;
-    --neo-purple-rgb: 148 83 255;
-    --neo-cyan-rgb: 67 214 230;
-    --neo-orange-rgb: 255 174 92;
-    --neo-surface: #ffffff;
-    --neo-surface-muted: #f3f2ff;
-    --neo-grid-line: rgba(50, 44, 99, 0.07);
-    --shadow-neo-xs: 0 8px 18px rgba(106, 86, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-    --shadow-neo-sm: 0 10px 28px rgba(106, 86, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  /* ------------------------------------------------------------------ */
+  /* ELEGANT — the app's dark option. Deep ink-navy ground, soft raised   */
+  /* surfaces, champagne accent used sparingly, pearl/silver text ladder. */
+  /* ------------------------------------------------------------------ */
+  html[data-theme='elegant'] {
+    color-scheme: dark;
+    --background: 220 35% 7%;
+    --foreground: 222 30% 92%;
+    --card: 219 31% 11%;
+    --card-foreground: 222 30% 92%;
+    --popover: 219 31% 11%;
+    --popover-foreground: 222 30% 92%;
+    --primary: 213 80% 58%;
+    --primary-foreground: 219 35% 8%;
+    --secondary: 42 49% 58%;
+    --secondary-foreground: 219 35% 9%;
+    --muted: 219 26% 18%;
+    --muted-foreground: 220 18% 74%;
+    --accent: 42 49% 58%;
+    --accent-foreground: 219 35% 9%;
+    --destructive: 13 73% 58%;
+    --destructive-foreground: 219 35% 9%;
+    --border: 219 20% 26%;
+    --input: 219 20% 32%;
+    --ring: 42 49% 58%;
+    --chart-1: 213 80% 58%;
+    --chart-2: 297 30% 59%;
+    --chart-3: 13 73% 58%;
+    --chart-4: 158 36% 48%;
+    --chart-5: 42 49% 58%;
+    --neo-black-rgb: 230 234 242;
+    --neo-white-rgb: 19 25 36;
+    --neo-yellow-rgb: 201 169 97;
+    --neo-blue-rgb: 62 139 233;
+    --neo-red-rgb: 226 104 71;
+    --neo-green-rgb: 78 166 131;
+    --neo-pink-rgb: 216 138 168;
+    --neo-purple-rgb: 179 120 182;
+    --neo-cyan-rgb: 90 178 186;
+    --neo-orange-rgb: 224 149 92;
+    --neo-border-strong: rgb(230 234 242 / 0.14);
+    --neo-surface: #131924;
+    --neo-surface-muted: #1a2130;
+    --neo-grid-line: rgba(230, 234, 242, 0.045);
+    --shadow-neo-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-neo-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.28);
     --shadow-neo:
-      0 24px 70px rgba(106, 86, 255, 0.18), 0 6px 18px rgba(67, 214, 230, 0.16),
-      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 2px 6px rgba(0, 0, 0, 0.4),
+      0 10px 26px rgba(0, 0, 0, 0.34);
     --shadow-neo-md:
-      0 28px 82px rgba(106, 86, 255, 0.2), 0 8px 24px rgba(255, 78, 137, 0.13),
-      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 4px 10px rgba(0, 0, 0, 0.42),
+      0 16px 38px rgba(0, 0, 0, 0.4);
     --shadow-neo-lg:
-      0 34px 96px rgba(106, 86, 255, 0.22), 0 14px 34px rgba(67, 214, 230, 0.18),
-      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+      0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 8px 18px rgba(0, 0, 0, 0.44),
+      0 26px 56px rgba(0, 0, 0, 0.46);
     --shadow-neo-xl:
-      0 42px 120px rgba(106, 86, 255, 0.25), 0 18px 44px rgba(255, 78, 137, 0.16),
-      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+      0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 14px 28px rgba(0, 0, 0, 0.46),
+      0 40px 84px rgba(0, 0, 0, 0.52);
     --shadow-neo-mobile: var(--shadow-neo-sm);
     --shadow-neo-mobile-md: var(--shadow-neo);
     --shadow-neo-mobile-lg: var(--shadow-neo-md);
-    --shadow-neo-yellow: 0 18px 42px rgba(146, 255, 190, 0.3);
-    --shadow-neo-blue: 0 18px 42px rgba(106, 86, 255, 0.28);
-    --shadow-neo-red: 0 18px 42px rgba(255, 78, 137, 0.26);
-    --shadow-neo-green: 0 18px 42px rgba(30, 214, 160, 0.26);
-    --shadow-neo-pink: 0 18px 42px rgba(255, 110, 204, 0.25);
-    --shadow-neo-purple: 0 18px 42px rgba(148, 83, 255, 0.28);
+    --shadow-neo-yellow: 0 10px 28px rgba(201, 169, 97, 0.24);
+    --shadow-neo-blue: 0 10px 28px rgba(62, 139, 233, 0.26);
+    --shadow-neo-red: 0 10px 28px rgba(226, 104, 71, 0.24);
+    --shadow-neo-green: 0 10px 28px rgba(78, 166, 131, 0.24);
+    --shadow-neo-pink: 0 10px 28px rgba(216, 138, 168, 0.22);
+    --shadow-neo-purple: 0 10px 28px rgba(179, 120, 182, 0.24);
     --theme-border-width: 1px;
     --theme-border-thin: 1px;
-    --theme-radius-panel: 28px;
-    --theme-radius-control: 999px;
+    --theme-radius-panel: 12px;
+    --theme-radius-control: 8px;
     --theme-radius-chip: 999px;
-    --theme-panel-padding: 2rem;
-    --theme-card-header-padding: 1.35rem 1.6rem;
-    --theme-card-body-padding: 1.5rem 1.6rem;
-    --theme-page-gap: 2.25rem;
-    --theme-content-gap: 1.75rem;
+    --theme-panel-padding: 1.75rem;
+    --theme-card-header-padding: 1.15rem 1.5rem;
+    --theme-card-body-padding: 1.4rem 1.5rem;
+    --theme-page-gap: 1.5rem;
+    --theme-content-gap: 1.25rem;
     --theme-panel-clip: none;
-    --theme-card-backdrop: blur(22px) saturate(140%);
+    --theme-card-backdrop: blur(10px);
     --theme-control-transform: none;
-    --theme-ui-letter-spacing: 0.01em;
-    --theme-chip-spacing: 0.03em;
+    --theme-ui-letter-spacing: 0.012em;
+    --theme-chip-spacing: 0.05em;
     --theme-hover-x: 0px;
-    --theme-hover-y: -3px;
+    --theme-hover-y: -2px;
     --theme-hero-transform: none;
-    --theme-panel-transform: translateY(0);
-    --theme-focus: var(--neo-purple);
-    --theme-bg-layer: linear-gradient(135deg, #fbfbff 0%, #eefcff 45%, #fff1fb 100%);
+    --theme-panel-transform: none;
+    --theme-focus: var(--neo-yellow);
+    --theme-bg-layer:
+      radial-gradient(120% 80% at 82% -10%, rgba(201, 169, 97, 0.1), transparent 58%),
+      radial-gradient(90% 70% at 5% 105%, rgba(62, 139, 233, 0.1), transparent 60%),
+      linear-gradient(180deg, #0a0e15 0%, #0c111b 55%, #0a0e15 100%);
     --theme-pattern-image:
-      repeating-linear-gradient(120deg, transparent 0 28px, rgba(106, 86, 255, 0.1) 28px 29px),
-      repeating-linear-gradient(60deg, transparent 0 40px, rgba(30, 214, 160, 0.09) 40px 41px);
-    --theme-pattern-size: 100% 100%;
-    --theme-pattern-opacity: 0.7;
-    --theme-font-body: 'Inter', system-ui, -apple-system, sans-serif;
-    --theme-font-heading: 'Space Grotesk', 'Inter', system-ui, sans-serif;
-    --theme-letter-spacing-body: 0;
+      linear-gradient(90deg, var(--neo-grid-line) 1px, transparent 1px),
+      linear-gradient(180deg, var(--neo-grid-line) 1px, transparent 1px);
+    --theme-pattern-size: 96px 96px;
+    --theme-pattern-opacity: 0.5;
+    --theme-font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
+    --theme-font-heading: var(--font-sora), var(--font-inter), system-ui, sans-serif;
+    --theme-letter-spacing-body: 0.004em;
     --theme-heading-transform: none;
-    --theme-heading-spacing: 0.01em;
-    --theme-h1-spacing: 0.01em;
+    --theme-heading-spacing: -0.006em;
+    --theme-h1-spacing: -0.014em;
     --chart-axis: var(--neo-black);
-    --chart-brush: #a7a2c8;
+    --chart-brush: #6b7688;
     --chart-retirement: var(--neo-red);
     --chart-pension: var(--neo-green);
-    --scrollbar-thumb: rgba(50, 44, 99, 0.22);
-    --scrollbar-thumb-hover: rgba(106, 86, 255, 0.45);
+    --scrollbar-thumb: rgba(230, 234, 242, 0.2);
+    --scrollbar-thumb-hover: rgba(201, 169, 97, 0.5);
   }
 
-  html[data-theme='signal'] {
+  /* ------------------------------------------------------------------ */
+  /* SPIEL — friendly, soft and warm. Cream ground, generous radii,       */
+  /* coral / teal / sunflower accents, springy but restrained motion.     */
+  /* ------------------------------------------------------------------ */
+  html[data-theme='spiel'] {
     color-scheme: light;
-    --background: 166 58% 95%;
-    --foreground: 215 52% 10%;
-    --card: 150 100% 99%;
-    --card-foreground: 215 52% 10%;
-    --popover: 150 100% 99%;
-    --popover-foreground: 215 52% 10%;
-    --primary: 178 100% 35%;
+    --background: 32 100% 97%;
+    --foreground: 19 16% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 19 16% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 19 16% 20%;
+    --primary: 201 77% 36%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 49 100% 64%;
-    --secondary-foreground: 215 52% 10%;
-    --muted: 165 34% 88%;
-    --muted-foreground: 205 20% 35%;
-    --accent: 322 79% 60%;
+    --secondary: 40 91% 60%;
+    --secondary-foreground: 19 25% 16%;
+    --muted: 32 45% 93%;
+    --muted-foreground: 20 14% 36%;
+    --accent: 3 65% 52%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 4 100% 64%;
+    --destructive: 3 65% 47%;
     --destructive-foreground: 0 0% 100%;
-    --border: 215 52% 12%;
-    --input: 215 52% 12%;
-    --ring: 178 100% 35%;
-    --chart-1: 178 100% 35%;
-    --chart-2: 49 100% 64%;
-    --chart-3: 322 79% 60%;
-    --chart-4: 200 100% 41%;
-    --chart-5: 255 100% 65%;
-    --neo-black-rgb: 12 24 38;
-    --neo-white-rgb: 248 255 250;
-    --neo-yellow-rgb: 255 221 70;
-    --neo-blue-rgb: 0 139 210;
-    --neo-red-rgb: 255 83 73;
-    --neo-green-rgb: 0 186 126;
-    --neo-pink-rgb: 234 70 170;
-    --neo-purple-rgb: 125 77 255;
-    --neo-cyan-rgb: 0 207 190;
-    --neo-orange-rgb: 255 135 75;
-    --neo-surface: #f8fffa;
-    --neo-surface-muted: #e9fff7;
-    --neo-grid-line: rgba(12, 24, 38, 0.08);
-    --shadow-neo-xs: -1px 1px 0 var(--neo-cyan), 1px 1px 0 var(--neo-pink);
-    --shadow-neo-sm: -2px 2px 0 var(--neo-cyan), 2px 2px 0 var(--neo-pink);
-    --shadow-neo:
-      -5px 5px 0 var(--neo-cyan), 5px 5px 0 var(--neo-pink), 0 12px 24px rgba(12, 24, 38, 0.16);
-    --shadow-neo-md:
-      -7px 7px 0 var(--neo-cyan), 7px 7px 0 var(--neo-pink), 0 18px 36px rgba(12, 24, 38, 0.18);
-    --shadow-neo-lg:
-      -9px 9px 0 var(--neo-cyan), 9px 9px 0 var(--neo-pink), 0 24px 48px rgba(12, 24, 38, 0.2);
-    --shadow-neo-xl:
-      -12px 12px 0 var(--neo-cyan), 12px 12px 0 var(--neo-pink), 0 34px 70px rgba(12, 24, 38, 0.22);
-    --shadow-neo-mobile: -2px 2px 0 var(--neo-cyan), 2px 2px 0 var(--neo-pink);
-    --shadow-neo-mobile-md: -3px 3px 0 var(--neo-cyan), 3px 3px 0 var(--neo-pink);
-    --shadow-neo-mobile-lg: -4px 4px 0 var(--neo-cyan), 4px 4px 0 var(--neo-pink);
-    --shadow-neo-yellow: -5px 5px 0 var(--neo-yellow), 5px 5px 0 var(--neo-purple);
-    --shadow-neo-blue: -5px 5px 0 var(--neo-blue), 5px 5px 0 var(--neo-yellow);
-    --shadow-neo-red: -5px 5px 0 var(--neo-red), 5px 5px 0 var(--neo-cyan);
-    --shadow-neo-green: -5px 5px 0 var(--neo-green), 5px 5px 0 var(--neo-pink);
-    --shadow-neo-pink: -5px 5px 0 var(--neo-pink), 5px 5px 0 var(--neo-cyan);
-    --shadow-neo-purple: -5px 5px 0 var(--neo-purple), 5px 5px 0 var(--neo-yellow);
-    --theme-border-width: 4px;
-    --theme-border-thin: 3px;
-    --theme-radius-panel: 18px 2px 18px 2px;
-    --theme-radius-control: 2px 14px 2px 14px;
-    --theme-radius-chip: 2px 12px 2px 12px;
-    --theme-panel-padding: 1.65rem;
-    --theme-card-header-padding: 1.15rem 1.35rem;
-    --theme-card-body-padding: 1.35rem;
+    --border: 30 32% 88%;
+    --input: 30 32% 82%;
+    --ring: 201 77% 36%;
+    --chart-1: 201 77% 36%;
+    --chart-2: 265 76% 64%;
+    --chart-3: 3 65% 52%;
+    --chart-4: 154 89% 27%;
+    --chart-5: 40 91% 45%;
+    --neo-black-rgb: 58 47 42;
+    --neo-white-rgb: 255 255 255;
+    --neo-yellow-rgb: 246 185 59;
+    --neo-blue-rgb: 21 112 161;
+    --neo-red-rgb: 212 60 51;
+    --neo-green-rgb: 8 130 74;
+    --neo-pink-rgb: 203 60 127;
+    --neo-purple-rgb: 138 76 224;
+    --neo-cyan-rgb: 2 129 134;
+    --neo-orange-rgb: 190 85 0;
+    --neo-border-strong: #ece0d5;
+    --neo-surface: #ffffff;
+    --neo-surface-muted: #fff4e8;
+    --neo-grid-line: rgba(58, 47, 42, 0.05);
+    --shadow-neo-xs: 0 1px 2px rgba(58, 47, 42, 0.07);
+    --shadow-neo-sm: 0 2px 4px rgba(58, 47, 42, 0.07), 0 3px 8px rgba(58, 47, 42, 0.06);
+    --shadow-neo: 0 2px 4px rgba(58, 47, 42, 0.06), 0 8px 20px rgba(58, 47, 42, 0.09);
+    --shadow-neo-md: 0 3px 6px rgba(58, 47, 42, 0.06), 0 14px 30px rgba(58, 47, 42, 0.1);
+    --shadow-neo-lg: 0 4px 8px rgba(58, 47, 42, 0.06), 0 22px 44px rgba(58, 47, 42, 0.11);
+    --shadow-neo-xl: 0 6px 12px rgba(58, 47, 42, 0.07), 0 34px 66px rgba(58, 47, 42, 0.12);
+    --shadow-neo-mobile: var(--shadow-neo-xs);
+    --shadow-neo-mobile-md: var(--shadow-neo-sm);
+    --shadow-neo-mobile-lg: var(--shadow-neo);
+    --shadow-neo-yellow: 0 10px 24px rgba(246, 185, 59, 0.34);
+    --shadow-neo-blue: 0 10px 24px rgba(21, 112, 161, 0.24);
+    --shadow-neo-red: 0 10px 24px rgba(212, 60, 51, 0.26);
+    --shadow-neo-green: 0 10px 24px rgba(8, 130, 74, 0.24);
+    --shadow-neo-pink: 0 10px 24px rgba(203, 60, 127, 0.24);
+    --shadow-neo-purple: 0 10px 24px rgba(138, 76, 224, 0.24);
+    --theme-border-width: 1px;
+    --theme-border-thin: 1px;
+    --theme-radius-panel: 22px;
+    --theme-radius-control: 14px;
+    --theme-radius-chip: 999px;
+    --theme-panel-padding: 1.75rem;
+    --theme-card-header-padding: 1.2rem 1.5rem;
+    --theme-card-body-padding: 1.45rem 1.5rem;
     --theme-page-gap: 1.75rem;
     --theme-content-gap: 1.35rem;
     --theme-panel-clip: none;
     --theme-card-backdrop: none;
-    --theme-control-transform: uppercase;
-    --theme-ui-letter-spacing: 0.07em;
-    --theme-chip-spacing: 0.1em;
-    --theme-hover-x: -3px;
-    --theme-hover-y: -1px;
-    --theme-hero-transform: rotate(-0.25deg);
-    --theme-panel-transform: rotate(0deg);
-    --theme-focus: var(--neo-pink);
-    --theme-bg-layer: linear-gradient(90deg, #ecfff8 0%, #f8f6ff 52%, #fff7ed 100%);
-    --theme-pattern-image:
-      repeating-linear-gradient(90deg, transparent 0 34px, rgba(0, 139, 210, 0.1) 34px 35px),
-      repeating-linear-gradient(0deg, transparent 0 22px, rgba(255, 83, 73, 0.08) 22px 23px);
-    --theme-pattern-size: 100% 100%;
-    --theme-pattern-opacity: 0.75;
-    --theme-font-body: 'Space Grotesk', 'Inter', system-ui, sans-serif;
-    --theme-font-heading: 'IBM Plex Mono', ui-monospace, monospace;
-    --theme-letter-spacing-body: 0.005em;
-    --theme-heading-spacing: 0.08em;
-    --theme-h1-spacing: 0.1em;
+    --theme-control-transform: none;
+    --theme-ui-letter-spacing: 0.004em;
+    --theme-chip-spacing: 0.02em;
+    --theme-hover-x: 0px;
+    --theme-hover-y: -3px;
+    --theme-hero-transform: none;
+    --theme-panel-transform: none;
+    --theme-focus: var(--neo-blue);
+    --theme-bg-layer:
+      radial-gradient(70% 55% at 12% -5%, rgba(246, 185, 59, 0.22), transparent 62%),
+      radial-gradient(60% 50% at 92% 8%, rgba(212, 60, 51, 0.14), transparent 64%),
+      radial-gradient(58% 46% at 88% 104%, rgba(2, 129, 134, 0.07), transparent 62%),
+      linear-gradient(180deg, #fffaf3 0%, #fff6ec 100%);
+    --theme-pattern-image: radial-gradient(rgba(58, 47, 42, 0.07) 1.2px, transparent 1.2px);
+    --theme-pattern-size: 26px 26px;
+    --theme-pattern-opacity: 0.55;
+    --theme-font-body: var(--font-plus-jakarta), var(--font-inter), system-ui, sans-serif;
+    --theme-font-heading: var(--font-plus-jakarta), var(--font-inter), system-ui, sans-serif;
+    --theme-letter-spacing-body: 0;
+    --theme-heading-transform: none;
+    --theme-heading-spacing: -0.014em;
+    --theme-h1-spacing: -0.024em;
     --chart-axis: var(--neo-black);
-    --chart-brush: #64748b;
+    --chart-brush: #a99387;
     --chart-retirement: var(--neo-red);
     --chart-pension: var(--neo-green);
-    --scrollbar-thumb: rgba(12, 24, 38, 0.24);
-    --scrollbar-thumb-hover: rgba(0, 139, 210, 0.5);
+    --scrollbar-thumb: rgba(58, 47, 42, 0.2);
+    --scrollbar-thumb-hover: rgba(58, 47, 42, 0.38);
   }
 
   .dark {
@@ -712,6 +622,30 @@
     animation: shimmer 2s infinite;
   }
 
+  /* Loading sweep used by skeletons (kept out of arbitrary Tailwind values so the
+     generated stylesheet stays small and parseable). */
+  .skeleton-sweep {
+    background-image: linear-gradient(
+      120deg,
+      transparent 0%,
+      rgb(var(--neo-blue-rgb) / 0.12) 40%,
+      rgb(var(--neo-blue-rgb) / 0.12) 60%,
+      transparent 100%
+    );
+    animation: shimmer 2s linear infinite;
+  }
+
+  .skeleton-sweep-soft {
+    background-image: linear-gradient(
+      115deg,
+      transparent 0%,
+      rgb(var(--neo-blue-rgb) / 0.07) 45%,
+      rgb(var(--neo-blue-rgb) / 0.1) 55%,
+      transparent 100%
+    );
+    animation-duration: 2.4s;
+  }
+
   /* Fast, crisp transitions for neo-brutalism */
   .transition-neo {
     transition:
@@ -774,6 +708,28 @@
   }
 }
 
+/* Range navigator (Recharts brush) — styled as a deliberate control rather
+   than the default grey scrollbar. */
+.chart-range-navigator .recharts-brush-slide {
+  fill: rgb(var(--neo-blue-rgb) / 0.16);
+  fill-opacity: 1;
+  stroke: rgb(var(--neo-blue-rgb) / 0.55);
+  stroke-width: 1;
+  cursor: grab;
+}
+
+.chart-range-navigator:active .recharts-brush-slide {
+  cursor: grabbing;
+}
+
+.chart-range-navigator .recharts-brush-texts text,
+.chart-range-navigator text {
+  fill: var(--neo-blue);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
 /* Theme morphology: structural differences beyond color tokens. */
 html[data-theme]:not([data-theme='neo']) .app-page {
   padding-bottom: clamp(3rem, 6vw, 5rem);
@@ -831,13 +787,6 @@ html[data-theme]:not([data-theme='neo']) .theme-step-copy p,
 html[data-theme]:not([data-theme='neo']) label,
 html[data-theme]:not([data-theme='neo']) [class*='tracking-'] {
   letter-spacing: var(--theme-ui-letter-spacing) !important;
-}
-
-html[data-theme='ledger'] .uppercase,
-html[data-theme='ledger'] [class*='uppercase'],
-html[data-theme='prism'] .uppercase,
-html[data-theme='prism'] [class*='uppercase'] {
-  text-transform: none !important;
 }
 
 html[data-theme]:not([data-theme='neo']) .theme-control,
@@ -903,251 +852,376 @@ html[data-theme]:not([data-theme='neo']) .divide-x-\[3px\] > :not([hidden]) ~ :n
   border-left-width: var(--theme-border-width) !important;
 }
 
-html[data-theme='aurora'] body {
-  line-height: 1.78;
+/* The three alternate themes all read in sentence case: the shouty all-caps
+   labels belong to the neo-brutalist original, not to a calm analyst tool, a
+   private-banking dark mode, or a friendly one. */
+html[data-theme='klar'] .uppercase,
+html[data-theme='klar'] [class*='uppercase'],
+html[data-theme='elegant'] .uppercase,
+html[data-theme='elegant'] [class*='uppercase'],
+html[data-theme='spiel'] .uppercase,
+html[data-theme='spiel'] [class*='uppercase'] {
+  text-transform: none !important;
 }
 
-html[data-theme='aurora'] .theme-hero,
-html[data-theme='aurora'] .theme-sidebar,
-html[data-theme='aurora'] .theme-panel-card,
-html[data-theme='aurora'] [data-slot='select-content'],
-html[data-theme='aurora'] [data-slot='dialog-content'] {
-  background-color: rgb(var(--neo-white-rgb) / 0.86) !important;
+/* Hairline chrome: `border-neo-black` is the app's structural border class and
+   paints the full ink colour. In these themes the border is a hairline, so the
+   plain (un-aliased) utility is re-pointed at a translucent ink. Explicit
+   opacity variants (`border-neo-black/30`) are deliberate and left alone. */
+html[data-theme='klar'] .border-neo-black,
+html[data-theme='elegant'] .border-neo-black,
+html[data-theme='spiel'] .border-neo-black {
+  border-color: var(--neo-border-strong);
 }
 
-html[data-theme='aurora'] .theme-panel-header {
-  background-image: linear-gradient(90deg, rgb(var(--neo-cyan-rgb) / 0.16), transparent 70%);
+html[data-theme='klar'] .divide-neo-black > :not([hidden]) ~ :not([hidden]),
+html[data-theme='elegant'] .divide-neo-black > :not([hidden]) ~ :not([hidden]),
+html[data-theme='spiel'] .divide-neo-black > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--neo-border-strong);
 }
 
-html[data-theme='aurora'] .theme-progress-bar {
-  height: 0.7rem !important;
+/* The `--theme-font-*` tokens are declared on <html>, but next/font publishes
+   its family variables (`--font-inter`, …) on the <body> class. A custom
+   property whose value contains an unresolvable var() is invalid at computed
+   value time, so those stacks silently evaporated and every theme inherited the
+   neo-brutalist Plex Mono. Each theme's body rule below re-declares them where
+   the family variables actually exist. Scoped to the themes that need it, so
+   the neo original keeps exactly the typography it has today. */
+
+/* Tailwind's `font-heading` / `font-sans` / `font-body` utilities name concrete
+   families in tailwind.config.ts, so they bypass the theme font tokens and pin
+   every screen to the neo-brutalist Space Grotesk + Plex Mono pairing. Re-point
+   them at the active theme's stacks; `font-mono` stays monospace on purpose
+   (it marks figures, not prose). */
+html[data-theme='klar'] .font-heading,
+html[data-theme='elegant'] .font-heading,
+html[data-theme='spiel'] .font-heading {
+  font-family: var(--theme-font-heading) !important;
 }
 
-html[data-theme='aurora'] .theme-hero::after,
-html[data-theme='aurora'] .theme-panel-card::after,
-html[data-theme='aurora'] .theme-sidebar::after {
-  content: '';
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(transparent 0 95%, rgb(var(--neo-cyan-rgb) / 0.14) 95% 100%);
-  background-size: 100% 9px;
-  mix-blend-mode: screen;
+html[data-theme='klar'] .font-sans,
+html[data-theme='klar'] .font-body,
+html[data-theme='elegant'] .font-sans,
+html[data-theme='elegant'] .font-body,
+html[data-theme='spiel'] .font-sans,
+html[data-theme='spiel'] .font-body {
+  font-family: var(--theme-font-body) !important;
 }
 
-html[data-theme='aurora'] .theme-hero > *,
-html[data-theme='aurora'] .theme-panel-card > *,
-html[data-theme='aurora'] .theme-sidebar > * {
-  position: relative;
-  z-index: 1;
+/* The setup hero carries two rotated neo-brutalist confetti squares. They are
+   the loudest thing on an otherwise calm page in the analytical and the dark
+   theme, so they are dropped there and softened into a blob in the playful one. */
+html[data-theme='klar'] .theme-hero-accent,
+html[data-theme='klar'] .theme-hero-mark,
+html[data-theme='elegant'] .theme-hero-accent,
+html[data-theme='elegant'] .theme-hero-mark {
+  display: none !important;
 }
 
-html[data-theme='ledger'] body {
-  line-height: 1.55;
+html[data-theme='spiel'] .theme-hero-accent,
+html[data-theme='spiel'] .theme-hero-mark {
+  border-radius: 999px !important;
+  border-color: transparent !important;
+  rotate: 0deg !important;
 }
 
-html[data-theme='ledger'] .theme-hero,
-html[data-theme='ledger'] .theme-panel-card,
-html[data-theme='ledger'] .theme-sidebar {
-  box-shadow:
-    0 1px 0 rgb(var(--neo-black-rgb) / 0.18),
-    0 14px 34px rgb(var(--neo-black-rgb) / 0.08) !important;
+/* Accent fills carry dark ink in the neo-brutalist original because every accent
+   there is a bright poster colour. These three themes use accent steps chosen to
+   pass 4.5:1 as small text on their own surface, which makes them too dark for
+   dark ink — so a filled accent takes the surface colour as its ink instead. */
+html[data-theme='klar'] .bg-neo-green.text-neo-black,
+html[data-theme='klar'] .bg-neo-red.text-neo-black,
+html[data-theme='klar'] .bg-neo-orange.text-neo-black,
+html[data-theme='klar'] .bg-neo-cyan.text-neo-black,
+html[data-theme='klar'] .bg-neo-pink.text-neo-black,
+html[data-theme='klar'] .bg-neo-purple.text-neo-black,
+html[data-theme='klar'] .bg-neo-blue.text-neo-black,
+html[data-theme='spiel'] .bg-neo-green.text-neo-black,
+html[data-theme='spiel'] .bg-neo-red.text-neo-black,
+html[data-theme='spiel'] .bg-neo-orange.text-neo-black,
+html[data-theme='spiel'] .bg-neo-cyan.text-neo-black,
+html[data-theme='spiel'] .bg-neo-pink.text-neo-black,
+html[data-theme='spiel'] .bg-neo-purple.text-neo-black,
+html[data-theme='spiel'] .bg-neo-blue.text-neo-black {
+  color: var(--neo-white) !important;
 }
 
-html[data-theme='ledger'] .theme-hero,
-html[data-theme='ledger'] .theme-panel-card {
-  border-left-width: 6px !important;
+/* An accent-on-accent pair: the "active plan" tag paints blue ink inside a
+   yellow chip. On a gold or amber fill it has to be the ink colour instead. */
+html[data-theme='klar'] .bg-neo-yellow .text-neo-blue,
+html[data-theme='spiel'] .bg-neo-yellow .text-neo-blue {
+  color: rgb(var(--neo-black-rgb)) !important;
 }
 
-html[data-theme='ledger'] .theme-action-strip {
-  flex-direction: row !important;
-  flex-wrap: wrap;
+html[data-theme='elegant'] .bg-neo-yellow .text-neo-blue {
+  color: rgb(var(--neo-white-rgb)) !important;
 }
 
-html[data-theme='ledger'] .theme-action-strip > * {
-  width: auto !important;
-  min-width: 10rem;
+/* The closing call-to-action is a dark slab in every theme, so the muted ink it
+   inherits from the page would sit on the wrong side of the surface. Tie it to
+   the slab's own foreground token. */
+html[data-theme='klar'] .landing-cta .text-muted-foreground,
+html[data-theme='elegant'] .landing-cta .text-muted-foreground,
+html[data-theme='spiel'] .landing-cta .text-muted-foreground {
+  color: color-mix(in srgb, var(--landing-cta-fg) 82%, transparent) !important;
 }
 
-html[data-theme='ledger'] .theme-step-list > * + * {
-  margin-top: 0.75rem !important;
+/* Chart milestone labels ("RETIREMENT", "PENSION STARTS") are uppercased by an
+   inline style on the Recharts reference line, which no class-based rule can
+   reach. These themes read in sentence case throughout. */
+html[data-theme='klar'] text.recharts-label,
+html[data-theme='elegant'] text.recharts-label,
+html[data-theme='spiel'] text.recharts-label {
+  text-transform: none !important;
+  letter-spacing: 0.03em !important;
 }
 
-html[data-theme='ledger'] .theme-stepper-meta {
-  border-style: solid !important;
+/* ---------------------------- KLAR --------------------------------- */
+
+html[data-theme='klar'] body {
+  --theme-font-body: var(--font-inter), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --theme-font-heading: var(--font-inter), system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  font-weight: 450;
 }
 
-html[data-theme='prism'] body {
-  line-height: 1.68;
+html[data-theme='klar'] .theme-panel-header {
+  background-color: rgb(var(--neo-black-rgb) / 0.018);
+  border-bottom-color: var(--neo-border-strong) !important;
 }
 
-html[data-theme='prism'] .theme-hero,
-html[data-theme='prism'] .theme-sidebar,
-html[data-theme='prism'] .theme-panel-card,
-html[data-theme='prism'] [data-slot='select-content'],
-html[data-theme='prism'] [data-slot='dialog-content'] {
-  background-color: rgb(var(--neo-white-rgb) / 0.72) !important;
+/* Data-first: the panels are quiet containers, the numbers are the subject. */
+html[data-theme='klar'] .theme-hero,
+html[data-theme='klar'] .theme-panel-card,
+html[data-theme='klar'] .theme-sidebar {
+  box-shadow: var(--shadow-neo-sm) !important;
 }
 
-html[data-theme='prism'] .theme-hero {
-  box-shadow:
-    0 28px 90px rgb(var(--neo-blue-rgb) / 0.18),
-    inset 0 1px 0 rgb(255 255 255 / 0.95) !important;
+html[data-theme='klar'] .theme-hero {
+  box-shadow: var(--shadow-neo) !important;
 }
 
-html[data-theme='prism'] .theme-panel-card:nth-child(even) {
-  transform: translateY(0.35rem);
+html[data-theme='klar'] .theme-progress-bar {
+  height: 0.5rem !important;
 }
 
-html[data-theme='prism'] .theme-progress-bar {
+html[data-theme='klar'] .neo-chip,
+html[data-theme='klar'] .theme-badge-row > span {
+  font-weight: 600;
+  box-shadow: none !important;
+}
+
+html[data-theme='klar'] .theme-step-list > * + * {
+  margin-top: 0.5rem !important;
+}
+
+/* Gold at 20–30% over a near-black ground turns olive. The washes that mark
+   "new here" strips, hovered rows and selected options get a much fainter gold
+   so they read as a tint of the surface rather than a khaki slab. */
+html[data-theme='elegant'] .bg-neo-yellow\/30,
+html[data-theme='elegant'] .bg-neo-yellow\/25,
+html[data-theme='elegant'] .bg-neo-yellow\/20,
+html[data-theme='elegant'] .bg-neo-yellow\/15,
+html[data-theme='elegant'] .hover\:bg-neo-yellow\/30:hover,
+html[data-theme='elegant'] .hover\:bg-neo-yellow\/20:hover,
+html[data-theme='elegant'] .hover\:bg-neo-yellow\/15:hover,
+html[data-theme='elegant'] [data-state='inactive']:hover {
+  background-color: rgb(var(--neo-yellow-rgb) / 0.1) !important;
+}
+
+/* The tip strip and hover washes are painted with the accent at 15–30%. On the
+   analytical theme that reads as a wide tan band; pull it back to a whisper. */
+html[data-theme='klar'] .bg-neo-yellow\/30,
+html[data-theme='klar'] .bg-neo-yellow\/25,
+html[data-theme='klar'] .bg-neo-yellow\/20 {
+  background-color: rgb(var(--neo-yellow-rgb) / 0.14) !important;
+}
+
+/* --------------------------- ELEGANT ------------------------------- */
+
+html[data-theme='elegant'] body {
+  --theme-font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --theme-font-heading: var(--font-sora), var(--font-inter), system-ui, sans-serif;
+  line-height: 1.7;
+}
+
+html[data-theme='elegant'] .theme-hero,
+html[data-theme='elegant'] .theme-sidebar,
+html[data-theme='elegant'] .theme-panel-card,
+html[data-theme='elegant'] [data-slot='select-content'],
+html[data-theme='elegant'] [data-slot='dialog-content'] {
+  background-color: rgb(var(--neo-white-rgb) / 0.92) !important;
+}
+
+/* A single hairline of champagne along the top edge of every raised surface —
+   the theme's one piece of ornament. */
+html[data-theme='elegant'] .theme-hero {
+  background-image: linear-gradient(160deg, rgb(var(--neo-yellow-rgb) / 0.09), transparent 46%);
+  border-top-color: rgb(var(--neo-yellow-rgb) / 0.3) !important;
+}
+
+html[data-theme='elegant'] .theme-panel-header {
+  border-bottom-color: rgb(var(--neo-black-rgb) / 0.1) !important;
+}
+
+html[data-theme='elegant'] .theme-progress-bar {
+  height: 0.55rem !important;
+}
+
+html[data-theme='elegant'] .neo-chip,
+html[data-theme='elegant'] .theme-badge-row > span {
+  font-weight: 600;
+}
+
+/* Dark themes swap --neo-black (ink) and --neo-white (surface), so any
+   "bright accent fill + neo-black ink" pair collapses into light-on-light.
+   Repaint the ink with the dark surface token to restore contrast. */
+html[data-theme='elegant'] .bg-neo-yellow.text-neo-black,
+html[data-theme='elegant'] .bg-neo-green.text-neo-black,
+html[data-theme='elegant'] .bg-neo-cyan.text-neo-black,
+html[data-theme='elegant'] .bg-neo-blue.text-neo-black,
+html[data-theme='elegant'] .bg-neo-pink.text-neo-black,
+html[data-theme='elegant'] .bg-neo-red.text-neo-black,
+html[data-theme='elegant'] .bg-neo-purple.text-neo-black,
+html[data-theme='elegant'] .bg-neo-orange.text-neo-black {
+  color: rgb(var(--neo-white-rgb)) !important;
+}
+
+/* .neo-chip paints its own secondary-foreground ink, which is near-black in
+   dark themes and disappears on a surface-coloured chip. */
+html[data-theme='elegant'] .neo-chip.bg-neo-white,
+html[data-theme='elegant'] .neo-chip.bg-background {
+  color: rgb(var(--neo-black-rgb));
+  border-color: rgb(var(--neo-black-rgb) / 0.28);
+}
+
+/* ---------------------------- SPIEL -------------------------------- */
+
+html[data-theme='spiel'] body {
+  --theme-font-body: var(--font-plus-jakarta), var(--font-inter), system-ui, sans-serif;
+  --theme-font-heading: var(--font-plus-jakarta), var(--font-inter), system-ui, sans-serif;
+  line-height: 1.65;
+}
+
+html[data-theme='spiel'] .theme-panel-header {
+  background-color: rgb(var(--neo-yellow-rgb) / 0.09);
+  border-bottom-color: rgb(var(--neo-black-rgb) / 0.07) !important;
+}
+
+html[data-theme='spiel'] .theme-progress-bar {
   height: 0.85rem !important;
+  border-radius: 999px !important;
+  overflow: hidden;
 }
 
-html[data-theme='signal'] body {
-  line-height: 1.48;
+html[data-theme='spiel'] .theme-progress-bar > * {
+  border-radius: 999px !important;
 }
 
-html[data-theme='signal'] .theme-hero {
-  overflow: visible !important;
+html[data-theme='spiel'] .neo-chip,
+html[data-theme='spiel'] .theme-badge-row > span {
+  font-weight: 700;
 }
 
-html[data-theme='signal'] .theme-hero-accent {
-  height: 3.5rem !important;
-  width: 14rem !important;
-  rotate: -8deg;
+/* Soft spring on anything that lifts — friendly, not bouncy-castle. */
+html[data-theme='spiel'] .transition-neo,
+html[data-theme='spiel'] .theme-control,
+html[data-theme='spiel'] [data-slot='select-trigger'] {
+  transition-duration: 220ms !important;
+  transition-timing-function: cubic-bezier(0.34, 1.4, 0.64, 1) !important;
 }
 
-html[data-theme='signal'] .theme-hero-mark {
-  height: 4rem !important;
-  width: 11rem !important;
-  rotate: 7deg;
+html[data-theme='spiel'] .hover-neo:hover {
+  transform: translateY(-2px);
 }
 
-html[data-theme='signal'] .theme-progress-bar {
-  height: 1.35rem !important;
-}
-
-html[data-theme='signal'] .theme-content > .theme-panel-card:nth-child(odd) {
-  transform: rotate(0.12deg);
-}
-
-html[data-theme='signal'] .theme-content > .theme-panel-card:nth-child(even) {
-  transform: rotate(-0.16deg);
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme='spiel'] .transition-neo,
+  html[data-theme='spiel'] .theme-control,
+  html[data-theme='spiel'] [data-slot='select-trigger'] {
+    transition-duration: 1ms !important;
+  }
 }
 
 @media (min-width: 1024px) {
-  html[data-theme='aurora'] .theme-setup-grid,
-  html[data-theme='aurora'] .theme-simulation-grid {
+  /* Klar keeps the wizard rail: an analyst wants the whole structure visible. */
+  html[data-theme='klar'] .theme-setup-grid {
+    grid-template-columns: 296px minmax(0, 1fr) !important;
+  }
+
+  /* The dashboard is a single full-width column in every theme: plan editing
+     is its own tab, so nothing has to be squeezed into a sidebar. */
+  html[data-theme='klar'] .theme-simulation-grid,
+  html[data-theme='elegant'] .theme-simulation-grid,
+  html[data-theme='spiel'] .theme-simulation-grid {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  html[data-theme='aurora'] .theme-stepper {
+  html[data-theme='klar'] .theme-hero-top {
+    align-items: center !important;
+  }
+
+  /* Elegant runs the wizard as a full-width stage with the steps as a
+     horizontal ribbon above the content. */
+  html[data-theme='elegant'] .theme-setup-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html[data-theme='elegant'] .theme-stepper {
     display: grid;
-    grid-template-columns: 13rem minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
     align-items: start;
   }
 
-  html[data-theme='aurora'] .theme-step-list {
+  html[data-theme='elegant'] .theme-step-list {
     display: grid !important;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.75rem !important;
   }
 
-  html[data-theme='aurora'] .theme-step-list > * + * {
+  html[data-theme='elegant'] .theme-step-list > * + * {
     margin-top: 0 !important;
   }
 
-  html[data-theme='aurora'] .theme-step-item {
-    min-height: 7rem;
-    padding: 3.25rem 0.75rem 0.75rem !important;
+  html[data-theme='elegant'] .theme-step-item {
+    min-height: 6.5rem;
+    padding: 3.1rem 0.9rem 0.9rem !important;
     border: var(--theme-border-width) solid var(--neo-border-strong);
-    background: rgb(var(--neo-white-rgb) / 0.64);
+    border-radius: var(--theme-radius-panel);
+    background: rgb(var(--neo-white-rgb) / 0.7);
   }
 
-  html[data-theme='aurora'] .theme-step-button {
-    left: 0.75rem !important;
-    top: 0.75rem !important;
+  html[data-theme='elegant'] .theme-step-button {
+    left: 0.9rem !important;
+    top: 0.9rem !important;
     height: 2rem !important;
     width: 2rem !important;
   }
 
-  html[data-theme='aurora'] .theme-step-connector {
+  html[data-theme='elegant'] .theme-step-connector {
     display: none !important;
   }
 
-  html[data-theme='aurora'] .theme-parameter-sidebar {
-    order: 2;
-  }
-
-  html[data-theme='aurora'] .theme-simulation-content {
-    order: 1;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--theme-content-gap);
-  }
-
-  html[data-theme='aurora'] .theme-simulation-content > * {
-    margin-top: 0 !important;
-  }
-
-  html[data-theme='aurora'] .theme-simulation-content > :first-child,
-  html[data-theme='aurora'] .theme-simulation-content > :last-child {
-    grid-column: 1 / -1;
-  }
-
-  html[data-theme='ledger'] .theme-setup-grid {
-    grid-template-columns: 300px minmax(0, 1fr) !important;
-  }
-
-  html[data-theme='ledger'] .theme-simulation-grid {
-    grid-template-columns: 340px minmax(0, 1fr) !important;
-  }
-
-  html[data-theme='ledger'] .theme-hero-top {
+  html[data-theme='elegant'] .theme-hero-top {
     align-items: center !important;
   }
 
-  html[data-theme='prism'] .theme-setup-grid {
-    grid-template-columns: minmax(0, 1fr) 360px !important;
+  /* Spiel puts the wizard rail on the right so the content leads. */
+  html[data-theme='spiel'] .theme-setup-grid {
+    grid-template-columns: minmax(0, 1fr) 320px !important;
   }
 
-  html[data-theme='prism'] .theme-simulation-grid {
-    grid-template-columns: minmax(0, 1fr) 390px !important;
-  }
-
-  html[data-theme='prism'] .theme-stepper,
-  html[data-theme='prism'] .theme-parameter-sidebar {
+  html[data-theme='spiel'] .theme-stepper {
     order: 2;
   }
 
-  html[data-theme='prism'] .theme-setup-content,
-  html[data-theme='prism'] .theme-simulation-content {
+  html[data-theme='spiel'] .theme-setup-content {
     order: 1;
   }
 
-  html[data-theme='prism'] .theme-hero-top {
+  html[data-theme='spiel'] .theme-hero-top {
     align-items: center !important;
-  }
-
-  html[data-theme='signal'] .theme-setup-grid {
-    grid-template-columns: minmax(0, 1fr) 380px !important;
-  }
-
-  html[data-theme='signal'] .theme-simulation-grid {
-    grid-template-columns: minmax(360px, 0.78fr) minmax(0, 1.22fr) !important;
-  }
-
-  html[data-theme='signal'] .theme-stepper {
-    order: 2;
-  }
-
-  html[data-theme='signal'] .theme-setup-content {
-    order: 1;
-  }
-
-  html[data-theme='signal'] .theme-action-strip {
-    transform: skewX(-3deg);
   }
 }
 
@@ -1156,12 +1230,7 @@ html[data-theme='signal'] .theme-content > .theme-panel-card:nth-child(even) {
     transform: none;
   }
 
-  html[data-theme='signal'] .theme-content > .theme-panel-card,
-  html[data-theme='prism'] .theme-panel-card:nth-child(even) {
-    transform: none;
-  }
-
-  html[data-theme='aurora'] .theme-step-item {
+  html[data-theme='elegant'] .theme-step-item {
     padding-left: 3rem !important;
   }
 }
@@ -1476,4 +1545,112 @@ html[data-theme='signal'] .theme-content > .theme-panel-card:nth-child(even) {
 
 .hover\:scrollbar-thumb-neo-black\/40:hover::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-hover);
+}
+
+/* Setup wizard: step content transition */
+@keyframes wizard-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-step-in {
+  animation: wizard-step-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Indeterminate route-transition bar: shown while a navigation is pending, so
+   "Complete setup" is never a click into silence. */
+@keyframes route-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.animate-route-progress {
+  animation: route-progress 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-route-progress {
+    animation-duration: 3s !important;
+  }
+
+  .animate-step-in,
+  .animate-fade-in,
+  .animate-fade-in-delayed,
+  .animate-fade-in-more-delayed {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Landing page: theme-aware tokens so the marketing page reads as the */
+/* same product in every theme instead of inverting into a neon slab.  */
+/* ------------------------------------------------------------------ */
+.landing-cta {
+  --landing-cta-bg: var(--neo-black);
+  --landing-cta-fg: var(--neo-white);
+  background-color: var(--landing-cta-bg);
+}
+
+.landing-cta-title {
+  color: var(--landing-cta-fg);
+}
+
+.landing-cta-sub,
+.landing-cta-link {
+  color: color-mix(in srgb, var(--landing-cta-fg) 76%, transparent);
+}
+
+.landing-cta-link:hover {
+  color: var(--landing-cta-fg);
+}
+
+html[data-theme='elegant'] .landing-cta {
+  --landing-cta-bg: #11182a;
+  --landing-cta-fg: #eef1f7;
+  background-image: linear-gradient(120deg, rgb(var(--neo-yellow-rgb) / 0.12), transparent 62%);
+  border-color: rgb(var(--neo-yellow-rgb) / 0.24) !important;
+}
+
+html[data-theme='klar'] .landing-cta {
+  --landing-cta-bg: #0f1524;
+  --landing-cta-fg: #f6f8fb;
+}
+
+html[data-theme='spiel'] .landing-cta {
+  --landing-cta-bg: #3a2f2a;
+  --landing-cta-fg: #fff6ec;
+  background-image: linear-gradient(120deg, rgb(var(--neo-yellow-rgb) / 0.18), transparent 62%);
+}
+
+/*
+ * Landing typography: themes widen every heading and every `tracking-*`
+ * utility (via an !important rule further up), which turns the marketing page
+ * into all-caps shouting. Pin the landing's display/label tracking to sane
+ * values in every theme. The paired selectors match the theme rule's
+ * specificity and win on source order.
+ */
+.landing-typeset .landing-display,
+html[data-theme] .landing-typeset .landing-display {
+  letter-spacing: 0.005em !important;
+}
+
+.landing-typeset .landing-label,
+html[data-theme] .landing-typeset .landing-label {
+  letter-spacing: 0.055em !important;
+}
+
+.landing-typeset .landing-body,
+html[data-theme] .landing-typeset .landing-body {
+  letter-spacing: 0.005em !important;
 }

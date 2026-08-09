@@ -13,7 +13,14 @@ import { mapReportDataToContent } from '@/lib/pdf-generator/reportTypes'
 import { RetirementReport } from '@/lib/pdf-generator/react-pdf'
 import React from 'react'
 import { z, ZodError } from 'zod'
-import { EXPENSE_INTERVALS, WITHDRAWAL_STRATEGIES } from '@/types'
+import {
+  CASHFLOW_FREQUENCIES,
+  CASHFLOW_KINDS,
+  EXPENSE_INTERVALS,
+  HOUSEHOLD_TYPES,
+  MARKET_MODELS,
+  WITHDRAWAL_STRATEGIES,
+} from '@/types'
 import type { SimulationParams, SimulationResults } from '@/types'
 
 export const runtime = 'nodejs'
@@ -26,8 +33,24 @@ const PERCENTILE_GROUPS = ['assetPercentiles', 'spendingPercentiles'] as const
 const CustomExpenseSchema = z.object({
   id: z.string(),
   name: z.string(),
+  // Translation key for a flow the app seeded. Without it here Zod would strip
+  // the key on the way in and the German report would print "Groceries".
+  nameKey: z.string().max(64).optional(),
   amount: z.number(),
   interval: z.enum(EXPENSE_INTERVALS),
+})
+
+const CashFlowSchema = z.object({
+  id: z.string(),
+  kind: z.enum(CASHFLOW_KINDS),
+  name: z.string(),
+  nameKey: z.string().max(64).optional(),
+  amount: z.number(),
+  frequency: z.enum(CASHFLOW_FREQUENCIES),
+  startAge: z.number().optional(),
+  endAge: z.number().optional(),
+  inflationLinked: z.boolean().optional(),
+  growthRate: z.number().optional(),
 })
 
 const OneTimeIncomeSchema = z.object({
@@ -51,11 +74,33 @@ const SimulationParamsSchema = z.object({
   averageInflation: z.number(),
   inflationVolatility: z.number(),
   capitalGainsTax: z.number(),
+  // Defaulted: a client on an older build posts params without the German tax
+  // detail or a bequest goal, and the neutral values below reproduce exactly
+  // the flat "every gain taxed, pension untaxed, no goal" model it ran.
+  taxAllowanceAnnual: z.number().default(0),
+  householdType: z.enum(HOUSEHOLD_TYPES).default('single'),
+  equityFundExemption: z.number().default(0),
+  pensionTaxablePortion: z.number().default(0),
+  pensionTaxRate: z.number().default(0),
+  legacyTargetReal: z.number().default(0),
+  // Defaulted: a client on an older build posts params without a market model
+  // or glide path, and "Monte Carlo, single asset" is exactly what it meant.
+  marketModel: z.enum(MARKET_MODELS).default('monteCarlo'),
+  glidePathEnabled: z.boolean().default(false),
+  equityAllocationStart: z.number().default(0.8),
+  equityAllocationEnd: z.number().default(0.4),
+  bondReturn: z.number().default(0.03),
+  bondVolatility: z.number().default(0.06),
   customExpenses: z.array(CustomExpenseSchema),
+  // Defaulted for the same reason: older clients post the projections only, and
+  // the report never needs the flows to be reconstructed to render them.
+  cashFlows: z.array(CashFlowSchema).default([]),
   withdrawalStrategy: z.enum(WITHDRAWAL_STRATEGIES),
   dsWithdrawalRate: z.number(),
   dsCeilingRate: z.number(),
   dsFloorRate: z.number(),
+  // Defaulted: older clients post parameter sets that predate the floor.
+  spendingFloorReal: z.number().default(0),
   simulationRuns: z.number(),
 })
 
@@ -73,6 +118,11 @@ const SimulationResultsSchema = z
     assetPercentiles: PercentileDataSchema,
     spendingPercentiles: PercentileDataSchema,
     successRate: z.number(),
+    // Carried through so the report's simulation context can state the real
+    // depletion risk and the pure-survival rate. Optional: an older client
+    // posts neither, and the context falls back to `successRate`.
+    depletionSuccessRate: z.number().optional(),
+    depletionByAge: z.array(z.number()).optional(),
     params: SimulationParamsSchema.optional(),
   })
   .superRefine((results, ctx) => {
@@ -98,6 +148,8 @@ const GeneratePdfRequestBodySchema = z
     results: z.unknown().optional(),
     reportData: z.unknown().optional(),
     locale: ReportLocaleSchema.optional(),
+    // Optional so older clients and the legacy print route keep working.
+    planName: z.string().trim().min(1).max(80).optional(),
   })
   .passthrough()
 
@@ -134,12 +186,16 @@ function validateSimulationResults(value: unknown): Omit<SimulationResults, 'par
   return parsed.data
 }
 
-function withLocale(value: unknown, locale: ReportLocale) {
-  if (value && typeof value === 'object') {
-    return { ...value, locale }
-  }
+function withLocale(value: unknown, locale: ReportLocale, planName?: string) {
+  const base = value && typeof value === 'object' ? { ...(value as Record<string, unknown>) } : {}
+  const metadata = base.metadata && typeof base.metadata === 'object' ? base.metadata : undefined
 
-  return { locale }
+  return {
+    ...base,
+    locale,
+    // A plan name sent alongside a pre-built payload still reaches the cover.
+    ...(planName ? { metadata: { ...(metadata ?? {}), planName } } : {}),
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -162,7 +218,7 @@ export async function POST(req: NextRequest) {
     }
     body = parsedBody.data
 
-    const { params, results, reportData } = body
+    const { params, results, reportData, planName } = body
     const requestedLocale = body.locale ?? DEFAULT_REPORT_LOCALE
 
     // Validate input data
@@ -173,14 +229,21 @@ export async function POST(req: NextRequest) {
       if (!freshParams) {
         throw new ClientRequestError('Parameter fehlen')
       }
-      const generated = transformToReportData(freshParams, { ...validResults, params: freshParams })
+      const generated = transformToReportData(
+        freshParams,
+        { ...validResults, params: freshParams },
+        planName,
+        // Recommendations quote this plan's own numbers, so they are written in
+        // the report's language up front instead of being translated by lookup.
+        requestedLocale === 'de' ? 'de' : 'en'
+      )
       const parsed = ReportDataSchema.safeParse({ ...generated, locale: requestedLocale })
       if (!parsed.success) {
         throw new ClientRequestError('Ungueltige Berichtsdaten', 400, parsed.error.flatten())
       }
       validated = parsed.data
     } else if (reportData) {
-      const parsed = ReportDataSchema.safeParse(withLocale(reportData, requestedLocale))
+      const parsed = ReportDataSchema.safeParse(withLocale(reportData, requestedLocale, planName))
       if (!parsed.success) {
         throw new ClientRequestError('Ungueltige Berichtsdaten', 400, parsed.error.flatten())
       }

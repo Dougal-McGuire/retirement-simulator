@@ -2,13 +2,17 @@
 
 import { useMemo } from 'react'
 import { Lightbulb } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import type { SimulationParams, SimulationResults } from '@/types'
 import {
   estimateRecommendationUplift,
   generateRecommendations,
 } from '@/lib/insights/recommendations'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { toast, TOAST_DURATION } from '@/components/ui/toast'
+import { ActionToast } from '@/components/ui/action-toast'
+import { useUpdateParams } from '@/lib/stores/simulationStore'
 import { cn } from '@/lib/utils'
 
 interface RecommendationListProps {
@@ -24,10 +28,44 @@ const impactClasses: Record<'High' | 'Medium' | 'Low', string> = {
 
 export function RecommendationList({ params, results }: RecommendationListProps) {
   const t = useTranslations('recommendations')
+  const locale = useLocale()
+  const updateParams = useUpdateParams()
 
+  /**
+   * "Consider volatility reduction" used to be advice with no address. It maps
+   * exactly onto the allocation glide path, so the card offers to switch it on
+   * — one click, undoable, and the dashboard re-simulates immediately.
+   */
+  const enableGlidePath = () => {
+    const previous = params.glidePathEnabled
+    updateParams({ glidePathEnabled: true })
+    toast(
+      (instance) => (
+        <ActionToast
+          testId="glide-path-toast"
+          message={t('items.reduceVolatility.applied')}
+          actions={[
+            {
+              label: t('items.reduceVolatility.undo'),
+              tone: 'primary',
+              testId: 'glide-path-toast-undo',
+              onClick: () => {
+                toast.dismiss(instance.id)
+                updateParams({ glidePathEnabled: previous })
+              },
+            },
+          ]}
+        />
+      ),
+      { duration: TOAST_DURATION }
+    )
+  }
+
+  // Bodies quote this plan's own figures, so they are produced in the reader's
+  // language rather than looked up by sentence — see `generateRecommendations`.
   const recommendations = useMemo(
-    () => (results ? generateRecommendations(params, results) : []),
-    [params, results]
+    () => (results ? generateRecommendations(params, results, locale === 'de' ? 'de' : 'en') : []),
+    [params, results, locale]
   )
 
   return (
@@ -47,10 +85,13 @@ export function RecommendationList({ params, results }: RecommendationListProps)
               const uplift = results ? estimateRecommendationUplift(rec, params, results) : null
 
               return (
-                <li key={rec.id} className="border-2 border-neo-black bg-background p-4 shadow-neo-sm">
+                <li
+                  key={rec.id}
+                  className="border-2 border-neo-black bg-background p-4 shadow-neo-sm"
+                >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-neo-black">
-                      {t(`items.${rec.id}.title`)}
+                      {rec.title}
                     </p>
                     <span className="flex items-center gap-2">
                       {uplift && (
@@ -68,9 +109,22 @@ export function RecommendationList({ params, results }: RecommendationListProps)
                       </span>
                     </span>
                   </div>
-                  <p className="mt-2 text-xs font-medium text-muted-foreground">
-                    {t(`items.${rec.id}.body`)}
+                  <p className="mt-2 text-xs font-medium leading-relaxed text-muted-foreground">
+                    {rec.body}
                   </p>
+                  <p className="mt-2 text-[0.58rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    {rec.category}
+                  </p>
+                  {rec.id === 'reduceVolatility' && !params.glidePathEnabled && (
+                    <Button
+                      size="sm"
+                      className="mt-3 h-8"
+                      data-testid="recommendation-enable-glide-path"
+                      onClick={enableGlidePath}
+                    >
+                      {t('items.reduceVolatility.action')}
+                    </Button>
+                  )}
                 </li>
               )
             })}

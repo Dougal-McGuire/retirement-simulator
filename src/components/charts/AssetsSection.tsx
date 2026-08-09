@@ -4,7 +4,14 @@ import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import type { SimulationResults } from '@/types'
 import { AssetsChart } from '@/components/charts/AssetsChart'
-import { useBrushRange, useChartData, useChartFormatters } from '@/components/charts/useChartData'
+import { RealToggle } from '@/components/charts/RealToggle'
+import {
+  hasRealSeries,
+  useBrushRange,
+  useChartData,
+  useChartFormatters,
+} from '@/components/charts/useChartData'
+import { useDisplayReal, useSetDisplayReal } from '@/lib/stores/displayStore'
 import { deriveDepletionAges } from '@/lib/insights/depletion'
 import { cn } from '@/lib/utils'
 
@@ -14,7 +21,12 @@ interface AssetsSectionProps {
 
 export function AssetsSection({ results }: AssetsSectionProps) {
   const t = useTranslations('simulationChart')
-  const { chartDataWithBand, milestoneRows } = useChartData(results)
+  const displayReal = useDisplayReal()
+  const setDisplayReal = useSetDisplayReal()
+  // Results persisted by an older build carry no real-terms series; hide the
+  // control entirely rather than offering a switch that does nothing.
+  const canShowReal = hasRealSeries(results)
+  const { chartDataWithBand, milestoneRows } = useChartData(results, displayReal)
   const { formatCurrency, formatCurrencyShort } = useChartFormatters()
   const ages = useMemo(() => chartDataWithBand.map((d) => d.age), [chartDataWithBand])
   const { indexRange, onBrushChange, resetZoom } = useBrushRange(ages)
@@ -24,6 +36,7 @@ export function AssetsSection({ results }: AssetsSectionProps) {
     <div className="space-y-5">
       <AssetsChart
         data={chartDataWithBand}
+        marketModel={results.params.marketModel}
         retirementAge={results.params.retirementAge}
         legalRetirementAge={results.params.legalRetirementAge}
         p10DepletionAge={depletion.p10DepletionAge}
@@ -33,6 +46,9 @@ export function AssetsSection({ results }: AssetsSectionProps) {
         onResetZoom={resetZoom}
         formatCurrency={formatCurrency}
         formatCurrencyShort={formatCurrencyShort}
+        headerControls={
+          canShowReal ? <RealToggle value={displayReal} onChange={setDisplayReal} /> : null
+        }
       />
 
       <details className="border-3 border-neo-black bg-neo-white p-4 shadow-neo-sm">

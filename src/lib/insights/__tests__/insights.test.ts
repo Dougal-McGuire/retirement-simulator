@@ -48,21 +48,72 @@ describe('computePlanHealthScore', () => {
 })
 
 describe('generateRecommendations', () => {
-  it('tags every recommendation with a stable id', () => {
+  it('tags every recommendation with a stable id and derives it from the plan', () => {
     const recs = generateRecommendations(DEFAULT_PARAMS, makeResults(60))
     expect(recs.length).toBeGreaterThan(0)
     recs.forEach((rec) => expect(typeof rec.id).toBe('string'))
     const ids = recs.map((rec) => rec.id)
     expect(ids).toContain('increaseSavings')
     expect(ids).toContain('delayRetirement')
-    expect(ids).toContain('maximizeTaxDeferred')
-    expect(ids).toContain('reviewInsurance')
+    // The pension bridge is real in DEFAULT_PARAMS (retire 60, pension 67).
+    expect(ids).toContain('bridgeLiquidity')
   })
 
-  it('suggests optimizing the mix in the 70-85 band', () => {
+  it('drops the US retail-planning boilerplate entirely', () => {
+    const ids = generateRecommendations(DEFAULT_PARAMS, makeResults(60)).map((rec) => rec.id)
+    expect(ids).not.toContain('maximizeTaxDeferred')
+    expect(ids).not.toContain('reviewInsurance')
+  })
+
+  it('suggests optimizing the mix in the 70-90 band', () => {
     const ids = generateRecommendations(DEFAULT_PARAMS, makeResults(80)).map((rec) => rec.id)
     expect(ids).toContain('optimizeMix')
     expect(ids).not.toContain('increaseSavings')
+  })
+
+  it('offers no bridge advice when there is no bridge', () => {
+    const params = { ...DEFAULT_PARAMS, retirementAge: 67 }
+    const ids = generateRecommendations(params, makeResults(95, params)).map((rec) => rec.id)
+    expect(ids).not.toContain('bridgeLiquidity')
+    expect(ids).not.toContain('delayRetirement')
+  })
+
+  it('raises the Sparerpauschbetrag only against a measured tax drag', () => {
+    const withoutDrag = generateRecommendations(DEFAULT_PARAMS, makeResults(95)).map((r) => r.id)
+    expect(withoutDrag).not.toContain('taxAllowance')
+
+    const withDrag = generateRecommendations(DEFAULT_PARAMS, {
+      ...makeResults(95),
+      withdrawalTaxDrag: 0.14,
+    })
+    const drag = withDrag.find((rec) => rec.id === 'taxAllowance')!
+    expect(drag.impact).toBe('High')
+    expect(drag.body).toMatch(/Freistellungsauftrag/)
+  })
+
+  it('flags a missing allowance instead of the drag when none is modelled', () => {
+    const params = { ...DEFAULT_PARAMS, taxAllowanceAnnual: 0 }
+    const rec = generateRecommendations(params, makeResults(95, params)).find(
+      (entry) => entry.id === 'taxAllowance'
+    )!
+    expect(rec.body).toMatch(/Sparerpauschbetrag/)
+  })
+
+  it('writes German bodies with German figures when asked for de', () => {
+    const recs = generateRecommendations(DEFAULT_PARAMS, makeResults(60), 'de')
+    const savings = recs.find((rec) => rec.id === 'increaseSavings')!
+    expect(savings.title).toBe('Sparrate erhöhen')
+    expect(savings.category).toBe('Sparstrategie')
+    // German grouping, German percent spacing — not an English sentence.
+    expect(savings.body).toMatch(/48\.000/)
+    expect(savings.body).not.toMatch(/saving years left/)
+  })
+
+  it('ranks high-impact items first so the report top actions are the strongest', () => {
+    const recs = generateRecommendations(DEFAULT_PARAMS, makeResults(55))
+    const rank = { High: 0, Medium: 1, Low: 2 } as const
+    const ranks = recs.map((rec) => rank[rec.impact])
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b))
   })
 })
 
@@ -79,9 +130,9 @@ describe('estimateRecommendationUplift', () => {
 
   it('returns null for recommendations without an uplift model', () => {
     const results = makeResults(60)
-    const insurance = generateRecommendations(DEFAULT_PARAMS, results).find(
-      (rec) => rec.id === 'reviewInsurance'
+    const bridge = generateRecommendations(DEFAULT_PARAMS, results).find(
+      (rec) => rec.id === 'bridgeLiquidity'
     )!
-    expect(estimateRecommendationUplift(insurance, DEFAULT_PARAMS, results)).toBeNull()
+    expect(estimateRecommendationUplift(bridge, DEFAULT_PARAMS, results)).toBeNull()
   })
 })

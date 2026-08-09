@@ -1,24 +1,27 @@
 'use client'
 
-import { useMemo, useState, useEffect, useRef } from 'react'
-import {
-  ComposedChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Brush,
-  ReferenceLine,
-} from 'recharts'
+import { useMemo, useEffect, useRef, useState } from 'react'
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Brush } from 'recharts'
 import { useTranslations } from 'next-intl'
-import type { ChartDataPoint, WithdrawalStrategy } from '@/types'
+import type { WithdrawalStrategy } from '@/types'
+import type { BandPoint } from '@/components/charts/AssetsChart'
 import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/lib/hooks/useMediaQuery'
-import { MoveHorizontal } from 'lucide-react'
+import {
+  axisTick,
+  brushChrome,
+  chartInk,
+  ChartLegend,
+  ChartTooltipCard,
+  fanHue,
+  measureAxisWidth,
+  niceCeil,
+  withAlpha,
+  type TooltipRow,
+} from '@/components/charts/chartTheme'
 
 interface SpendingChartProps {
-  data: ChartDataPoint[]
+  data: BandPoint[]
   retirementAge: number
   withdrawalStrategy: WithdrawalStrategy
   dsWithdrawalRate: number
@@ -29,6 +32,8 @@ interface SpendingChartProps {
   formatCurrency: (value: number) => string
   formatCurrencyShort: (value: number) => string
   onResetZoom: () => void
+  /** Extra controls rendered in the section header, left of the zoom reset. */
+  headerControls?: React.ReactNode
 }
 
 export function SpendingChart({
@@ -43,11 +48,10 @@ export function SpendingChart({
   formatCurrency,
   formatCurrencyShort,
   onResetZoom,
+  headerControls,
 }: SpendingChartProps) {
   const t = useTranslations('spendingChart')
   const isMobile = useIsMobile()
-  const [showHint, setShowHint] = useState(true)
-  const [hasInteracted, setHasInteracted] = useState(false)
   const chartFrameRef = useRef<HTMLDivElement>(null)
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 })
 
@@ -64,14 +68,15 @@ export function SpendingChart({
   const formatPercentage = (value: number | null): string =>
     value == null ? '—' : percentageFormatter.format(value)
 
-  const isDynamicSpending = withdrawalStrategy === 'vanguardDynamic'
-  const strategySummary = isDynamicSpending
-    ? t('explanation.dynamic.summary', {
-        withdrawalRate: formatPercentage(dsWithdrawalRate),
-        ceiling: formatPercentage(dsCeilingRate),
-        floor: formatPercentage(dsFloorRate),
-      })
-    : t('explanation.fixed.summary')
+  // One paragraph per strategy: the values are handed to every one of them and
+  // each message uses only the ones its own rule actually reads.
+  const strategySummary = t(`explanation.strategies.${withdrawalStrategy}`, {
+    withdrawalRate: formatPercentage(dsWithdrawalRate),
+    ceiling: formatPercentage(dsCeilingRate),
+    floor: formatPercentage(dsFloorRate),
+  })
+
+  const hue = fanHue.spending
 
   const renderTooltip = ({
     active,
@@ -79,51 +84,47 @@ export function SpendingChart({
     label,
   }: {
     active?: boolean
-    payload?: ReadonlyArray<{ payload?: ChartDataPoint }>
+    payload?: ReadonlyArray<{ payload?: BandPoint }>
     label?: string | number
   }) => {
     if (!active || !payload?.length) return null
 
     const point = payload[0]?.payload
     if (!point) return null
-    const tooltipAge = label ?? ''
 
-    return (
-      <div className="border-3 border-neo-black bg-neo-white p-3 text-[0.68rem] shadow-neo-md">
-        <div className="mb-2 font-black uppercase tracking-[0.12em] text-neo-black">
-          {t('tooltip.label', { age: tooltipAge })}
-        </div>
-        <div className="space-y-1 font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          <div className="flex justify-between gap-6">
-            <span>{t('legend.p10')}</span>
-            <span className="text-neo-black">{formatCurrency(point.spending_p10)}</span>
-          </div>
-          <div className="flex justify-between gap-6">
-            <span>{t('legend.p50')}</span>
-            <span className="text-neo-black">{formatCurrency(point.spending_p50)}</span>
-          </div>
-          <div className="flex justify-between gap-6">
-            <span>{t('legend.p90')}</span>
-            <span className="text-neo-black">{formatCurrency(point.spending_p90)}</span>
-          </div>
-          <div className="flex justify-between gap-6 border-t-2 border-neo-black pt-1">
-            <span>{t('legend.withdrawalRate')}</span>
-            <span className="text-neo-black">{formatPercentage(point.withdrawal_rate_p50)}</span>
-          </div>
-        </div>
-      </div>
-    )
+    const rows: TooltipRow[] = [
+      {
+        key: 'p90',
+        label: t('tooltip.p90'),
+        value: formatCurrency(point.spending_p90),
+        kind: 'band',
+        color: withAlpha(hue.rgb, 0.2),
+      },
+      {
+        key: 'p50',
+        label: t('tooltip.median'),
+        value: formatCurrency(point.spending_p50),
+        kind: 'line',
+        color: hue.solid,
+        emphasis: true,
+      },
+      {
+        key: 'p10',
+        label: t('tooltip.p10'),
+        value: formatCurrency(point.spending_p10),
+        kind: 'band',
+        color: withAlpha(hue.rgb, 0.2),
+      },
+      {
+        key: 'rate',
+        label: t('legend.withdrawalRate'),
+        value: formatPercentage(point.withdrawal_rate_p50),
+        dividerAbove: true,
+      },
+    ]
+
+    return <ChartTooltipCard title={t('tooltip.label', { age: label ?? '' })} rows={rows} />
   }
-
-  // Hide hint after user interaction or 5 seconds
-  useEffect(() => {
-    if (hasInteracted) {
-      setShowHint(false)
-    } else {
-      const timer = setTimeout(() => setShowHint(false), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [hasInteracted])
 
   useEffect(() => {
     const frame = chartFrameRef.current
@@ -144,76 +145,66 @@ export function SpendingChart({
     return () => resizeObserver.disconnect()
   }, [])
 
-  // Track if zoom is active
   const isZoomed = indexRange.startIndex > 0 || indexRange.endIndex < data.length - 1
   const canRenderChart = chartSize.width > 0 && chartSize.height > 0
 
-  // Handle brush interaction
-  const handleBrushChange = (range: { startIndex?: number; endIndex?: number }) => {
-    setHasInteracted(true)
-    onBrushChange(range)
-  }
+  // Round the axis to a readable bound and size it to its widest tick label so
+  // long compact-currency labels ("4,5 Mio. €") are never clipped.
+  const domainMax = useMemo(() => {
+    const max = data.reduce((acc, point) => Math.max(acc, point.spending_p90), 0)
+    return max > 0 ? niceCeil(max * 1.05) : undefined
+  }, [data])
+
+  const axisWidth = useMemo(() => {
+    const top = domainMax ?? 0
+    const samples = [top, top * 0.75, top * 0.5, top * 0.25, 0].map(formatCurrencyShort)
+    return measureAxisWidth(samples, isMobile)
+  }, [domainMax, formatCurrencyShort, isMobile])
 
   return (
-    <div className="w-full min-w-0 space-y-6 border-3 border-neo-black bg-neo-white p-4 shadow-neo sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+    <div className="w-full min-w-0 space-y-5 border-3 border-neo-black bg-neo-white p-4 shadow-neo sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h4
             id="spending-chart-title"
-            className="text-base font-extrabold uppercase tracking-[0.2em] text-neo-black sm:text-lg"
+            className="text-base font-extrabold uppercase tracking-[0.16em] text-neo-black sm:text-lg"
           >
             {t('title')}
           </h4>
-          <p className="mt-2 max-w-2xl text-[0.68rem] font-medium uppercase tracking-[0.12em] text-muted-foreground sm:text-[0.72rem]">
+          <p className="mt-1.5 max-w-2xl text-xs font-medium leading-relaxed text-muted-foreground">
             {t('description')}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onResetZoom}
-          className="px-3 py-1 text-[0.7rem] sm:px-4"
-          disabled={!isZoomed}
-        >
-          {t('reset')}
-        </Button>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        <div className="border-2 border-neo-black bg-neo-blue/5 p-3">
-          <div className="text-[0.58rem] font-extrabold uppercase tracking-[0.16em] text-neo-blue">
-            {t('explanation.strategyLabel')}
-          </div>
-          <p className="mt-2 text-[0.68rem] font-semibold uppercase leading-relaxed tracking-[0.08em] text-neo-black">
-            {strategySummary}
-          </p>
-        </div>
-        <div className="border-2 border-neo-black bg-background p-3">
-          <div className="text-[0.58rem] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">
-            {t('explanation.readingLabel')}
-          </div>
-          <p className="mt-2 text-[0.68rem] font-semibold uppercase leading-relaxed tracking-[0.08em] text-neo-black">
-            {t('explanation.reading')}
-          </p>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {headerControls}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onResetZoom}
+            className="shrink-0 px-3 py-1 text-[0.7rem] sm:px-4"
+            disabled={!isZoomed}
+          >
+            {t('reset')}
+          </Button>
         </div>
       </div>
 
-      {/* Interactive hint */}
-      {showHint && !hasInteracted && (
-        <div className="animate-pulse border-3 border-neo-blue bg-neo-blue/5 p-3 transition-all">
-          <div className="flex items-center gap-2 text-neo-blue">
-            <MoveHorizontal className="h-4 w-4 animate-bounce" aria-hidden="true" />
-            <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em]">
-              {t('hint.dragToZoom')}
-            </span>
-          </div>
-        </div>
-      )}
+      <ChartLegend
+        items={[
+          { key: 'median', label: t('legend.median'), kind: 'line', color: hue.solid },
+          {
+            key: 'band',
+            label: t('legend.band'),
+            kind: 'band',
+            color: withAlpha(hue.rgb, 0.2),
+          },
+        ]}
+      />
 
       <div
         ref={chartFrameRef}
-        className="relative h-80 w-full min-w-0"
+        className="relative h-[19rem] w-full min-w-0 sm:h-[21rem]"
         role="img"
         aria-label={t('aria.description', { retirementAge })}
         aria-describedby="spending-chart-description spending-chart-controls"
@@ -226,163 +217,112 @@ export function SpendingChart({
             data={data}
             margin={
               isMobile
-                ? { top: 10, right: 5, left: 5, bottom: 10 }
-                : { top: 20, right: 20, left: 20, bottom: 20 }
+                ? { top: 14, right: 8, left: 0, bottom: 4 }
+                : { top: 18, right: 16, left: 4, bottom: 4 }
             }
-            className="transition-all duration-300 ease-in-out"
           >
             <defs>
-              <linearGradient id="spendingGradient1" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--neo-yellow)" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="var(--neo-orange)" stopOpacity={0.8} />
-              </linearGradient>
-              <linearGradient id="spendingGradient2" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--neo-purple)" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="var(--neo-pink)" stopOpacity={0.8} />
-              </linearGradient>
-              <linearGradient id="spendingGradient3" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--neo-orange)" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="var(--neo-red)" stopOpacity={0.8} />
+              <linearGradient id="spendingFan" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={hue.solid} stopOpacity={0.24} />
+                <stop offset="100%" stopColor={hue.solid} stopOpacity={0.08} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="0 0" opacity={0.15} stroke="var(--chart-axis)" />
+            <CartesianGrid vertical={false} stroke={chartInk.grid} strokeWidth={1} />
             <XAxis
               dataKey="age"
-              tick={{ fontSize: isMobile ? 10 : 11, fill: 'var(--chart-axis)' }}
-              tickLine={{ stroke: 'var(--chart-axis)' }}
-              axisLine={{ stroke: 'var(--chart-axis)' }}
-              label={
-                isMobile
-                  ? undefined
-                  : {
-                      value: t('axis.age'),
-                      position: 'insideBottom',
-                      offset: -10,
-                      style: { textAnchor: 'middle', fontSize: '12px', fill: 'var(--chart-axis)' },
-                    }
-              }
+              tick={axisTick(isMobile)}
+              tickLine={false}
+              tickMargin={8}
+              minTickGap={isMobile ? 24 : 32}
+              axisLine={{ stroke: chartInk.axisLine }}
             />
             <YAxis
               yAxisId="spending"
-              tick={{ fontSize: isMobile ? 10 : 11, fill: 'var(--chart-axis)' }}
-              tickLine={{ stroke: 'var(--chart-axis)' }}
-              axisLine={{ stroke: 'var(--chart-axis)' }}
+              width={axisWidth}
+              tick={axisTick(isMobile)}
+              tickLine={false}
+              tickMargin={6}
+              axisLine={false}
               tickFormatter={formatCurrencyShort}
-              label={
-                isMobile
-                  ? undefined
-                  : {
-                      value: t('axis.spending'),
-                      angle: -90,
-                      position: 'insideLeft',
-                      style: { textAnchor: 'middle', fontSize: '12px', fill: 'var(--chart-axis)' },
-                    }
-              }
+              domain={[0, domainMax ?? 'auto']}
+              allowDataOverflow={domainMax != null}
             />
-            {!isMobile && (
-              <YAxis
-                yAxisId="rate"
-                orientation="right"
-                tick={{ fontSize: 11, fill: 'var(--chart-axis)' }}
-                tickLine={{ stroke: 'var(--chart-axis)' }}
-                axisLine={{ stroke: 'var(--chart-axis)' }}
-                tickFormatter={(value) => formatPercentage(value as number)}
-                label={{
-                  value: t('axis.withdrawalRate'),
-                  angle: 90,
-                  position: 'insideRight',
-                  style: { textAnchor: 'middle', fontSize: '12px', fill: 'var(--chart-axis)' },
-                }}
-                domain={[0, 'auto']}
-              />
-            )}
+            {/* P10–P90 spending band */}
+            <Area
+              type="monotone"
+              dataKey="spending_band_lower"
+              stackId="spendBand"
+              stroke="none"
+              fill="transparent"
+              activeDot={false}
+              isAnimationActive={false}
+              yAxisId="spending"
+              legendType="none"
+            />
+            <Area
+              type="monotone"
+              dataKey="spending_band_height"
+              stackId="spendBand"
+              stroke="none"
+              fill="url(#spendingFan)"
+              name={t('legend.band')}
+              activeDot={false}
+              isAnimationActive={false}
+              yAxisId="spending"
+              legendType="none"
+            />
             <Tooltip
               content={renderTooltip}
-              contentStyle={{
-                backgroundColor: 'var(--neo-white)',
-                border: '3px solid var(--neo-black)',
-                borderRadius: '0px',
-                fontSize: isMobile ? '11px' : '12px',
-                boxShadow: 'var(--shadow-neo-md)',
-              }}
-              labelStyle={{
-                fontWeight: 800,
-                color: 'var(--neo-black)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-              }}
-              cursor={{ stroke: 'var(--neo-black)', strokeWidth: 1.5, strokeDasharray: '4 2' }}
+              cursor={{ stroke: chartInk.cursor, strokeWidth: 1, strokeDasharray: '3 3' }}
             />
-            {/* Retirement age marker */}
-            <ReferenceLine
-              x={retirementAge}
-              stroke="var(--chart-retirement)"
-              strokeDasharray="5 5"
-              strokeWidth={2}
-              label={
-                isMobile
-                  ? undefined
-                  : {
-                      value: t('markers.retirement'),
-                      position: 'top',
-                      style: {
-                        fill: 'var(--chart-retirement)',
-                        fontSize: '11px',
-                        fontWeight: 'semibold',
-                      },
-                    }
-              }
-            />
+            {/* Band edges */}
             <Line
               type="monotone"
               dataKey="spending_p10"
-              stroke="var(--neo-yellow)"
-              strokeWidth={isMobile ? 1.25 : 1.75}
+              stroke={withAlpha(hue.rgb, 0.45)}
+              strokeWidth={1}
               name={t('legend.p10')}
               dot={false}
+              activeDot={false}
+              isAnimationActive={false}
               yAxisId="spending"
-            />
-            <Line
-              type="monotone"
-              dataKey="spending_p50"
-              stroke="var(--neo-blue)"
-              strokeWidth={isMobile ? 2 : 3}
-              name={t('legend.p50')}
-              dot={false}
-              yAxisId="spending"
+              legendType="none"
             />
             <Line
               type="monotone"
               dataKey="spending_p90"
-              stroke="var(--neo-red)"
-              strokeWidth={isMobile ? 1.25 : 1.75}
+              stroke={withAlpha(hue.rgb, 0.45)}
+              strokeWidth={1}
               name={t('legend.p90')}
               dot={false}
+              activeDot={false}
+              isAnimationActive={false}
               yAxisId="spending"
+              legendType="none"
             />
+            {/* Median spending */}
             <Line
               type="monotone"
-              dataKey="withdrawal_rate_p50"
-              name={t('legend.withdrawalRate')}
-              stroke="var(--chart-axis)"
-              strokeWidth={isMobile ? 1.5 : 2}
-              yAxisId={isMobile ? 'spending' : 'rate'}
+              dataKey="spending_p50"
+              stroke={hue.solid}
+              strokeWidth={isMobile ? 2 : 2.5}
+              name={t('legend.p50')}
               dot={false}
-              hide={isMobile}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--neo-white)', fill: hue.solid }}
+              isAnimationActive={false}
+              yAxisId="spending"
             />
             <Brush
               dataKey="age"
-              height={isMobile ? 18 : 22}
-              stroke="var(--chart-brush)"
-              travellerWidth={isMobile ? 6 : 8}
+              {...brushChrome(isMobile)}
               startIndex={indexRange.startIndex}
               endIndex={indexRange.endIndex}
-              onChange={handleBrushChange}
+              onChange={onBrushChange}
               tickFormatter={(v) => String(v)}
             />
           </ComposedChart>
         ) : (
-          <div className="h-full w-full border-2 border-dashed border-neo-black bg-muted/30" />
+          <div className="h-full w-full border border-dashed border-neo-black/30 bg-muted/30" />
         )}
       </div>
       <div id="spending-chart-description" className="sr-only">
@@ -392,17 +332,30 @@ export function SpendingChart({
         {t('aria.controls')}
       </div>
 
-      {/* Zoom indicator */}
-      {isZoomed && (
-        <div className="mt-2 flex items-center justify-center gap-2 text-neo-blue">
-          <div className="h-2 w-2 animate-pulse border-2 border-neo-blue bg-neo-blue" />
-          <span className="text-[0.62rem] font-bold uppercase tracking-[0.14em]">
-            {t('hint.zoomed')}
-          </span>
-        </div>
-      )}
+      <p className="text-right text-[0.62rem] font-medium tracking-[0.04em] text-muted-foreground">
+        {isZoomed ? t('hint.zoomed') : t('hint.dragToZoom')}
+      </p>
 
-      <p className="mt-3 text-center text-[0.62rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="border-2 border-neo-black/60 bg-neo-purple/5 p-3.5">
+          <div className="text-[0.6rem] font-extrabold uppercase tracking-[0.16em] text-neo-purple">
+            {t('explanation.strategyLabel')}
+          </div>
+          <p className="mt-1.5 text-xs font-medium leading-relaxed text-foreground/80">
+            {strategySummary}
+          </p>
+        </div>
+        <div className="border-2 border-neo-black/60 bg-background p-3.5">
+          <div className="text-[0.6rem] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">
+            {t('explanation.readingLabel')}
+          </div>
+          <p className="mt-1.5 text-xs font-medium leading-relaxed text-foreground/80">
+            {t('explanation.reading')}
+          </p>
+        </div>
+      </div>
+
+      <p className="text-center text-[0.62rem] font-medium tracking-[0.04em] text-muted-foreground">
         {t('legend.note')}
       </p>
     </div>

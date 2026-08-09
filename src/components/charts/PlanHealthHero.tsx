@@ -1,21 +1,29 @@
 'use client'
 
 import React, { useMemo } from 'react'
-import { AlertTriangle } from 'lucide-react'
-import { useFormatter, useTranslations } from 'next-intl'
+import { AlertTriangle, Pencil } from 'lucide-react'
+import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import type { SimulationParams, SimulationResults } from '@/types'
 import { buildPlanInsightMetrics } from '@/lib/simulation/planInsights'
+import { useDisplayReal } from '@/lib/stores/displayStore'
 import { computePlanHealthScore, type PlanHealthLabel } from '@/lib/insights/planHealth'
 import { deriveDepletionAges } from '@/lib/insights/depletion'
 import { buildPlanWarnings, type PlanWarning } from '@/lib/insights/warnings'
 import { AnimatedCounter } from '@/components/ui/animated-counter'
 import { Card, CardContent } from '@/components/ui/card'
+import { useSimulationContext } from '@/lib/stores/useSimulationContext'
+import { useCompactCurrency } from '@/lib/hooks/useCompactCurrency'
 import { cn } from '@/lib/utils'
 
 interface PlanHealthHeroProps {
   params: SimulationParams
   results: SimulationResults | null
   isLoading: boolean
+  /**
+   * Opens the plan editor focused on the field behind a tile, so a number the
+   * user disagrees with is one click away from being changed.
+   */
+  onEditField?: (fieldId: string) => void
 }
 
 const scoreLabelKeys: Record<PlanHealthLabel, 'strong' | 'moderate' | 'needsAttention'> = {
@@ -30,35 +38,96 @@ const scoreTones: Record<PlanHealthLabel, string> = {
   'Needs Attention': 'text-neo-red',
 }
 
-function successTone(rate: number) {
+function successToneClass(rate: number) {
   if (rate >= 90) return 'text-neo-green'
   if (rate >= 75) return 'text-warning-600'
   return 'text-neo-red'
 }
 
-export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroProps) {
+function successStroke(rate: number) {
+  if (rate >= 90) return 'var(--neo-green)'
+  if (rate >= 75) return '#d97706'
+  return 'var(--neo-red)'
+}
+
+function SuccessGauge({ rate }: { rate: number }) {
+  const locale = useLocale()
+  const radius = 52
+  const circumference = 2 * Math.PI * radius
+  const clamped = Math.max(0, Math.min(100, rate))
+  // "99.6%" in English, "99,6 %" in German — including the locale's spacing
+  // rule around the percent sign.
+  const percentSuffix = new Intl.NumberFormat(locale, { style: 'percent' })
+    .format(0)
+    .replace(/[\d٠-٩]/g, '')
+
+  return (
+    <div className="relative h-36 w-36 shrink-0 sm:h-40 sm:w-40">
+      <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
+        <circle
+          cx="60"
+          cy="60"
+          r={radius}
+          fill="none"
+          stroke="rgb(var(--neo-black-rgb) / 0.08)"
+          strokeWidth="9"
+        />
+        <circle
+          cx="60"
+          cy="60"
+          r={radius}
+          fill="none"
+          stroke={successStroke(clamped)}
+          strokeWidth="9"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - clamped / 100)}
+          className="transition-[stroke-dashoffset,stroke] duration-700 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <AnimatedCounter
+          end={clamped}
+          duration={1.2}
+          decimals={clamped >= 99.95 ? 0 : 1}
+          suffix={percentSuffix}
+          locale={locale}
+          className={cn(
+            'whitespace-nowrap text-2xl font-black leading-none tabular-nums sm:text-[1.6rem]',
+            successToneClass(clamped)
+          )}
+        />
+      </div>
+    </div>
+  )
+}
+
+export function PlanHealthHero({ params, results, isLoading, onEditField }: PlanHealthHeroProps) {
   const t = useTranslations('planHero')
+  const tEditor = useTranslations('planEditor')
   const format = useFormatter()
 
   const health = useMemo(
     () => (results ? computePlanHealthScore(params, results) : null),
     [params, results]
   )
-  const metrics = useMemo(() => buildPlanInsightMetrics(params, results), [params, results])
+  const displayReal = useDisplayReal()
+  const metrics = useMemo(
+    () => buildPlanInsightMetrics(params, results, { displayReal }),
+    [params, results, displayReal]
+  )
   const depletion = useMemo(
-    () => (results ? deriveDepletionAges(results) : { p10DepletionAge: null, p50DepletionAge: null }),
+    () =>
+      results ? deriveDepletionAges(results) : { p10DepletionAge: null, p50DepletionAge: null },
     [results]
   )
   const warnings = useMemo(() => buildPlanWarnings(params, results), [params, results])
+  // Every run count, success rate and market-model label on this card comes
+  // from the one context — never from `params` or `results` directly.
+  const context = useSimulationContext()
+  const legacyTarget = context.legacyTargetReal
 
-  const formatCurrency = (value: number) =>
-    format.number(value, {
-      style: 'currency',
-      currency: 'EUR',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-      minimumFractionDigits: 0,
-    })
+  const formatCurrency = useCompactCurrency()
 
   const formatPercent = (value: number) =>
     format.number(value, { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 })
@@ -79,7 +148,13 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
     }
   }
 
-  const tiles: { key: string; label: string; value: React.ReactNode; detail: string }[] = [
+  const tiles: {
+    key: string
+    label: string
+    value: React.ReactNode
+    detail: string
+    edit?: { fieldId: string; label: string }
+  }[] = [
     {
       key: 'score',
       label: t('score.label'),
@@ -94,18 +169,6 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
       detail: health ? t(`score.${scoreLabelKeys[health.label]}`) : '',
     },
     {
-      key: 'success',
-      label: t('success.label'),
-      value: results ? (
-        <span className={cn(successTone(results.successRate))}>
-          <AnimatedCounter end={results.successRate} duration={1.5} decimals={1} suffix="%" />
-        </span>
-      ) : (
-        t('notAvailable')
-      ),
-      detail: results ? t('success.detail', { runs: format.number(params.simulationRuns) }) : '',
-    },
-    {
       key: 'lasts',
       label: t('lasts.label'),
       value: results
@@ -113,11 +176,25 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
           ? t('lasts.toAge', { age: depletion.p50DepletionAge })
           : t('lasts.beyond', { age: params.endAge })
         : t('notAvailable'),
+      // "No depletion even in the worst 10%" was false whenever *any* run
+      // depleted: the worst decile of a 5%-depletion-risk plan is full of
+      // failed runs. What the P10 series actually shows is that the tenth
+      // percentile path stays funded — so that is what the caption says, with
+      // the real depletion risk spelled out whenever it is not zero.
       detail: results
         ? depletion.p10DepletionAge !== null
           ? t('lasts.detailP10', { age: depletion.p10DepletionAge })
-          : t('lasts.detailNone')
+          : context.depletionRisk > 0.05
+            ? t('lasts.detailNoneRisk', {
+                age: params.endAge,
+                rate: format.number(context.depletionRisk / 100, {
+                  style: 'percent',
+                  maximumFractionDigits: 1,
+                }),
+              })
+            : t('lasts.detailNone', { age: params.endAge })
         : '',
+      edit: { fieldId: 'editor-endAge', label: `${params.endAge}` },
     },
     {
       key: 'withdrawal',
@@ -126,13 +203,16 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
         results && metrics.firstYearWithdrawalRate !== null
           ? formatPercent(metrics.firstYearWithdrawalRate)
           : t('notAvailable'),
-      detail: results ? t('withdrawal.detail', { need: formatCurrency(metrics.firstYearPortfolioNeed) }) : '',
+      detail: results
+        ? t('withdrawal.detail', { need: formatCurrency(metrics.firstYearPortfolioNeed) })
+        : '',
     },
     {
       key: 'bridge',
       label: t('bridge.label'),
       value: t('bridge.value', { years: metrics.bridgeYears }),
       detail: t('bridge.detail', { age: params.legalRetirementAge }),
+      edit: { fieldId: 'editor-retirementAge', label: `${params.retirementAge}` },
     },
   ]
 
@@ -140,18 +220,106 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
     <Card className="overflow-hidden border-3 border-neo-black">
       <CardContent className={cn('bg-neo-white p-5', isLoading && 'animate-pulse opacity-70')}>
         <h2 className="sr-only">{t('title')}</h2>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-          {tiles.map((tile) => (
-            <div key={tile.key} className="border-2 border-neo-black bg-background p-4 shadow-neo-sm">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
+          {/* Success rate hero */}
+          <div className="flex items-center gap-5 border-2 border-neo-black bg-background p-4 shadow-neo-sm lg:max-w-[21rem] lg:shrink-0">
+            {results ? (
+              <SuccessGauge rate={context.successRate} />
+            ) : (
+              <div className="flex h-36 w-36 shrink-0 items-center justify-center sm:h-40 sm:w-40">
+                <span className="text-3xl font-black text-muted-foreground">
+                  {t('notAvailable')}
+                </span>
+              </div>
+            )}
+            <div className="min-w-0">
               <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                {tile.label}
+                {t('success.label')}
               </span>
-              <div className="mt-2 text-2xl font-black text-neo-black">{tile.value}</div>
-              {tile.detail && (
-                <p className="mt-1 text-xs font-medium text-muted-foreground">{tile.detail}</p>
+              <p className="mt-1.5 text-xs font-medium leading-relaxed text-foreground/80">
+                {/* A bequest goal makes the gauge answer a strictly harder
+                    question, so the caption has to say so — otherwise the drop
+                    from raising the target reads as the plan getting worse. */}
+                {legacyTarget > 0
+                  ? t('success.captionLegacy', { amount: formatCurrency(legacyTarget) })
+                  : t('success.caption')}
+              </p>
+              {/* Only when the two definitions really are two numbers: results
+                  persisted before the field existed have no survival rate of
+                  their own, and echoing the headline back would say nothing. */}
+              {results &&
+                context.successDefinition === 'legacyConditioned' &&
+                results.depletionSuccessRate !== undefined && (
+                  <p
+                    className="mt-2 text-[0.68rem] font-semibold leading-snug text-muted-foreground"
+                    data-testid="hero-depletion-detail"
+                  >
+                    {t('success.depletionDetail', {
+                      rate: format.number(context.depletionSuccessRate / 100, {
+                        style: 'percent',
+                        maximumFractionDigits: 1,
+                      }),
+                    })}
+                  </p>
+                )}
+              {results && (
+                <p
+                  className="mt-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
+                  data-testid="hero-runs"
+                  data-success-rate={context.successRate}
+                  data-runs={context.effectiveRuns}
+                  data-market-model={context.marketModel}
+                >
+                  {context.marketModel === 'historical'
+                    ? t('success.detailHistorical', {
+                        runs: format.number(context.effectiveRuns),
+                      })
+                    : t('success.detail', { runs: format.number(context.effectiveRuns) })}
+                </p>
               )}
             </div>
-          ))}
+          </div>
+
+          {/* Supporting stats */}
+          <div className="grid flex-1 grid-cols-2 gap-4">
+            {tiles.map((tile) => (
+              <div
+                key={tile.key}
+                className="relative border-2 border-neo-black bg-background p-4 shadow-neo-sm"
+              >
+                {/* The edit chip is absolutely positioned in the top-right
+                    corner, so the label has to reserve that room or it is
+                    clipped under the chip on a 390px screen ("ASSETS LAS…"). */}
+                <span
+                  className={cn(
+                    'block text-[0.68rem] font-bold uppercase leading-tight tracking-[0.14em] text-muted-foreground',
+                    tile.edit && onEditField && 'pr-14'
+                  )}
+                >
+                  {tile.label}
+                </span>
+                {tile.edit && onEditField && (
+                  <button
+                    type="button"
+                    data-testid={`hero-edit-${tile.key}`}
+                    onClick={() => onEditField(tile.edit!.fieldId)}
+                    aria-label={tEditor('editAria', { field: tile.label })}
+                    title={tEditor('editAria', { field: tile.label })}
+                    className="absolute right-2 top-2 inline-flex items-center gap-1 border-2 border-neo-black bg-neo-white px-1.5 py-0.5 text-[0.58rem] font-extrabold tabular-nums text-neo-black transition-neo hover:bg-neo-yellow"
+                  >
+                    {tile.edit.label}
+                    <Pencil className="h-2.5 w-2.5" aria-hidden="true" />
+                  </button>
+                )}
+                <div className="mt-2 text-xl font-black text-neo-black sm:text-2xl">
+                  {tile.value}
+                </div>
+                {tile.detail && (
+                  <p className="mt-1 text-xs font-medium text-muted-foreground">{tile.detail}</p>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {warnings.length > 0 && (
@@ -159,7 +327,7 @@ export function PlanHealthHero({ params, results, isLoading }: PlanHealthHeroPro
             {warnings.map((warning) => (
               <li
                 key={warning.id}
-                className="flex items-start gap-3 border-2 border-neo-red bg-red-50 px-4 py-3 text-sm font-semibold text-neo-red"
+                className="flex items-start gap-3 border-2 border-neo-red/70 bg-neo-red/10 px-4 py-3 text-sm font-semibold text-neo-red"
               >
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 {warningText(warning)}

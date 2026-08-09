@@ -1,6 +1,10 @@
 import { ReportSection } from '@/components/report/ReportSection'
 import styles from '@/components/report/ReportPrint.module.css'
 import { fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
+import {
+  withdrawalStrategyLabel as strategyLabel,
+  withdrawalStrategyRows,
+} from '@/lib/pdf-generator/withdrawalStrategy'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
 
 interface InputsProps {
@@ -12,12 +16,8 @@ export function Inputs({ content }: InputsProps) {
   const locale = content.locale ?? 'de'
   const intlLocale = locale === 'de' ? 'de-DE' : 'en-US'
   const isGerman = locale === 'de'
-  const withdrawalStrategyLabel =
-    assumptions.withdrawalStrategy === 'vanguardDynamic'
-      ? 'Vanguard Dynamic Spending'
-      : isGerman
-        ? 'Real konstante Ausgaben'
-        : 'Fixed real spending'
+  const withdrawalStrategyLabel = strategyLabel(assumptions.withdrawalStrategy, isGerman)
+  const strategyRows = withdrawalStrategyRows(assumptions, intlLocale, isGerman)
 
   return (
     <ReportSection
@@ -96,22 +96,12 @@ export function Inputs({ content }: InputsProps) {
                 <th scope="row">{isGerman ? 'Entnahmestrategie' : 'Withdrawal strategy'}</th>
                 <td>{withdrawalStrategyLabel}</td>
               </tr>
-              {assumptions.withdrawalStrategy === 'vanguardDynamic' && (
-                <>
-                  <tr>
-                    <th scope="row">{isGerman ? 'DS-Entnahmerate' : 'DS withdrawal rate'}</th>
-                    <td>{fmtPercent(assumptions.dsWithdrawalRate, 2, intlLocale)}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">{isGerman ? 'DS-Obergrenze' : 'DS ceiling'}</th>
-                    <td>{fmtPercent(assumptions.dsCeilingRate, 1, intlLocale)}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">{isGerman ? 'DS-Untergrenze' : 'DS floor'}</th>
-                    <td>{fmtPercent(assumptions.dsFloorRate, 1, intlLocale)}</td>
-                  </tr>
-                </>
-              )}
+              {strategyRows.map((row) => (
+                <tr key={row.label}>
+                  <th scope="row">{row.label}</th>
+                  <td>{row.value}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

@@ -1,19 +1,21 @@
 import { StyleSheet } from '@react-pdf/renderer'
+import { sansFamily } from './fonts'
+
+const sans = sansFamily()
 
 export const tokens = {
   fontFamily: {
-    sans: 'Helvetica',
-    serif: 'Times-Roman',
+    sans,
   },
   fontSize: {
-    xs: 8,
-    sm: 9,
-    base: 10,
-    md: 11,
-    lg: 14,
-    xl: 18,
-    '2xl': 24,
-    '3xl': 32,
+    xs: 7,
+    sm: 8,
+    base: 9,
+    md: 10,
+    lg: 13,
+    xl: 17,
+    '2xl': 22,
+    '3xl': 30,
   },
   lineHeight: {
     tight: 1.2,
@@ -30,27 +32,55 @@ export const tokens = {
       400: '#98a2b3',
       300: '#d0d5dd',
       200: '#eaecf0',
+      150: '#f0f2f5',
       100: '#f2f4f7',
       50: '#f9fafb',
     },
+    /**
+     * Accent scale derived from the app's `--neo-blue` (rgb 14 103 246) so the
+     * report and the product read as one brand. Darker steps are print-safe
+     * (>= 4.5:1 on white) and used for text; 600 is the pure app blue used for
+     * rules, markers and data lines.
+     */
     accent: {
-      700: '#0b4f6c',
-      600: '#126782',
-      500: '#1b7f9c',
-      100: '#d8edf4',
-      50: '#eef8fb',
+      900: '#062a63',
+      800: '#083a86',
+      700: '#0a4aad',
+      600: '#0e67f6',
+      500: '#3d85f8',
+      200: '#bcd6fd',
+      100: '#dce8fe',
+      50: '#eff5ff',
+    },
+    /**
+     * Signature colours lifted straight from the app shell: near-black ink,
+     * the neo-brutalist yellow used for badges/markers, and paper white.
+     * Yellow is only ever used as a fill behind near-black text or as a rule,
+     * never as ink — it does not carry contrast on white.
+     */
+    brand: {
+      ink: '#05080f',
+      yellow: '#f6c90e',
+      yellowSoft: '#fdf4cd',
+      yellowLine: '#e0b40a',
     },
     success: {
+      700: '#05603a',
       600: '#067647',
       100: '#d1fadf',
+      50: '#ecfdf3',
     },
     warning: {
+      700: '#93370d',
       600: '#b54708',
       100: '#fef0c7',
+      50: '#fffaeb',
     },
     danger: {
+      700: '#912018',
       600: '#b42318',
       100: '#fee4e2',
+      50: '#fef3f2',
     },
     white: '#ffffff',
   },
@@ -68,16 +98,20 @@ export const tokens = {
     16: 32,
     20: 40,
   },
+  radius: {
+    sm: 3,
+    md: 5,
+  },
 } as const
 
 export const page = {
   width: 595.28,
   height: 841.89,
   margin: {
-    top: 58,
-    right: 46,
-    bottom: 54,
-    left: 46,
+    top: 64,
+    right: 48,
+    bottom: 58,
+    left: 48,
   },
   get contentWidth() {
     return this.width - this.margin.left - this.margin.right
@@ -86,9 +120,12 @@ export const page = {
 
 export const styles = StyleSheet.create({
   page: {
-    fontFamily: tokens.fontFamily.sans,
+    fontFamily: sans,
+    fontWeight: 400,
     fontSize: tokens.fontSize.base,
-    lineHeight: tokens.lineHeight.normal,
+    // NOTE: no page-level lineHeight — with a registered font, a Page-level
+    // lineHeight prevents bottom-anchored fixed elements (the running footer)
+    // from rendering in @react-pdf/renderer. Text styles set their own.
     color: tokens.colors.ink[900],
     backgroundColor: tokens.colors.white,
     paddingTop: page.margin.top,
@@ -97,7 +134,8 @@ export const styles = StyleSheet.create({
     paddingLeft: page.margin.left,
   },
   pageCover: {
-    fontFamily: tokens.fontFamily.sans,
+    fontFamily: sans,
+    fontWeight: 400,
     fontSize: tokens.fontSize.base,
     color: tokens.colors.ink[900],
     backgroundColor: tokens.colors.white,
@@ -107,29 +145,33 @@ export const styles = StyleSheet.create({
     paddingLeft: 0,
   },
 
+  // ------------------------------------------------------------------
+  // Typography
+  // ------------------------------------------------------------------
   h1: {
     fontSize: tokens.fontSize['3xl'],
-    fontFamily: 'Helvetica-Bold',
+    fontWeight: 700,
     lineHeight: tokens.lineHeight.tight,
     color: tokens.colors.ink[900],
     marginBottom: tokens.spacing[3],
   },
   h2: {
     fontSize: tokens.fontSize.xl,
-    fontFamily: 'Helvetica-Bold',
+    fontWeight: 700,
     lineHeight: tokens.lineHeight.tight,
     color: tokens.colors.ink[900],
     marginBottom: tokens.spacing[2],
+    letterSpacing: -0.2,
   },
   h3: {
     fontSize: tokens.fontSize.lg,
-    fontFamily: 'Helvetica-Bold',
+    fontWeight: 600,
     color: tokens.colors.ink[900],
     marginBottom: tokens.spacing[2],
   },
   h4: {
     fontSize: tokens.fontSize.md,
-    fontFamily: 'Helvetica-Bold',
+    fontWeight: 600,
     color: tokens.colors.ink[900],
     marginBottom: tokens.spacing[2],
   },
@@ -150,11 +192,57 @@ export const styles = StyleSheet.create({
   label: {
     fontSize: tokens.fontSize.xs,
     color: tokens.colors.ink[500],
-    fontFamily: 'Helvetica-Bold',
-    letterSpacing: 0.4,
+    fontWeight: 600,
+    letterSpacing: 0.7,
     textTransform: 'uppercase',
   },
+  overline: {
+    fontSize: 7,
+    color: tokens.colors.accent[700],
+    fontWeight: 600,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    marginBottom: tokens.spacing[2],
+  },
 
+  // ------------------------------------------------------------------
+  // Section header (numbered, ruled)
+  // ------------------------------------------------------------------
+  sectionHeaderBlock: {
+    marginBottom: tokens.spacing[6],
+    paddingBottom: tokens.spacing[4],
+    borderBottomWidth: 1.4,
+    borderBottomColor: tokens.colors.brand.ink,
+  },
+  /** The app's yellow marker square, reused as the section tick. */
+  brandMark: {
+    width: 7,
+    height: 7,
+    backgroundColor: tokens.colors.brand.yellow,
+    marginRight: 5,
+  },
+  /** Card variant that carries the app accent on its top edge. */
+  cardAccent: {
+    borderWidth: 1,
+    borderColor: tokens.colors.ink[200],
+    borderTopWidth: 2,
+    borderTopColor: tokens.colors.brand.yellow,
+    borderRadius: tokens.radius.md,
+    backgroundColor: tokens.colors.white,
+    padding: tokens.spacing[5],
+    marginBottom: tokens.spacing[4],
+  },
+  sectionLead: {
+    fontSize: tokens.fontSize.sm,
+    color: tokens.colors.ink[500],
+    lineHeight: tokens.lineHeight.relaxed,
+    marginTop: 1,
+    maxWidth: 380,
+  },
+
+  // ------------------------------------------------------------------
+  // Layout helpers
+  // ------------------------------------------------------------------
   row: { flexDirection: 'row' },
   rowCenter: { flexDirection: 'row', alignItems: 'center' },
   col: { flexDirection: 'column' },
@@ -164,103 +252,156 @@ export const styles = StyleSheet.create({
   gridItem2: { width: '48%', marginRight: '2%', marginBottom: tokens.spacing[4] },
   gridItem3: { width: '31%', marginRight: '2%', marginBottom: tokens.spacing[4] },
 
+  // ------------------------------------------------------------------
+  // Cards / surfaces
+  // ------------------------------------------------------------------
   card: {
     borderWidth: 1,
     borderColor: tokens.colors.ink[200],
+    borderRadius: tokens.radius.md,
     backgroundColor: tokens.colors.white,
-    padding: tokens.spacing[4],
-    marginBottom: tokens.spacing[3],
+    padding: tokens.spacing[5],
+    marginBottom: tokens.spacing[4],
   },
   cardBordered: {
     borderWidth: 1,
     borderColor: tokens.colors.ink[200],
+    borderRadius: tokens.radius.md,
     backgroundColor: tokens.colors.white,
-    padding: tokens.spacing[4],
-    marginBottom: tokens.spacing[3],
+    padding: tokens.spacing[5],
+    marginBottom: tokens.spacing[4],
+  },
+  cardMuted: {
+    borderWidth: 1,
+    borderColor: tokens.colors.ink[200],
+    borderRadius: tokens.radius.md,
+    backgroundColor: tokens.colors.ink[50],
+    padding: tokens.spacing[5],
+    marginBottom: tokens.spacing[4],
   },
   surface: {
     borderWidth: 1,
     borderColor: tokens.colors.ink[200],
+    borderRadius: tokens.radius.md,
     backgroundColor: tokens.colors.white,
-    padding: tokens.spacing[4],
+    padding: tokens.spacing[5],
+  },
+  cardTitle: {
+    fontSize: tokens.fontSize.md,
+    fontWeight: 600,
+    color: tokens.colors.ink[900],
+    marginBottom: tokens.spacing[4],
   },
 
+  // ------------------------------------------------------------------
+  // KPI tiles
+  // ------------------------------------------------------------------
   kpiValue: {
-    fontSize: 20,
-    fontFamily: 'Helvetica-Bold',
+    fontSize: 17,
+    fontWeight: 700,
     color: tokens.colors.ink[900],
-    marginTop: tokens.spacing[1],
-    marginBottom: tokens.spacing[1],
+    letterSpacing: -0.2,
+    marginTop: tokens.spacing[2],
+    lineHeight: 1.15,
   },
   kpiLabel: {
     fontSize: tokens.fontSize.xs,
     color: tokens.colors.ink[500],
-    fontFamily: 'Helvetica-Bold',
+    fontWeight: 600,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.7,
   },
   kpiDescription: {
     fontSize: tokens.fontSize.xs,
     color: tokens.colors.ink[500],
+    marginTop: tokens.spacing[2],
+    lineHeight: 1.35,
   },
 
+  // ------------------------------------------------------------------
+  // Badges
+  // ------------------------------------------------------------------
   badge: {
     backgroundColor: tokens.colors.ink[900],
-    paddingVertical: tokens.spacing[1],
+    borderRadius: tokens.radius.sm,
+    paddingVertical: 2.5,
     paddingHorizontal: tokens.spacing[3],
     alignSelf: 'flex-start',
   },
   badgeText: {
     fontSize: tokens.fontSize.xs,
     color: tokens.colors.white,
-    fontFamily: 'Helvetica-Bold',
+    fontWeight: 600,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   badgeSuccess: { backgroundColor: tokens.colors.success[600] },
   badgeWarning: { backgroundColor: tokens.colors.warning[600] },
   badgeDanger: { backgroundColor: tokens.colors.danger[600] },
 
+  // ------------------------------------------------------------------
+  // Tables
+  // ------------------------------------------------------------------
   table: { marginVertical: tokens.spacing[2] },
   tableHeader: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: tokens.colors.ink[300],
-    paddingBottom: 2,
-    marginBottom: 2,
+    borderBottomColor: tokens.colors.ink[900],
+    alignItems: 'flex-end',
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 0.5,
     borderBottomColor: tokens.colors.ink[200],
+    minHeight: 18,
+    alignItems: 'center',
+  },
+  tableRowAlt: {
+    backgroundColor: tokens.colors.ink[50],
+  },
+  tableRowTotal: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: tokens.colors.ink[900],
+    borderBottomWidth: 0,
     minHeight: 20,
     alignItems: 'center',
   },
-  tableRowAlt: {},
   tableCell: {
-    paddingVertical: tokens.spacing[2],
+    paddingVertical: 4.5,
     paddingHorizontal: tokens.spacing[2],
     fontSize: tokens.fontSize.sm,
     color: tokens.colors.ink[700],
   },
   tableCellHeader: {
-    paddingVertical: tokens.spacing[2],
+    paddingVertical: 4,
     paddingHorizontal: tokens.spacing[2],
-    fontSize: tokens.fontSize.xs,
-    color: tokens.colors.ink[600],
-    fontFamily: 'Helvetica-Bold',
+    fontSize: 6.5,
+    color: tokens.colors.ink[500],
+    fontWeight: 600,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.7,
   },
 
+  // ------------------------------------------------------------------
+  // Callouts
+  // ------------------------------------------------------------------
   callout: {
-    borderLeftWidth: 3,
+    borderLeftWidth: 2.5,
     borderLeftColor: tokens.colors.accent[600],
-    paddingLeft: tokens.spacing[3],
-    paddingVertical: tokens.spacing[2],
+    backgroundColor: tokens.colors.ink[50],
+    borderRadius: tokens.radius.sm,
+    paddingLeft: tokens.spacing[4],
+    paddingRight: tokens.spacing[4],
+    paddingVertical: tokens.spacing[3],
   },
   calloutWarning: { borderLeftColor: tokens.colors.warning[600] },
   calloutDanger: { borderLeftColor: tokens.colors.danger[600] },
   calloutSuccess: { borderLeftColor: tokens.colors.success[600] },
 
+  // ------------------------------------------------------------------
+  // Lists
+  // ------------------------------------------------------------------
   listItem: {
     flexDirection: 'row',
     marginBottom: tokens.spacing[2],
@@ -268,7 +409,7 @@ export const styles = StyleSheet.create({
   listBullet: {
     width: 14,
     fontSize: tokens.fontSize.sm,
-    color: tokens.colors.accent[600],
+    color: tokens.colors.accent[700],
   },
   listContent: {
     flex: 1,
@@ -279,11 +420,6 @@ export const styles = StyleSheet.create({
 
   section: { marginBottom: tokens.spacing[8] },
   sectionHeader: { marginBottom: tokens.spacing[4] },
-  sectionLead: {
-    fontSize: tokens.fontSize.sm,
-    color: tokens.colors.ink[600],
-    lineHeight: tokens.lineHeight.relaxed,
-  },
 
   divider: {
     borderBottomWidth: 1,
@@ -296,11 +432,15 @@ export const styles = StyleSheet.create({
     marginVertical: tokens.spacing[4],
   },
 
+  // ------------------------------------------------------------------
+  // Figures
+  // ------------------------------------------------------------------
   figure: {
     marginVertical: tokens.spacing[2],
     borderWidth: 1,
     borderColor: tokens.colors.ink[200],
-    padding: tokens.spacing[3],
+    borderRadius: tokens.radius.md,
+    padding: tokens.spacing[4],
   },
   figcaption: {
     marginTop: tokens.spacing[2],
@@ -309,35 +449,57 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  // ------------------------------------------------------------------
+  // Running header / footer
+  // ------------------------------------------------------------------
   header: {
     position: 'absolute',
-    top: 22,
+    top: 24,
     left: page.margin.left,
     right: page.margin.right,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    fontSize: tokens.fontSize.xs,
-    color: tokens.colors.ink[500],
+    alignItems: 'center',
+    borderBottomWidth: 0.75,
+    borderBottomColor: tokens.colors.ink[200],
+    paddingBottom: 6,
+  },
+  headerBrand: {
+    fontSize: 7,
+    fontWeight: 600,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: tokens.colors.ink[700],
+  },
+  headerMeta: {
+    fontSize: 7,
+    color: tokens.colors.ink[400],
   },
   footer: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 24,
     left: page.margin.left,
     right: page.margin.right,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    fontSize: tokens.fontSize.xs,
-    color: tokens.colors.ink[500],
+    alignItems: 'center',
+    borderTopWidth: 0.75,
+    borderTopColor: tokens.colors.ink[200],
+    paddingTop: 6,
+  },
+  footerText: {
+    fontSize: 7,
+    color: tokens.colors.ink[400],
   },
   pageNumber: {
-    position: 'absolute',
-    bottom: 20,
-    right: page.margin.right,
-    fontSize: tokens.fontSize.xs,
+    fontSize: 7,
     color: tokens.colors.ink[500],
     textAlign: 'right',
   },
 
+  // ------------------------------------------------------------------
+  // Utility spacing / text helpers
+  // ------------------------------------------------------------------
   mb1: { marginBottom: tokens.spacing[1] },
   mb2: { marginBottom: tokens.spacing[2] },
   mb3: { marginBottom: tokens.spacing[3] },
@@ -352,10 +514,10 @@ export const styles = StyleSheet.create({
   gap6: {},
   textCenter: { textAlign: 'center' },
   textRight: { textAlign: 'right' },
-  fontSemibold: { fontFamily: 'Helvetica-Bold' },
-  fontBold: { fontFamily: 'Helvetica-Bold' },
+  fontSemibold: { fontWeight: 600 },
+  fontBold: { fontWeight: 700 },
   textMuted: { color: tokens.colors.ink[500] },
-  textAccent: { color: tokens.colors.accent[600] },
+  textAccent: { color: tokens.colors.accent[700] },
 })
 
 export default styles

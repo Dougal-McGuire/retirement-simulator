@@ -2,6 +2,7 @@ import {
   boxMullerTransform,
   calculatePercentile,
   calculatePercentiles,
+  mulberry32,
   runMonteCarloSimulation,
 } from '../engine'
 import { DEFAULT_PARAMS } from '@/types'
@@ -92,6 +93,35 @@ describe('Simulation Engine', () => {
       expect(results.assetPercentiles.p90).toHaveLength(results.ages.length)
       expect(results.successRate).toBeGreaterThanOrEqual(0)
       expect(results.successRate).toBeLessThanOrEqual(100)
+    })
+
+    it('is deterministic for identical parameters', () => {
+      const testParams = { ...DEFAULT_PARAMS, simulationRuns: 50 }
+      const first = runMonteCarloSimulation(testParams)
+      const second = runMonteCarloSimulation({ ...testParams })
+
+      expect(second.successRate).toBe(first.successRate)
+      expect(second.assetPercentiles.p50).toEqual(first.assetPercentiles.p50)
+      expect(second.spendingPercentiles.p50).toEqual(first.spendingPercentiles.p50)
+    })
+
+    it('produces different market paths when parameters differ', () => {
+      const base = runMonteCarloSimulation({ ...DEFAULT_PARAMS, simulationRuns: 50 })
+      const varied = runMonteCarloSimulation({
+        ...DEFAULT_PARAMS,
+        simulationRuns: 50,
+        roiVolatility: DEFAULT_PARAMS.roiVolatility + 0.05,
+      })
+
+      expect(varied.assetPercentiles.p50).not.toEqual(base.assetPercentiles.p50)
+    })
+
+    it('accepts an explicit random source', () => {
+      const testParams = { ...DEFAULT_PARAMS, simulationRuns: 20 }
+      const seeded = runMonteCarloSimulation(testParams, { random: mulberry32(1234) })
+      const sameSeed = runMonteCarloSimulation(testParams, { random: mulberry32(1234) })
+
+      expect(sameSeed.assetPercentiles.p50).toEqual(seeded.assetPercentiles.p50)
     })
 
     it('should have increasing percentiles (p10 <= p50 <= p90)', () => {

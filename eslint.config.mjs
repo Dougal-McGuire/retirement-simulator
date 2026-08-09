@@ -6,7 +6,17 @@ import nextPlugin from '@next/eslint-plugin-next'
 
 export default [
   {
-    ignores: ['.next/**', 'node_modules/**', 'dist/**', 'build/**', 'coverage/**', 'next-env.d.ts'],
+    ignores: [
+      '.next/**',
+      // Alternate build dirs (NEXT_DIST_DIR) used when several dev servers
+      // share this checkout — generated output, never lint it.
+      '.next-*/**',
+      'node_modules/**',
+      'dist/**',
+      'build/**',
+      'coverage/**',
+      'next-env.d.ts',
+    ],
   },
   {
     files: ['**/*.{ts,tsx}'],

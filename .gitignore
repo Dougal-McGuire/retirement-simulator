@@ -19,6 +19,11 @@ tmp/
 
 # next.js
 /.next/
+# Alternate dist dirs (NEXT_DIST_DIR) used when several dev servers share this
+# checkout. They must stay ignored: Tailwind's source detection scans anything
+# that is not gitignored, and the binary Turbopack caches inside these folders
+# produce corrupted utility class candidates.
+/.next-*/
 /out/
 
 # production
@@ -36,6 +41,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the secret-free template
+!.env.example
 
 # MCP configuration with sensitive keys
 .mcp.json
@@ -49,3 +56,4 @@ next-env.d.ts
 
 # build info (generated at build time)
 src/lib/build-info/build-info.json
+test-results/

@@ -5,44 +5,63 @@ import { useFormatter } from 'next-intl'
 import type { ChartDataPoint, SimulationResults } from '@/types'
 import type { BandPoint } from '@/components/charts/AssetsChart'
 import { useSetAutoRunSuspended } from '@/lib/stores/simulationStore'
+import { useCompactCurrency } from '@/lib/hooks/useCompactCurrency'
 
-export function useChartData(results: SimulationResults) {
-  const chartData: ChartDataPoint[] = useMemo(
-    () =>
-      results.ages.map((age, index) => {
-        const yearsFromStart = age - results.params.currentAge
-        const annualSavingsAtAge =
-          age < results.params.retirementAge
-            ? results.params.annualSavings *
-              Math.pow(1 + results.params.annualSavingsGrowthRate, Math.max(0, yearsFromStart))
-            : 0
-        const monthlySavings = age < results.params.retirementAge ? annualSavingsAtAge / 12 : null
-        const monthlyPensionAtAge =
-          age >= results.params.legalRetirementAge ? results.params.monthlyPension : 0
-        const medianPortfolioDraw = Math.max(
-          0,
-          results.spendingPercentiles.p50[index] - monthlyPensionAtAge
-        )
+/**
+ * True when the results carry the real-terms series, i.e. were produced by an
+ * engine that knows about them. Results persisted by an older build do not, and
+ * the UI has to fall back to nominal rather than render blanks.
+ */
+export function hasRealSeries(results: SimulationResults | null | undefined): boolean {
+  return Boolean(results?.assetPercentilesReal && results?.spendingPercentilesReal)
+}
 
-        return {
-          age,
-          assets_p10: Math.round(results.assetPercentiles.p10[index]),
-          assets_p20: Math.round(results.assetPercentiles.p20[index]),
-          assets_p50: Math.round(results.assetPercentiles.p50[index]),
-          assets_p80: Math.round(results.assetPercentiles.p80[index]),
-          assets_p90: Math.round(results.assetPercentiles.p90[index]),
-          spending_p10: Math.round(results.spendingPercentiles.p10[index]),
-          spending_p50: Math.round(results.spendingPercentiles.p50[index]),
-          spending_p90: Math.round(results.spendingPercentiles.p90[index]),
-          withdrawal_rate_p50:
-            results.assetPercentiles.p50[index] > 0
-              ? (medianPortfolioDraw * 12) / results.assetPercentiles.p50[index]
-              : null,
-          monthly_savings_p50: monthlySavings,
-        }
-      }),
-    [results]
-  )
+export function useChartData(results: SimulationResults, displayReal = false) {
+  // Real mode is only honoured when the engine actually produced the deflated
+  // series; otherwise we silently stay nominal.
+  const real = displayReal && hasRealSeries(results)
+
+  const chartData: ChartDataPoint[] = useMemo(() => {
+    const assets = (real && results.assetPercentilesReal) || results.assetPercentiles
+    const spending = (real && results.spendingPercentilesReal) || results.spendingPercentiles
+
+    return results.ages.map((age, index) => {
+      const yearsFromStart = age - results.params.currentAge
+      const annualSavingsAtAge =
+        age < results.params.retirementAge
+          ? results.params.annualSavings *
+            Math.pow(1 + results.params.annualSavingsGrowthRate, Math.max(0, yearsFromStart))
+          : 0
+      const nominalMonthlySavings =
+        age < results.params.retirementAge ? annualSavingsAtAge / 12 : null
+      // A pension and a savings rate are fixed *nominal* euro amounts, so in
+      // real mode they have to be divided by the median realised price level
+      // rather than left alone.
+      const deflator = real ? (results.inflationIndexP50?.[index] ?? 1) : 1
+      const monthlySavings =
+        nominalMonthlySavings === null ? null : nominalMonthlySavings / deflator
+      const monthlyPensionAtAge =
+        age >= results.params.legalRetirementAge ? results.params.monthlyPension / deflator : 0
+      const medianPortfolioDraw = Math.max(0, spending.p50[index] - monthlyPensionAtAge)
+
+      return {
+        age,
+        assets_p10: Math.round(assets.p10[index]),
+        assets_p20: Math.round(assets.p20[index]),
+        assets_p50: Math.round(assets.p50[index]),
+        assets_p80: Math.round(assets.p80[index]),
+        assets_p90: Math.round(assets.p90[index]),
+        spending_p10: Math.round(spending.p10[index]),
+        spending_p50: Math.round(spending.p50[index]),
+        spending_p90: Math.round(spending.p90[index]),
+        // A ratio of two like-for-like series: identical in both modes, as it
+        // should be — deflating cannot change a withdrawal *rate*.
+        withdrawal_rate_p50:
+          assets.p50[index] > 0 ? (medianPortfolioDraw * 12) / assets.p50[index] : null,
+        monthly_savings_p50: monthlySavings,
+      }
+    })
+  }, [results, real])
 
   const chartDataWithBand: BandPoint[] = useMemo(
     () =>
@@ -50,13 +69,17 @@ export function useChartData(results: SimulationResults) {
         ...d,
         assets_band_lower: d.assets_p20,
         assets_band_height: Math.max(0, d.assets_p80 - d.assets_p20),
+        assets_outer_lower: d.assets_p10,
+        assets_outer_height: Math.max(0, d.assets_p90 - d.assets_p10),
+        spending_band_lower: d.spending_p10,
+        spending_band_height: Math.max(0, d.spending_p90 - d.spending_p10),
       })),
     [chartData]
   )
 
   const spendingData = useMemo(
-    () => chartData.filter((d) => d.age >= results.params.retirementAge),
-    [chartData, results.params.retirementAge]
+    () => chartDataWithBand.filter((d) => d.age >= results.params.retirementAge),
+    [chartDataWithBand, results.params.retirementAge]
   )
 
   const milestoneRows = useMemo(
@@ -70,7 +93,20 @@ export function useChartData(results: SimulationResults) {
     [chartData]
   )
 
-  return { chartData, chartDataWithBand, spendingData, milestoneRows }
+  /**
+   * Divides a nominally fixed euro amount at `age` into the displayed unit.
+   * The identity in nominal mode, the median realised price level in real mode.
+   */
+  const deflatorForAge = useCallback(
+    (age: number) => {
+      if (!real) return 1
+      const index = results.ages.indexOf(age)
+      return (index === -1 ? undefined : results.inflationIndexP50?.[index]) ?? 1
+    },
+    [real, results]
+  )
+
+  return { chartData, chartDataWithBand, spendingData, milestoneRows, real, deflatorForAge }
 }
 
 export function useChartFormatters() {
@@ -87,16 +123,10 @@ export function useChartFormatters() {
     [format]
   )
 
+  const compactCurrency = useCompactCurrency()
   const formatCurrencyShort = useCallback(
-    (value: number) =>
-      format.number(value, {
-        style: 'currency',
-        currency: 'EUR',
-        notation: 'compact',
-        maximumFractionDigits: 1,
-        minimumFractionDigits: 0,
-      }),
-    [format]
+    (value: number) => compactCurrency(value),
+    [compactCurrency]
   )
 
   const formatPercent = useCallback(

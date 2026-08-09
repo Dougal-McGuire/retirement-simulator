@@ -33,13 +33,16 @@ export function ReportDocument({
 interface ReportPageProps {
   children: React.ReactNode
   header?: {
+    brand?: string
     left?: string
     right?: string
   }
   footer?: {
     left?: string
+    center?: string
     showPageNumber?: boolean
     pageLabel?: string
+    pageOfLabel?: string
   }
   pageStyle?: 'default' | 'cover'
   style?: Style | Style[]
@@ -59,135 +62,366 @@ export function ReportPage({
     <Page size="A4" style={pageStyles}>
       {pageStyle !== 'cover' && header && (
         <View style={styles.header} fixed>
-          <Text>{header.left || ''}</Text>
-          <Text>{header.right || ''}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View
+              style={{
+                width: 5.5,
+                height: 5.5,
+                backgroundColor: tokens.colors.brand.yellow,
+                marginRight: 5,
+              }}
+            />
+            <Text style={styles.headerBrand}>{header.brand ?? header.left ?? ''}</Text>
+          </View>
+          <Text style={styles.headerMeta}>{header.right || ''}</Text>
         </View>
       )}
 
       {children}
 
       {pageStyle !== 'cover' && footer && (
-        <>
-          <View style={styles.footer} fixed>
-            <Text>{footer.left || ''}</Text>
-          </View>
-          {footer.showPageNumber && (
+        <View style={styles.footer} fixed>
+          <Text style={[styles.footerText, { flex: 1 }]}>{footer.left || ''}</Text>
+          <Text style={[styles.footerText, { flex: 1, textAlign: 'center' }]}>
+            {footer.center || ''}
+          </Text>
+          {footer.showPageNumber ? (
             <Text
-              fixed
-              style={styles.pageNumber}
+              style={[styles.pageNumber, { flex: 1 }]}
               render={({ pageNumber, totalPages }) =>
-                `${footer.pageLabel ?? 'Page'} ${pageNumber} / ${totalPages}`
+                `${footer.pageLabel ?? 'Page'} ${pageNumber} ${footer.pageOfLabel ?? 'of'} ${totalPages}`
               }
             />
+          ) : (
+            <Text style={[styles.footerText, { flex: 1 }]} />
           )}
-        </>
+        </View>
       )}
     </Page>
   )
 }
 
+// ---------------------------------------------------------------------------
+// Cover page
+// ---------------------------------------------------------------------------
+
+export interface CoverStat {
+  label: string
+  value: string
+  caption?: string
+}
+
 interface CoverPageProps {
+  brand: string
+  classification?: string
+  overline?: string
   title: string
+  /** Plan the report was generated from, e.g. "Plan: Retire at 60". */
+  planLabel?: string
   subtitle?: string
-  metadata?: Array<{ label: string; value: string }>
   badge?: string
+  badgeTone?: 'success' | 'warning' | 'danger'
+  stats?: CoverStat[]
+  hero?: React.ReactNode
+  heroCaption?: string
+  metadata?: Array<{ label: string; value: string }>
+  disclaimer?: string
+}
+
+const BADGE_TONES: Record<NonNullable<CoverPageProps['badgeTone']>, string> = {
+  success: '#2ea77b',
+  warning: '#d99a2b',
+  danger: '#d16158',
 }
 
 export function CoverPage({
+  brand,
+  classification,
+  overline,
   title,
+  planLabel,
   subtitle,
-  metadata,
   badge,
+  badgeTone = 'success',
+  stats,
+  hero,
+  heroCaption,
+  metadata,
+  disclaimer,
 }: CoverPageProps) {
+  const inset = pageConfig.margin.left
+
   return (
     <ReportPage pageStyle="cover">
+      {/* Top brand band — the app's near-black shell with its yellow marker */}
       <View
         style={{
-          height: 150,
-          backgroundColor: tokens.colors.accent[700],
-          paddingHorizontal: pageConfig.margin.left,
-          paddingTop: 34,
-          justifyContent: 'center',
+          backgroundColor: tokens.colors.brand.ink,
+          paddingHorizontal: inset,
+          paddingTop: 36,
+          paddingBottom: 40,
         }}
       >
+        {/* Brand row */}
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 52,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                backgroundColor: tokens.colors.brand.yellow,
+                marginRight: 6,
+              }}
+            />
+            <Text
+              style={{
+                fontSize: 8,
+                fontWeight: 600,
+                letterSpacing: 1.6,
+                textTransform: 'uppercase',
+                color: tokens.colors.white,
+              }}
+            >
+              {brand}
+            </Text>
+          </View>
+          {classification && (
+            <Text
+              style={{
+                fontSize: 7,
+                letterSpacing: 1.2,
+                textTransform: 'uppercase',
+                color: 'rgba(255, 255, 255, 0.55)',
+              }}
+            >
+              {classification}
+            </Text>
+          )}
+        </View>
+
+        {overline && (
+          <Text
+            style={{
+              fontSize: 7.5,
+              fontWeight: 600,
+              letterSpacing: 1.8,
+              textTransform: 'uppercase',
+              color: tokens.colors.brand.yellow,
+              marginBottom: 10,
+            }}
+          >
+            {overline}
+          </Text>
+        )}
+
         <Text
           style={{
-            fontSize: 28,
-            fontFamily: 'Helvetica-Bold',
+            fontSize: 31,
+            fontWeight: 700,
+            letterSpacing: -0.4,
+            lineHeight: 1.12,
             color: tokens.colors.white,
-            marginBottom: 8,
+            marginBottom: 12,
           }}
         >
           {title}
         </Text>
+
+        {planLabel && (
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: 0.2,
+              color: tokens.colors.brand.yellow,
+              marginBottom: 12,
+            }}
+          >
+            {planLabel}
+          </Text>
+        )}
+
         {subtitle && (
           <Text
             style={{
-              maxWidth: 460,
-              fontSize: 11,
-              color: '#d7e8f0',
-              lineHeight: 1.45,
+              maxWidth: 400,
+              fontSize: 9.5,
+              color: 'rgba(255, 255, 255, 0.72)',
+              lineHeight: 1.55,
+              marginBottom: badge ? 16 : 0,
             }}
           >
             {subtitle}
           </Text>
         )}
-      </View>
 
-      <View
-        style={{
-          paddingHorizontal: pageConfig.margin.left,
-          paddingTop: 34,
-          paddingBottom: pageConfig.margin.bottom,
-          flex: 1,
-        }}
-      >
         {badge && (
           <View
             style={{
               alignSelf: 'flex-start',
-              backgroundColor: tokens.colors.ink[900],
+              flexDirection: 'row',
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.35)',
+              borderRadius: 3,
               paddingVertical: 4,
-              paddingHorizontal: 10,
-              marginBottom: 24,
+              paddingHorizontal: 9,
             }}
           >
-            <Text style={{ color: tokens.colors.white, fontSize: 9, fontFamily: 'Helvetica-Bold' }}>
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: BADGE_TONES[badgeTone],
+                marginRight: 6,
+              }}
+            />
+            <Text
+              style={{
+                color: tokens.colors.white,
+                fontSize: 8,
+                fontWeight: 600,
+                letterSpacing: 0.6,
+              }}
+            >
               {badge}
             </Text>
           </View>
         )}
+      </View>
 
-        {metadata && metadata.length > 0 && (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 16 }}>
-            {metadata.map((item, index) => (
+      {/* Body */}
+      <View style={{ paddingHorizontal: inset, paddingTop: 26, flex: 1 }}>
+        {/* Stat tiles */}
+        {stats && stats.length > 0 && (
+          <View style={{ flexDirection: 'row', marginBottom: 22 }}>
+            {stats.map((stat, index) => (
               <View
                 key={index}
                 style={{
-                  width: '50%',
-                  paddingRight: 12,
-                  marginBottom: 18,
-                  borderBottomWidth: 0.5,
-                  borderBottomColor: tokens.colors.ink[200],
-                  paddingBottom: 10,
+                  flex: 1,
+                  marginRight: index < stats.length - 1 ? 10 : 0,
+                  borderWidth: 1,
+                  borderColor: tokens.colors.ink[200],
+                  borderRadius: tokens.radius.md,
+                  borderTopWidth: 2,
+                  borderTopColor: tokens.colors.brand.yellow,
+                  paddingVertical: 10,
+                  paddingHorizontal: 10,
                 }}
               >
                 <Text
                   style={{
-                    fontSize: 8,
-                    letterSpacing: 0.4,
+                    fontSize: 6.5,
+                    fontWeight: 600,
+                    letterSpacing: 0.8,
                     textTransform: 'uppercase',
-                    fontFamily: 'Helvetica-Bold',
+                    color: tokens.colors.ink[500],
+                  }}
+                >
+                  {stat.label}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    letterSpacing: -0.2,
+                    color: tokens.colors.ink[900],
+                    marginTop: 5,
+                  }}
+                >
+                  {stat.value}
+                </Text>
+                {stat.caption && (
+                  <Text style={{ fontSize: 6.5, color: tokens.colors.ink[500], marginTop: 3 }}>
+                    {stat.caption}
+                  </Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Hero graphic */}
+        {hero && (
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: tokens.colors.ink[200],
+              borderRadius: tokens.radius.md,
+              padding: 12,
+            }}
+          >
+            {hero}
+            {heroCaption && (
+              <Text
+                style={{
+                  marginTop: 6,
+                  fontSize: 6.5,
+                  color: tokens.colors.ink[500],
+                  textAlign: 'center',
+                }}
+              >
+                {heroCaption}
+              </Text>
+            )}
+          </View>
+        )}
+
+        <View style={{ flex: 1 }} />
+
+        {/* Metadata strip */}
+        {metadata && metadata.length > 0 && (
+          <View
+            style={{
+              flexDirection: 'row',
+              borderTopWidth: 1,
+              borderTopColor: tokens.colors.ink[900],
+              paddingTop: 12,
+              marginBottom: 12,
+            }}
+          >
+            {metadata.map((item, index) => (
+              <View key={index} style={{ flex: 1, paddingRight: 10 }}>
+                <Text
+                  style={{
+                    fontSize: 6.5,
+                    letterSpacing: 0.8,
+                    textTransform: 'uppercase',
+                    fontWeight: 600,
                     color: tokens.colors.ink[500],
                     marginBottom: 3,
                   }}
                 >
                   {item.label}
                 </Text>
-                <Text style={{ fontSize: 10, color: tokens.colors.ink[700] }}>{item.value}</Text>
+                <Text style={{ fontSize: 8.5, fontWeight: 500, color: tokens.colors.ink[800] }}>
+                  {item.value}
+                </Text>
               </View>
             ))}
           </View>
+        )}
+
+        {disclaimer && (
+          <Text
+            style={{
+              fontSize: 6.5,
+              color: tokens.colors.ink[400],
+              lineHeight: 1.5,
+              marginBottom: 26,
+            }}
+          >
+            {disclaimer}
+          </Text>
         )}
       </View>
     </ReportPage>

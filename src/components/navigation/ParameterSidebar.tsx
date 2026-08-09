@@ -12,7 +12,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { ParameterControls } from '@/components/forms/ParameterControls'
+import { PlanEditor } from '@/components/plans/PlanEditor'
 
 interface ParameterSidebarProps {
   className?: string
@@ -24,83 +24,50 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <div className={`hidden lg:block lg:col-span-1 ${className}`}>
-        <div className="theme-sidebar theme-parameter-panel sticky top-6">
-          <div className="relative">
-            {/* Scroll indicator - top shadow */}
-            <div
-              className="pointer-events-none absolute left-0 right-0 top-0 z-10 h-8 bg-gradient-to-b from-background to-transparent opacity-0 transition-opacity duration-200"
-              id="scroll-indicator-top"
-            />
+      {/* The desktop editor is no longer a cramped sidebar: it is the full-width
+          "Plan" tab on the simulation page. Only the mobile drawer lives here,
+          and it renders exactly the same editor. */}
 
-            <div
-              className="max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neo-black/20 hover:scrollbar-thumb-neo-black/40"
-              onScroll={(e) => {
-                const target = e.currentTarget
-                const top = document.getElementById('scroll-indicator-top')
-                const bottom = document.getElementById('scroll-indicator-bottom')
-
-                if (top && bottom) {
-                  // Show top indicator when scrolled down
-                  if (target.scrollTop > 20) {
-                    top.style.opacity = '1'
-                  } else {
-                    top.style.opacity = '0'
-                  }
-
-                  // Show bottom indicator when not at bottom
-                  const isAtBottom =
-                    target.scrollHeight - target.scrollTop - target.clientHeight < 20
-                  if (isAtBottom) {
-                    bottom.style.opacity = '0'
-                  } else {
-                    bottom.style.opacity = '1'
-                  }
-                }
-              }}
-            >
-              <ParameterControls />
-            </div>
-
-            {/* Scroll indicator - bottom shadow */}
-            <div
-              className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-8 bg-gradient-to-t from-background to-transparent opacity-100 transition-opacity duration-200"
-              id="scroll-indicator-bottom"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Sheet Trigger */}
-      <div className="lg:hidden">
+      {/* Mobile sheet trigger: docked in the document flow (sticky under the
+          header) so it can never cover the tabs, the gauge or a chart. */}
+      <div
+        data-sticky-chrome="true"
+        className={`sticky top-0 z-30 -mx-2 mb-2 border-b-2 border-neo-black bg-background px-2 py-2 sm:-mx-3 sm:px-3 lg:hidden ${className}`}
+      >
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
             <Button
               variant="secondary"
               size="sm"
-              className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-5 z-40 h-12 min-w-[11rem] shadow-neo"
+              className="h-12 w-full justify-between shadow-neo"
             >
-              <Settings className="mr-2 h-4 w-4" />
-              {t('trigger')}
+              <span className="flex items-center">
+                <Settings className="mr-2 h-4 w-4" />
+                {t('trigger')}
+              </span>
               <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </SheetTrigger>
+          {/* Drawer shell: a flex column so the header stays put and only the
+              body scrolls, and `overflow-x-hidden` so nothing inside can push
+              the panel sideways on a 390px screen. */}
           <SheetContent
             side="left"
-            className="w-full border-3 border-neo-black bg-neo-white p-0 shadow-neo sm:w-96"
+            className="flex w-full max-w-full flex-col overflow-x-hidden border-3 border-neo-black bg-neo-white p-0 shadow-neo sm:w-96"
           >
-            <SheetHeader className="border-b-3 border-neo-black bg-neo-white px-6 py-5">
-              <SheetTitle className="flex items-center text-lg font-bold uppercase tracking-[0.18em] text-neo-black">
-                <Settings className="mr-2 h-5 w-5" />
+            <SheetHeader className="shrink-0 border-b-3 border-neo-black bg-neo-white px-4 py-4 pr-12 text-left sm:px-6 sm:py-5">
+              <SheetTitle className="flex items-center text-base font-bold uppercase tracking-[0.14em] text-neo-black sm:text-lg sm:tracking-[0.18em]">
+                <Settings className="mr-2 h-5 w-5 shrink-0" />
                 {t('title')}
               </SheetTitle>
               <SheetDescription className="text-sm font-medium text-muted-foreground">
                 {t('description')}
               </SheetDescription>
             </SheetHeader>
-            <div className="max-h-[calc(100vh-120px)] overflow-y-auto px-6 pb-6">
-              <ParameterControls />
+            {/* The sheet already names the panel — `hideHeading` stops the
+                controls from repeating that title one row further down. */}
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-6 pt-3 sm:px-6">
+              <PlanEditor variant="drawer" />
             </div>
           </SheetContent>
         </Sheet>

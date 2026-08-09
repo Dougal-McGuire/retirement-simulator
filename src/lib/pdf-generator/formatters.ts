@@ -1,3 +1,5 @@
+import { compactCurrencyOptions } from '@/lib/utils/numberFormat'
+
 const numberFormatters = new Map<string, Intl.NumberFormat>()
 const dateFormatters = new Map<string, Intl.DateTimeFormat>()
 
@@ -70,6 +72,28 @@ export function fmtPercent(value: number, maximumFractionDigits = 1, locale: str
   return formatted
 }
 
+/**
+ * Percent for ratios that may legitimately exceed 100% (coverage, withdrawal
+ * and share figures). Unlike `fmtPercent` it never second-guesses the unit:
+ * the input is always a fraction, so 1.1 renders as 110%, not 1%.
+ */
+export function fmtRatioPercent(
+  value: number,
+  maximumFractionDigits = 0,
+  locale: string = 'de-DE'
+): string {
+  const formatted = getNumberFormatter(locale, {
+    style: 'percent',
+    maximumFractionDigits,
+    minimumFractionDigits: maximumFractionDigits,
+  }).format(value)
+
+  if (locale.startsWith('de')) {
+    return formatted.replace(`${nbsp}%`, `${nnbsp}%`)
+  }
+  return formatted
+}
+
 export function fmtSuccessMetric(
   count: number,
   trials: number,
@@ -79,6 +103,34 @@ export function fmtSuccessMetric(
   const normalizedRate = Math.abs(rate) > 1 ? rate / 100 : rate
   const percent = fmtPercent(normalizedRate, 1, locale)
   return `${fmtNumber(count, { locale })}/${fmtNumber(trials, { locale })} (${percent})`
+}
+
+/**
+ * Compact currency for chart axes and dense labels.
+ * en-US: €1.2M / €450K — de-DE: 1,2 Mio. € / 450.000 €
+ */
+export function fmtCompactCurrency(value: number, locale: string = 'de-DE'): string {
+  // German has no short form for thousands, so a six-figure amount renders in
+  // full — and one decimal on it ("856.841,3 €") is spurious precision.
+  const formatted = getNumberFormatter(locale, compactCurrencyOptions(value, locale)).format(value)
+
+  if (locale.startsWith('de')) {
+    return formatted.replace(`${nbsp}€`, `${nnbsp}€`)
+  }
+  return formatted
+}
+
+/**
+ * Long, human-readable date for covers and headers.
+ * en-US: August 7, 2026 — de-DE: 7. August 2026
+ */
+export function fmtDateLong(value: string | Date, locale: string = 'de-DE'): string {
+  const date = value instanceof Date ? value : new Date(value)
+  return getDateFormatter(locale, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date)
 }
 
 export function fmtDate(value: string | Date, locale: string = 'de-DE'): string {

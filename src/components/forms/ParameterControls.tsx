@@ -207,7 +207,15 @@ function CollapsibleSection({
   )
 }
 
-export function ParameterControls() {
+interface ParameterControlsProps {
+  /**
+   * Hides the panel's own heading. Set by hosts that already render one — the
+   * mobile drawer has a sheet title, and repeating it reads as a bug.
+   */
+  hideHeading?: boolean
+}
+
+export function ParameterControls({ hideHeading = false }: ParameterControlsProps = {}) {
   const t = useTranslations('parameterControls')
   const uiT = useTranslations('ui')
   const format = useFormatter()
@@ -510,13 +518,15 @@ export function ParameterControls() {
   }
 
   return (
-    <Card className="w-full border-3 border-neo-black bg-neo-white shadow-neo">
-      <CardHeader className="border-b-3 border-neo-black bg-neo-white px-6 py-5">
-        <CardTitle className="text-[1.05rem] font-black uppercase tracking-[0.22em] text-neo-black">
-          {t('title')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-8 p-6">
+    <Card className="w-full min-w-0 border-3 border-neo-black bg-neo-white shadow-neo">
+      {!hideHeading && (
+        <CardHeader className="border-b-3 border-neo-black bg-neo-white px-6 py-5">
+          <CardTitle className="text-[1.05rem] font-black uppercase tracking-[0.22em] text-neo-black">
+            {t('title')}
+          </CardTitle>
+        </CardHeader>
+      )}
+      <CardContent className="space-y-8 p-4 sm:p-6">
         <section className="grid gap-6">
           <div className="space-y-3">
             <h4 className="text-[0.78rem] font-extrabold uppercase tracking-[0.2em] text-neo-black">
