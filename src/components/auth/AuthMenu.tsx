@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useAuthEnabled } from './AuthProvider'
+import { AccountStatusLine } from './AccountStatusLine'
 
 interface AuthMenuProps {
   className?: string
@@ -184,47 +185,43 @@ function AuthSession({ className, compact }: AuthMenuProps) {
   }
 
   return (
+    // The status line sits on its own row rather than beside the avatar: in a
+    // 12rem action strip "Offline (stored on this device)" has no chance next
+    // to an avatar and a sign-out button, and truncating a status to
+    // "OFFLINE (STORED ON…" tells the user nothing.
     <div
       className={cn(
-        'flex items-center gap-2 border-3 border-neo-black bg-neo-white px-2 py-1.5 shadow-neo-sm',
+        'flex flex-col gap-1 border-3 border-neo-black bg-neo-white px-2 py-1.5 shadow-neo-sm',
         className
       )}
     >
-      {avatar}
-      <span className="flex min-w-0 flex-1 flex-col leading-tight">
-        <span className="truncate text-[0.7rem] font-bold text-neo-black" title={displayName}>
+      <div className="flex items-center gap-2">
+        {avatar}
+        <span
+          className="min-w-0 flex-1 truncate text-[0.7rem] font-bold leading-tight text-neo-black"
+          title={displayName}
+        >
           {displayName}
         </span>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span
-              className="truncate text-[0.6rem] uppercase tracking-[0.14em] text-muted-foreground"
-              title={t('localOnly')}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleSignOut}
+              disabled={isPending}
+              aria-label={t('signOut')}
+              className="h-8 w-8 shrink-0 p-0"
             >
-              {t('signedIn')}
-            </span>
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+            </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="max-w-[16rem]">
-            {t('localOnly')}
-          </TooltipContent>
+          <TooltipContent side="bottom">{t('signOut')}</TooltipContent>
         </Tooltip>
-      </span>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={handleSignOut}
-            disabled={isPending}
-            aria-label={t('signOut')}
-            className="h-8 w-8 shrink-0 p-0"
-          >
-            <LogOut className="h-4 w-4" aria-hidden="true" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">{t('signOut')}</TooltipContent>
-      </Tooltip>
+      </div>
+      {/* "Signed in" without a cloud store, the sync status with one. */}
+      <AccountStatusLine />
     </div>
   )
 }

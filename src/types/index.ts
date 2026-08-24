@@ -346,6 +346,14 @@ export interface SimulationStore {
   deletePlan: (id: string) => void
   setActivePlan: (id: string) => void
   getActivePlan: () => Plan | undefined
+  /**
+   * Replaces the plan list with the result of a cloud-sync merge.
+   *
+   * Unsaved edits are never discarded: while a working copy is dirty the active
+   * plan (and the params on screen) stay put, and only the rest of the list is
+   * reconciled. Returns true when anything actually changed.
+   */
+  applySyncedPlans: (plans: Plan[], activePlanId: string) => boolean
 
   // Actions
   updateParams: (partial: Partial<SimulationParams>) => void

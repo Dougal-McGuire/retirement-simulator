@@ -20,6 +20,7 @@ import {
   markMigrationAnswered,
   readMigrationInputs,
 } from '@/lib/stores/authMigration'
+import { markNamespaceReady } from '@/lib/stores/planSync'
 
 /**
  * The store's pristine, pre-hydration state. Captured once at module load so
@@ -35,6 +36,13 @@ async function switchNamespace(nextKey: string): Promise<void> {
 
   store.setOptions({ name: nextKey })
 
+  // The persist middleware writes on *every* `setState`, so the reset below
+  // lands on `nextKey` — the very namespace we are about to read — and would
+  // overwrite the account's plans with the pristine state before `rehydrate()`
+  // ever sees them (a signed-in workspace was lost on each reload). Keep the
+  // stored value and put it back once the reset has done its work in memory.
+  const stored = readRaw(nextKey)
+
   // Always drop the previous account's in-memory state before rehydrating.
   // Resetting unconditionally (rather than only for an empty namespace) means
   // no field can survive the switch — including ones the store derives rather
@@ -42,7 +50,30 @@ async function switchNamespace(nextKey: string): Promise<void> {
   // namespace and re-runs the store's own `onRehydrateStorage` normalisation.
   useSimulationStore.setState({ ...pristineState })
 
+  restoreRaw(nextKey, stored)
+
   await reloadNamespace()
+}
+
+/** Reads a raw localStorage entry, tolerating disabled/full storage. */
+function readRaw(key: string): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+/** Puts a raw entry back exactly as it was (absent stays absent). */
+function restoreRaw(key: string, value: string | null): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (value === null) window.localStorage.removeItem(key)
+    else window.localStorage.setItem(key, value)
+  } catch {
+    // Nothing to do: the namespace simply starts empty, as it did before.
+  }
 }
 
 /**
@@ -97,17 +128,30 @@ export function AuthStorageSync() {
     setActiveAuthUserId(signedInId)
     const nextKey = storageKey(BASE_STORE_KEY)
 
-    if (appliedKeyRef.current === nextKey) return
+    // Cloud sync waits for this signal: it must never read a workspace that is
+    // about to be replaced by a namespace switch or a migration copy.
+    if (appliedKeyRef.current === nextKey) {
+      markNamespaceReady(signedInId)
+      return
+    }
 
     const isFirstResolution = appliedKeyRef.current === null
     appliedKeyRef.current = nextKey
 
     // Signed out on first paint: the store is already pointed at the base key
     // and has hydrated normally. Nothing to do.
-    if (isFirstResolution && nextKey === BASE_STORE_KEY) return
+    if (isFirstResolution && nextKey === BASE_STORE_KEY) {
+      markNamespaceReady(null)
+      return
+    }
 
     void switchNamespace(nextKey).then(() => {
-      if (migration === 'prompt' && signedInId) setPendingUserId(signedInId)
+      if (migration === 'prompt' && signedInId) {
+        // Announced by `answer()` instead — the user may still bring plans in.
+        setPendingUserId(signedInId)
+        return
+      }
+      markNamespaceReady(signedInId)
     })
   }, [accountId, status])
 
@@ -118,12 +162,15 @@ export function AuthStorageSync() {
       if (!userId || typeof window === 'undefined') return
 
       markMigrationAnswered(userId, window.localStorage)
-      if (!bringPlans) return
+      if (!bringPlans) {
+        markNamespaceReady(userId)
+        return
+      }
 
       // Copy first, then reload the (now populated) namespace. The anonymous
       // keys are only read, so signing out returns to the untouched workspace.
       copyAnonymousWorkspace(userId, window.localStorage)
-      void reloadNamespace()
+      void reloadNamespace().then(() => markNamespaceReady(userId))
     },
     [pendingUserId]
   )

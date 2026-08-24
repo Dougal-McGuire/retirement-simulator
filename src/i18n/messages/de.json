@@ -14,6 +14,16 @@
       "note": "Die anonymen Pläne bleiben in jedem Fall auf diesem Gerät — nach dem Abmelden sind sie wieder da.",
       "confirm": "Pläne übernehmen",
       "decline": "Neu starten"
+    },
+    "sync": {
+      "syncing": "Wird synchronisiert…",
+      "synced": "Synchronisiert · {when}",
+      "justNow": "gerade eben",
+      "minutes": "vor {count} Min.",
+      "hours": "vor {count} Std.",
+      "offline": "Offline (auf diesem Gerät gespeichert)",
+      "hint": "Ihre Pläne werden in Ihrem Google-Konto gespeichert und stehen auf jedem Gerät zur Verfügung, auf dem Sie sich anmelden.",
+      "offlineHint": "Die Cloud-Synchronisierung ist gerade nicht erreichbar. Ihre Pläne bleiben auf diesem Gerät und werden automatisch wieder synchronisiert."
     }
   },
   "landing": {

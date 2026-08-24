@@ -14,6 +14,16 @@
       "note": "Either way the anonymous plans stay on this device — sign out and they are back.",
       "confirm": "Bring my plans",
       "decline": "Start fresh"
+    },
+    "sync": {
+      "syncing": "Syncing…",
+      "synced": "Synced · {when}",
+      "justNow": "just now",
+      "minutes": "{count} min ago",
+      "hours": "{count} h ago",
+      "offline": "Offline (stored on this device)",
+      "hint": "Your plans are stored with your Google account and follow you to every device you sign in on.",
+      "offlineHint": "Cloud sync is unreachable right now. Your plans stay on this device and sync again automatically."
     }
   },
   "landing": {
