@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react'
 import { useTranslations, useFormatter } from 'next-intl'
 import { Link, useRouter } from '@/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
+import { WizardLiveResult } from '@/components/forms/WizardLiveResult'
+import { timelineIssues } from '@/lib/validation/fieldValidation'
 import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
 import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
 import { CashFlowList } from '@/components/forms/fields/CashFlowList'
@@ -72,6 +74,19 @@ export default function SetupPage() {
 
   const [currentStep, setCurrentStep] = useState(0)
   const [progressLoaded, setProgressLoaded] = useState(false)
+  /**
+   * Fields currently refusing what was typed. Out-of-range text never reaches
+   * the store any more, so anything derived from the store has to admit it is
+   * describing the last accepted value rather than the one on screen.
+   */
+  const [invalidFields, setInvalidFields] = useState<Record<string, boolean>>({})
+  const markInvalid = useCallback(
+    (field: string, invalid: boolean) =>
+      setInvalidFields((previous) =>
+        Boolean(previous[field]) === invalid ? previous : { ...previous, [field]: invalid }
+      ),
+    []
+  )
 
   const stepHeadingRef = useRef<HTMLHeadingElement>(null)
   const lastFocusedStepRef = useRef<number | null>(null)
@@ -242,13 +257,17 @@ export default function SetupPage() {
   const retirementYears = Math.max(0, params.endAge - params.retirementAge)
   const realReturn = (1 + params.averageROI) / (1 + params.averageInflation) - 1
 
-  const timelineIssues: string[] = []
-  if (params.retirementAge <= params.currentAge) {
-    timelineIssues.push(t('validation.retirementAfterCurrent'))
-  }
-  if (params.endAge <= params.retirementAge) {
-    timelineIssues.push(t('validation.horizonAfterRetirement'))
-  }
+  // Same helper the plan editor uses, so the wizard and the editor can never
+  // disagree about whether four ages make sense.
+  const ageIssues = timelineIssues({
+    currentAge: params.currentAge,
+    retirementAge: params.retirementAge,
+    legalRetirementAge: params.legalRetirementAge,
+    endAge: params.endAge,
+  })
+  const timelineStale = ['currentAge', 'legalRetirementAge', 'endAge'].some(
+    (field) => invalidFields[field]
+  )
 
   const retirementSliderMin = Math.max(50, Math.min(params.currentAge + 1, 69))
 
@@ -267,9 +286,10 @@ export default function SetupPage() {
                 className="w-full"
                 min={16}
                 max={100}
+                rangeMessage={t('validation.ageRange', { min: 16, max: 100 })}
+                invalidMessage={t('validation.notANumber')}
+                onInvalidChange={(invalid) => markInvalid('currentAge', invalid)}
                 validation={{
-                  min: 16,
-                  max: 100,
                   typicalMin: 20,
                   typicalMax: 70,
                   errorMessage: t('validation.ageRange', { min: 16, max: 100 }),
@@ -287,9 +307,10 @@ export default function SetupPage() {
                 className="w-full"
                 min={60}
                 max={75}
+                rangeMessage={t('validation.ageRange', { min: 60, max: 75 })}
+                invalidMessage={t('validation.notANumber')}
+                onInvalidChange={(invalid) => markInvalid('legalRetirementAge', invalid)}
                 validation={{
-                  min: 60,
-                  max: 75,
                   typicalMin: 65,
                   typicalMax: 70,
                   errorMessage: t('validation.ageRange', { min: 60, max: 75 }),
@@ -313,21 +334,36 @@ export default function SetupPage() {
               maxLabel={formatInteger(70)}
               helpText={t('personal.fields.retirementAge.help')}
               meta={
-                <p className="border-2 border-dashed border-neo-black/30 bg-neo-blue/5 px-3 py-2 text-xs font-medium leading-relaxed text-neo-black">
+                <p
+                  data-testid="wizard-timeline-chip"
+                  data-stale={timelineStale || undefined}
+                  className={cn(
+                    'border-2 border-dashed border-neo-black/30 bg-neo-blue/5 px-3 py-2 text-xs font-medium leading-relaxed text-neo-black',
+                    // The chip describes the last accepted ages; while a field
+                    // is refusing input it is not describing what is on screen.
+                    timelineStale && 'opacity-40 grayscale'
+                  )}
+                >
                   {t('personal.timeline', { workingYears, retirementYears })}
                 </p>
               }
             />
 
-            {timelineIssues.length > 0 && (
+            {ageIssues.length > 0 && (
               <div
                 role="alert"
-                className="flex items-start gap-3 border-2 border-neo-orange bg-neo-orange/10 px-4 py-3"
+                data-testid="wizard-timeline-issues"
+                className={cn(
+                  'flex items-start gap-3 border-2 px-4 py-3',
+                  ageIssues.some((issue) => issue.severity === 'error')
+                    ? 'border-neo-red bg-neo-red/10'
+                    : 'border-neo-orange bg-neo-orange/10'
+                )}
               >
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-neo-orange" />
                 <div className="space-y-1 text-xs font-medium leading-relaxed text-neo-black">
-                  {timelineIssues.map((issue) => (
-                    <p key={issue}>{issue}</p>
+                  {ageIssues.map((issue) => (
+                    <p key={issue.id}>{t(`validation.${issue.id}`)}</p>
                   ))}
                 </div>
               </div>
@@ -344,9 +380,10 @@ export default function SetupPage() {
                 className="w-full"
                 min={65}
                 max={110}
+                rangeMessage={t('validation.ageRange', { min: 65, max: 110 })}
+                invalidMessage={t('validation.notANumber')}
+                onInvalidChange={(invalid) => markInvalid('endAge', invalid)}
                 validation={{
-                  min: 65,
-                  max: 110,
                   typicalMin: 85,
                   typicalMax: 100,
                   errorMessage: t('validation.ageRange', { min: 65, max: 110 }),
@@ -372,8 +409,10 @@ export default function SetupPage() {
                 unit={t('units.currency')}
                 groupThousands
                 min={0}
+                rangeMessage={t('validation.nonNegative')}
+                invalidMessage={t('validation.notANumber')}
+                onInvalidChange={(invalid) => markInvalid('currentAssets', invalid)}
                 validation={{
-                  min: 0,
                   typicalMax: 10_000_000,
                   errorMessage: t('validation.nonNegative'),
                   warningMessage: t('validation.typicalBetween', {
@@ -393,8 +432,10 @@ export default function SetupPage() {
                 unit={t('units.currency')}
                 groupThousands
                 min={0}
+                rangeMessage={t('validation.nonNegative')}
+                invalidMessage={t('validation.notANumber')}
+                onInvalidChange={(invalid) => markInvalid('annualSavings', invalid)}
                 validation={{
-                  min: 0,
                   typicalMax: 200_000,
                   errorMessage: t('validation.nonNegative'),
                   warningMessage: t('validation.typicalBetween', {
@@ -414,9 +455,10 @@ export default function SetupPage() {
                 unit={t('units.percentPerYear')}
                 min={-10}
                 max={20}
+                rangeMessage={t('validation.range', { min: -10, max: 20 })}
+                invalidMessage={t('validation.notANumber')}
+                onInvalidChange={(invalid) => markInvalid('annualSavingsGrowthRate', invalid)}
                 validation={{
-                  min: -10,
-                  max: 20,
                   typicalMin: 0,
                   typicalMax: 5,
                   errorMessage: t('validation.typicalBetween', {
@@ -440,8 +482,10 @@ export default function SetupPage() {
                 unit={t('units.currency')}
                 groupThousands
                 min={0}
+                rangeMessage={t('validation.nonNegative')}
+                invalidMessage={t('validation.notANumber')}
+                onInvalidChange={(invalid) => markInvalid('monthlyPension', invalid)}
                 validation={{
-                  min: 0,
                   typicalMax: 10_000,
                   errorMessage: t('validation.nonNegative'),
                   warningMessage: t('validation.typicalBetween', {
@@ -649,6 +693,11 @@ export default function SetupPage() {
                       {t('planContext.hint')}
                     </p>
                   </div>
+
+                  {/* Live preview of the plan being typed. The wizard suspends
+                      the store's auto-run, so without this the first number a
+                      user ever sees is on a different page. */}
+                  <WizardLiveResult className="max-w-3xl" />
                 </div>
 
                 <div className="theme-action-strip flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">

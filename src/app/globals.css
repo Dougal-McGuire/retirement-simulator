@@ -957,13 +957,16 @@ html[data-theme='elegant'] .bg-neo-yellow .text-neo-blue {
   color: rgb(var(--neo-white-rgb)) !important;
 }
 
-/* The closing call-to-action is a dark slab in every theme, so the muted ink it
-   inherits from the page would sit on the wrong side of the surface. Tie it to
-   the slab's own foreground token. */
+/* The closing call-to-action is a dark slab in *every* theme — including the
+   default one, which this rule used to skip. There the example-plan caption
+   inherited the page's muted grey and landed at ~2.6:1 on black. Tie the muted
+   ink inside the slab to the slab's own foreground token instead, and keep it
+   opaque enough (90%) to clear AA at the caption's small size. */
+.landing-cta .text-muted-foreground,
 html[data-theme='klar'] .landing-cta .text-muted-foreground,
 html[data-theme='elegant'] .landing-cta .text-muted-foreground,
 html[data-theme='spiel'] .landing-cta .text-muted-foreground {
-  color: color-mix(in srgb, var(--landing-cta-fg) 82%, transparent) !important;
+  color: color-mix(in srgb, var(--landing-cta-fg) 90%, transparent) !important;
 }
 
 /* Chart milestone labels ("RETIREMENT", "PENSION STARTS") are uppercased by an

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
+import { ArrowRight } from 'lucide-react'
 import { Link } from '@/navigation'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -28,11 +29,14 @@ import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
 import { WelcomeStrip } from '@/components/navigation/WelcomeStrip'
 import { AuthMenu } from '@/components/auth/AuthMenu'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
+import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { MobileMenu } from '@/components/navigation/MobileMenu'
 import { VersionInfo } from '@/components/navigation/VersionInfo'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
 import { ChartSkeleton } from '@/components/ui/skeleton'
 import { HISTORICAL_PATH_COUNT } from '@/lib/simulation/data/historicalMarket'
+import { useSetPlanSectionCollapsed } from '@/lib/stores/displayStore'
+import { scrollToPlanSection } from '@/components/plans/planSections'
 
 type TabValue = 'overview' | 'details' | 'scenarios' | 'plan'
 
@@ -47,12 +51,16 @@ function stickyChromeHeight(): number {
   const bar = document.querySelector('[data-sticky-chrome="true"]')
   if (!bar) return 0
   const rect = bar.getBoundingClientRect()
-  return rect.top <= 1 && rect.height > 0 ? rect.height : 0
+  // `rect.bottom`, not `rect.height`: the bar retracts above the viewport while
+  // the reader scrolls down, and a retracted bar overlaps nothing.
+  return rect.top <= 1 && rect.bottom > 0 ? rect.bottom : 0
 }
 
 export default function SimulationPage() {
   const t = useTranslations('simulation')
+  const tControls = useTranslations('parameterControls')
   const format = useFormatter()
+  const setPlanSectionCollapsed = useSetPlanSectionCollapsed()
   const params = useSimulationParams()
   const results = useSimulationResults()
   const isLoading = useSimulationLoading()
@@ -151,6 +159,29 @@ export default function SimulationPage() {
     [handleTabChange]
   )
 
+  /**
+   * The one pointer from the dashboard into the withdrawal planner. It opens
+   * the section first: a folded card cannot be scrolled to usefully.
+   */
+  const openWithdrawalPlanner = useCallback(() => {
+    setPlanSectionCollapsed('plan-editor-withdrawal', false)
+    handleTabChange('plan')
+
+    // The editor tab mounts on demand, so wait for the section to exist before
+    // scrolling. Its header — not its centre — is what has to end up on screen:
+    // the planner is taller than the viewport.
+    let attempts = 0
+    const settle = () => {
+      attempts += 1
+      if (!document.getElementById('plan-editor-withdrawal')) {
+        if (attempts < 30) window.requestAnimationFrame(settle)
+        return
+      }
+      scrollToPlanSection('plan-editor-withdrawal')
+    }
+    window.requestAnimationFrame(settle)
+  }, [handleTabChange, setPlanSectionCollapsed])
+
   const renderTabBody = (content: React.ReactNode) => {
     if (isLoading) return <ChartSkeleton />
     if (!results) return <ChartEmptyState />
@@ -231,6 +262,10 @@ export default function SimulationPage() {
                 <div className="theme-action-strip hidden lg:flex lg:flex-col lg:gap-3">
                   <AuthMenu className="w-48" />
                   <LocaleSwitcher className="w-48" />
+                  {/* The dashboard is where people spend their time, and it was
+                      the one page with no way to change theme — you had to go
+                      back to the landing page to do it. */}
+                  <ThemeSwitcher className="w-48" />
                   <GenerateReportButton
                     results={results}
                     params={params}
@@ -344,6 +379,31 @@ export default function SimulationPage() {
                 forceMount
                 className="mt-6 space-y-6 data-[state=inactive]:hidden"
               >
+                {/* The withdrawal planner is the last section of a very tall
+                    Plan tab, so nothing on the dashboard used to admit it
+                    exists. This is the one pointer to it. */}
+                <div
+                  data-testid="scenarios-withdrawal-jump"
+                  className="flex flex-wrap items-center justify-between gap-3 border-3 border-neo-black bg-neo-yellow px-4 py-3 shadow-neo-sm"
+                >
+                  <p className="text-xs font-bold leading-snug text-neo-black">
+                    {t('withdrawalJump.title', {
+                      strategy: tControls(
+                        `fields.withdrawalStrategy.options.${params.withdrawalStrategy}.label`
+                      ),
+                    })}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    data-testid="scenarios-withdrawal-jump-action"
+                    onClick={openWithdrawalPlanner}
+                  >
+                    {t('withdrawalJump.action')}
+                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                  </Button>
+                </div>
+
                 <PlanComparison />
                 <ScenarioList params={params} results={results} isLoading={isLoading} />
                 <RecommendationList params={params} results={results} />

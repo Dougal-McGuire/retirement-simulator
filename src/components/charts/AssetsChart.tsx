@@ -106,6 +106,11 @@ export function AssetsChart({
     onBrushChange(range)
   }
 
+  const brushAriaLabel = t('aria.brush', {
+    startAge: data[Math.max(0, Math.min(indexRange.startIndex, data.length - 1))]?.age ?? '',
+    endAge: data[Math.max(0, Math.min(indexRange.endIndex, data.length - 1))]?.age ?? '',
+  })
+
   // Axis scaling: a handful of very optimistic P90 paths would otherwise push
   // the axis to several times the median and squash the whole likely range into
   // the bottom quarter of the plot. "Focus" scales to P20–P80 with headroom.
@@ -494,6 +499,11 @@ export function AssetsChart({
               endIndex={indexRange.endIndex}
               onChange={handleBrushChange}
               tickFormatter={(v) => String(v)}
+              // Recharts names both `role="slider"` handles itself, from the
+              // `name` field of the data row — which this chart's rows do not
+              // have, so it announced "Min value: undefined, Max value:
+              // undefined". Name them after what they actually move.
+              ariaLabel={brushAriaLabel}
             />
           </ComposedChart>
         ) : (

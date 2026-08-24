@@ -16,6 +16,10 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
     headless: true,
     trace: 'on-first-retry',
+    // Sandboxed dev environments ship a pre-installed Chromium; CI leaves this unset.
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH }
+      : {},
   },
   projects: [
     {

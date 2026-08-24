@@ -35,7 +35,7 @@
       "ctaSecondary": "Dashboard erkunden",
       "note": "Keine Registrierung. Keine Cloud. Ihre Daten verlassen nie diesen Browser.",
       "lede": "Eine Durchschnittsrendite sagt Ihnen nichts.",
-      "runsNote": "Der Chart oben ist ein gespeicherter Lauf der Engine mit {previewRuns} Pfaden. Ihr eigener Plan rechnet standardmäßig mit {defaultRuns} — im Plan-Editor jederzeit erhöhbar."
+      "runsNote": "Der Chart oben ist ein gespeicherter Lauf der Engine: {previewRuns} Pfade, davon {previewRate} am Ende noch finanziert. Derselbe Plan rechnet auf Ihrem eigenen Dashboard standardmäßig {defaultRuns} Pfade und meldet {defaultRate} — weniger Stichproben, gleicher Plan. Die Laufzahl ist im Plan-Editor jederzeit erhöhbar."
     },
     "stats": {
       "scenarios": {
@@ -220,7 +220,11 @@
       "nonNegative": "Dieser Wert darf nicht negativ sein.",
       "typicalBetween": "Ungewöhnlicher Wert — typische Angaben liegen zwischen {min} und {max}.",
       "retirementAfterCurrent": "Ihr geplantes Renteneintrittsalter sollte über Ihrem aktuellen Alter liegen.",
-      "horizonAfterRetirement": "Ihr Planungshorizont sollte über das Renteneintrittsalter hinausgehen."
+      "horizonAfterRetirement": "Ihr Planungshorizont sollte über das Renteneintrittsalter hinausgehen.",
+      "range": "Bitte einen Wert zwischen {min} und {max} eingeben.",
+      "atLeast": "Bitte {min} oder mehr eingeben.",
+      "notANumber": "Bitte eine Zahl eingeben.",
+      "retirementAfterLegal": "Der geplante Ruhestand liegt nach der Regelaltersgrenze — bitte beide Altersangaben prüfen."
     },
     "units": {
       "currency": "€",
@@ -470,6 +474,13 @@
         "repairs": "Instandhaltung Haus",
         "carMaintenance": "Auto-Unterhalt"
       }
+    },
+    "liveResult": {
+      "label": "Live-Vorschau",
+      "successRate": "Erfolgsquote",
+      "medianEnd": "Median mit {age}",
+      "computing": "Berechne…",
+      "note": "Schnellvorschau aus {runs} Läufen — im Dashboard läuft der ganze Plan."
     }
   },
   "simulation": {
@@ -503,6 +514,10 @@
       "nominal": "Nominal",
       "real": "Heutige €",
       "realHint": "in heutiger Kaufkraft"
+    },
+    "withdrawalJump": {
+      "title": "Entnahmeregel: {strategy}. Wie aus dem Depot ein monatliches Einkommen wird, planst du im Plan-Editor.",
+      "action": "Entnahmestrategie wählen"
     }
   },
   "parameterSidebar": {
@@ -937,7 +952,10 @@
       "caption": "Anteil der simulierten Verläufe, in denen das Vermögen bis zum Planende reicht.",
       "detailHistorical": "{runs} historische Startjahre",
       "captionLegacy": "Verläufe, in denen das Geld bis zum Planende reicht UND mindestens {amount} (heutige Kaufkraft) übrig bleiben.",
-      "depletionDetail": "Das Geld reicht in {rate} der Verläufe"
+      "depletionDetail": "Das Geld reicht in {rate} der Verläufe",
+      "qualifierLegacy": "Inkl. Vermächtnisziel {amount}",
+      "qualifierSurvival": "Geld allein reicht in {rate}",
+      "qualifierPlain": "Geld reicht bis Alter {age} — kein Vermächtnisziel gesetzt"
     },
     "lasts": {
       "label": "Vermögen reicht",
@@ -1106,7 +1124,8 @@
     },
     "aria": {
       "description": "Vermögens-Fächerdiagramm: Der Medianverlauf ist als durchgezogene Linie dargestellt, umgeben von einem wahrscheinlichen Bereich (20.–80. Perzentil) und einem Gesamtbereich (10.–90. Perzentil).",
-      "controls": "Verwenden Sie die Pfeiltasten, um durch die Diagrammdaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen."
+      "controls": "Verwenden Sie die Pfeiltasten, um durch die Diagrammdaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen.",
+      "brush": "Angezeigter Altersbereich, {startAge} bis {endAge}. Ziehen Sie die Griffe, um in einen Teil des Zeitraums zu zoomen."
     },
     "descriptionHistorical": "Projizierter Portfoliowert aus einer historischen Rückrechnung: ein Pfad je Startjahr der Renditereihe. Die durchgezogene Linie ist der Median; die schattierten Bänder zeigen, wo die meisten dieser Verläufe liegen."
   },
@@ -1162,7 +1181,8 @@
     },
     "aria": {
       "description": "Diagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge}: eine durchgezogene Medianlinie in einem schattierten Band vom 10. bis 90. Perzentil der Ergebnisse.",
-      "controls": "Verwenden Sie die Pfeiltasten, um durch die Ausgabendaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen."
+      "controls": "Verwenden Sie die Pfeiltasten, um durch die Ausgabendaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen.",
+      "brush": "Angezeigter Altersbereich, {startAge} bis {endAge}. Ziehen Sie die Griffe, um in einen Teil des Zeitraums zu zoomen."
     }
   },
   "pdf": {
@@ -1932,7 +1952,6 @@
       "base": "Basisplan",
       "demo": "Beispielplan"
     },
-    "copySuffix": "Kopie",
     "actions": {
       "new": "Neuer Plan",
       "rename": "Umbenennen",
@@ -1942,6 +1961,7 @@
       "create": "Plan erstellen",
       "save": "Speichern",
       "confirmDelete": "Plan löschen",
+      "confirmDuplicate": "Plan duplizieren",
       "saveToPlan": "Im Plan speichern",
       "revert": "Verwerfen",
       "undo": "Rückgängig",
@@ -1953,6 +1973,12 @@
         "description": "Startet mit deinen aktuellen Parametern. Änderungen betreffen nur diesen Plan.",
         "label": "Planname",
         "placeholder": "z. B. Rente mit 60"
+      },
+      "duplicate": {
+        "title": "Plan duplizieren",
+        "description": "Kopiert „{name}“ — samt ungespeicherter Änderungen — in einen neuen Plan und wechselt dorthin.",
+        "label": "Name der Kopie",
+        "placeholder": "z. B. Zwei Jahre später in Rente"
       },
       "rename": {
         "title": "Plan umbenennen",
@@ -2105,6 +2131,9 @@
       "discard": "Verwerfen und wechseln",
       "cancel": "Hier bleiben"
     },
+    "duplicated": {
+      "toast": "„{name}“ als Kopie erstellt"
+    },
     "deleted": {
       "toast": "„{name}“ gelöscht",
       "restored": "„{name}“ wiederhergestellt",
@@ -2190,6 +2219,12 @@
       "onTarget": "Genau auf Ziel",
       "notAvailable": "—",
       "fundedHintNoGoal": "Kein Ziel gesetzt — reines Durchhalten"
+    },
+    "sections": {
+      "navLabel": "Plan-Abschnitte",
+      "collapse": "Abschnitt einklappen",
+      "expand": "Abschnitt ausklappen",
+      "staleStats": "Ein Wert unten liegt außerhalb des gültigen Bereichs — diese Kennzahlen beschreiben noch die zuletzt übernommene Eingabe."
     }
   },
   "quickAdjust": {

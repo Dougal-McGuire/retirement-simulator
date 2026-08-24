@@ -77,6 +77,36 @@ export function uniquePlanName(name: string, existing: readonly Plan[], ignoreId
   return `${trimmed} (${counter})`
 }
 
+/**
+ * Name offered when duplicating a plan.
+ *
+ * Duplicate used to mint "Base plan (copy)" silently and switch to it, and that
+ * parenthetical then turned up in comparison legends and in exported PDFs —
+ * places where nobody would have chosen it. The copy is named up front instead,
+ * and what we offer is a numbered sibling that reads like a plan.
+ *
+ * `takenNames` are *display* names (a built-in plan renders from its
+ * translation key, not from `plan.name`), so the suggestion is unique against
+ * what the user can actually see in the switcher.
+ */
+export function suggestDuplicateName(baseName: string, takenNames: readonly string[]): string {
+  const trimmed = baseName.trim() || DEFAULT_PLAN_NAME
+  const taken = new Set(takenNames.map((name) => name.trim().toLowerCase()))
+
+  // Duplicating "Base plan 2" offers "Base plan 3", not "Base plan 2 2" — but
+  // only when the un-numbered name is really there, because a trailing number
+  // is usually part of the name ("Retire at 60") rather than a copy counter.
+  const numbered = trimmed.match(/^(.*\S)\s+\d+$/)
+  const stem = numbered && taken.has(numbered[1].toLowerCase()) ? numbered[1] : trimmed
+
+  let counter = 2
+  while (taken.has(`${stem} ${counter}`.toLowerCase())) {
+    counter += 1
+  }
+
+  return `${stem} ${counter}`
+}
+
 /** Drops malformed entries and normalizes every plan's params. */
 export function normalizePlans(value: unknown, normalizeParams: ParamsNormalizer): Plan[] {
   if (!Array.isArray(value)) return []

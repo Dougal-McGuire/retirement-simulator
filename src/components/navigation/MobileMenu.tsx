@@ -14,6 +14,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
+import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
 import type { SimulationParams, SimulationResults } from '@/types'
 
@@ -76,6 +77,15 @@ export function MobileMenu({
               {t('sections.language')}
             </h4>
             <LocaleSwitcher className="w-full" />
+          </div>
+
+          {/* Theme switcher lives in the sheet rather than the mobile header
+              strip, which has no room left for a fourth control. */}
+          <div className="space-y-2">
+            <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {t('sections.theme')}
+            </h4>
+            <ThemeSwitcher className="w-full" size="default" />
           </div>
 
           {/* Primary Actions */}

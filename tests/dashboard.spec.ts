@@ -39,8 +39,16 @@ test.describe('simulation dashboard', () => {
     await page.getByRole('button', { name: 'Create plan' }).click()
     await expect(switcher).toContainText('Retire at 60')
 
-    // Duplicate + rename
+    // Duplicate asks for a name up front (and suggests a numbered sibling)
+    // instead of silently minting "Retire at 60 (copy)".
     await page.getByTestId('plan-duplicate').click()
+    const copyName = page.getByLabel('Name for the copy')
+    await expect(copyName).toHaveValue('Retire at 60 2')
+    await copyName.fill('Retire at 62')
+    await page.getByRole('button', { name: 'Duplicate plan' }).click()
+    await expect(switcher).toContainText('Retire at 62')
+
+    // Rename
     await page.getByTestId('plan-rename').click()
     await page.getByLabel('Plan name').fill('Barista FIRE')
     await page.getByRole('button', { name: 'Save', exact: true }).click()
@@ -528,5 +536,70 @@ test.describe('onboarding, overlays and template ergonomics', () => {
     // The table opens and the first highlighted row is brought into view.
     const row = page.locator('tr[data-differs="true"]').first()
     await expect(row).toBeInViewport()
+  })
+})
+
+test.describe('dashboard quick wins', () => {
+  test('lets a duplicate be named, or abandoned, before it exists', async ({ page }) => {
+    await page.goto('/en/simulation')
+
+    const switcher = page.getByTestId('plan-switcher')
+    await expect(switcher).toContainText('Base plan')
+
+    // Cancel leaves the plan list exactly as it was.
+    await page.getByTestId('plan-duplicate').click()
+    await expect(page.getByLabel('Name for the copy')).toHaveValue('Base plan 2')
+    await page.getByRole('button', { name: 'Cancel' }).click()
+    await expect(switcher).toContainText('1 of')
+    await expect(switcher).toContainText('Base plan')
+
+    // Confirming creates the copy under the typed name and switches to it —
+    // no "(copy)" ever reaches a comparison legend or a PDF.
+    await page.getByTestId('plan-duplicate').click()
+    await page.getByLabel('Name for the copy').fill('Sequence risk')
+    await page.getByRole('button', { name: 'Duplicate plan' }).click()
+    await expect(switcher).toContainText('Sequence risk')
+    await expect(switcher).toContainText('2 of')
+
+    const names = await page.evaluate(() => {
+      const parsed = JSON.parse(window.localStorage.getItem('retirement-simulator-store') as string)
+      return parsed.state.plans.map((plan: { name: string }) => plan.name)
+    })
+    expect(names).toEqual(['Base plan', 'Sequence risk'])
+  })
+
+  test('names every quick-adjust slider and the chart range brush', async ({ page }) => {
+    await page.goto('/en/simulation')
+
+    const quickAdjust = page.getByTestId('quick-adjust')
+    await expect(quickAdjust).toBeVisible()
+
+    // `role="slider"` lives on the thumb, so that is the element that has to
+    // carry the name — an aria-label on the Radix root names nothing.
+    for (const name of ['Retirement age', 'Annual savings', 'Monthly expenses', 'Expected return']) {
+      await expect(quickAdjust.getByRole('slider', { name })).toHaveCount(1)
+    }
+
+    // Recharts names the brush handles from the row's `name` field, which this
+    // chart has none of: it used to announce "Min value: undefined".
+    const brushHandles = page.getByRole('slider', { name: /Age range shown/ })
+    await expect(brushHandles.first()).toBeAttached()
+    const labels = await page.getByRole('slider').evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('aria-label') ?? '')
+    )
+    expect(labels.some((label) => label.includes('undefined'))).toBe(false)
+  })
+
+  test('offers the theme switcher on the dashboard, not only on the landing page', async ({
+    page,
+  }) => {
+    await page.goto('/en/simulation')
+
+    const themeSwitcher = page.getByRole('combobox', { name: 'Theme' })
+    await expect(themeSwitcher).toBeVisible()
+
+    await themeSwitcher.click()
+    await page.getByRole('option', { name: /Clear/ }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'klar')
   })
 })

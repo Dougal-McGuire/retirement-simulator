@@ -1,15 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { NumberFormatOptions } from 'next-intl'
 import { useFormatter, useTranslations } from 'next-intl'
-import { RotateCcw, Save } from 'lucide-react'
-import {
-  DEFAULT_PARAMS,
-  HOUSEHOLD_TYPES,
-  MARKET_MODELS,
-  type SimulationParams,
-} from '@/types'
+import { AlertTriangle, ChevronDown, RotateCcw, Save } from 'lucide-react'
+import { DEFAULT_PARAMS, HOUSEHOLD_TYPES, MARKET_MODELS, type SimulationParams } from '@/types'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -39,6 +34,13 @@ import {
   HISTORICAL_PATH_COUNT,
 } from '@/lib/simulation/data/historicalMarket'
 import { planDisplayName } from '@/lib/plans/planName'
+import { timelineIssues } from '@/lib/validation/fieldValidation'
+import { PlanSectionNav } from '@/components/plans/PlanSectionNav'
+import {
+  usePlanSectionsCollapsed,
+  useSetPlanSectionCollapsed,
+  useTogglePlanSection,
+} from '@/lib/stores/displayStore'
 import {
   useActivePlan,
   usePlanIsDirty,
@@ -70,9 +72,18 @@ interface StatItem {
   hint?: string
 }
 
-function StatStrip({ items }: { items: StatItem[] }) {
+/**
+ * `stale` greys the whole strip out: while a field next to it is refusing what
+ * was typed, these numbers describe the last accepted plan, not the one on
+ * screen, and pretending otherwise is how "30 years in retirement" survived an
+ * age change nobody committed.
+ */
+function StatStrip({ items, stale = false }: { items: StatItem[]; stale?: boolean }) {
   return (
-    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <dl
+      className={cn('grid grid-cols-2 gap-2 sm:grid-cols-3', stale && 'opacity-40 grayscale')}
+      aria-hidden={stale || undefined}
+    >
       {items.map((item) => (
         <div key={item.label} className="border-2 border-neo-black bg-background px-3 py-2">
           <dt className="text-[0.55rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
@@ -95,6 +106,11 @@ function EditorCard({
   title,
   description,
   stats,
+  statsStale = false,
+  statsStaleNote,
+  collapsed = false,
+  onToggleCollapsed,
+  collapseLabel,
   children,
   className,
 }: {
@@ -102,6 +118,11 @@ function EditorCard({
   title: string
   description: string
   stats?: StatItem[]
+  statsStale?: boolean
+  statsStaleNote?: string
+  collapsed?: boolean
+  onToggleCollapsed?: () => void
+  collapseLabel?: string
   children: React.ReactNode
   className?: string
 }) {
@@ -109,21 +130,51 @@ function EditorCard({
     <section
       id={id}
       data-testid={id}
+      data-collapsed={collapsed || undefined}
       className={cn(
-        'theme-panel-card flex flex-col gap-5 border-3 border-neo-black bg-neo-white p-5 shadow-neo',
+        'theme-panel-card flex scroll-mt-32 flex-col gap-5 border-3 border-neo-black bg-neo-white p-5 shadow-neo',
         className
       )}
     >
-      <header className="border-b-2 border-neo-black pb-3">
-        <h3 className="text-[0.92rem] font-black uppercase tracking-[0.16em] text-neo-black">
-          {title}
-        </h3>
-        <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">
-          {description}
-        </p>
+      <header className="flex items-start justify-between gap-3 border-b-2 border-neo-black pb-3">
+        <div className="min-w-0">
+          <h3 className="text-[0.92rem] font-black uppercase tracking-[0.16em] text-neo-black">
+            {title}
+          </h3>
+          <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        </div>
+        {onToggleCollapsed && (
+          <button
+            type="button"
+            data-testid={`${id}-toggle`}
+            aria-expanded={!collapsed}
+            aria-controls={`${id}-body`}
+            aria-label={collapseLabel}
+            title={collapseLabel}
+            onClick={onToggleCollapsed}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center border-2 border-neo-black bg-neo-white text-neo-black transition-neo hover:bg-neo-yellow"
+          >
+            <ChevronDown
+              className={cn('h-4 w-4 transition-transform', collapsed && '-rotate-90')}
+              aria-hidden="true"
+            />
+          </button>
+        )}
       </header>
-      {stats && stats.length > 0 && <StatStrip items={stats} />}
-      <div className="flex flex-col gap-6">{children}</div>
+      {stats && stats.length > 0 && <StatStrip items={stats} stale={statsStale} />}
+      {statsStale && statsStaleNote && (
+        <p
+          data-testid={`${id}-stats-stale`}
+          className="border-2 border-neo-orange/60 bg-neo-orange/10 px-3 py-2 text-[0.62rem] font-semibold leading-snug text-neo-black"
+        >
+          {statsStaleNote}
+        </p>
+      )}
+      <div id={`${id}-body`} className={cn('flex-col gap-6', collapsed ? 'hidden' : 'flex')}>
+        {children}
+      </div>
     </section>
   )
 }
@@ -210,6 +261,27 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
   const revertPlanDraft = useRevertPlanDraft()
 
   const [resetOpen, setResetOpen] = useState(false)
+  /**
+   * Fields currently refusing what was typed. The value that reaches the store
+   * is always the last valid one, so anything derived from it has to say so
+   * rather than quietly describing a plan the user has already edited away.
+   */
+  const [invalidFields, setInvalidFields] = useState<Record<string, boolean>>({})
+  const markInvalid = useCallback(
+    (field: string, invalid: boolean) =>
+      setInvalidFields((previous) =>
+        Boolean(previous[field]) === invalid ? previous : { ...previous, [field]: invalid }
+      ),
+    []
+  )
+
+  const collapsedSections = usePlanSectionsCollapsed()
+  const toggleSection = useTogglePlanSection()
+  const setSectionCollapsed = useSetPlanSectionCollapsed()
+  const expandSection = useCallback(
+    (id: string) => setSectionCollapsed(id, false),
+    [setSectionCollapsed]
+  )
 
   const planName = activePlan ? planDisplayName(activePlan, tPlans) : ''
 
@@ -275,6 +347,25 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
 
   const retirementSliderMin = Math.max(50, Math.min(params.currentAge + 1, 69))
 
+  // Cross-field checks. The wizard has had this callout since the first
+  // release; the editor let the same four ages contradict each other in
+  // silence, which is where "retire at 67, currently 100" came from.
+  const ageIssues = useMemo(
+    () =>
+      timelineIssues({
+        currentAge: params.currentAge,
+        retirementAge: params.retirementAge,
+        legalRetirementAge: params.legalRetirementAge,
+        endAge: params.endAge,
+      }),
+    [params.currentAge, params.retirementAge, params.legalRetirementAge, params.endAge]
+  )
+  const personalFieldsInvalid = [
+    'editor-currentAge',
+    'editor-legalRetirementAge',
+    'editor-endAge',
+  ].some((field) => invalidFields[field])
+
   // Tax readouts. The drag is measured by the engine over every simulated
   // future rather than re-derived here, so the number the editor promises is
   // the number the projection actually paid.
@@ -333,6 +424,20 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
     [tSetup, params.currentAge, params.retirementAge, params.legalRetirementAge, params.endAge]
   )
 
+  /** Collapse wiring shared by every card, so the five sections behave alike. */
+  const sectionProps = (id: string) => ({
+    collapsed: Boolean(collapsedSections[id]),
+    onToggleCollapsed: () => toggleSection(id),
+    collapseLabel: collapsedSections[id] ? t('sections.expand') : t('sections.collapse'),
+  })
+
+  /** Field-level refusal copy. Always translated — never the component default. */
+  const ageRange = (min: number, max: number) => tSetup('validation.ageRange', { min, max })
+  const numberRange = (min: number, max: number) =>
+    tSetup('validation.range', { min: formatInteger(min), max: formatInteger(max) })
+  const atLeast = (min: number) => tSetup('validation.atLeast', { min: formatInteger(min) })
+  const notANumber = tSetup('validation.notANumber')
+
   const gridClass =
     variant === 'drawer'
       ? 'grid grid-cols-1 gap-5'
@@ -383,11 +488,19 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
         </div>
       </div>
 
+      {/* Sticky sub-navigation. The Plan tab is one very tall column; the pills
+          are how you get to the withdrawal planner without scrolling past
+          everything else first. */}
+      <PlanSectionNav collapsed={collapsedSections} onExpand={expandSection} />
+
       <div className={gridClass}>
         <EditorCard
           id="plan-editor-personal"
+          {...sectionProps('plan-editor-personal')}
           title={t('groups.personal.title')}
           description={t('groups.personal.description')}
+          statsStale={personalFieldsInvalid}
+          statsStaleNote={t('sections.staleStats')}
           stats={[
             {
               label: t('summary.workingYears'),
@@ -415,6 +528,9 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               className="w-full"
               min={16}
               max={100}
+              rangeMessage={ageRange(16, 100)}
+              invalidMessage={notANumber}
+              onInvalidChange={(invalid) => markInvalid('editor-currentAge', invalid)}
             />
             <LabeledNumberInput
               id="editor-legalRetirementAge"
@@ -426,6 +542,9 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               className="w-full"
               min={60}
               max={75}
+              rangeMessage={ageRange(60, 75)}
+              invalidMessage={notANumber}
+              onInvalidChange={(invalid) => markInvalid('editor-legalRetirementAge', invalid)}
             />
           </div>
 
@@ -443,6 +562,30 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
             helpText={tSetup('personal.fields.retirementAge.help')}
           />
 
+          {/* Cross-field callout, sitting between the fields it is about. */}
+          {ageIssues.length > 0 && (
+            <div
+              role="alert"
+              data-testid="editor-timeline-issues"
+              className={cn(
+                'flex items-start gap-3 border-2 px-4 py-3',
+                ageIssues.some((issue) => issue.severity === 'error')
+                  ? 'border-neo-red bg-neo-red/10'
+                  : 'border-neo-orange bg-neo-orange/10'
+              )}
+            >
+              <AlertTriangle
+                className="mt-0.5 h-4 w-4 flex-shrink-0 text-neo-orange"
+                aria-hidden="true"
+              />
+              <div className="space-y-1 text-xs font-medium leading-relaxed text-neo-black">
+                {ageIssues.map((issue) => (
+                  <p key={issue.id}>{tSetup(`validation.${issue.id}`)}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="sm:max-w-[50%]">
             <LabeledNumberInput
               id="editor-endAge"
@@ -453,12 +596,16 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               className="w-full"
               min={65}
               max={110}
+              rangeMessage={ageRange(65, 110)}
+              invalidMessage={notANumber}
+              onInvalidChange={(invalid) => markInvalid('editor-endAge', invalid)}
             />
           </div>
         </EditorCard>
 
         <EditorCard
           id="plan-editor-income"
+          {...sectionProps('plan-editor-income')}
           title={t('groups.income.title')}
           description={t('groups.income.description')}
           stats={[
@@ -488,6 +635,9 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               unit={tSetup('units.currency')}
               groupThousands
               min={0}
+              rangeMessage={atLeast(0)}
+              invalidMessage={notANumber}
+              onInvalidChange={(invalid) => markInvalid('editor-currentAssets', invalid)}
             />
             <LabeledNumberInput
               id="editor-annualSavings"
@@ -499,6 +649,9 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               unit={tSetup('units.currency')}
               groupThousands
               min={0}
+              rangeMessage={atLeast(0)}
+              invalidMessage={notANumber}
+              onInvalidChange={(invalid) => markInvalid('editor-annualSavings', invalid)}
             />
             <LabeledNumberInput
               id="editor-annualSavingsGrowthRate"
@@ -510,6 +663,9 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               unit={tSetup('units.percentPerYear')}
               min={-10}
               max={20}
+              rangeMessage={numberRange(-10, 20)}
+              invalidMessage={notANumber}
+              onInvalidChange={(invalid) => markInvalid('editor-annualSavingsGrowthRate', invalid)}
             />
             <LabeledNumberInput
               id="editor-monthlyPension"
@@ -521,6 +677,9 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               unit={tSetup('units.currency')}
               groupThousands
               min={0}
+              rangeMessage={atLeast(0)}
+              invalidMessage={notANumber}
+              onInvalidChange={(invalid) => markInvalid('editor-monthlyPension', invalid)}
             />
           </div>
 
@@ -534,6 +693,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
 
         <EditorCard
           id="plan-editor-expenses"
+          {...sectionProps('plan-editor-expenses')}
           title={t('groups.cashFlows.title')}
           description={t('groups.cashFlows.description')}
           stats={[
@@ -571,6 +731,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
 
         <EditorCard
           id="plan-editor-market"
+          {...sectionProps('plan-editor-market')}
           title={t('groups.market.title')}
           description={t('groups.market.description')}
           stats={
@@ -815,6 +976,8 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                       unit={tSetup('units.percentPerYear')}
                       min={-5}
                       max={15}
+                      rangeMessage={numberRange(-5, 15)}
+                      invalidMessage={notANumber}
                     />
                     <LabeledNumberInput
                       id="editor-bondVolatility"
@@ -826,6 +989,8 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                       unit="%"
                       min={0}
                       max={30}
+                      rangeMessage={numberRange(0, 30)}
+                      invalidMessage={notANumber}
                     />
                   </div>
                   <p className="mt-3 text-[0.6rem] font-medium leading-snug text-muted-foreground">
@@ -897,6 +1062,8 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               groupThousands
               min={100}
               max={10000}
+              rangeMessage={numberRange(100, 10000)}
+              invalidMessage={notANumber}
             />
           </div>
 
@@ -924,6 +1091,8 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                 unit="%"
                 min={0}
                 max={50}
+                rangeMessage={numberRange(0, 50)}
+                invalidMessage={notANumber}
               />
               <LabeledNumberInput
                 id="editor-taxAllowanceAnnual"
@@ -936,6 +1105,8 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                 groupThousands
                 min={0}
                 max={10000}
+                rangeMessage={numberRange(0, 10000)}
+                invalidMessage={notANumber}
               />
             </div>
 
@@ -1004,6 +1175,8 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                   unit="%"
                   min={0}
                   max={100}
+                  rangeMessage={numberRange(0, 100)}
+                  invalidMessage={notANumber}
                 />
                 <LabeledNumberInput
                   id="editor-pensionTaxRate"
@@ -1015,6 +1188,8 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                   unit="%"
                   min={0}
                   max={50}
+                  rangeMessage={numberRange(0, 50)}
+                  invalidMessage={notANumber}
                 />
               </div>
               <p
@@ -1055,7 +1230,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
         </EditorCard>
       </div>
 
-      <WithdrawalPlanner />
+      <WithdrawalPlanner {...sectionProps('plan-editor-withdrawal')} />
 
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
         <DialogContent className="bg-neo-white sm:max-w-[30rem]" data-testid="plan-reset-dialog">

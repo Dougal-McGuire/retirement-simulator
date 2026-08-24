@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Settings, ChevronRight } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
@@ -18,9 +18,40 @@ interface ParameterSidebarProps {
   className?: string
 }
 
+/**
+ * True while the reader is scrolling *down* somewhere below the top of the
+ * page — the one situation where a full-width sticky bar is pure occlusion: the
+ * drawer it opens is not what they are reaching for, and the bar covers the row
+ * of chart they are reading towards. Scrolling back up (or reaching the top,
+ * or tabbing into the bar) brings it straight back.
+ */
+function useScrollingDown(): boolean {
+  const [scrollingDown, setScrollingDown] = useState(false)
+
+  useEffect(() => {
+    let lastY = window.scrollY
+
+    const onScroll = () => {
+      const y = window.scrollY
+      const delta = y - lastY
+      // Ignore sub-pixel jitter and rubber-banding at the extremes.
+      if (Math.abs(delta) < 8) return
+      lastY = y
+      setScrollingDown(y > 200 && delta > 0)
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  return scrollingDown
+}
+
 export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
   const [isOpen, setIsOpen] = useState(false)
   const t = useTranslations('parameterSidebar')
+  const scrollingDown = useScrollingDown()
+  const retracted = scrollingDown && !isOpen
 
   return (
     <>
@@ -29,10 +60,16 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
           and it renders exactly the same editor. */}
 
       {/* Mobile sheet trigger: docked in the document flow (sticky under the
-          header) so it can never cover the tabs, the gauge or a chart. */}
+          header) so it can never cover the tabs, the gauge or a chart — and
+          retracted while the reader scrolls down a long tab, so it stops being
+          a permanent 3.5rem lid over mid-page content. `focus-within` brings it
+          back for keyboard users, who never scroll it away in the first place. */}
       <div
         data-sticky-chrome="true"
-        className={`sticky top-0 z-30 -mx-2 mb-2 border-b-2 border-neo-black bg-background px-2 py-2 sm:-mx-3 sm:px-3 lg:hidden ${className}`}
+        data-retracted={retracted ? 'true' : 'false'}
+        className={`sticky top-0 z-30 -mx-2 mb-2 border-b-2 border-neo-black bg-background px-2 py-2 transition-transform duration-200 focus-within:translate-y-0 motion-reduce:transition-none sm:-mx-3 sm:px-3 lg:hidden ${
+          retracted ? '-translate-y-full' : 'translate-y-0'
+        } ${className}`}
       >
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>

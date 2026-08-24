@@ -148,6 +148,13 @@ export function SpendingChart({
   const isZoomed = indexRange.startIndex > 0 || indexRange.endIndex < data.length - 1
   const canRenderChart = chartSize.width > 0 && chartSize.height > 0
 
+  // See AssetsChart: Recharts' own traveller name reads "Min value: undefined"
+  // for rows without a `name` field.
+  const brushAriaLabel = t('aria.brush', {
+    startAge: data[Math.max(0, Math.min(indexRange.startIndex, data.length - 1))]?.age ?? '',
+    endAge: data[Math.max(0, Math.min(indexRange.endIndex, data.length - 1))]?.age ?? '',
+  })
+
   // Round the axis to a readable bound and size it to its widest tick label so
   // long compact-currency labels ("4,5 Mio. €") are never clipped.
   const domainMax = useMemo(() => {
@@ -319,6 +326,7 @@ export function SpendingChart({
               endIndex={indexRange.endIndex}
               onChange={onBrushChange}
               tickFormatter={(v) => String(v)}
+              ariaLabel={brushAriaLabel}
             />
           </ComposedChart>
         ) : (

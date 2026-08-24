@@ -53,6 +53,7 @@ export function WizardSliderField({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Label
+          id={`${id}-label`}
           htmlFor={id}
           className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-neo-black"
         >
@@ -76,7 +77,11 @@ export function WizardSliderField({
           step={step}
           disabled={disabled}
           className={cn('w-full', disabled && 'cursor-not-allowed')}
-          aria-label={label}
+          // The thumb is the element with `role="slider"`, so it is named from
+          // the visible label rather than repeating the string, and reads its
+          // value out formatted ("€3,200") instead of as a raw number.
+          aria-labelledby={`${id}-label`}
+          aria-valuetext={valueLabel}
         />
         <div className="mt-2.5 flex items-center justify-between text-[0.65rem] font-medium tabular-nums text-muted-foreground">
           <span>{minLabel}</span>

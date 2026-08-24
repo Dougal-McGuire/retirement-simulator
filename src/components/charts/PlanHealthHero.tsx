@@ -217,67 +217,97 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
   ]
 
   return (
-    <Card className="overflow-hidden border-3 border-neo-black">
+    <Card className="overflow-hidden border-3 border-neo-black" data-testid="plan-health-hero">
       <CardContent className={cn('bg-neo-white p-5', isLoading && 'animate-pulse opacity-70')}>
         <h2 className="sr-only">{t('title')}</h2>
         <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
           {/* Success rate hero */}
-          <div className="flex items-center gap-5 border-2 border-neo-black bg-background p-4 shadow-neo-sm lg:max-w-[21rem] lg:shrink-0">
-            {results ? (
-              <SuccessGauge rate={context.successRate} />
-            ) : (
-              <div className="flex h-36 w-36 shrink-0 items-center justify-center sm:h-40 sm:w-40">
-                <span className="text-3xl font-black text-muted-foreground">
-                  {t('notAvailable')}
+          <div className="flex flex-col gap-3 border-2 border-neo-black bg-background p-4 shadow-neo-sm lg:max-w-[21rem] lg:shrink-0">
+            <div className="flex items-center gap-5">
+              {results ? (
+                <SuccessGauge rate={context.successRate} />
+              ) : (
+                <div className="flex h-36 w-36 shrink-0 items-center justify-center sm:h-40 sm:w-40">
+                  <span className="text-3xl font-black text-muted-foreground">
+                    {t('notAvailable')}
+                  </span>
+                </div>
+              )}
+              <div className="min-w-0">
+                <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  {t('success.label')}
                 </span>
-              </div>
-            )}
-            <div className="min-w-0">
-              <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                {t('success.label')}
-              </span>
-              <p className="mt-1.5 text-xs font-medium leading-relaxed text-foreground/80">
-                {/* A bequest goal makes the gauge answer a strictly harder
+                <p className="mt-1.5 text-xs font-medium leading-relaxed text-foreground/80">
+                  {/* A bequest goal makes the gauge answer a strictly harder
                     question, so the caption has to say so — otherwise the drop
                     from raising the target reads as the plan getting worse. */}
-                {legacyTarget > 0
-                  ? t('success.captionLegacy', { amount: formatCurrency(legacyTarget) })
-                  : t('success.caption')}
-              </p>
-              {/* Only when the two definitions really are two numbers: results
+                  {legacyTarget > 0
+                    ? t('success.captionLegacy', { amount: formatCurrency(legacyTarget) })
+                    : t('success.caption')}
+                </p>
+                {/* Only when the two definitions really are two numbers: results
                   persisted before the field existed have no survival rate of
                   their own, and echoing the headline back would say nothing. */}
-              {results &&
-                context.successDefinition === 'legacyConditioned' &&
-                results.depletionSuccessRate !== undefined && (
+                {results &&
+                  context.successDefinition === 'legacyConditioned' &&
+                  results.depletionSuccessRate !== undefined && (
+                    <p
+                      className="mt-2 text-[0.68rem] font-semibold leading-snug text-muted-foreground"
+                      data-testid="hero-depletion-detail"
+                    >
+                      {t('success.depletionDetail', {
+                        rate: format.number(context.depletionSuccessRate / 100, {
+                          style: 'percent',
+                          maximumFractionDigits: 1,
+                        }),
+                      })}
+                    </p>
+                  )}
+                {results && (
                   <p
-                    className="mt-2 text-[0.68rem] font-semibold leading-snug text-muted-foreground"
-                    data-testid="hero-depletion-detail"
+                    className="mt-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
+                    data-testid="hero-runs"
+                    data-success-rate={context.successRate}
+                    data-runs={context.effectiveRuns}
+                    data-market-model={context.marketModel}
                   >
-                    {t('success.depletionDetail', {
-                      rate: format.number(context.depletionSuccessRate / 100, {
-                        style: 'percent',
-                        maximumFractionDigits: 1,
-                      }),
-                    })}
+                    {context.marketModel === 'historical'
+                      ? t('success.detailHistorical', {
+                          runs: format.number(context.effectiveRuns),
+                        })
+                      : t('success.detail', { runs: format.number(context.effectiveRuns) })}
                   </p>
                 )}
-              {results && (
-                <p
-                  className="mt-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
-                  data-testid="hero-runs"
-                  data-success-rate={context.successRate}
-                  data-runs={context.effectiveRuns}
-                  data-market-model={context.marketModel}
-                >
-                  {context.marketModel === 'historical'
-                    ? t('success.detailHistorical', {
-                        runs: format.number(context.effectiveRuns),
-                      })
-                    : t('success.detail', { runs: format.number(context.effectiveRuns) })}
-                </p>
-              )}
+              </div>
             </div>
+
+            {/* What the number above is a percentage *of*. A bequest goal makes
+                the gauge answer a strictly harder question, and until this line
+                existed the only hint was one sentence of body copy beside it —
+                so raising the target read as the plan getting worse. */}
+            {results && (
+              <p
+                data-testid="hero-success-qualifier"
+                data-definition={context.successDefinition}
+                className="border-2 border-neo-black bg-neo-yellow px-3 py-2 text-[0.66rem] font-bold leading-snug text-neo-black"
+              >
+                {context.successDefinition === 'legacyConditioned' ? (
+                  <>
+                    {t('success.qualifierLegacy', { amount: formatCurrency(legacyTarget) })}
+                    <span className="mt-1 block font-semibold text-neo-black/70">
+                      {t('success.qualifierSurvival', {
+                        rate: format.number(context.depletionSuccessRate / 100, {
+                          style: 'percent',
+                          maximumFractionDigits: 1,
+                        }),
+                      })}
+                    </span>
+                  </>
+                ) : (
+                  t('success.qualifierPlain', { age: context.lastAge })
+                )}
+              </p>
+            )}
           </div>
 
           {/* Supporting stats */}

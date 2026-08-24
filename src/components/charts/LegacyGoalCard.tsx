@@ -114,6 +114,8 @@ export function LegacyGoalCard({ params, results }: LegacyGoalCardProps) {
                 unit={tSetup('units.currency')}
                 groupThousands
                 min={0}
+                rangeMessage={tSetup('validation.nonNegative')}
+                invalidMessage={tSetup('validation.notANumber')}
               />
             </div>
           </div>

@@ -88,7 +88,10 @@ export function ExamplePlanButton({
         )}
         {isPending ? t('opening') : existing ? t('resume') : t('cta')}
       </Button>
-      <span className="landing-body text-[0.68rem] font-medium text-muted-foreground">
+      {/* 0.68rem/medium was under 11px and, on the dark closing CTA band, the
+          smallest text on the page. Caption-sized and semibold so it clears AA
+          on every surface it appears on. */}
+      <span className="landing-body text-xs font-semibold leading-relaxed text-muted-foreground">
         {failed ? t('limit', { max: MAX_PLANS }) : t('hint')}
       </span>
     </span>

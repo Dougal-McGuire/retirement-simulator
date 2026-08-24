@@ -6,6 +6,7 @@ import {
   makePlan,
   normalizePlans,
   plansToSavedSetups,
+  suggestDuplicateName,
   uniquePlanName,
 } from '../plans'
 
@@ -60,6 +61,32 @@ describe('plan helpers', () => {
 
     it('falls back to a default when the name is blank', () => {
       expect(uniquePlanName('   ', [])).toBe('Base plan')
+    })
+  })
+
+  describe('suggestDuplicateName', () => {
+    it('offers a numbered sibling rather than a "(copy)" name', () => {
+      expect(suggestDuplicateName('Base plan', ['Base plan'])).toBe('Base plan 2')
+    })
+
+    it('skips names already in use', () => {
+      expect(suggestDuplicateName('Base plan', ['Base plan', 'Base plan 2', 'BASE PLAN 3'])).toBe(
+        'Base plan 4'
+      )
+    })
+
+    it('re-uses the stem when duplicating an already numbered copy', () => {
+      expect(suggestDuplicateName('Base plan 2', ['Base plan', 'Base plan 2'])).toBe('Base plan 3')
+    })
+
+    it('keeps a trailing number that is part of the name, not a copy counter', () => {
+      expect(suggestDuplicateName('Retire at 60', ['Base plan', 'Retire at 60'])).toBe(
+        'Retire at 60 2'
+      )
+    })
+
+    it('falls back to a default when the source name is blank', () => {
+      expect(suggestDuplicateName('   ', [])).toBe('Base plan 2')
     })
   })
 

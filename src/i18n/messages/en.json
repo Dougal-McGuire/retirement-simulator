@@ -35,7 +35,7 @@
       "ctaSecondary": "Explore the dashboard",
       "note": "No sign-up. No cloud. Your data never leaves this browser.",
       "lede": "One average return tells you nothing.",
-      "runsNote": "The chart above is one baked run of the engine at {previewRuns} paths. Your own plan runs {defaultRuns} by default — raise it in the plan editor whenever you want a tighter answer."
+      "runsNote": "The chart above is one baked run of the engine: {previewRuns} paths, {previewRate} of them still funded at the end. The same plan on your own dashboard runs {defaultRuns} paths by default and reports {defaultRate} — fewer samples, same plan. Raise the run count in the plan editor whenever you want a tighter answer."
     },
     "stats": {
       "scenarios": {
@@ -220,7 +220,11 @@
       "nonNegative": "This value cannot be negative.",
       "typicalBetween": "Unusual value — typical entries fall between {min} and {max}.",
       "retirementAfterCurrent": "Your intended retirement age should be later than your current age.",
-      "horizonAfterRetirement": "Your planning horizon should extend beyond your retirement age."
+      "horizonAfterRetirement": "Your planning horizon should extend beyond your retirement age.",
+      "range": "Enter a value between {min} and {max}.",
+      "atLeast": "Enter {min} or more.",
+      "notANumber": "Enter a number.",
+      "retirementAfterLegal": "You plan to retire after the statutory pension age — double-check both ages."
     },
     "units": {
       "currency": "€",
@@ -470,6 +474,13 @@
         "repairs": "Home repairs",
         "carMaintenance": "Car maintenance"
       }
+    },
+    "liveResult": {
+      "label": "Live preview",
+      "successRate": "Success rate",
+      "medianEnd": "Median at {age}",
+      "computing": "Calculating…",
+      "note": "Quick preview from {runs} runs — the dashboard runs the full plan."
     }
   },
   "simulation": {
@@ -503,6 +514,10 @@
       "nominal": "Nominal",
       "real": "Today's €",
       "realHint": "Adjusted for inflation — amounts in today's purchasing power"
+    },
+    "withdrawalJump": {
+      "title": "Withdrawal rule: {strategy}. How the portfolio becomes a monthly income is planned in the plan editor.",
+      "action": "Choose a withdrawal strategy"
     }
   },
   "parameterSidebar": {
@@ -937,7 +952,10 @@
       "caption": "Share of simulated futures in which your money lasts through the whole plan.",
       "detailHistorical": "{runs} historical start years",
       "captionLegacy": "Futures where the money lasts the whole plan AND leaves at least {amount} in today’s euros.",
-      "depletionDetail": "Money simply lasts in {rate} of futures"
+      "depletionDetail": "Money simply lasts in {rate} of futures",
+      "qualifierLegacy": "Incl. legacy goal {amount}",
+      "qualifierSurvival": "Money lasts on its own in {rate}",
+      "qualifierPlain": "Money lasts through age {age} — no legacy goal set"
     },
     "lasts": {
       "label": "Assets last",
@@ -1106,7 +1124,8 @@
     },
     "aria": {
       "description": "Asset projection fan chart: the median outcome is drawn as a solid line, surrounded by a likely range (20th to 80th percentile) and a full range (10th to 90th percentile) band.",
-      "controls": "Use arrow keys to navigate chart data points. Press R to reset zoom. Drag across the chart to zoom into a time range."
+      "controls": "Use arrow keys to navigate chart data points. Press R to reset zoom. Drag across the chart to zoom into a time range.",
+      "brush": "Age range shown, {startAge} to {endAge}. Drag the handles to zoom the chart into part of the timeline."
     },
     "descriptionHistorical": "Projected portfolio value from a historical backtest: one path per start year in the return series. The solid line is the median outcome; the shaded bands show where most of those histories land."
   },
@@ -1162,7 +1181,8 @@
     },
     "aria": {
       "description": "Monthly spending chart from retirement age {retirementAge} onwards: a solid median line inside a shaded band spanning the 10th to 90th percentile of outcomes.",
-      "controls": "Use arrow keys to navigate spending data. Press R to reset zoom. Drag across the chart to zoom into a time range."
+      "controls": "Use arrow keys to navigate spending data. Press R to reset zoom. Drag across the chart to zoom into a time range.",
+      "brush": "Age range shown, {startAge} to {endAge}. Drag the handles to zoom the chart into part of the timeline."
     }
   },
   "pdf": {
@@ -1932,7 +1952,6 @@
       "base": "Base plan",
       "demo": "Example plan"
     },
-    "copySuffix": "copy",
     "actions": {
       "new": "New plan",
       "rename": "Rename",
@@ -1942,6 +1961,7 @@
       "create": "Create plan",
       "save": "Save",
       "confirmDelete": "Delete plan",
+      "confirmDuplicate": "Duplicate plan",
       "saveToPlan": "Save to plan",
       "revert": "Revert",
       "undo": "Undo",
@@ -1953,6 +1973,12 @@
         "description": "Starts from your current parameters. Edit it without touching your other plans.",
         "label": "Plan name",
         "placeholder": "e.g. Retire at 60"
+      },
+      "duplicate": {
+        "title": "Duplicate plan",
+        "description": "Copies “{name}” — including any unsaved edits — into a new plan and switches to it.",
+        "label": "Name for the copy",
+        "placeholder": "e.g. Retire two years later"
       },
       "rename": {
         "title": "Rename plan",
@@ -2105,6 +2131,9 @@
       "discard": "Discard and switch",
       "cancel": "Stay here"
     },
+    "duplicated": {
+      "toast": "Created “{name}” from a copy"
+    },
     "deleted": {
       "toast": "Deleted “{name}”",
       "restored": "Restored “{name}”",
@@ -2190,6 +2219,12 @@
       "onTarget": "Right on target",
       "notAvailable": "—",
       "fundedHintNoGoal": "No goal set — this is plain survival"
+    },
+    "sections": {
+      "navLabel": "Plan sections",
+      "collapse": "Collapse section",
+      "expand": "Expand section",
+      "staleStats": "A value below is out of range — these figures still describe the last accepted entry."
     }
   },
   "quickAdjust": {

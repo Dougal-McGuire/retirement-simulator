@@ -18,6 +18,7 @@ import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { FanChartPreview } from './FanChartPreview'
 import {
   APP_DEFAULT_RUNS,
+  PREVIEW_DEFAULT_RUNS_SUCCESS_RATE,
   PREVIEW_HORIZON_YEARS,
   PREVIEW_PLAN,
   PREVIEW_RUNS,
@@ -80,10 +81,12 @@ export function LandingPage() {
   // shipped default. Saying only the former made the landing page promise a
   // number the dashboard never shows.
   const defaultRunsLabel = format.number(APP_DEFAULT_RUNS)
-  const successLabel = format.number(PREVIEW_SUCCESS_RATE / 100, {
-    style: 'percent',
-    maximumFractionDigits: 1,
-  })
+  const percentLabel = (rate: number) =>
+    format.number(rate / 100, { style: 'percent', maximumFractionDigits: 1 })
+  const successLabel = percentLabel(PREVIEW_SUCCESS_RATE)
+  // Both baked from the same engine, so the note can name the sampling gap
+  // instead of leaving a visitor to find it on their own dashboard.
+  const defaultRunsSuccessLabel = percentLabel(PREVIEW_DEFAULT_RUNS_SUCCESS_RATE)
 
   // Every headline number on this page is derived from the single baked run of
   // the real engine, so the stat band can never disagree with the chart.
@@ -174,15 +177,24 @@ export function LandingPage() {
               <p className="landing-body animate-fade-in-more-delayed mt-4 text-xs font-semibold leading-relaxed text-muted-foreground">
                 {t('hero.note')}
               </p>
-              <p className="landing-body animate-fade-in-more-delayed mt-2 text-xs font-medium leading-relaxed text-muted-foreground">
-                {t('hero.runsNote', { previewRuns: runsLabel, defaultRuns: defaultRunsLabel })}
-              </p>
             </div>
 
             <div className="animate-fade-in-delayed lg:col-span-7">
               <FanChartPreview />
             </div>
           </div>
+
+          {/* The note says "the chart above", so it has to live *after* the
+              chart in document order — inside the copy column it read before
+              the chart it names on any single-column (mobile) layout. */}
+          <p className="landing-body animate-fade-in-more-delayed mt-6 max-w-3xl text-xs font-medium leading-relaxed text-muted-foreground">
+            {t('hero.runsNote', {
+              previewRuns: runsLabel,
+              previewRate: successLabel,
+              defaultRuns: defaultRunsLabel,
+              defaultRate: defaultRunsSuccessLabel,
+            })}
+          </p>
 
           {/* Stats strip */}
           <div className="animate-fade-in-more-delayed mt-12 grid grid-cols-2 gap-4 lg:mt-16 lg:grid-cols-4">

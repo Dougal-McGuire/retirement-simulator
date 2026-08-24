@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
-import { Wallet } from 'lucide-react'
+import { ChevronDown, Wallet } from 'lucide-react'
 import { WITHDRAWAL_STRATEGIES, type SimulationParams, type WithdrawalStrategy } from '@/types'
 import { Button } from '@/components/ui/button'
 import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
@@ -81,7 +81,24 @@ function StatStrip({ items }: { items: StatItem[] }) {
  * Every edit goes through `updateParams`, i.e. into the plan's working copy,
  * exactly like the rest of the editor. Nothing here writes to a stored plan.
  */
-export function WithdrawalPlanner({ className }: { className?: string }) {
+interface WithdrawalPlannerProps {
+  className?: string
+  /**
+   * Optional collapse wiring, supplied by the plan editor so this section folds
+   * away like the four cards above it. Omitted everywhere else, which leaves
+   * the planner permanently open exactly as before.
+   */
+  collapsed?: boolean
+  onToggleCollapsed?: () => void
+  collapseLabel?: string
+}
+
+export function WithdrawalPlanner({
+  className,
+  collapsed = false,
+  onToggleCollapsed,
+  collapseLabel,
+}: WithdrawalPlannerProps) {
   const t = useTranslations('withdrawalPlanner')
   const tControls = useTranslations('parameterControls')
   const tSetup = useTranslations('setup')
@@ -277,8 +294,9 @@ export function WithdrawalPlanner({ className }: { className?: string }) {
     <section
       id="plan-editor-withdrawal"
       data-testid="withdrawal-planner"
+      data-collapsed={collapsed || undefined}
       className={cn(
-        'theme-panel-card flex flex-col gap-5 border-3 border-neo-black bg-neo-white p-5 shadow-neo',
+        'theme-panel-card flex scroll-mt-32 flex-col gap-5 border-3 border-neo-black bg-neo-white p-5 shadow-neo',
         className
       )}
     >
@@ -294,332 +312,361 @@ export function WithdrawalPlanner({ className }: { className?: string }) {
             </p>
           </div>
         </div>
-        {canShowReal && <RealToggle value={displayReal} onChange={setDisplayReal} />}
+        <div className="flex shrink-0 items-center gap-2">
+          {canShowReal && <RealToggle value={displayReal} onChange={setDisplayReal} />}
+          {onToggleCollapsed && (
+            <button
+              type="button"
+              data-testid="plan-editor-withdrawal-toggle"
+              aria-expanded={!collapsed}
+              aria-controls="plan-editor-withdrawal-body"
+              aria-label={collapseLabel}
+              title={collapseLabel}
+              onClick={onToggleCollapsed}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center border-2 border-neo-black bg-neo-white text-neo-black transition-neo hover:bg-neo-yellow"
+            >
+              <ChevronDown
+                className={cn('h-4 w-4 transition-transform', collapsed && '-rotate-90')}
+                aria-hidden="true"
+              />
+            </button>
+          )}
+        </div>
       </header>
 
       <StatStrip items={stats} />
 
-      <div className="space-y-3" data-testid="withdrawal-strategy-picker">
-        <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
-          {t('strategyLabel')}
-        </span>
-        <div className="grid gap-2 sm:grid-cols-2" role="group">
-          {WITHDRAWAL_STRATEGIES.map((strategy) => {
-            const isSelected = params.withdrawalStrategy === strategy
-            return (
-              <button
-                key={strategy}
-                type="button"
-                aria-pressed={isSelected}
-                data-testid={`withdrawal-strategy-${strategy}`}
-                onClick={() => updateParams({ withdrawalStrategy: strategy })}
-                className={cn(
-                  'flex flex-col items-start gap-1 border-2 border-neo-black px-3 py-2.5 text-left transition-neo',
-                  isSelected
-                    ? 'bg-neo-blue text-neo-white shadow-neo-xs'
-                    : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
-                )}
-              >
-                <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.1em]">
-                  {strategyLabel(strategy)}
-                </span>
-                <span className="text-[0.58rem] font-medium leading-snug opacity-90">
-                  {tControls(`fields.withdrawalStrategy.options.${strategy}.description`)}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {corridor ? (
-        <SpendingCorridorChart
-          points={corridor.points}
-          retirementAge={Math.max(
-            results?.params.currentAge ?? 0,
-            results?.params.retirementAge ?? 0
-          )}
-          legalRetirementAge={results?.params.legalRetirementAge ?? 0}
-          hasFloor={corridor.paths.hasFloor}
-          hasCeiling={corridor.paths.hasCeiling}
-          formatCurrency={formatCurrency}
-          formatCurrencyShort={formatCurrencyShort}
-        />
-      ) : (
-        <p className="border-2 border-dashed border-neo-black/30 px-4 py-6 text-center text-xs font-medium text-muted-foreground">
-          {t('corridor.empty')}
-        </p>
-      )}
-
-      <div className="space-y-4 border-2 border-neo-black bg-background px-4 py-4">
-        <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
-          {t('paramsLabel')}
-        </span>
-
-        {!showRateSlider && (
-          <p className="text-[0.62rem] font-medium leading-snug text-muted-foreground">
-            {t('noParams')}
-          </p>
-        )}
-
-        {showRateSlider && (
-          <div
-            className={cn(
-              'grid gap-x-5 gap-y-6',
-              // Three sliders fit one row; a rate plus a euro field reads
-              // better as two wider columns.
-              showGuardrails ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
-            )}
-          >
-            <WizardSliderField
-              id="planner-dsWithdrawalRate"
-              label={tControls('fields.dsWithdrawalRate.label')}
-              value={params.dsWithdrawalRate * 100}
-              onValueChange={(value) => updateParams({ dsWithdrawalRate: value / 100 })}
-              min={2}
-              max={8}
-              step={0.25}
-              valueLabel={formatPercent(params.dsWithdrawalRate, 2)}
-              minLabel={formatPercent(0.02, 0)}
-              maxLabel={formatPercent(0.08, 0)}
-            />
-
-            {showGuardrails && (
-              <>
-                <WizardSliderField
-                  id="planner-dsCeilingRate"
-                  label={tControls('fields.dsCeilingRate.label')}
-                  value={params.dsCeilingRate * 100}
-                  onValueChange={(value) => updateParams({ dsCeilingRate: value / 100 })}
-                  min={0}
-                  max={15}
-                  step={0.5}
-                  valueLabel={formatPercent(params.dsCeilingRate, 1)}
-                  minLabel={formatPercent(0, 0)}
-                  maxLabel={formatPercent(0.15, 0)}
-                />
-                <WizardSliderField
-                  id="planner-dsFloorRate"
-                  label={tControls('fields.dsFloorRate.label')}
-                  value={params.dsFloorRate * 100}
-                  onValueChange={(value) => updateParams({ dsFloorRate: value / 100 })}
-                  min={-15}
-                  max={0}
-                  step={0.5}
-                  valueLabel={formatPercent(params.dsFloorRate, 1)}
-                  minLabel={formatPercent(-0.15, 0)}
-                  maxLabel={formatPercent(0, 0)}
-                />
-              </>
-            )}
-
-            {showRealFloor && (
-              <LabeledNumberInput
-                id="planner-spendingFloorReal"
-                label={tControls('fields.spendingFloorReal.label')}
-                value={params.spendingFloorReal}
-                onChange={(value) => updateParams({ spendingFloorReal: value })}
-                helpText={tControls('fields.spendingFloorReal.tooltip')}
-                className="w-full"
-                unit={tSetup('units.currency')}
-                groupThousands
-                min={0}
-                max={500000}
-              />
-            )}
+      <div
+        id="plan-editor-withdrawal-body"
+        className={cn('flex-col gap-5', collapsed ? 'hidden' : 'flex')}
+      >
+        <div className="space-y-3" data-testid="withdrawal-strategy-picker">
+          <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+            {t('strategyLabel')}
+          </span>
+          <div className="grid gap-2 sm:grid-cols-2" role="group">
+            {WITHDRAWAL_STRATEGIES.map((strategy) => {
+              const isSelected = params.withdrawalStrategy === strategy
+              return (
+                <button
+                  key={strategy}
+                  type="button"
+                  aria-pressed={isSelected}
+                  data-testid={`withdrawal-strategy-${strategy}`}
+                  onClick={() => updateParams({ withdrawalStrategy: strategy })}
+                  className={cn(
+                    'flex flex-col items-start gap-1 border-2 border-neo-black px-3 py-2.5 text-left transition-neo',
+                    isSelected
+                      ? 'bg-neo-blue text-neo-white shadow-neo-xs'
+                      : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
+                  )}
+                >
+                  <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.1em]">
+                    {strategyLabel(strategy)}
+                  </span>
+                  <span className="text-[0.58rem] font-medium leading-snug opacity-90">
+                    {tControls(`fields.withdrawalStrategy.options.${strategy}.description`)}
+                  </span>
+                </button>
+              )
+            })}
           </div>
-        )}
-
-        {showRateSlider && (
-          <p className="text-[0.6rem] font-medium leading-snug text-muted-foreground">
-            {tControls('fields.dsWithdrawalRate.tooltip')}
-          </p>
-        )}
-
-        <p className="text-[0.6rem] font-medium leading-snug text-muted-foreground">
-          {t('tradeoff')}
-        </p>
-      </div>
-
-      <div className="space-y-4 border-3 border-neo-black bg-neo-white p-4 shadow-neo-sm">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h4 className="text-[0.78rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
-              {t('compare.title')}
-            </h4>
-            <p className="mt-1 max-w-xl text-[0.66rem] font-medium text-muted-foreground">
-              {t('compare.subtitle')}
-            </p>
-          </div>
-          <Button
-            size="sm"
-            className="shrink-0"
-            onClick={() => void runComparison()}
-            disabled={status === 'running'}
-            data-testid="strategy-compare-run"
-          >
-            {status === 'running'
-              ? t('compare.running')
-              : snapshots.length > 0
-                ? t('compare.rerun')
-                : t('compare.run')}
-          </Button>
         </div>
 
-        {status === 'error' && (
-          <p className="border-2 border-neo-red bg-red-50 px-3 py-2 text-xs font-semibold text-neo-red">
-            {t('compare.error')}
-          </p>
-        )}
-
-        {snapshots.length === 0 ? (
-          <p className="border-2 border-dashed border-neo-black/30 px-4 py-5 text-center text-xs font-medium text-muted-foreground">
-            {status === 'running' ? t('compare.running') : t('compare.empty')}
-          </p>
+        {corridor ? (
+          <SpendingCorridorChart
+            points={corridor.points}
+            retirementAge={Math.max(
+              results?.params.currentAge ?? 0,
+              results?.params.retirementAge ?? 0
+            )}
+            legalRetirementAge={results?.params.legalRetirementAge ?? 0}
+            hasFloor={corridor.paths.hasFloor}
+            hasCeiling={corridor.paths.hasCeiling}
+            formatCurrency={formatCurrency}
+            formatCurrencyShort={formatCurrencyShort}
+          />
         ) : (
-          <>
-            {isStale && (
-              <p
-                className="border-2 border-warning-600 bg-warning-50 px-3 py-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-warning-700"
-                data-testid="strategy-compare-stale"
-              >
-                {t('compare.stale')}
-              </p>
-            )}
-
-            {/* Desktop: one row per strategy. */}
-            <div className={cn('hidden overflow-x-auto md:block', isStale && 'opacity-50')}>
-              <table
-                className="w-full min-w-[34rem] border-collapse text-left"
-                data-testid="strategy-compare-table"
-              >
-                <thead>
-                  <tr className="border-b-2 border-neo-black text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
-                    <th scope="col" className="py-2 pr-3">
-                      {t('compare.columns.strategy')}
-                    </th>
-                    {(['success', 'lifetimeSpending', 'floor', 'volatility'] as const).map(
-                      (column) => (
-                        <th key={column} scope="col" className="py-2 pr-3 text-right">
-                          {t(`compare.columns.${column}`)}
-                        </th>
-                      )
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {snapshots.map((snapshot) => {
-                    const active = snapshot.strategy === params.withdrawalStrategy
-                    return (
-                      <tr
-                        key={snapshot.strategy}
-                        data-testid="strategy-compare-row"
-                        data-strategy={snapshot.strategy}
-                        className={cn(
-                          'border-b border-neo-black/15 text-[0.72rem] font-semibold text-neo-black',
-                          active && 'bg-neo-yellow/25'
-                        )}
-                      >
-                        <th scope="row" className="py-3 pr-3 font-extrabold">
-                          <span className="flex flex-wrap items-center gap-2">
-                            {strategyLabel(snapshot.strategy)}
-                            {active && (
-                              <span className="text-[0.54rem] font-semibold uppercase tracking-[0.1em] text-neo-blue">
-                                {t('compare.active')}
-                              </span>
-                            )}
-                            {!active && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  updateParams({ withdrawalStrategy: snapshot.strategy })
-                                }
-                                data-testid={`strategy-compare-apply-${snapshot.strategy}`}
-                                className="border border-neo-black px-1.5 py-px text-[0.52rem] font-extrabold uppercase tracking-[0.1em] text-muted-foreground transition-neo hover:bg-neo-blue hover:text-neo-white"
-                              >
-                                {t('compare.apply')}
-                              </button>
-                            )}
-                          </span>
-                        </th>
-                        {compareCells(snapshot).map((cell) => (
-                          <td
-                            key={cell.key}
-                            className="py-3 pr-3 text-right tabular-nums"
-                            data-testid={`strategy-compare-${cell.key}`}
-                          >
-                            {cell.value}
-                            {renderBest(cell.best)}
-                          </td>
-                        ))}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile: the same four numbers per strategy, nothing clipped. */}
-            <ul className={cn('space-y-3 md:hidden', isStale && 'opacity-50')}>
-              {snapshots.map((snapshot) => {
-                const active = snapshot.strategy === params.withdrawalStrategy
-                return (
-                  <li
-                    key={snapshot.strategy}
-                    data-testid="strategy-compare-card"
-                    data-strategy={snapshot.strategy}
-                    className={cn(
-                      'border-2 border-neo-black bg-neo-white px-4 py-3',
-                      active && 'bg-neo-yellow/25'
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[0.72rem] font-extrabold text-neo-black">
-                        {strategyLabel(snapshot.strategy)}
-                      </span>
-                      {active ? (
-                        <span className="shrink-0 text-[0.54rem] font-semibold uppercase tracking-[0.1em] text-neo-blue">
-                          {t('compare.active')}
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => updateParams({ withdrawalStrategy: snapshot.strategy })}
-                          className="shrink-0 border border-neo-black px-1.5 py-px text-[0.52rem] font-extrabold uppercase tracking-[0.1em] text-muted-foreground"
-                        >
-                          {t('compare.apply')}
-                        </button>
-                      )}
-                    </div>
-                    <dl className="mt-2 divide-y divide-neo-black/10 text-[0.68rem]">
-                      {compareCells(snapshot).map((cell) => (
-                        <div
-                          key={cell.key}
-                          className="flex items-baseline justify-between gap-3 py-1.5"
-                        >
-                          <dt className="font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                            {t(`compare.columns.${cell.key}`)}
-                          </dt>
-                          <dd className="shrink-0 text-right font-extrabold tabular-nums">
-                            {cell.value}
-                            {renderBest(cell.best)}
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
-                  </li>
-                )
-              })}
-            </ul>
-
-            <p className="text-[0.6rem] font-medium leading-snug text-muted-foreground">
-              {t('compare.runsNote', {
-                runs: format.number(Math.min(params.simulationRuns, STRATEGY_COMPARE_RUNS)),
-                age: referenceAge,
-              })}
-            </p>
-          </>
+          <p className="border-2 border-dashed border-neo-black/30 px-4 py-6 text-center text-xs font-medium text-muted-foreground">
+            {t('corridor.empty')}
+          </p>
         )}
+
+        <div className="space-y-4 border-2 border-neo-black bg-background px-4 py-4">
+          <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+            {t('paramsLabel')}
+          </span>
+
+          {!showRateSlider && (
+            <p className="text-[0.62rem] font-medium leading-snug text-muted-foreground">
+              {t('noParams')}
+            </p>
+          )}
+
+          {showRateSlider && (
+            <div
+              className={cn(
+                'grid gap-x-5 gap-y-6',
+                // Three sliders fit one row; a rate plus a euro field reads
+                // better as two wider columns.
+                showGuardrails ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+              )}
+            >
+              <WizardSliderField
+                id="planner-dsWithdrawalRate"
+                label={tControls('fields.dsWithdrawalRate.label')}
+                value={params.dsWithdrawalRate * 100}
+                onValueChange={(value) => updateParams({ dsWithdrawalRate: value / 100 })}
+                min={2}
+                max={8}
+                step={0.25}
+                valueLabel={formatPercent(params.dsWithdrawalRate, 2)}
+                minLabel={formatPercent(0.02, 0)}
+                maxLabel={formatPercent(0.08, 0)}
+              />
+
+              {showGuardrails && (
+                <>
+                  <WizardSliderField
+                    id="planner-dsCeilingRate"
+                    label={tControls('fields.dsCeilingRate.label')}
+                    value={params.dsCeilingRate * 100}
+                    onValueChange={(value) => updateParams({ dsCeilingRate: value / 100 })}
+                    min={0}
+                    max={15}
+                    step={0.5}
+                    valueLabel={formatPercent(params.dsCeilingRate, 1)}
+                    minLabel={formatPercent(0, 0)}
+                    maxLabel={formatPercent(0.15, 0)}
+                  />
+                  <WizardSliderField
+                    id="planner-dsFloorRate"
+                    label={tControls('fields.dsFloorRate.label')}
+                    value={params.dsFloorRate * 100}
+                    onValueChange={(value) => updateParams({ dsFloorRate: value / 100 })}
+                    min={-15}
+                    max={0}
+                    step={0.5}
+                    valueLabel={formatPercent(params.dsFloorRate, 1)}
+                    minLabel={formatPercent(-0.15, 0)}
+                    maxLabel={formatPercent(0, 0)}
+                  />
+                </>
+              )}
+
+              {showRealFloor && (
+                <LabeledNumberInput
+                  id="planner-spendingFloorReal"
+                  label={tControls('fields.spendingFloorReal.label')}
+                  value={params.spendingFloorReal}
+                  onChange={(value) => updateParams({ spendingFloorReal: value })}
+                  helpText={tControls('fields.spendingFloorReal.tooltip')}
+                  className="w-full"
+                  unit={tSetup('units.currency')}
+                  groupThousands
+                  min={0}
+                  max={500000}
+                  rangeMessage={tSetup('validation.range', {
+                    min: format.number(0),
+                    max: format.number(500000),
+                  })}
+                  invalidMessage={tSetup('validation.notANumber')}
+                />
+              )}
+            </div>
+          )}
+
+          {showRateSlider && (
+            <p className="text-[0.6rem] font-medium leading-snug text-muted-foreground">
+              {tControls('fields.dsWithdrawalRate.tooltip')}
+            </p>
+          )}
+
+          <p className="text-[0.6rem] font-medium leading-snug text-muted-foreground">
+            {t('tradeoff')}
+          </p>
+        </div>
+
+        <div className="space-y-4 border-3 border-neo-black bg-neo-white p-4 shadow-neo-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h4 className="text-[0.78rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                {t('compare.title')}
+              </h4>
+              <p className="mt-1 max-w-xl text-[0.66rem] font-medium text-muted-foreground">
+                {t('compare.subtitle')}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              className="shrink-0"
+              onClick={() => void runComparison()}
+              disabled={status === 'running'}
+              data-testid="strategy-compare-run"
+            >
+              {status === 'running'
+                ? t('compare.running')
+                : snapshots.length > 0
+                  ? t('compare.rerun')
+                  : t('compare.run')}
+            </Button>
+          </div>
+
+          {status === 'error' && (
+            <p className="border-2 border-neo-red bg-red-50 px-3 py-2 text-xs font-semibold text-neo-red">
+              {t('compare.error')}
+            </p>
+          )}
+
+          {snapshots.length === 0 ? (
+            <p className="border-2 border-dashed border-neo-black/30 px-4 py-5 text-center text-xs font-medium text-muted-foreground">
+              {status === 'running' ? t('compare.running') : t('compare.empty')}
+            </p>
+          ) : (
+            <>
+              {isStale && (
+                <p
+                  className="border-2 border-warning-600 bg-warning-50 px-3 py-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-warning-700"
+                  data-testid="strategy-compare-stale"
+                >
+                  {t('compare.stale')}
+                </p>
+              )}
+
+              {/* Desktop: one row per strategy. */}
+              <div className={cn('hidden overflow-x-auto md:block', isStale && 'opacity-50')}>
+                <table
+                  className="w-full min-w-[34rem] border-collapse text-left"
+                  data-testid="strategy-compare-table"
+                >
+                  <thead>
+                    <tr className="border-b-2 border-neo-black text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
+                      <th scope="col" className="py-2 pr-3">
+                        {t('compare.columns.strategy')}
+                      </th>
+                      {(['success', 'lifetimeSpending', 'floor', 'volatility'] as const).map(
+                        (column) => (
+                          <th key={column} scope="col" className="py-2 pr-3 text-right">
+                            {t(`compare.columns.${column}`)}
+                          </th>
+                        )
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {snapshots.map((snapshot) => {
+                      const active = snapshot.strategy === params.withdrawalStrategy
+                      return (
+                        <tr
+                          key={snapshot.strategy}
+                          data-testid="strategy-compare-row"
+                          data-strategy={snapshot.strategy}
+                          className={cn(
+                            'border-b border-neo-black/15 text-[0.72rem] font-semibold text-neo-black',
+                            active && 'bg-neo-yellow/25'
+                          )}
+                        >
+                          <th scope="row" className="py-3 pr-3 font-extrabold">
+                            <span className="flex flex-wrap items-center gap-2">
+                              {strategyLabel(snapshot.strategy)}
+                              {active && (
+                                <span className="text-[0.54rem] font-semibold uppercase tracking-[0.1em] text-neo-blue">
+                                  {t('compare.active')}
+                                </span>
+                              )}
+                              {!active && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    updateParams({ withdrawalStrategy: snapshot.strategy })
+                                  }
+                                  data-testid={`strategy-compare-apply-${snapshot.strategy}`}
+                                  className="border border-neo-black px-1.5 py-px text-[0.52rem] font-extrabold uppercase tracking-[0.1em] text-muted-foreground transition-neo hover:bg-neo-blue hover:text-neo-white"
+                                >
+                                  {t('compare.apply')}
+                                </button>
+                              )}
+                            </span>
+                          </th>
+                          {compareCells(snapshot).map((cell) => (
+                            <td
+                              key={cell.key}
+                              className="py-3 pr-3 text-right tabular-nums"
+                              data-testid={`strategy-compare-${cell.key}`}
+                            >
+                              {cell.value}
+                              {renderBest(cell.best)}
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile: the same four numbers per strategy, nothing clipped. */}
+              <ul className={cn('space-y-3 md:hidden', isStale && 'opacity-50')}>
+                {snapshots.map((snapshot) => {
+                  const active = snapshot.strategy === params.withdrawalStrategy
+                  return (
+                    <li
+                      key={snapshot.strategy}
+                      data-testid="strategy-compare-card"
+                      data-strategy={snapshot.strategy}
+                      className={cn(
+                        'border-2 border-neo-black bg-neo-white px-4 py-3',
+                        active && 'bg-neo-yellow/25'
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[0.72rem] font-extrabold text-neo-black">
+                          {strategyLabel(snapshot.strategy)}
+                        </span>
+                        {active ? (
+                          <span className="shrink-0 text-[0.54rem] font-semibold uppercase tracking-[0.1em] text-neo-blue">
+                            {t('compare.active')}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => updateParams({ withdrawalStrategy: snapshot.strategy })}
+                            className="shrink-0 border border-neo-black px-1.5 py-px text-[0.52rem] font-extrabold uppercase tracking-[0.1em] text-muted-foreground"
+                          >
+                            {t('compare.apply')}
+                          </button>
+                        )}
+                      </div>
+                      <dl className="mt-2 divide-y divide-neo-black/10 text-[0.68rem]">
+                        {compareCells(snapshot).map((cell) => (
+                          <div
+                            key={cell.key}
+                            className="flex items-baseline justify-between gap-3 py-1.5"
+                          >
+                            <dt className="font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                              {t(`compare.columns.${cell.key}`)}
+                            </dt>
+                            <dd className="shrink-0 text-right font-extrabold tabular-nums">
+                              {cell.value}
+                              {renderBest(cell.best)}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </li>
+                  )
+                })}
+              </ul>
+
+              <p className="text-[0.6rem] font-medium leading-snug text-muted-foreground">
+                {t('compare.runsNote', {
+                  runs: format.number(Math.min(params.simulationRuns, STRATEGY_COMPARE_RUNS)),
+                  age: referenceAge,
+                })}
+              </p>
+            </>
+          )}
+        </div>
       </div>
     </section>
   )

@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select'
 import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
 import { planDisplayName } from '@/lib/plans/planName'
+import { suggestDuplicateName } from '@/lib/stores/plans'
 import { toast, TOAST_DURATION } from '@/components/ui/toast'
 import { ActionToast } from '@/components/ui/action-toast'
 import {
@@ -67,6 +68,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
   const successRates = usePlanSuccessRates()
 
   const [newOpen, setNewOpen] = useState(false)
+  const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null)
@@ -88,6 +90,12 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
   const activeName = planDisplayName(activePlan, t)
   const atLimit = plans.length >= MAX_PLANS
   const pendingPlan = pendingPlanId ? plans.find((plan) => plan.id === pendingPlanId) : undefined
+  // Prefilled into the duplicate dialog, so the copy is named before it exists
+  // rather than inheriting a "(copy)" that later shows up in a PDF.
+  const duplicateSuggestion = suggestDuplicateName(
+    activeName,
+    plans.map((plan) => planDisplayName(plan, t))
+  )
 
   const requestSwitch = (nextId: string) => {
     if (nextId === activePlan.id) return
@@ -223,13 +231,19 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
         {/* Mobile has no room for the select and the actions on one line, so
             the actions become a full-width four-up toolbar instead of a short
             orphaned row of icons hanging under the left edge of the select. */}
+        {/* Naming rule for this toolbar: exactly *one* source per button.
+            `title` and `aria-label` carrying the same string made a screen
+            reader read the button as its own description — "New plan, New
+            plan". The labelled button drops `title`; the icon-only buttons keep
+            `title` (it is both the tooltip and the accessible name) and drop
+            `aria-label`. The plan-limit message is not a tooltip either: it is
+            already spelled out in the visible line below this row. */}
         <div className="grid shrink-0 grid-cols-4 items-center gap-1.5 sm:flex">
           <Button
             variant="outline"
             size="sm"
             className="h-10 w-full px-0 sm:w-auto sm:px-3"
             disabled={atLimit}
-            title={atLimit ? t('switcher.limit', { max: MAX_PLANS }) : t('actions.new')}
             onClick={() => setNewOpen(true)}
             data-testid="plan-new"
           >
@@ -241,7 +255,6 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
             variant="ghost"
             size="sm"
             className="h-10 w-full px-0 sm:w-10"
-            aria-label={t('actions.rename')}
             title={t('actions.rename')}
             onClick={() => setRenameOpen(true)}
             data-testid="plan-rename"
@@ -252,10 +265,9 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
             variant="ghost"
             size="sm"
             className="h-10 w-full px-0 sm:w-10"
-            aria-label={t('actions.duplicate')}
-            title={atLimit ? t('switcher.limit', { max: MAX_PLANS }) : t('actions.duplicate')}
+            title={t('actions.duplicate')}
             disabled={atLimit}
-            onClick={() => duplicatePlan(activePlan.id, `${activeName} (${t('copySuffix')})`)}
+            onClick={() => setDuplicateOpen(true)}
             data-testid="plan-duplicate"
           >
             <Copy className="h-4 w-4" aria-hidden="true" />
@@ -264,7 +276,6 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
             variant="ghost"
             size="sm"
             className="h-10 w-full px-0 text-neo-red sm:w-10"
-            aria-label={t('actions.delete')}
             title={t('actions.delete')}
             disabled={plans.length <= 1}
             onClick={() => setDeleteOpen(true)}
@@ -325,6 +336,25 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
         placeholder={t('dialogs.new.placeholder')}
         confirmLabel={t('actions.create')}
         onConfirm={(name) => createPlan(name)}
+      />
+
+      {/* Duplicate asks for a name instead of inventing one: the copy becomes
+          the active plan immediately, and its name is what comparison legends
+          and the exported PDF will show. */}
+      <PlanNameDialog
+        open={duplicateOpen}
+        onOpenChange={setDuplicateOpen}
+        inputId="plan-duplicate-name"
+        initialName={duplicateSuggestion}
+        title={t('dialogs.duplicate.title')}
+        description={t('dialogs.duplicate.description', { name: activeName })}
+        label={t('dialogs.duplicate.label')}
+        placeholder={t('dialogs.duplicate.placeholder')}
+        confirmLabel={t('actions.confirmDuplicate')}
+        onConfirm={(name) => {
+          duplicatePlan(activePlan.id, name)
+          toast.success(t('duplicated.toast', { name }))
+        }}
       />
 
       <PlanNameDialog

@@ -21,6 +21,18 @@ export type DisplayStore = {
    */
   welcomeDismissed: boolean
   dismissWelcome: () => void
+  /**
+   * Collapsed plan-editor sections, keyed by section id. Absent or `false`
+   * means expanded, so a browser that has never seen the editor gets the full
+   * page rather than five closed drawers.
+   *
+   * A view preference like the two above: which cards are folded away can never
+   * reach the engine.
+   */
+  planSectionsCollapsed: Record<string, boolean>
+  togglePlanSection: (id: string) => void
+  setPlanSectionCollapsed: (id: string, collapsed: boolean) => void
+  expandAllPlanSections: () => void
 }
 
 export const DISPLAY_STORE_KEY = 'retirement-simulator-display'
@@ -32,6 +44,21 @@ export const useDisplayStore = create<DisplayStore>()(
       setDisplayReal: (displayReal: boolean) => set({ displayReal }),
       welcomeDismissed: false,
       dismissWelcome: () => set({ welcomeDismissed: true }),
+      planSectionsCollapsed: {},
+      togglePlanSection: (id: string) =>
+        set((state) => ({
+          planSectionsCollapsed: {
+            ...state.planSectionsCollapsed,
+            [id]: !state.planSectionsCollapsed[id],
+          },
+        })),
+      setPlanSectionCollapsed: (id: string, collapsed: boolean) =>
+        set((state) =>
+          Boolean(state.planSectionsCollapsed[id]) === collapsed
+            ? state
+            : { planSectionsCollapsed: { ...state.planSectionsCollapsed, [id]: collapsed } }
+        ),
+      expandAllPlanSections: () => set({ planSectionsCollapsed: {} }),
     }),
     { name: DISPLAY_STORE_KEY }
   )
@@ -41,3 +68,8 @@ export const useDisplayReal = () => useDisplayStore((state) => state.displayReal
 export const useSetDisplayReal = () => useDisplayStore((state) => state.setDisplayReal)
 export const useWelcomeDismissed = () => useDisplayStore((state) => state.welcomeDismissed)
 export const useDismissWelcome = () => useDisplayStore((state) => state.dismissWelcome)
+export const usePlanSectionsCollapsed = () =>
+  useDisplayStore((state) => state.planSectionsCollapsed)
+export const useTogglePlanSection = () => useDisplayStore((state) => state.togglePlanSection)
+export const useSetPlanSectionCollapsed = () =>
+  useDisplayStore((state) => state.setPlanSectionCollapsed)

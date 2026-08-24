@@ -1,11 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { HelpCircle, AlertTriangle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { evaluateNumericDraft, type RangeIssue } from '@/lib/validation/fieldValidation'
 import { useGroupedNumber } from './useGroupedNumber'
 
 export interface ValidationRule {
@@ -38,6 +39,19 @@ interface LabeledNumberInputProps {
   groupThousands?: boolean
   validation?: ValidationRule
   formatValue?: (value: number) => string
+  /**
+   * Message shown when the typed number falls outside `min`/`max`. Supply an
+   * already-translated string — the fallback below is a developer safety net,
+   * not user-facing copy.
+   */
+  rangeMessage?: string
+  /** Message for text that is not a number at all. Falls back to `rangeMessage`. */
+  invalidMessage?: string
+  /**
+   * Called whenever the field starts or stops refusing what the user typed, so
+   * a parent can grey out the chips it derives from this value.
+   */
+  onInvalidChange?: (invalid: boolean) => void
   /** Greys the field out and stops editing (e.g. an input the active market model ignores). */
   disabled?: boolean
 }
@@ -96,46 +110,120 @@ export function LabeledNumberInput({
   groupThousands = false,
   validation,
   formatValue,
+  rangeMessage,
+  invalidMessage,
+  onInvalidChange,
   disabled = false,
 }: LabeledNumberInputProps) {
   const [touched, setTouched] = useState(false)
   const [draftValue, setDraftValue] = useState(() => String(value))
   const [isEditing, setIsEditing] = useState(false)
+  /**
+   * Set once an entry has been *refused*. While it is set the rejected text
+   * stays in the box — silently replacing it with the clamped value was the
+   * whole bug: the field said 100, the plan meant something else, and the
+   * derived chips next to it went quietly stale.
+   */
+  const [rangeIssue, setRangeIssue] = useState<RangeIssue | null>(null)
   const grouped = useGroupedNumber(0)
 
+  const bounds = useMemo(() => ({ min, max }), [min, max])
   const restValue = groupThousands ? grouped.format(value) : String(value)
-  const displayValue = isEditing ? draftValue : restValue
+  const displayValue = isEditing || rangeIssue !== null ? draftValue : restValue
 
-  const { state: validationState, message: validationMessage } = useMemo(
+  const notifyInvalid = useRef(onInvalidChange)
+  notifyInvalid.current = onInvalidChange
+
+  // Mirrored in a ref so the parent notification happens in the event handler
+  // rather than inside a state updater, which React may replay during render.
+  const rangeIssueRef = useRef<RangeIssue | null>(null)
+  const applyIssue = (next: RangeIssue | null) => {
+    if (rangeIssueRef.current === next) return
+    rangeIssueRef.current = next
+    setRangeIssue(next)
+    notifyInvalid.current?.(next !== null)
+  }
+
+  // A value that changed from somewhere else (reset, plan switch, a preset)
+  // supersedes whatever was refused here, so the field stops complaining.
+  const lastExternalValue = useRef(value)
+  useEffect(() => {
+    if (lastExternalValue.current === value) return
+    lastExternalValue.current = value
+    if (isEditing) return
+    if (rangeIssueRef.current === null) return
+    rangeIssueRef.current = null
+    setRangeIssue(null)
+    notifyInvalid.current?.(false)
+  }, [value, isEditing])
+
+  // Unmounting with an unresolved error would otherwise leave the parent
+  // greying out chips forever (the plan editor tab remounts on every visit).
+  useEffect(() => {
+    return () => {
+      if (rangeIssueRef.current !== null) notifyInvalid.current?.(false)
+    }
+  }, [])
+
+  const { state: typicalState, message: typicalMessage } = useMemo(
     () => resolveValidation(value, validation),
     [value, validation]
   )
 
-  // Reward early, punish late: surface issues only after first blur.
-  const showValidation = touched && validationState !== 'neutral'
+  const rangeText = (() => {
+    if (rangeIssue === null) return ''
+    if (rangeIssue === 'invalid') {
+      return invalidMessage ?? rangeMessage ?? validation?.errorMessage ?? 'Enter a number.'
+    }
+    if (rangeMessage) return rangeMessage
+    if (validation?.errorMessage) return validation.errorMessage
+    if (min !== undefined && max !== undefined) return `Enter a value between ${min} and ${max}.`
+    if (rangeIssue === 'below') return `Value must be at least ${min}`
+    return `Value must be at most ${max}`
+  })()
+
+  // Reward early, punish late: the typical-range warning waits for the first
+  // blur, while a refused entry always explains itself immediately.
+  const showTypical = touched && typicalState !== 'neutral' && rangeIssue === null
+  const validationState: ValidationState =
+    rangeIssue !== null ? 'error' : showTypical ? typicalState : 'neutral'
+  const validationMessage = rangeIssue !== null ? rangeText : showTypical ? typicalMessage : ''
+  const showValidation = validationState !== 'neutral'
+
+  /** Commits when the text is usable, refuses (and keeps it) when it is not. */
+  const evaluate = (raw: string) =>
+    evaluateNumericDraft(raw, bounds, groupThousands ? grouped.parse : undefined)
+
+  const handleDraft = (raw: string) => {
+    const { issue, value: parsed } = evaluate(raw)
+
+    if (parsed !== null) {
+      applyIssue(null)
+      if (parsed !== value) onChange(parsed)
+      return
+    }
+
+    // Out of range mid-typing ("1" on the way to "16") stays silent until the
+    // field has been left once; after that it re-checks on every keystroke so
+    // the message disappears the moment the entry becomes usable.
+    if (issue !== null && rangeIssue !== null) applyIssue(issue)
+  }
 
   const handleBlur = () => {
     setTouched(true)
     setIsEditing(false)
 
-    const trimmedValue = draftValue.trim()
-    if (!trimmedValue) return
+    const { issue, value: parsed } = evaluate(draftValue)
 
-    const parsedValue = groupThousands ? grouped.parse(trimmedValue) : Number(trimmedValue)
-    if (!Number.isFinite(parsedValue)) return
-
-    // Clamp value to min/max constraints on blur
-    let clampedValue = parsedValue
-    if (min !== undefined && clampedValue < min) {
-      clampedValue = min
-    }
-    if (max !== undefined && clampedValue > max) {
-      clampedValue = max
+    if (parsed !== null) {
+      applyIssue(null)
+      if (parsed !== value) onChange(parsed)
+      return
     }
 
-    if (clampedValue !== value) {
-      onChange(clampedValue)
-    }
+    // Empty or half-typed: nothing was asked for, so snap back to the value in
+    // force rather than inventing an error.
+    applyIssue(issue)
   }
 
   const descriptionIds: string[] = []
@@ -191,24 +279,20 @@ export function LabeledNumberInput({
           autoComplete="off"
           value={displayValue}
           onFocus={() => {
-            setDraftValue(restValue)
+            setDraftValue(rangeIssue !== null ? draftValue : restValue)
             setIsEditing(true)
           }}
           onChange={(e) => {
             if (groupThousands) {
-              const { display, numeric } = grouped.handleChange(e)
+              const { display } = grouped.handleChange(e)
               setDraftValue(display)
-              if (Number.isFinite(numeric)) onChange(numeric)
+              handleDraft(display)
               return
             }
 
             const raw = e.target.value
             setDraftValue(raw)
-            if (raw.trim() === '' || raw === '-' || raw === '.' || raw === '-.') return
-
-            const nextValue = Number(raw)
-            if (!Number.isFinite(nextValue)) return
-            onChange(nextValue)
+            handleDraft(raw)
           }}
           onBlur={handleBlur}
           onKeyDown={(e) => {
@@ -240,12 +324,12 @@ export function LabeledNumberInput({
       {showValidation && (
         <div
           id={`${id}-validation-message`}
+          data-testid={`${id}-validation-message`}
           role={validationState === 'error' ? 'alert' : 'status'}
           className={cn(
             'flex items-start gap-2 border-2 px-3 py-2 text-xs font-medium leading-relaxed',
             validationState === 'error' && 'border-neo-red/60 bg-neo-red/10 text-neo-red',
-            validationState === 'warning' &&
-              'border-neo-orange/60 bg-neo-orange/10 text-neo-black'
+            validationState === 'warning' && 'border-neo-orange/60 bg-neo-orange/10 text-neo-black'
           )}
         >
           <span className="mt-0.5 flex-shrink-0">
@@ -257,7 +341,8 @@ export function LabeledNumberInput({
           </span>
           <span className="flex-1">
             {validationMessage}
-            {formatValue &&
+            {rangeIssue === null &&
+              formatValue &&
               validation &&
               validation.typicalMin !== undefined &&
               validation.typicalMax !== undefined && (
