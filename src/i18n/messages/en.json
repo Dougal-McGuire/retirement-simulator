@@ -567,6 +567,117 @@
       "action": "Choose a withdrawal strategy"
     }
   },
+  "simulationCompact": {
+    "tabs": {
+      "overview": "Overview",
+      "plan": "Plan",
+      "cashflow": "Cash flows",
+      "scenarios": "Scenarios"
+    },
+    "compareButton": "Compare",
+    "computing": "Running simulation…",
+    "srComplete": "Simulation complete. Success rate: {rate}.",
+    "meta": {
+      "live": "Live recompute",
+      "runs": "{count} runs",
+      "seconds": "{seconds} s",
+      "plans": "saved {count} / {max} plans"
+    },
+    "commandBar": {
+      "planAria": "Plan",
+      "age": "Age",
+      "ageAria": "Retirement age",
+      "save": "Save",
+      "saveAria": "Annual savings",
+      "spend": "Spend",
+      "spendAria": "Monthly spending",
+      "spendValue": "{amount} per month",
+      "roi": "ROI",
+      "roiAria": "Expected return",
+      "advanced": "Advanced",
+      "setup": "Setup",
+      "run": "Run",
+      "successAria": "Success rate",
+      "unsavedSwitch": "Switch plans and discard unsaved changes?"
+    },
+    "advanced": {
+      "volatility": "Volatility",
+      "volatilityAria": "Return volatility",
+      "inflation": "Inflation",
+      "inflationAria": "Average inflation",
+      "pension": "Pension /mo",
+      "pensionAria": "Monthly statutory pension",
+      "endAge": "Plan to",
+      "endAgeAria": "Plan end age",
+      "runs": "Runs",
+      "runsAria": "Simulation runs",
+      "glidePath": "Glide path {start} → {end}",
+      "editFullPlan": "Edit full plan"
+    },
+    "kpi": {
+      "success": "Success",
+      "lastsTo": "Lasts to",
+      "firstYearDraw": "1st-yr draw",
+      "medianEnd": "Median end",
+      "p10Age": "P10: {age}",
+      "perMonth": "{amount}/mo",
+      "p10End": "P10: {value}"
+    },
+    "chart": {
+      "bandOuter": "P10–90",
+      "bandInner": "P20–80",
+      "median": "Median",
+      "nominal": "Nominal",
+      "real": "Real"
+    },
+    "bottom": {
+      "bridge": "Bridge",
+      "bridgeMeta": "{years} yrs self-funded {from} → {to}, then {pension}/mo pension",
+      "bridgeMetaImmediate": "Pension of {pension}/mo starts at retirement",
+      "recs": "Recs",
+      "recsPending": "measuring…",
+      "recApply": "Apply this change to the working copy",
+      "recRetire": "Retire {age}",
+      "recSpend": "Spend −10 %",
+      "recGlide": "Glide path {start} → {end}",
+      "editFullPlan": "Edit full plan →"
+    },
+    "compare": {
+      "title": "Compare plans",
+      "addPlan": "+ Add plan (max {max})",
+      "running": "Re-running…",
+      "meta": "{count} plans re-run · {runs} runs each",
+      "exit": "Exit compare",
+      "legendBase": "{name} (P20–80 band)",
+      "changedRows": "Changed rows highlighted",
+      "openEditor": "Open plan editor →",
+      "perMonth": "{amount}/mo",
+      "kpi": {
+        "success": "Success rate",
+        "lastsTo": "Wealth lasts to",
+        "firstYearDraw": "1st-year withdrawal",
+        "medianEnd": "Median end wealth",
+        "years": "yrs"
+      },
+      "rows": {
+        "parameter": "Parameter",
+        "retirementAge": "Retirement age",
+        "bridgeYears": "Bridge years to pension",
+        "savingsYears": "Savings years left",
+        "annualSavings": "Annual savings",
+        "monthlySpending": "Monthly spending",
+        "expectedReturn": "Expected return",
+        "withdrawalRule": "Withdrawal rule",
+        "pension": "Statutory pension from {age}"
+      },
+      "strategy": {
+        "fixedReal": "Fixed real",
+        "vanguardDynamic": "Vanguard {rate}",
+        "guytonKlinger": "Guyton-Klinger {rate}",
+        "percentOfPortfolio": "% of portfolio {rate}"
+      }
+    }
+  },
   "parameterSidebar": {
     "trigger": "Parameters",
     "title": "Simulation Parameters",

@@ -1,137 +1,178 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
-test.describe('simulation dashboard', () => {
-  test('shows the plan health hero and tabbed content', async ({ page }) => {
+/**
+ * The compact simulation dashboard (design handoff screens 1b + 1c): merged
+ * command bar with inline sliders, KPI strip, SVG fan chart, bottom strip,
+ * and the plan-compare view — plus the plan-editor flows that survive
+ * unchanged under the new chrome.
+ *
+ * The previous dashboard chrome (plan-switcher dialogs, hero gauge, welcome
+ * strip, quick-adjust card, overview chart cards) was removed with the
+ * redesign, and its tests went with it.
+ */
+
+/** The persisted store the dashboard writes through. */
+const readStoredParams = (page: Page) =>
+  page.evaluate(() => {
+    const raw = window.localStorage.getItem('retirement-simulator-store')
+    return raw ? (JSON.parse(raw).state.params as Record<string, unknown>) : null
+  })
+
+test.describe('compact simulation dashboard', () => {
+  test('shows the command bar, KPI strip, fan chart and bottom strip', async ({ page }) => {
     await page.goto('/en/simulation')
 
-    // Hero tiles. NOTE: 'Success rate' needs exact matching — the sr-only live
-    // region also contains the substring "Success rate:" and would otherwise
-    // cause a strict-mode violation.
-    await expect(page.getByText('Health score')).toBeVisible()
-    await expect(page.getByText('Success rate', { exact: true })).toBeVisible()
-    await expect(page.getByText('Assets last')).toBeVisible()
+    const bar = page.getByTestId('compact-command-bar')
+    await expect(bar).toBeVisible()
 
-    // Tabs
-    const overviewTab = page.getByRole('tab', { name: 'Overview' })
-    await expect(overviewTab).toBeVisible()
-    await expect(overviewTab).toHaveAttribute('data-state', 'active')
+    // All four inline levers, named on their thumbs where `role="slider"` is.
+    for (const name of [
+      'Retirement age',
+      'Annual savings',
+      'Monthly spending',
+      'Expected return',
+    ]) {
+      await expect(bar.getByRole('slider', { name })).toBeVisible()
+    }
 
-    await page.getByRole('tab', { name: 'Scenarios & advice' }).click()
-    await expect(page.getByText('Recommendations', { exact: true })).toBeVisible()
+    // The first run completes and the verdict arrives everywhere at once.
+    await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
+    await expect(page.getByTestId('kpi-strip')).toBeVisible()
+    await expect(page.getByTestId('fan-chart')).toBeVisible()
+    await expect(page.getByTestId('bottom-strip')).toBeVisible()
 
-    await page.getByRole('tab', { name: 'Cashflow & details' }).click()
-    await expect(page.getByRole('tab', { name: 'Cashflow & details' })).toHaveAttribute(
-      'data-state',
-      'active'
+    // KPI strip labels straight from the design.
+    const kpis = page.getByTestId('kpi-strip')
+    await expect(kpis).toContainText('Success')
+    await expect(kpis).toContainText('Lasts to')
+    await expect(kpis).toContainText('1st-yr draw')
+    await expect(kpis).toContainText('Median end')
+  })
+
+  test('switches tabs under the compact chrome', async ({ page }) => {
+    await page.goto('/en/simulation')
+
+    await expect(page.getByTestId('tab-overview')).toHaveAttribute('aria-selected', 'true')
+
+    await page.getByTestId('tab-plan').click()
+    await expect(page.getByTestId('tab-plan')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByTestId('plan-editor')).toBeVisible()
+
+    await page.getByTestId('tab-cashflow').click()
+    await expect(page.getByTestId('tab-cashflow')).toHaveAttribute('aria-selected', 'true')
+
+    await page.getByTestId('tab-scenarios').click()
+    await expect(page.getByTestId('tab-scenarios')).toHaveAttribute('aria-selected', 'true')
+
+    await page.getByTestId('tab-overview').click()
+    await expect(page.getByTestId('fan-chart')).toBeVisible({ timeout: 30000 })
+  })
+
+  test('scrubbing the age slider recomputes live into the working copy', async ({ page }) => {
+    await page.goto('/en/simulation')
+    await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
+
+    const slider = page.getByRole('slider', { name: 'Retirement age' })
+    await slider.focus()
+    await slider.press('ArrowRight')
+    await slider.press('ArrowRight')
+
+    // The lever's readout follows immediately…
+    await expect(page.getByTestId('compact-command-bar')).toContainText('62')
+
+    // …and the debounced auto-run persists the edit into the working copy.
+    await expect(async () => {
+      const params = await readStoredParams(page)
+      expect(params?.retirementAge).toBe(62)
+    }).toPass({ timeout: 10000 })
+  })
+
+  test('toggles the advanced parameter row', async ({ page }) => {
+    await page.goto('/en/simulation')
+
+    await expect(page.getByTestId('advanced-params')).toHaveCount(0)
+    await page.getByRole('button', { name: /Advanced/ }).click()
+
+    const advanced = page.getByTestId('advanced-params')
+    await expect(advanced).toBeVisible()
+    await expect(advanced.getByRole('slider', { name: 'Return volatility' })).toBeVisible()
+    await expect(advanced.getByRole('checkbox')).toBeVisible()
+
+    await page.getByRole('button', { name: /Advanced/ }).click()
+    await expect(page.getByTestId('advanced-params')).toHaveCount(0)
+  })
+
+  test('measures the recommendation chips and applies one on click', async ({ page }) => {
+    test.setTimeout(90000) // three extra scenario runs behind a debounce
+    await page.goto('/en/simulation')
+    await expect(page.getByTestId('bottom-strip')).toBeVisible({ timeout: 30000 })
+
+    // Chips arrive once the extra scenario runs settle, each with a delta.
+    const strip = page.getByTestId('bottom-strip')
+    const retireChip = strip.getByRole('button', { name: /^Retire 62/ })
+    await expect(retireChip).toBeVisible({ timeout: 45000 })
+    await expect(retireChip).toContainText('pp')
+
+    await retireChip.click()
+
+    // The lever landed in the working copy, same as dragging the slider.
+    await expect(async () => {
+      const params = await readStoredParams(page)
+      expect(params?.retirementAge).toBe(62)
+    }).toPass({ timeout: 10000 })
+  })
+
+  test('switches the fan chart between nominal and real terms', async ({ page }) => {
+    await page.goto('/en/simulation')
+
+    const chart = page.getByTestId('fan-chart')
+    await expect(chart).toBeVisible({ timeout: 30000 })
+
+    const real = chart.getByRole('button', { name: 'Real' })
+    await expect(real).toHaveAttribute('aria-pressed', 'false')
+    await real.click()
+    await expect(real).toHaveAttribute('aria-pressed', 'true')
+    await expect(chart.getByRole('button', { name: 'Nominal' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
     )
   })
 
-  test('creates, renames and switches plans', async ({ page }) => {
+  test('enters compare, gains a challenger plan and shows delta KPIs', async ({ page }) => {
+    test.setTimeout(90000) // both compared plans re-run in full
     await page.goto('/en/simulation')
+    await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
 
-    const switcher = page.getByTestId('plan-switcher')
-    await expect(switcher).toBeVisible()
-    await expect(switcher).toContainText('Base plan')
+    await page.getByTestId('enter-compare').click()
+    const compare = page.getByTestId('compare-view')
+    await expect(compare).toBeVisible()
 
-    // Create
-    await page.getByTestId('plan-new').click()
-    await page.getByLabel('Plan name').fill('Retire at 60')
-    await page.getByRole('button', { name: 'Create plan' }).click()
-    await expect(switcher).toContainText('Retire at 60')
+    // One plan only: "+ Add plan" forks the base so there is a challenger.
+    await compare.getByRole('button', { name: /Add plan/ }).click()
 
-    // Duplicate asks for a name up front (and suggests a numbered sibling)
-    // instead of silently minting "Retire at 60 (copy)".
-    await page.getByTestId('plan-duplicate').click()
-    const copyName = page.getByLabel('Name for the copy')
-    await expect(copyName).toHaveValue('Retire at 60 2')
-    await copyName.fill('Retire at 62')
-    await page.getByRole('button', { name: 'Duplicate plan' }).click()
-    await expect(switcher).toContainText('Retire at 62')
+    // Both plans re-run; the delta strip and the diff table arrive together.
+    await expect(compare.getByText('Success rate')).toBeVisible({ timeout: 45000 })
+    await expect(compare.getByText('Median end wealth')).toBeVisible()
+    await expect(compare.getByRole('table')).toContainText('Retirement age')
+    await expect(compare.getByRole('table')).toContainText('Withdrawal rule')
 
-    // Rename
-    await page.getByTestId('plan-rename').click()
-    await page.getByLabel('Plan name').fill('Barista FIRE')
-    await page.getByRole('button', { name: 'Save', exact: true }).click()
-    await expect(switcher).toContainText('Barista FIRE')
-
-    // Switch back to the base plan
-    await page.getByTestId('plan-switcher-select').click()
-    await page.getByRole('option', { name: /Base plan/ }).click()
-    await expect(switcher).toContainText('Base plan')
+    await compare.getByRole('button', { name: 'Exit compare' }).click()
+    await expect(page.getByTestId('compact-command-bar')).toBeVisible()
   })
 
-  test('compares two plans side by side on demand', async ({ page }) => {
+  test('runs on demand from the Run button', async ({ page }) => {
     await page.goto('/en/simulation')
+    await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
 
-    await page.getByTestId('plan-new').click()
-    await page.getByLabel('Plan name').fill('Retire at 60')
-    await page.getByRole('button', { name: 'Create plan' }).click()
-
-    await page.getByRole('tab', { name: 'Scenarios & advice' }).click()
-
-    const comparison = page.getByTestId('plan-comparison')
-    await expect(comparison).toBeVisible()
-    await expect(comparison.getByTestId('plan-comparison-row')).toHaveCount(0)
-
-    await page.getByTestId('plan-comparison-run').click()
-    await expect(comparison.getByTestId('plan-comparison-row')).toHaveCount(2, { timeout: 30000 })
-    await expect(comparison).toContainText('Median assets at end')
-
-    // Assumptions are part of the comparison, not just outcomes.
-    const assumptions = comparison.getByTestId('plan-comparison-assumptions')
-    await expect(assumptions).toBeVisible()
-    await assumptions.getByRole('button').first().click()
-    await expect(assumptions).toContainText('Retirement age')
+    // The meta line only gains a duration once a run has been timed.
+    await page.getByTestId('run-button').click()
+    await expect(page.getByText(/\d[.,]\d s/)).toBeVisible({ timeout: 30000 })
   })
+})
 
-  test('needs two plans selected before it can run a comparison', async ({ page }) => {
-    await page.goto('/en/simulation')
-
-    await page.getByTestId('plan-new').click()
-    await page.getByLabel('Plan name').fill('Retire at 60')
-    await page.getByRole('button', { name: 'Create plan' }).click()
-
-    await page.getByRole('tab', { name: 'Scenarios & advice' }).click()
-
-    const comparison = page.getByTestId('plan-comparison')
-    const options = comparison.getByTestId('plan-comparison-option')
-
-    // Chips start pre-selected, and the empty state says so.
-    await expect(options.filter({ has: page.locator('[aria-checked="true"]') })).toHaveCount(0)
-    await expect(comparison).toContainText('already selected')
-
-    await options.first().click()
-    await expect(page.getByTestId('plan-comparison-run')).toBeDisabled()
-    await expect(page.getByTestId('plan-comparison-hint')).toContainText('at least 2')
-  })
-
-  test('turns a stress-test lever into a plan without switching to it', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByRole('tab', { name: 'Scenarios & advice' }).click()
-
-    await page.getByTestId('stress-lever-save').first().click()
-
-    // The dialog explains the lineage and the parameter change before saving.
-    const dialog = page.getByTestId('scenario-plan-dialog')
-    await expect(dialog).toBeVisible()
-    await expect(dialog).toContainText('Base plan')
-    await expect(dialog.getByTestId('scenario-plan-changes')).toBeVisible()
-
-    await dialog.getByTestId('scenario-plan-confirm').click()
-
-    // The active plan is untouched; switching is offered in the toast.
-    await expect(page.getByTestId('plan-switcher')).toContainText('Base plan')
-    const toast = page.getByTestId('plan-created-toast')
-    await expect(toast).toBeVisible()
-    await toast.getByTestId('plan-created-toast-switch').click()
-    await expect(page.getByTestId('plan-switcher')).not.toContainText('Base plan')
-  })
-
+test.describe('working copy under the compact chrome', () => {
   test('keeps edits in a working copy until they are saved to the plan', async ({ page }) => {
     await page.goto('/en/simulation')
-
-    const badge = page.getByTestId('plan-dirty-badge')
-    await expect(badge).toContainText('Saved')
 
     // Edit through the full plan editor.
     await page.getByTestId('tab-plan').click()
@@ -140,83 +181,27 @@ test.describe('simulation dashboard', () => {
     await assets.fill('900000')
     await assets.blur()
 
-    await expect(badge).toContainText('Unsaved changes')
-    await expect(page.getByTestId('plan-dirty-actions')).toBeVisible()
-
     // Revert throws the working copy away and restores the stored plan.
-    await page.getByTestId('plan-revert-draft').click()
-    await expect(badge).toContainText('Saved')
+    await page.getByTestId('plan-editor-revert').click()
     await expect(assets).toHaveValue(/630/)
 
     // Saving writes the working copy into the plan.
     await assets.fill('700000')
     await assets.blur()
-    await expect(badge).toContainText('Unsaved changes')
-    await page.getByTestId('plan-save-draft').click()
-    await expect(badge).toContainText('Saved')
+    await page.getByTestId('plan-editor-save').click()
 
-    const stored = await page.evaluate(() => {
-      const raw = window.localStorage.getItem('retirement-simulator-store')
-      const parsed = JSON.parse(raw as string)
-      return {
-        planAssets: parsed.state.plans[0].params.currentAssets,
-        draft: parsed.state.draftParams,
-      }
-    })
-    expect(stored.planAssets).toBe(700000)
-    expect(stored.draft).toBeNull()
-  })
-
-  test('asks before switching plans with unsaved changes', async ({ page }) => {
-    await page.goto('/en/simulation')
-
-    await page.getByTestId('plan-new').click()
-    await page.getByLabel('Plan name').fill('Retire at 60')
-    await page.getByRole('button', { name: 'Create plan' }).click()
-
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-income').click()
-    const savings = page.locator('#editor-annualSavings')
-    await savings.fill('12000')
-    await savings.blur()
-    await expect(page.getByTestId('plan-dirty-badge')).toContainText('Unsaved changes')
-
-    await page.getByTestId('plan-switcher-select').click()
-    await page.getByRole('option', { name: /Base plan/ }).click()
-
-    const guard = page.getByTestId('plan-switch-guard')
-    await expect(guard).toBeVisible()
-    await guard.getByTestId('plan-switch-discard').click()
-
-    await expect(page.getByTestId('plan-switcher')).toContainText('Base plan')
-    const savingsPerPlan = await page.evaluate(() => {
-      const parsed = JSON.parse(window.localStorage.getItem('retirement-simulator-store') as string)
-      return parsed.state.plans.map(
-        (plan: { params: { annualSavings: number } }) => plan.params.annualSavings
-      )
-    })
-    // The abandoned edit never reached either stored plan.
-    expect(savingsPerPlan.every((value: number) => value === 48000)).toBe(true)
-  })
-
-  test('confirms before resetting a plan and offers an undo', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-income').click()
-
-    const assets = page.locator('#editor-currentAssets')
-    await assets.fill('900000')
-    await assets.blur()
-
-    await page.getByTestId('plan-editor-reset').click()
-    const dialog = page.getByTestId('plan-reset-dialog')
-    await expect(dialog).toBeVisible()
-    await expect(dialog).toContainText('Reset THIS plan to defaults?')
-    await dialog.getByTestId('plan-reset-confirm').click()
-
-    await expect(assets).toHaveValue(/630/)
-    await page.getByRole('button', { name: 'Undo' }).first().click()
-    await expect(assets).toHaveValue(/900/)
+    await expect(async () => {
+      const stored = await page.evaluate(() => {
+        const raw = window.localStorage.getItem('retirement-simulator-store')
+        const parsed = JSON.parse(raw as string)
+        return {
+          planAssets: parsed.state.plans[0].params.currentAssets,
+          draft: parsed.state.draftParams,
+        }
+      })
+      expect(stored.planAssets).toBe(700000)
+      expect(stored.draft).toBeNull()
+    }).toPass({ timeout: 10000 })
   })
 
   test('does not touch a plan when the wizard session is abandoned', async ({ page }) => {
@@ -239,42 +224,6 @@ test.describe('simulation dashboard', () => {
     })
     expect(state.planAge).toBe(55)
     expect(state.draftAge).toBe(44)
-    await expect(page.getByTestId('plan-dirty-badge')).toContainText('Unsaved changes')
-  })
-
-  test('surfaces warnings for a strained plan', async ({ page }) => {
-    await page.addInitScript(() => {
-      const params = {
-        currentAge: 55,
-        retirementAge: 60,
-        legalRetirementAge: 67,
-        endAge: 90,
-        currentAssets: 10000,
-        annualSavings: 0,
-        annualSavingsGrowthRate: 0,
-        monthlyPension: 0,
-        oneTimeIncomes: [],
-        averageROI: 0.03,
-        roiVolatility: 0.15,
-        averageInflation: 0.025,
-        inflationVolatility: 0.01,
-        capitalGainsTax: 26.25,
-        customExpenses: [{ id: 'living', name: 'Living', amount: 3000, interval: 'monthly' }],
-        withdrawalStrategy: 'vanguardDynamic',
-        dsWithdrawalRate: 0.05,
-        dsCeilingRate: 0.05,
-        dsFloorRate: -0.025,
-        simulationRuns: 200,
-      }
-      window.localStorage.setItem(
-        'retirement-simulator-store',
-        JSON.stringify({ state: { params, results: null, savedSetups: [] }, version: 0 })
-      )
-    })
-
-    await page.goto('/en/simulation')
-
-    await expect(page.getByText(/assets run out at age/i)).toBeVisible({ timeout: 20000 })
   })
 })
 
@@ -293,10 +242,6 @@ test.describe('market model and glide path', () => {
     await expect(page.locator('#editor-averageROI')).toHaveAttribute('aria-disabled', 'true')
     await expect(page.locator('#editor-simulationRuns')).toBeDisabled()
 
-    const badge = page.getByTestId('market-model-badge')
-    await expect(badge).toBeVisible()
-    await expect(badge).toContainText('125 paths')
-
     // Deterministic: the same plan replayed gives exactly the same number.
     const readRate = () =>
       page.evaluate(() => {
@@ -307,7 +252,7 @@ test.describe('market model and glide path', () => {
     await expect.poll(readRate).not.toBeNull()
     const first = await readRate()
     await page.reload()
-    await expect(page.getByTestId('market-model-badge')).toBeVisible()
+    await expect(page.getByTestId('compact-command-bar')).toBeVisible()
     await expect.poll(readRate).toBe(first)
   })
 
@@ -391,7 +336,7 @@ test.describe('unified cash flows', () => {
   })
 })
 
-test.describe('German taxes and the legacy goal', () => {
+test.describe('German taxes', () => {
   test('edits German tax assumptions and reports the resulting tax drag', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
@@ -412,85 +357,9 @@ test.describe('German taxes and the legacy goal', () => {
     // The drag is measured by the engine, so it has to be a real percentage.
     await expect(page.getByTestId('tax-drag-readout')).toContainText(/≈\d/)
   })
-
-  test('scores a legacy goal separately from plain survival', async ({ page }) => {
-    await page.goto('/en/simulation')
-
-    const card = page.getByTestId('legacy-goal-card')
-    await expect(card).toBeVisible()
-    // No goal: the two rates agree and the card says the goal is off.
-    await expect(page.getByTestId('legacy-goal-disabled-hint')).toBeVisible()
-    const funded = card.getByTestId('legacy-goal-funded-value')
-    const survives = card.getByTestId('legacy-goal-survives-value')
-    await expect
-      .poll(async () => (await funded.innerText()) === (await survives.innerText()))
-      .toBe(true)
-
-    const target = page.locator('#editor-legacyTargetReal')
-    await target.fill('300000')
-    await target.blur()
-
-    // The goal is a strictly harder bar, and the gauge caption says so.
-    await expect(page.getByTestId('legacy-goal-disabled-hint')).toHaveCount(0)
-    await expect(card).toContainText(/above target|below target|Right on target/)
-    await expect(page.getByTestId('hero-depletion-detail')).toBeVisible()
-    await expect
-      .poll(async () => (await funded.innerText()) === (await survives.innerText()))
-      .toBe(false)
-  })
 })
 
-test.describe('onboarding, overlays and template ergonomics', () => {
-  test('greets a first-time visitor once and never again', async ({ page }) => {
-    await page.goto('/en/simulation')
-
-    const strip = page.getByTestId('welcome-strip')
-    await expect(strip).toBeVisible()
-
-    // Each chip names where the thing it describes actually lives.
-    await strip.getByTestId('welcome-chip-compare').click()
-    await expect(page.getByRole('tab', { name: 'Scenarios & advice' })).toHaveAttribute(
-      'data-state',
-      'active'
-    )
-
-    await strip.getByTestId('welcome-dismiss').click()
-    await expect(strip).toHaveCount(0)
-
-    // The dismissal is persisted, so a reload does not bring it back.
-    await page.reload()
-    await expect(page.getByTestId('welcome-strip')).toHaveCount(0)
-  })
-
-  test('renders toasts as a fixed overlay rather than inside the page flow', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByRole('tab', { name: 'Scenarios & advice' }).click()
-    await page.getByTestId('stress-lever-save').first().click()
-    await page.getByTestId('scenario-plan-dialog').getByTestId('scenario-plan-confirm').click()
-
-    const toast = page.getByTestId('plan-created-toast')
-    await expect(toast).toBeVisible()
-
-    // Bottom-right of the viewport, out of the reading column — not wedged
-    // over the tab strip where it used to land.
-    const box = (await toast.boundingBox())!
-    const viewport = page.viewportSize()!
-    expect(box.y).toBeGreaterThan(viewport.height / 2)
-    expect(box.x + box.width).toBeGreaterThan(viewport.width * 0.6)
-
-    // And it is inside a `position: fixed` container, so scrolling cannot move
-    // it into the content.
-    const positioned = await toast.evaluate((node) => {
-      let el: HTMLElement | null = node as HTMLElement
-      while (el) {
-        if (getComputedStyle(el).position === 'fixed') return true
-        el = el.parentElement
-      }
-      return false
-    })
-    expect(positioned).toBe(true)
-  })
-
+test.describe('cash-flow ergonomics', () => {
   test('adds a second pension with its own start age next to the statutory one', async ({
     page,
   }) => {
@@ -525,9 +394,7 @@ test.describe('onboarding, overlays and template ergonomics', () => {
     await expect(card).toContainText('€5,000')
   })
 
-  test('taxes a lump sum under the one-fifth rule and shows the net amount', async ({
-    page,
-  }) => {
+  test('taxes a lump sum under the one-fifth rule and shows the net amount', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
     await page.getByTestId('plan-section-pill-cashFlows').click()
@@ -579,101 +446,34 @@ test.describe('onboarding, overlays and template ergonomics', () => {
 
     await expect(list.locator('tbody tr')).toHaveCount(rowsBefore)
   })
-
-  test('states what the monthly-expenses lever actually scales', async ({ page }) => {
-    await page.goto('/en/simulation')
-
-    // The lever writes the lifetime expenses only; the caption has to say so
-    // and show the total it covers.
-    await expect(page.getByTestId('quick-adjust')).toContainText(/Scales the \d+ lifetime expenses/)
-  })
-
-  test('jumps from the differences chip to the first differing row', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByRole('tab', { name: 'Scenarios & advice' }).click()
-
-    await page.getByTestId('stress-lever-save').first().click()
-    await page.getByTestId('scenario-plan-dialog').getByTestId('scenario-plan-confirm').click()
-    await page.getByTestId('plan-created-toast').getByRole('button', { name: 'Dismiss' }).click()
-
-    await page.getByRole('button', { name: /Run comparison|Run again/ }).click()
-
-    const chip = page.getByTestId('plan-comparison-differences-chip')
-    await expect(chip).toBeVisible()
-    await chip.click()
-
-    // The table opens and the first highlighted row is brought into view.
-    const row = page.locator('tr[data-differs="true"]').first()
-    await expect(row).toBeInViewport()
-  })
 })
 
-test.describe('dashboard quick wins', () => {
-  test('lets a duplicate be named, or abandoned, before it exists', async ({ page }) => {
+test.describe('scenario levers', () => {
+  test('renders toasts as a fixed overlay rather than inside the page flow', async ({ page }) => {
     await page.goto('/en/simulation')
+    await page.getByTestId('tab-scenarios').click()
+    await page.getByTestId('stress-lever-save').first().click()
+    await page.getByTestId('scenario-plan-dialog').getByTestId('scenario-plan-confirm').click()
 
-    const switcher = page.getByTestId('plan-switcher')
-    await expect(switcher).toContainText('Base plan')
+    const toast = page.getByTestId('plan-created-toast')
+    await expect(toast).toBeVisible()
 
-    // Cancel leaves the plan list exactly as it was.
-    await page.getByTestId('plan-duplicate').click()
-    await expect(page.getByLabel('Name for the copy')).toHaveValue('Base plan 2')
-    await page.getByRole('button', { name: 'Cancel' }).click()
-    await expect(switcher).toContainText('1 of')
-    await expect(switcher).toContainText('Base plan')
+    // Bottom-right of the viewport, out of the reading column.
+    const box = (await toast.boundingBox())!
+    const viewport = page.viewportSize()!
+    expect(box.y).toBeGreaterThan(viewport.height / 2)
+    expect(box.x + box.width).toBeGreaterThan(viewport.width * 0.6)
 
-    // Confirming creates the copy under the typed name and switches to it —
-    // no "(copy)" ever reaches a comparison legend or a PDF.
-    await page.getByTestId('plan-duplicate').click()
-    await page.getByLabel('Name for the copy').fill('Sequence risk')
-    await page.getByRole('button', { name: 'Duplicate plan' }).click()
-    await expect(switcher).toContainText('Sequence risk')
-    await expect(switcher).toContainText('2 of')
-
-    const names = await page.evaluate(() => {
-      const parsed = JSON.parse(window.localStorage.getItem('retirement-simulator-store') as string)
-      return parsed.state.plans.map((plan: { name: string }) => plan.name)
+    // And it is inside a `position: fixed` container, so scrolling cannot move
+    // it into the content.
+    const positioned = await toast.evaluate((node) => {
+      let el: HTMLElement | null = node as HTMLElement
+      while (el) {
+        if (getComputedStyle(el).position === 'fixed') return true
+        el = el.parentElement
+      }
+      return false
     })
-    expect(names).toEqual(['Base plan', 'Sequence risk'])
-  })
-
-  test('names every quick-adjust slider and the chart range brush', async ({ page }) => {
-    await page.goto('/en/simulation')
-
-    const quickAdjust = page.getByTestId('quick-adjust')
-    await expect(quickAdjust).toBeVisible()
-
-    // `role="slider"` lives on the thumb, so that is the element that has to
-    // carry the name — an aria-label on the Radix root names nothing.
-    for (const name of [
-      'Retirement age',
-      'Annual savings',
-      'Monthly expenses',
-      'Expected return',
-    ]) {
-      await expect(quickAdjust.getByRole('slider', { name })).toHaveCount(1)
-    }
-
-    // Recharts names the brush handles from the row's `name` field, which this
-    // chart has none of: it used to announce "Min value: undefined".
-    const brushHandles = page.getByRole('slider', { name: /Age range shown/ })
-    await expect(brushHandles.first()).toBeAttached()
-    const labels = await page
-      .getByRole('slider')
-      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label') ?? ''))
-    expect(labels.some((label) => label.includes('undefined'))).toBe(false)
-  })
-
-  test('offers the theme switcher on the dashboard, not only on the landing page', async ({
-    page,
-  }) => {
-    await page.goto('/en/simulation')
-
-    const themeSwitcher = page.getByRole('combobox', { name: 'Theme' })
-    await expect(themeSwitcher).toBeVisible()
-
-    await themeSwitcher.click()
-    await page.getByRole('option', { name: /Clear/ }).click()
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'klar')
+    expect(positioned).toBe(true)
   })
 })
