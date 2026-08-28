@@ -404,10 +404,11 @@
       "opening": "Dashboard wird geöffnet …"
     },
     "cashFlows": {
-      "intro": "Alles, was zusätzlich zu Gehalt und Rente hereinkommt oder abfließt. Jede Position kann lebenslang laufen oder nur zwischen zwei Altern — Mieteinnahmen, die enden, eine Reparatur in einem Jahr, Pflegekosten am Ende des Plans.",
+      "intro": "Alles, was zusätzlich zum Gehalt hereinkommt oder abfließt — Renten eingeschlossen. Jeder Posten kann lebenslang gelten oder nur zwischen zwei Altern: eine Rente ab 67, eine Mieteinnahme, die endet, eine Reparatur in einem Jahr, Pflegekosten spät im Plan.",
       "kind": {
         "income": "Einnahme",
-        "expense": "Ausgabe"
+        "expense": "Ausgabe",
+        "pension": "Rente"
       },
       "frequency": {
         "monthly": "Monatlich",
@@ -427,7 +428,10 @@
         "inflationLinkedOff": "Fester Eurobetrag — die Kaufkraft sinkt über die Zeit.",
         "nominalTag": "fester €-Betrag",
         "growthRate": "Zusätzliches Wachstum p. a. (%)",
-        "growthRateHint": "Zusätzlich zur Inflation. Pflegekosten steigen typischerweise schneller, eine feste Rente nicht."
+        "growthRateHint": "Zusätzlich zur Inflation. Pflegekosten steigen typischerweise schneller, eine feste Rente nicht.",
+        "taxablePortion": "Besteuerungsanteil (%)",
+        "taxablePortionHint": "Anteil dieser Rente, der mit Ihrem Einkommensteuersatz besteuert wird. Leer = Plan-Standard von {portion}.",
+        "pensionIndexedOff": "Fester Euro-Betrag — aktivieren Sie die Inflationsanpassung, wenn diese Rente jährlich angepasst wird."
       },
       "window": {
         "lifetime": "Gesamter Plan",
@@ -440,7 +444,11 @@
         "item": "Position",
         "period": "Zeitraum",
         "amount": "Betrag",
-        "actions": "Aktionen"
+        "actions": "Aktionen",
+        "groups": {
+          "income": "Einnahmen · {count}",
+          "expense": "Ausgaben · {count}"
+        }
       },
       "actions": {
         "add": "Zahlungsstrom hinzufügen",
@@ -464,7 +472,8 @@
       "summary": {
         "income": "Laufende Einnahmen pro Jahr",
         "expense": "Laufende Ausgaben pro Jahr",
-        "note": "Die Summen zeigen laufende Positionen zum vollen Satz; Einmalzahlungen und Zeitfenster stehen in der Zeitleiste oben."
+        "note": "Die Summen zeigen laufende Positionen zum vollen Satz; Einmalzahlungen und Zeitfenster stehen in der Zeitleiste oben.",
+        "pension": "Renteneinkommen pro Jahr (brutto)"
       },
       "templates": {
         "label": "Vorlagen (zum Hinzufügen klicken)",
@@ -474,7 +483,8 @@
           "riester": "Riester-Auszahlung",
           "partnerPension": "Partnerrente",
           "care": "Pflegekosten",
-          "roof": "Dachsanierung"
+          "roof": "Dachsanierung",
+          "companyPension": "Betriebsrente"
         },
         "added": "„{name}“ hinzugefügt — Betrag und Altersfenster unten prüfen.",
         "undo": "Rückgängig"
@@ -487,8 +497,10 @@
         "utilities": "Nebenkosten",
         "vacations": "Urlaub",
         "repairs": "Instandhaltung Haus",
-        "carMaintenance": "Auto-Unterhalt"
-      }
+        "carMaintenance": "Auto-Unterhalt",
+        "statutoryPension": "Gesetzliche Rente"
+      },
+      "listTitle": "Einnahmen, Ausgaben & Renten"
     },
     "liveResult": {
       "label": "Live-Vorschau",
@@ -2207,7 +2219,9 @@
       "pensionGap": "Gesetzliche Rente beginnt mit {age}",
       "expenseCount": "{count, plural, =0 {Keine Einträge} =1 {# Eintrag} other {# Einträge}}",
       "scheduledFlows": "Geplante Ströme",
-      "scheduledFlowsHint": "Positionen mit Zeitfenster oder einmalig"
+      "scheduledFlowsHint": "Positionen mit Zeitfenster oder einmalig",
+      "pensions": "Renten mit {age}",
+      "pensionsHint": "{count, plural, =0 {keine Rente} =1 {# Rente} other {# Renten}} · brutto pro Monat"
     },
     "reset": {
       "trigger": "Auf Standard zurücksetzen",
@@ -2238,9 +2252,9 @@
     },
     "sections": {
       "navLabel": "Plan-Abschnitte",
-      "collapse": "Abschnitt einklappen",
-      "expand": "Abschnitt ausklappen",
-      "staleStats": "Ein Wert unten liegt außerhalb des gültigen Bereichs — diese Kennzahlen beschreiben noch die zuletzt übernommene Eingabe."
+      "staleStats": "Ein Wert unten liegt außerhalb des gültigen Bereichs — diese Kennzahlen beschreiben noch die zuletzt übernommene Eingabe.",
+      "previous": "Zurück: {title}",
+      "next": "Weiter: {title}"
     }
   },
   "quickAdjust": {

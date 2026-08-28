@@ -2,9 +2,10 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
-import { ChevronDown, Wallet } from 'lucide-react'
+import { Wallet } from 'lucide-react'
 import { WITHDRAWAL_STRATEGIES, type SimulationParams, type WithdrawalStrategy } from '@/types'
 import { Button } from '@/components/ui/button'
+import { InfoTip } from '@/components/ui/info-tip'
 import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
 import { RealToggle } from '@/components/charts/RealToggle'
@@ -83,22 +84,9 @@ function StatStrip({ items }: { items: StatItem[] }) {
  */
 interface WithdrawalPlannerProps {
   className?: string
-  /**
-   * Optional collapse wiring, supplied by the plan editor so this section folds
-   * away like the four cards above it. Omitted everywhere else, which leaves
-   * the planner permanently open exactly as before.
-   */
-  collapsed?: boolean
-  onToggleCollapsed?: () => void
-  collapseLabel?: string
 }
 
-export function WithdrawalPlanner({
-  className,
-  collapsed = false,
-  onToggleCollapsed,
-  collapseLabel,
-}: WithdrawalPlannerProps) {
+export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
   const t = useTranslations('withdrawalPlanner')
   const tControls = useTranslations('parameterControls')
   const tSetup = useTranslations('setup')
@@ -294,7 +282,6 @@ export function WithdrawalPlanner({
     <section
       id="plan-editor-withdrawal"
       data-testid="withdrawal-planner"
-      data-collapsed={collapsed || undefined}
       className={cn(
         'theme-panel-card flex scroll-mt-32 flex-col gap-5 border-3 border-neo-black bg-neo-white p-5 shadow-neo',
         className
@@ -303,43 +290,21 @@ export function WithdrawalPlanner({
       <header className="flex flex-col gap-3 border-b-2 border-neo-black pb-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <Wallet className="mt-0.5 h-5 w-5 shrink-0 text-neo-purple" aria-hidden="true" />
-          <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
             <h3 className="text-[0.92rem] font-black uppercase tracking-[0.16em] text-neo-black">
               {t('title')}
             </h3>
-            <p className="mt-1 max-w-2xl text-xs font-medium leading-relaxed text-muted-foreground">
-              {t('description')}
-            </p>
+            <InfoTip content={t('description')} label={t('title')} side="bottom" />
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {canShowReal && <RealToggle value={displayReal} onChange={setDisplayReal} />}
-          {onToggleCollapsed && (
-            <button
-              type="button"
-              data-testid="plan-editor-withdrawal-toggle"
-              aria-expanded={!collapsed}
-              aria-controls="plan-editor-withdrawal-body"
-              aria-label={collapseLabel}
-              title={collapseLabel}
-              onClick={onToggleCollapsed}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center border-2 border-neo-black bg-neo-white text-neo-black transition-neo hover:bg-neo-yellow"
-            >
-              <ChevronDown
-                className={cn('h-4 w-4 transition-transform', collapsed && '-rotate-90')}
-                aria-hidden="true"
-              />
-            </button>
-          )}
         </div>
       </header>
 
       <StatStrip items={stats} />
 
-      <div
-        id="plan-editor-withdrawal-body"
-        className={cn('flex-col gap-5', collapsed ? 'hidden' : 'flex')}
-      >
+      <div id="plan-editor-withdrawal-body" className="flex flex-col gap-5">
         <div className="space-y-3" data-testid="withdrawal-strategy-picker">
           <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
             {t('strategyLabel')}
@@ -393,9 +358,21 @@ export function WithdrawalPlanner({
         )}
 
         <div className="space-y-4 border-2 border-neo-black bg-background px-4 py-4">
-          <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
-            {t('paramsLabel')}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+              {t('paramsLabel')}
+            </span>
+            <InfoTip
+              label={t('paramsLabel')}
+              side="bottom"
+              content={
+                <>
+                  {showRateSlider && <p>{tControls('fields.dsWithdrawalRate.tooltip')}</p>}
+                  <p className={showRateSlider ? 'mt-2' : undefined}>{t('tradeoff')}</p>
+                </>
+              }
+            />
+          </div>
 
           {!showRateSlider && (
             <p className="text-[0.62rem] font-medium leading-snug text-muted-foreground">
@@ -475,27 +452,15 @@ export function WithdrawalPlanner({
               )}
             </div>
           )}
-
-          {showRateSlider && (
-            <p className="text-[0.6rem] font-medium leading-snug text-muted-foreground">
-              {tControls('fields.dsWithdrawalRate.tooltip')}
-            </p>
-          )}
-
-          <p className="text-[0.6rem] font-medium leading-snug text-muted-foreground">
-            {t('tradeoff')}
-          </p>
         </div>
 
         <div className="space-y-4 border-3 border-neo-black bg-neo-white p-4 shadow-neo-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
               <h4 className="text-[0.78rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
                 {t('compare.title')}
               </h4>
-              <p className="mt-1 max-w-xl text-[0.66rem] font-medium text-muted-foreground">
-                {t('compare.subtitle')}
-              </p>
+              <InfoTip content={t('compare.subtitle')} label={t('compare.title')} side="bottom" />
             </div>
             <Button
               size="sm"

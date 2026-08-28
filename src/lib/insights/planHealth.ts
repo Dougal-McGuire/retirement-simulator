@@ -1,4 +1,5 @@
 import type { SimulationParams, SimulationResults } from '@/types'
+import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
 import { defaultPdfConfig } from '@/lib/pdf-generator/utils/config'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { computeBridgeAnalysis } from './bridge'
@@ -29,7 +30,13 @@ export function computePlanHealthScore(
 ): PlanHealthScore {
   const weights = defaultPdfConfig.score_weights
   const totalYearlyExpenses = calculateCombinedExpenses(params.customExpenses).combinedAnnual
-  const netAnnualSpendIfRetiredNow = Math.max(0, totalYearlyExpenses - params.monthlyPension * 12)
+  const pensionAnnual =
+    pensionMonthlyAtAge(
+      params.cashFlows ?? [],
+      params.legalRetirementAge,
+      params.legalRetirementAge
+    ).total * 12
+  const netAnnualSpendIfRetiredNow = Math.max(0, totalYearlyExpenses - pensionAnnual)
   const withdrawalRateNow =
     params.currentAssets > 0 ? netAnnualSpendIfRetiredNow / params.currentAssets : 1
   const spendPenaltyPerPoint = 2500 // -25 points per +1pp above 4%

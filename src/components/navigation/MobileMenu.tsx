@@ -66,9 +66,7 @@ export function MobileMenu({
               <X className="h-4 w-4" />
             </button>
           </SheetTitle>
-          <SheetDescription className="text-sm font-medium text-muted-foreground">
-            {t('description')}
-          </SheetDescription>
+          <SheetDescription className="sr-only">{t('description')}</SheetDescription>
         </SheetHeader>
         <div className="space-y-4 px-6 py-6">
           {/* Locale Switcher */}

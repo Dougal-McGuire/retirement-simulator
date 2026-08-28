@@ -175,7 +175,7 @@ export function OneTimeIncomeList({
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder={strings.namePlaceholder}
-                className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase"
+                className="h-10 border-2 border-neo-black px-2 text-[0.68rem] font-semibold uppercase"
                 aria-label={getIncomeControlLabel(strings.nameLabel, income)}
               />
               <Input
@@ -191,7 +191,7 @@ export function OneTimeIncomeList({
                     setEditAge(String(clamped))
                   }
                 }}
-                className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase"
+                className="h-10 border-2 border-neo-black px-2 text-[0.68rem] font-semibold uppercase"
                 aria-label={getIncomeControlLabel(strings.ageLabel, income)}
               />
             </div>
@@ -213,7 +213,7 @@ export function OneTimeIncomeList({
                   setEditAmount(editAmountField.format(clamped))
                 }
               }}
-              className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase text-right"
+              className="h-10 border-2 border-neo-black px-2 text-[0.68rem] font-semibold uppercase text-right"
               aria-label={getIncomeControlLabel(strings.amountLabel, income)}
             />
           </td>
@@ -337,10 +337,7 @@ export function OneTimeIncomeList({
             </div>
           </div>
         )}
-        <form
-          className="grid grid-cols-1 gap-4"
-          onSubmit={handleDraftSubmit}
-        >
+        <form className="grid grid-cols-1 gap-4" onSubmit={handleDraftSubmit}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col sm:col-span-2">
               <Label
@@ -355,7 +352,7 @@ export function OneTimeIncomeList({
                 value={draftName}
                 placeholder={strings.namePlaceholder}
                 onChange={(event) => setDraftName(event.target.value)}
-                className="h-11 w-full border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+                className="h-11 w-full border-2 border-neo-black px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
                 required
               />
             </div>
@@ -381,7 +378,7 @@ export function OneTimeIncomeList({
                     setDraftAge(String(clamped))
                   }
                 }}
-                className="h-11 w-full border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+                className="h-11 w-full border-2 border-neo-black px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
               />
             </div>
 
@@ -409,7 +406,7 @@ export function OneTimeIncomeList({
                     setDraftAmount(draftAmountField.format(clamped))
                   }
                 }}
-                className="h-11 w-full border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+                className="h-11 w-full border-2 border-neo-black px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
               />
             </div>
           </div>
@@ -421,7 +418,9 @@ export function OneTimeIncomeList({
               size="sm"
               className="h-11 w-full px-6 disabled:border-neo-black/40 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
               disabled={!canAddDraft}
-              aria-describedby={!canAddDraft && strings.addHint ? 'one-time-income-add-hint' : undefined}
+              aria-describedby={
+                !canAddDraft && strings.addHint ? 'one-time-income-add-hint' : undefined
+              }
             >
               {strings.addButton}
             </Button>

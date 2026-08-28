@@ -241,7 +241,7 @@ export interface ReportExpensesCategory {
 /** A scheduled cash flow as printed in the report's inputs table. */
 export interface ReportCashFlow {
   id: string
-  kind: 'income' | 'expense'
+  kind: 'income' | 'expense' | 'pension'
   name: string
   amount: number
   frequency: 'monthly' | 'annual' | 'once'
@@ -328,8 +328,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
     successRate: (stored?.successRatePct ?? data.projections.successRatePct) / 100,
     depletionSuccessRate:
       (stored?.depletionSuccessRatePct ?? data.projections.successRatePct) / 100,
-    depletionRisk:
-      (stored?.depletionRiskPct ?? 100 - data.projections.successRatePct) / 100,
+    depletionRisk: (stored?.depletionRiskPct ?? 100 - data.projections.successRatePct) / 100,
     successCount: 0,
     horizonYears:
       stored?.horizonYears ??

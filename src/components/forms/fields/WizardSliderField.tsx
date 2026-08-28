@@ -45,7 +45,7 @@ export function WizardSliderField({
   minLabel,
   maxLabel,
   helpText,
-  helpPlacement = 'inline',
+  helpPlacement = 'tooltip',
   meta,
   disabled = false,
   className,
@@ -78,7 +78,7 @@ export function WizardSliderField({
           {valueLabel}
         </output>
       </div>
-      <div className="border-2 border-neo-black bg-neo-white px-4 pb-3 pt-5 shadow-neo-xs">
+      <div className="border-2 border-neo-black bg-field px-4 pb-3 pt-5 shadow-neo-xs">
         <Slider
           id={id}
           value={[value]}

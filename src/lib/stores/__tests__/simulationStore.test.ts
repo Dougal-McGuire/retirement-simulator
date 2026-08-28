@@ -1,9 +1,4 @@
-import {
-  DEFAULT_PARAMS,
-  MAX_PLANS,
-  type SimulationParams,
-  type SimulationResults,
-} from '@/types'
+import { DEFAULT_PARAMS, MAX_PLANS, type SimulationParams, type SimulationResults } from '@/types'
 
 type StoreModule = typeof import('../simulationStore')
 
@@ -749,14 +744,18 @@ describe('simulationStore', () => {
       useSimulationStore.getState().saveSetup('Legacy save')
       await flushSimulationQueue()
 
-      const created = useSimulationStore.getState().plans.find((plan) => plan.name === 'Legacy save')
+      const created = useSimulationStore
+        .getState()
+        .plans.find((plan) => plan.name === 'Legacy save')
       expect(created).toBeDefined()
       expect(useSimulationStore.getState().savedSetups.map((setup) => setup.id)).toEqual(
         useSimulationStore.getState().plans.map((plan) => plan.id)
       )
 
       useSimulationStore.getState().deleteSetup(created!.id)
-      expect(useSimulationStore.getState().plans.some((plan) => plan.id === created!.id)).toBe(false)
+      expect(useSimulationStore.getState().plans.some((plan) => plan.id === created!.id)).toBe(
+        false
+      )
     })
   })
 
@@ -866,9 +865,9 @@ describe('simulationStore', () => {
       expect(state.isDirty).toBe(false)
       expect(state.params.monthlyPension).toBe(DEFAULT_PARAMS.monthlyPension)
       // The abandoned edit never reached the plan the user was on.
-      expect(
-        state.plans.find((plan) => plan.id === otherId)?.params.monthlyPension
-      ).toBe(DEFAULT_PARAMS.monthlyPension)
+      expect(state.plans.find((plan) => plan.id === otherId)?.params.monthlyPension).toBe(
+        DEFAULT_PARAMS.monthlyPension
+      )
     })
 
     it('lets a dirty plan be re-selected to discard the working copy', async () => {
@@ -1044,19 +1043,28 @@ describe('simulationStore', () => {
       ]
 
       migrated.forEach((params) => {
+        // The v2 pension field becomes the statutory pension flow, ahead of
+        // the migrated expenses and the one-off income.
         expect(params.cashFlows.map((flow) => flow.id)).toEqual([
+          'pension-statutory',
           'rent',
           'travel',
           expect.stringContaining('income'),
         ])
-        expect(params.cashFlows[0]).toEqual({
+        expect(params.cashFlows[0]).toMatchObject({
+          kind: 'pension',
+          nameKey: 'statutoryPension',
+          frequency: 'monthly',
+          inflationLinked: false,
+        })
+        expect(params.cashFlows[1]).toEqual({
           id: 'rent',
           kind: 'expense',
           name: 'Rent',
           amount: 1400,
           frequency: 'monthly',
         })
-        expect(params.cashFlows[2]).toMatchObject({
+        expect(params.cashFlows[3]).toMatchObject({
           kind: 'income',
           name: 'Inheritance',
           frequency: 'once',
@@ -1126,7 +1134,14 @@ describe('simulationStore', () => {
             startAge: 62,
             endAge: 70,
           },
-          { id: 'gift', kind: 'income', name: 'Gift', amount: 5000, frequency: 'once', startAge: 66 },
+          {
+            id: 'gift',
+            kind: 'income',
+            name: 'Gift',
+            amount: 5000,
+            frequency: 'once',
+            startAge: 66,
+          },
           { id: 'food', kind: 'expense', name: 'Food', amount: 1200, frequency: 'monthly' },
         ],
       })

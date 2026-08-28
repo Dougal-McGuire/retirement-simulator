@@ -1,4 +1,5 @@
 import { DEFAULT_PARAMS, type SimulationParams } from '@/types'
+import { withStatutoryPension } from '@/lib/simulation/cashFlows'
 import { hashSimulationParams } from '@/lib/simulation/engine'
 import { areSimulationParamsEqual } from '@/lib/simulation/planInsights'
 import { normalizePersistedParams } from '@/lib/stores/simulationStore'
@@ -151,7 +152,13 @@ describe('simulation parameter registration', () => {
   })
 
   describe.each(paramKeys.map((key) => [key] as const))('%s', (key) => {
-    const mutated = mutate(key, DEFAULT_PARAMS)
+    const base = mutate(key, DEFAULT_PARAMS)
+    // `monthlyPension` projects the statutory pension flow, so a consistent
+    // mutation moves both — exactly what the store's write path produces.
+    const mutated =
+      key === 'monthlyPension'
+        ? { ...base, cashFlows: withStatutoryPension(base.cashFlows, base.monthlyPension) }
+        : base
 
     it('is actually changed by the test mutation', () => {
       expect(mutated[key]).not.toEqual(DEFAULT_PARAMS[key])

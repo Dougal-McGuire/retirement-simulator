@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import type { WithdrawalStrategy } from '@/types'
 import type { BandPoint } from '@/components/charts/AssetsChart'
 import { Button } from '@/components/ui/button'
+import { InfoTip } from '@/components/ui/info-tip'
 import { useIsMobile } from '@/lib/hooks/useMediaQuery'
 import {
   axisTick,
@@ -171,16 +172,14 @@ export function SpendingChart({
   return (
     <div className="w-full min-w-0 space-y-5 border-3 border-neo-black bg-neo-white p-4 shadow-neo sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           <h4
             id="spending-chart-title"
             className="text-base font-extrabold uppercase tracking-[0.16em] text-neo-black sm:text-lg"
           >
             {t('title')}
           </h4>
-          <p className="mt-1.5 max-w-2xl text-xs font-medium leading-relaxed text-muted-foreground">
-            {t('description')}
-          </p>
+          <InfoTip content={t('description')} label={t('title')} side="bottom" />
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {headerControls}

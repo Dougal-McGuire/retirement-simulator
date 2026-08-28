@@ -78,50 +78,54 @@ test.describe('inline validation instead of silent clamping', () => {
   })
 })
 
-test.describe('plan tab navigation and collapse', () => {
-  test('jumps to a section and highlights the one being read', async ({ page }) => {
-    // Single column, which is where the audit measured its 5,400px scroll.
-    await page.setViewportSize({ width: 1100, height: 900 })
+test.describe('plan tab sections', () => {
+  test('shows one section at a time and remembers the open one', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
 
     const nav = page.getByTestId('plan-section-nav')
     await expect(nav).toBeVisible()
-    await expect(nav.getByRole('button')).toHaveCount(5)
+    await expect(nav.getByRole('tab')).toHaveCount(5)
+
+    // Personal opens by default; nothing else is mounted.
+    await expect(page.locator('#plan-editor-personal')).toBeVisible()
+    await expect(page.getByTestId('withdrawal-planner')).toHaveCount(0)
 
     await page.getByTestId('plan-section-pill-withdrawal').click()
-
-    const planner = page.getByTestId('withdrawal-planner')
-    await expect(planner).toBeInViewport()
     await expect(page.getByTestId('plan-section-pill-withdrawal')).toHaveAttribute(
-      'aria-current',
-      'true'
+      'data-state',
+      'active'
     )
+    await expect(page.getByTestId('withdrawal-planner')).toBeVisible()
+    await expect(page.locator('#plan-editor-personal')).toHaveCount(0)
 
-    // Scrolling elsewhere moves the highlight with the reader.
-    await page.evaluate(() => document.getElementById('plan-editor-income')?.scrollIntoView())
-    await expect(page.getByTestId('plan-section-pill-income')).toHaveAttribute(
-      'aria-current',
-      'true'
+    // The footer walks backwards through the plan…
+    await expect(page.getByTestId('plan-section-next')).toHaveCount(0)
+    await page.getByTestId('plan-section-previous').click()
+    await expect(page.locator('#plan-editor-market')).toBeVisible()
+
+    // …and the open page survives a reload.
+    await page.reload()
+    await page.getByTestId('tab-plan').click()
+    await expect(page.locator('#plan-editor-market')).toBeVisible()
+    await expect(page.getByTestId('plan-section-pill-market')).toHaveAttribute(
+      'data-state',
+      'active'
     )
   })
 
-  test('folds a section away, keeps its summary, and remembers the choice', async ({ page }) => {
+  test('opens the right section from a dashboard shortcut', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-market').click()
+    await page.getByRole('tab', { name: 'Overview' }).click()
 
-    const toggle = page.getByTestId('plan-editor-market-toggle')
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    await toggle.click()
-
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    await expect(page.locator('#plan-editor-market-body')).toBeHidden()
-    // The header and the chips survive: collapsing is for skimming, not hiding.
-    await expect(page.locator('#plan-editor-market')).toContainText('Market & rules')
-
-    await page.reload()
-    await page.getByTestId('tab-plan').click()
-    await expect(page.locator('#plan-editor-market-body')).toBeHidden()
+    // The hero's retirement-age pencil lives on the personal page, not the
+    // market page that was open last.
+    await page.getByTestId('hero-edit-bridge').click()
+    await expect(page.getByRole('tab', { name: 'Plan' })).toHaveAttribute('data-state', 'active')
+    await expect(page.locator('#editor-retirementAge')).toBeVisible()
+    await expect(page.locator('#editor-retirementAge [role="slider"]')).toBeFocused()
   })
 
   test('points at the withdrawal planner from the scenarios tab', async ({ page }) => {

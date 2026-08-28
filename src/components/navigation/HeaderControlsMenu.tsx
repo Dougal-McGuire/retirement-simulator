@@ -55,9 +55,7 @@ export function HeaderControlsMenu({ className, signInRedirectTo }: HeaderContro
           <SheetTitle className="pr-10 text-base font-black tracking-[0.08em] text-neo-black">
             {t('title')}
           </SheetTitle>
-          <SheetDescription className="text-left text-sm font-medium text-muted-foreground">
-            {t('description')}
-          </SheetDescription>
+          <SheetDescription className="sr-only">{t('description')}</SheetDescription>
         </SheetHeader>
 
         <div className="space-y-6 px-6 py-6">

@@ -180,6 +180,7 @@ export function QuickAdjustBar({ onOpenEditor, className }: QuickAdjustBarProps)
               ? tControls('fields.marketModel.leverIgnored')
               : undefined
           }
+          helpPlacement="inline"
         />
       </div>
     </section>

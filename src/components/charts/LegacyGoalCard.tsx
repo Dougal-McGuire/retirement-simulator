@@ -4,6 +4,7 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { Target } from 'lucide-react'
 import type { SimulationParams, SimulationResults } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
+import { InfoTip } from '@/components/ui/info-tip'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
 import { useUpdateParams } from '@/lib/stores/simulationStore'
 import { useCompactCurrency } from '@/lib/hooks/useCompactCurrency'
@@ -96,13 +97,13 @@ export function LegacyGoalCard({ params, results }: LegacyGoalCardProps) {
       <CardContent className="bg-neo-white p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
           <div className="min-w-0 lg:max-w-[20rem] lg:shrink-0">
-            <h3 className="flex items-center gap-2 text-[0.82rem] font-black uppercase tracking-[0.16em] text-neo-black">
-              <Target className="h-4 w-4" aria-hidden="true" />
-              {t('title')}
-            </h3>
-            <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">
-              {t('description')}
-            </p>
+            <div className="flex items-center gap-2">
+              <h3 className="flex items-center gap-2 text-[0.82rem] font-black uppercase tracking-[0.16em] text-neo-black">
+                <Target className="h-4 w-4" aria-hidden="true" />
+                {t('title')}
+              </h3>
+              <InfoTip content={t('description')} label={t('title')} side="bottom" />
+            </div>
             <div className="mt-3">
               <LabeledNumberInput
                 id="editor-legacyTargetReal"

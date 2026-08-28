@@ -220,7 +220,7 @@ export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
               <TableRow key={flow.id} alt={index % 2 === 1}>
                 <TableCell width="34%">
                   <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
-                    {flow.name || (flow.kind === 'income' ? incomeWord : expenseWord)}
+                    {flow.name || (flow.kind !== 'expense' ? incomeWord : expenseWord)}
                   </Text>
                 </TableCell>
                 <TableCell width="20%">{frequencyLabel(flow.frequency)}</TableCell>
@@ -230,12 +230,12 @@ export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
                     style={{
                       fontWeight: 600,
                       color:
-                        flow.kind === 'income'
+                        flow.kind !== 'expense'
                           ? tokens.colors.success[600]
                           : tokens.colors.ink[900],
                     }}
                   >
-                    {`${flow.kind === 'income' ? '+' : '−'}${fmtCurrency(flow.amount, locale)}`}
+                    {`${flow.kind !== 'expense' ? '+' : '−'}${fmtCurrency(flow.amount, locale)}`}
                     {flow.inflationLinked === false ? ' (nominal)' : ''}
                   </Text>
                 </TableCell>

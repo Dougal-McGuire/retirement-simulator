@@ -1,4 +1,5 @@
 import type { CashFlow, CustomExpense, SimulationParams, SimulationResults } from '@/types'
+import { netPensionAnnualAtAge, pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
 import { calculateCombinedExpenses, netAnnualPension } from '@/lib/simulation/engine'
 import { cashFlowsEqual } from '@/lib/simulation/cashFlows'
 
@@ -143,7 +144,17 @@ export function buildPlanInsightMetrics(
   const assetPercentiles =
     (options.displayReal ? results?.assetPercentilesReal : undefined) ?? results?.assetPercentiles
   const combinedExpenses = calculateCombinedExpenses(params.customExpenses)
-  const pensionAnnual = params.monthlyPension * 12
+  const pensionContext = {
+    legalRetirementAge: params.legalRetirementAge,
+    pensionTaxablePortion: params.pensionTaxablePortion,
+    pensionTaxRate: params.pensionTaxRate,
+  }
+  const pensionAnnual =
+    pensionMonthlyAtAge(
+      params.cashFlows ?? [],
+      params.legalRetirementAge,
+      params.legalRetirementAge
+    ).total * 12
   // What the pension is actually worth to the plan: the engine funds spending
   // out of the after-tax pension, so the withdrawal need shown here must too.
   const pensionAnnualNet = netAnnualPension(params)
@@ -157,7 +168,13 @@ export function buildPlanInsightMetrics(
   const horizonIndex = results ? Math.max(0, results.ages.length - 1) : 0
   const retirementMedianAssets = assetPercentiles?.p50[safeRetirementIndex] ?? params.currentAssets
   const horizonMedianAssets = assetPercentiles?.p50[horizonIndex] ?? params.currentAssets
-  const firstYearPension = params.retirementAge >= params.legalRetirementAge ? pensionAnnualNet : 0
+  // Whatever pays out in the first retirement year — a company pension that
+  // starts before the statutory one counts, the statutory one alone does not.
+  const firstYearPension = netPensionAnnualAtAge(
+    params.cashFlows ?? [],
+    params.retirementAge,
+    pensionContext
+  )
   const firstYearPortfolioNeed = Math.max(0, combinedExpenses.combinedAnnual - firstYearPension)
   const firstYearWithdrawalRate =
     retirementMedianAssets > 0 ? firstYearPortfolioNeed / retirementMedianAssets : null

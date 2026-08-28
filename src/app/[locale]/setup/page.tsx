@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-rea
 import { useTranslations, useFormatter } from 'next-intl'
 import { Link, useRouter } from '@/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
 import { WizardLiveResult } from '@/components/forms/WizardLiveResult'
 import { timelineIssues } from '@/lib/validation/fieldValidation'
@@ -284,7 +284,6 @@ export default function SetupPage() {
                 value={params.currentAge}
                 onChange={(value) => updateParams({ currentAge: value })}
                 helpText={t('personal.fields.currentAge.help')}
-                helpPlacement="tooltip"
                 className="w-full"
                 min={16}
                 max={100}
@@ -305,7 +304,6 @@ export default function SetupPage() {
                 value={params.legalRetirementAge}
                 onChange={(value) => updateParams({ legalRetirementAge: value })}
                 helpText={t('personal.fields.legalRetirementAge.help')}
-                helpPlacement="tooltip"
                 tooltip={t('personal.fields.legalRetirementAge.tooltip')}
                 className="w-full"
                 min={60}
@@ -336,7 +334,6 @@ export default function SetupPage() {
               minLabel={formatInteger(retirementSliderMin)}
               maxLabel={formatInteger(70)}
               helpText={t('personal.fields.retirementAge.help')}
-              helpPlacement="tooltip"
               meta={
                 <p
                   data-testid="wizard-timeline-chip"
@@ -380,7 +377,6 @@ export default function SetupPage() {
                 value={params.endAge}
                 onChange={(value) => updateParams({ endAge: value })}
                 helpText={t('personal.fields.endAge.help')}
-                helpPlacement="tooltip"
                 tooltip={t('personal.fields.endAge.tooltip')}
                 className="w-full"
                 min={65}
@@ -396,7 +392,6 @@ export default function SetupPage() {
                 }}
               />
             </div>
-
           </div>
         )
 
@@ -410,7 +405,6 @@ export default function SetupPage() {
                 value={params.currentAssets}
                 onChange={(value) => updateParams({ currentAssets: value })}
                 helpText={t('assets.fields.currentAssets.help')}
-                helpPlacement="tooltip"
                 className="w-full"
                 unit={t('units.currency')}
                 groupThousands
@@ -434,7 +428,6 @@ export default function SetupPage() {
                 value={params.annualSavings}
                 onChange={(value) => updateParams({ annualSavings: value })}
                 helpText={t('assets.fields.annualSavings.help')}
-                helpPlacement="tooltip"
                 className="w-full"
                 unit={t('units.currency')}
                 groupThousands
@@ -458,7 +451,6 @@ export default function SetupPage() {
                 value={params.annualSavingsGrowthRate * 100}
                 onChange={(value) => updateParams({ annualSavingsGrowthRate: value / 100 })}
                 helpText={t('assets.fields.annualSavingsGrowthRate.help')}
-                helpPlacement="tooltip"
                 className="w-full"
                 unit={t('units.percentPerYear')}
                 min={-10}
@@ -479,40 +471,18 @@ export default function SetupPage() {
                   }),
                 }}
               />
-
-              <LabeledNumberInput
-                id="monthlyPension"
-                label={t('assets.fields.monthlyPension.label')}
-                value={params.monthlyPension}
-                onChange={(value) => updateParams({ monthlyPension: value })}
-                helpText={t('assets.fields.monthlyPension.help')}
-                helpPlacement="tooltip"
-                className="w-full"
-                unit={t('units.currency')}
-                groupThousands
-                min={0}
-                rangeMessage={t('validation.nonNegative')}
-                invalidMessage={t('validation.notANumber')}
-                onInvalidChange={(invalid) => markInvalid('monthlyPension', invalid)}
-                validation={{
-                  typicalMax: 10_000,
-                  errorMessage: t('validation.nonNegative'),
-                  warningMessage: t('validation.typicalBetween', {
-                    min: formatCurrency(0),
-                    max: formatCurrency(10_000),
-                  }),
-                }}
-              />
             </div>
 
             <div className="space-y-4 border-2 border-neo-black bg-neo-white px-4 py-5 shadow-neo-xs sm:px-5">
-              <div>
+              <div className="flex items-center gap-2">
                 <h5 className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
                   {t('assets.oneTimeIncomes.title')}
                 </h5>
-                <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">
-                  {t('assets.oneTimeIncomes.help')}
-                </p>
+                <InfoTip
+                  content={t('assets.oneTimeIncomes.help')}
+                  label={t('assets.oneTimeIncomes.title')}
+                  side="bottom"
+                />
               </div>
               <OneTimeIncomeList
                 incomes={params.oneTimeIncomes}
@@ -571,7 +541,9 @@ export default function SetupPage() {
               flows={params.cashFlows ?? []}
               currentAge={params.currentAge}
               retirementAge={params.retirementAge}
+              legalRetirementAge={params.legalRetirementAge}
               endAge={params.endAge}
+              pensionTaxablePortion={params.pensionTaxablePortion}
               templates={templates}
               onChange={(cashFlows) => updateParams({ cashFlows })}
             />
@@ -594,7 +566,6 @@ export default function SetupPage() {
               minLabel={formatPercent(0.03, 0)}
               maxLabel={formatPercent(0.12, 0)}
               helpText={t('market.averageROI.help')}
-              helpPlacement="tooltip"
             />
 
             <WizardSliderField
@@ -609,7 +580,6 @@ export default function SetupPage() {
               minLabel={formatPercent(0.01, 0)}
               maxLabel={formatPercent(0.06, 0)}
               helpText={t('market.averageInflation.help')}
-              helpPlacement="tooltip"
             />
 
             <div className="flex items-center justify-between gap-3 border-2 border-dashed border-neo-black/30 bg-neo-blue/5 px-4 py-3">
@@ -633,7 +603,6 @@ export default function SetupPage() {
               minLabel={formatInteger(100)}
               maxLabel={formatInteger(5000)}
               helpText={t('market.simulationRuns.help')}
-              helpPlacement="tooltip"
             />
           </div>
         )
@@ -683,7 +652,9 @@ export default function SetupPage() {
             >
               <span className="font-bold">{activePlanName}</span>
               {isDirty && (
-                <span className="font-semibold text-neo-black/70">· {t('planContext.unsaved')}</span>
+                <span className="font-semibold text-neo-black/70">
+                  · {t('planContext.unsaved')}
+                </span>
               )}
               <InfoTip
                 content={t('planContext.hint')}
@@ -770,7 +741,6 @@ export default function SetupPage() {
               </div>
             </div>
 
-
             <div className="hidden lg:block">
               <ol
                 aria-label={t('progress.stepsLabel')}
@@ -801,7 +771,9 @@ export default function SetupPage() {
                         className={cn(
                           'theme-step-button absolute left-0 top-0 flex h-10 w-10 items-center justify-center border-3 border-neo-black bg-neo-white font-extrabold text-neo-black shadow-neo-xs transition-neo',
                           isCompleted && 'bg-secondary',
-                          isActive && !isCompleted && 'bg-neo-white ring-3 ring-neo-blue ring-offset-2',
+                          isActive &&
+                            !isCompleted &&
+                            'bg-neo-white ring-3 ring-neo-blue ring-offset-2',
                           !isCompleted && !isActive && 'bg-muted text-muted-foreground'
                         )}
                       >
@@ -828,9 +800,6 @@ export default function SetupPage() {
                         >
                           {step.title}
                         </p>
-                        <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">
-                          {step.description}
-                        </p>
                         <p
                           className={cn(
                             'mt-1 text-[0.6rem] font-semibold uppercase tracking-[0.12em]',
@@ -850,16 +819,21 @@ export default function SetupPage() {
           <section className="theme-content theme-setup-content space-y-5">
             <Card className={cn(glassCardClass, 'theme-active-step-card')}>
               <CardHeader className="border-b-3 border-neo-black bg-neo-white">
-                <CardTitle
-                  ref={stepHeadingRef}
-                  tabIndex={-1}
-                  className="text-xl font-extrabold uppercase tracking-[0.12em] text-neo-black"
-                >
-                  {steps[currentStep].title}
-                </CardTitle>
-                <CardDescription className="mt-1 text-xs font-medium normal-case leading-relaxed tracking-normal text-muted-foreground">
-                  {steps[currentStep].description}
-                </CardDescription>
+                <div className="flex items-center gap-2">
+                  <CardTitle
+                    ref={stepHeadingRef}
+                    tabIndex={-1}
+                    className="text-xl font-extrabold uppercase tracking-[0.12em] text-neo-black"
+                  >
+                    {steps[currentStep].title}
+                  </CardTitle>
+                  <InfoTip
+                    content={steps[currentStep].description}
+                    label={steps[currentStep].title}
+                    side="bottom"
+                    iconClassName="h-4 w-4"
+                  />
+                </div>
               </CardHeader>
               <CardContent className="pt-6">
                 <div key={activeStepKey} className="animate-step-in">
@@ -927,9 +901,7 @@ export default function SetupPage() {
       >
         <DialogContent className="bg-neo-white sm:max-w-[32rem]" data-testid="wizard-finish-dialog">
           <DialogHeader>
-            <DialogTitle>
-              {isFirstRun ? t('finish.firstRunTitle') : t('finish.title')}
-            </DialogTitle>
+            <DialogTitle>{isFirstRun ? t('finish.firstRunTitle') : t('finish.title')}</DialogTitle>
             <DialogDescription>
               {isFirstRun
                 ? t('finish.firstRunDescription')

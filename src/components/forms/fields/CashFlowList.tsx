@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
-import { ArrowDownRight, ArrowUpRight, Edit2, Plus, Trash2 } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Edit2, Landmark, Plus, Trash2 } from 'lucide-react'
 import {
   CASHFLOW_FREQUENCIES,
   isCashFlowFrequency,
@@ -12,6 +12,7 @@ import {
 } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { InfoTip } from '@/components/ui/info-tip'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -52,7 +53,11 @@ interface CashFlowListProps {
   flows: CashFlow[]
   currentAge: number
   retirementAge: number
+  /** Where a pension without its own start age begins. */
+  legalRetirementAge: number
   endAge: number
+  /** The plan's default taxable share, shown as the placeholder for a pension. */
+  pensionTaxablePortion?: number
   templates?: CashFlowTemplate[]
   onChange: (flows: CashFlow[]) => void
   /** Compact mode drops the intro copy (used inside the plan editor card). */
@@ -68,6 +73,8 @@ interface DraftState {
   endAge: string
   inflationLinked: boolean
   growthRate: string
+  /** Pension only: taxable share as a percentage string; blank = plan default. */
+  taxablePortion: string
   /**
    * Translation key of a seeded flow, plus the label the form was opened with.
    * A save that leaves the name untouched keeps the key (so the row goes on
@@ -87,8 +94,10 @@ const emptyDraft = (kind: CashFlowKind = 'expense'): DraftState => ({
   frequency: 'monthly',
   startAge: '',
   endAge: '',
-  inflationLinked: true,
+  // A pension is a fixed nominal amount until indexing is switched on.
+  inflationLinked: kind !== 'pension',
   growthRate: '',
+  taxablePortion: '',
   nameSeed: '',
   storedName: '',
 })
@@ -96,16 +105,24 @@ const emptyDraft = (kind: CashFlowKind = 'expense'): DraftState => ({
 const draftFromFlow = (
   flow: CashFlow,
   formatAmount: (value: number) => string,
-  displayName: string
+  displayName: string,
+  legalRetirementAge: number
 ): DraftState => ({
   kind: flow.kind,
   name: displayName,
   amount: formatAmount(flow.amount),
   frequency: flow.frequency,
-  startAge: flow.startAge === undefined ? '' : String(flow.startAge),
+  startAge:
+    flow.startAge === undefined
+      ? flow.kind === 'pension'
+        ? String(legalRetirementAge)
+        : ''
+      : String(flow.startAge),
   endAge: flow.endAge === undefined ? '' : String(flow.endAge),
   inflationLinked: flow.inflationLinked !== false,
   growthRate: flow.growthRate ? String(Number((flow.growthRate * 100).toFixed(2))) : '',
+  taxablePortion:
+    flow.taxablePortion === undefined ? '' : String(Number((flow.taxablePortion * 100).toFixed(1))),
   ...(flow.nameKey !== undefined ? { nameKey: flow.nameKey } : {}),
   nameSeed: displayName,
   storedName: flow.name,
@@ -124,7 +141,9 @@ export function CashFlowList({
   flows,
   currentAge,
   retirementAge,
+  legalRetirementAge,
   endAge,
+  pensionTaxablePortion,
   templates,
   onChange,
   compact = false,
@@ -153,8 +172,7 @@ export function CashFlowList({
     })
 
   /** Seeded flows follow the UI language; user-named ones render verbatim. */
-  const displayName = (flow: CashFlow) =>
-    cashFlowDisplayName(flow, (key) => t(`defaults.${key}`))
+  const displayName = (flow: CashFlow) => cashFlowDisplayName(flow, (key) => t(`defaults.${key}`))
 
   // Templates already in the list would only create duplicates.
   const availableTemplates = useMemo(() => {
@@ -168,9 +186,26 @@ export function CashFlowList({
     return (templates ?? []).filter((template) => !present.has(template.name.trim().toLowerCase()))
   }, [safeFlows, templates, t])
 
+  /**
+   * Money in, then money out. Pensions are income like any other; the table
+   * and the timeline both keep this order so a plan reads top to bottom.
+   */
+  const groupedFlows = useMemo(
+    () =>
+      (
+        [
+          { key: 'income', flows: safeFlows.filter((flow) => flow.kind !== 'expense') },
+          { key: 'expense', flows: safeFlows.filter((flow) => flow.kind === 'expense') },
+        ] as const
+      ).filter((group) => group.flows.length > 0),
+    [safeFlows]
+  )
+  const orderedFlows = useMemo(() => groupedFlows.flatMap((group) => group.flows), [groupedFlows])
+
   const totals = useMemo(() => {
     let income = 0
     let expense = 0
+    let pension = 0
     for (const flow of safeFlows) {
       const perYear =
         flow.frequency === 'monthly'
@@ -178,10 +213,11 @@ export function CashFlowList({
           : flow.frequency === 'annual'
             ? flow.amount
             : 0
-      if (flow.kind === 'income') income += perYear
+      if (flow.kind === 'pension') pension += perYear
+      else if (flow.kind === 'income') income += perYear
       else expense += perYear
     }
-    return { income, expense }
+    return { income, expense, pension }
   }, [safeFlows])
 
   const commitDraft = (state: DraftState, id?: string) => {
@@ -191,6 +227,8 @@ export function CashFlowList({
     if (!name || amount <= 0) return
 
     const growth = Number(state.growthRate.trim())
+    const taxable = Number(state.taxablePortion.trim())
+    const pension = state.kind === 'pension'
     const startAge = parseAge(state.startAge)
     const endAgeValue = state.frequency === 'once' ? undefined : parseAge(state.endAge)
 
@@ -204,12 +242,16 @@ export function CashFlowList({
       name: keepsKey ? state.storedName : name,
       ...(keepsKey ? { nameKey: state.nameKey } : {}),
       amount,
-      frequency: state.frequency,
+      // A pension is a stream; a single payment is a one-off income instead.
+      frequency: pension && state.frequency === 'once' ? 'monthly' : state.frequency,
       ...(startAge !== undefined ? { startAge } : {}),
       ...(endAgeValue !== undefined ? { endAge: endAgeValue } : {}),
       ...(state.inflationLinked ? {} : { inflationLinked: false }),
       ...(state.growthRate.trim() !== '' && Number.isFinite(growth) && growth !== 0
         ? { growthRate: growth / 100 }
+        : {}),
+      ...(pension && state.taxablePortion.trim() !== '' && Number.isFinite(taxable)
+        ? { taxablePortion: Math.min(1, Math.max(0, taxable / 100)) }
         : {}),
     }
 
@@ -239,10 +281,11 @@ export function CashFlowList({
       ...(template.endAge !== undefined && template.frequency !== 'once'
         ? { endAge: template.endAge }
         : {}),
+      ...(template.kind === 'pension' ? { inflationLinked: false } : {}),
     }
 
     onChange([...previous, flow])
-    setEditDraft(draftFromFlow(flow, editAmountField.format, flow.name))
+    setEditDraft(draftFromFlow(flow, editAmountField.format, flow.name, legalRetirementAge))
     setEditingId(flow.id)
 
     if (typeof window !== 'undefined') {
@@ -284,6 +327,13 @@ export function CashFlowList({
   const frequencyLabel = (frequency: CashFlowFrequency) => t(`frequency.${frequency}`)
 
   const windowLabel = (flow: CashFlow) => {
+    // A pension's unset start means the plan's statutory age — resolve it so
+    // every row reads the same way.
+    if (flow.kind === 'pension' && flow.startAge === undefined) {
+      return flow.endAge === undefined
+        ? t('window.from', { age: legalRetirementAge })
+        : t('window.range', { from: legalRetirementAge, to: flow.endAge })
+    }
     if (flow.frequency === 'once') {
       return t('window.at', { age: flow.startAge ?? currentAge })
     }
@@ -297,7 +347,13 @@ export function CashFlowList({
 
   /** Left offset / width of a flow's bar as a share of the plan horizon. */
   const barGeometry = (flow: CashFlow) => {
-    const start = Math.min(endAge, Math.max(currentAge, flow.startAge ?? currentAge))
+    const start = Math.min(
+      endAge,
+      Math.max(
+        currentAge,
+        flow.startAge ?? (flow.kind === 'pension' ? legalRetirementAge : currentAge)
+      )
+    )
     const stop =
       flow.frequency === 'once' ? start : Math.min(endAge, Math.max(start, flow.endAge ?? endAge))
     const left = ((start - currentAge) / horizon) * 100
@@ -324,23 +380,40 @@ export function CashFlowList({
       }}
     >
       <div className="flex flex-wrap items-center gap-2">
-        {(['expense', 'income'] as const).map((kind) => (
+        {(['expense', 'income', 'pension'] as const).map((kind) => (
           <button
             key={kind}
             type="button"
             aria-pressed={state.kind === kind}
             data-testid={id ? undefined : `cashflow-kind-${kind}`}
-            onClick={() => setState({ ...state, kind })}
+            onClick={() =>
+              setState({
+                ...state,
+                kind,
+                ...(kind === 'pension'
+                  ? {
+                      frequency: state.frequency === 'once' ? 'monthly' : state.frequency,
+                      inflationLinked: false,
+                      startAge:
+                        state.startAge.trim() === '' ? String(legalRetirementAge) : state.startAge,
+                    }
+                  : {}),
+              })
+            }
             className={cn(
               'inline-flex items-center gap-1.5 border-2 border-neo-black px-3 py-1.5 text-[0.62rem] font-extrabold uppercase tracking-[0.12em] transition-neo',
               state.kind === kind
-                ? kind === 'income'
-                  ? 'bg-neo-green text-neo-black shadow-neo-xs'
-                  : 'bg-neo-orange text-neo-black shadow-neo-xs'
+                ? kind === 'pension'
+                  ? 'bg-neo-blue text-neo-white shadow-neo-xs'
+                  : kind === 'income'
+                    ? 'bg-neo-green text-neo-black shadow-neo-xs'
+                    : 'bg-neo-orange text-neo-black shadow-neo-xs'
                 : 'bg-neo-white text-muted-foreground hover:bg-neo-blue/10'
             )}
           >
-            {kind === 'income' ? (
+            {kind === 'pension' ? (
+              <Landmark className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : kind === 'income' ? (
               <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
             ) : (
               <ArrowDownRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -364,7 +437,7 @@ export function CashFlowList({
             value={state.name}
             placeholder={t('fields.namePlaceholder')}
             onChange={(event) => setState({ ...state, name: event.target.value })}
-            className="h-11 border-2 border-neo-black bg-neo-white px-3 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+            className="h-11 border-2 border-neo-black px-3 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
           />
         </div>
 
@@ -383,7 +456,7 @@ export function CashFlowList({
             autoComplete="off"
             value={state.amount}
             onChange={(event) => setState({ ...state, amount: field.handleChange(event).display })}
-            className="h-11 border-2 border-neo-black bg-neo-white px-3 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+            className="h-11 border-2 border-neo-black px-3 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
           />
         </div>
 
@@ -402,12 +475,14 @@ export function CashFlowList({
           >
             <SelectTrigger
               id={`cashflow-frequency-${id ?? 'new'}`}
-              className="h-11 border-2 border-neo-black bg-neo-white"
+              className="h-11 border-2 border-neo-black"
             >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {CASHFLOW_FREQUENCIES.map((frequency) => (
+              {CASHFLOW_FREQUENCIES.filter(
+                (frequency) => state.kind !== 'pension' || frequency !== 'once'
+              ).map((frequency) => (
                 <SelectItem key={frequency} value={frequency}>
                   {frequencyLabel(frequency)}
                 </SelectItem>
@@ -430,9 +505,9 @@ export function CashFlowList({
             min={currentAge}
             max={endAge}
             value={state.startAge}
-            placeholder={String(currentAge)}
+            placeholder={String(state.kind === 'pension' ? legalRetirementAge : currentAge)}
             onChange={(event) => setState({ ...state, startAge: event.target.value })}
-            className="h-11 border-2 border-neo-black bg-neo-white px-3 text-[0.68rem] font-semibold"
+            className="h-11 border-2 border-neo-black px-3 text-[0.68rem] font-semibold"
           />
         </div>
 
@@ -453,7 +528,7 @@ export function CashFlowList({
               value={state.endAge}
               placeholder={String(endAge)}
               onChange={(event) => setState({ ...state, endAge: event.target.value })}
-              className="h-11 border-2 border-neo-black bg-neo-white px-3 text-[0.68rem] font-semibold"
+              className="h-11 border-2 border-neo-black px-3 text-[0.68rem] font-semibold"
             />
           </div>
         )}
@@ -482,7 +557,9 @@ export function CashFlowList({
                 <span className="mt-0.5 block font-medium normal-case text-muted-foreground">
                   {state.inflationLinked
                     ? t('fields.inflationLinkedOn')
-                    : t('fields.inflationLinkedOff')}
+                    : state.kind === 'pension'
+                      ? t('fields.pensionIndexedOff')
+                      : t('fields.inflationLinkedOff')}
                 </span>
               </span>
             </label>
@@ -501,12 +578,42 @@ export function CashFlowList({
                 value={state.growthRate}
                 placeholder="0"
                 onChange={(event) => setState({ ...state, growthRate: event.target.value })}
-                className="h-10 border-2 border-neo-black bg-neo-white px-3 text-[0.68rem] font-semibold"
+                className="h-10 border-2 border-neo-black px-3 text-[0.68rem] font-semibold"
               />
               <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
                 {t('fields.growthRateHint')}
               </span>
             </div>
+            {state.kind === 'pension' && (
+              <div className="flex flex-col">
+                <Label
+                  htmlFor={`cashflow-taxable-${id ?? 'new'}`}
+                  className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em]"
+                >
+                  {t('fields.taxablePortion')}
+                </Label>
+                <Input
+                  id={`cashflow-taxable-${id ?? 'new'}`}
+                  type="number"
+                  inputMode="decimal"
+                  step="1"
+                  min={0}
+                  max={100}
+                  value={state.taxablePortion}
+                  placeholder={String(Math.round((pensionTaxablePortion ?? 0) * 100))}
+                  onChange={(event) => setState({ ...state, taxablePortion: event.target.value })}
+                  className="h-10 border-2 border-neo-black px-3 text-[0.68rem] font-semibold"
+                />
+                <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
+                  {t('fields.taxablePortionHint', {
+                    portion: format.number(pensionTaxablePortion ?? 0, {
+                      style: 'percent',
+                      maximumFractionDigits: 0,
+                    }),
+                  })}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -539,7 +646,10 @@ export function CashFlowList({
   return (
     <div className="space-y-4" data-testid="cashflow-list">
       {!compact && (
-        <p className="text-xs font-medium leading-relaxed text-muted-foreground">{t('intro')}</p>
+        <div className="flex items-center gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <span>{t('listTitle')}</span>
+          <InfoTip content={t('intro')} label={t('listTitle')} side="bottom" />
+        </div>
       )}
 
       {safeFlows.length > 0 && (
@@ -556,7 +666,7 @@ export function CashFlowList({
               </span>
             </div>
             <div className="space-y-1">
-              {safeFlows.map((flow) => {
+              {orderedFlows.map((flow) => {
                 const geometry = barGeometry(flow)
                 return (
                   <div key={flow.id} className="flex items-center gap-2">
@@ -567,7 +677,11 @@ export function CashFlowList({
                       <span
                         className={cn(
                           'absolute inset-y-0 border-y-2 border-neo-black',
-                          flow.kind === 'income' ? 'bg-neo-green' : 'bg-neo-orange',
+                          flow.kind === 'pension'
+                            ? 'bg-neo-blue'
+                            : flow.kind === 'income'
+                              ? 'bg-neo-green'
+                              : 'bg-neo-orange',
                           flow.frequency === 'once' && 'border-x-2'
                         )}
                         style={geometry}
@@ -609,85 +723,108 @@ export function CashFlowList({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y-3 divide-neo-black">
-                {safeFlows.map((flow) =>
-                  editingId === flow.id ? (
-                    <tr key={flow.id} className="bg-neo-blue/5">
-                      <td colSpan={4} className="px-3 py-3">
-                        {renderDraftForm(editDraft, setEditDraft, editAmountField, flow.id)}
-                      </td>
-                    </tr>
-                  ) : (
-                    <tr key={flow.id}>
-                      <td className="px-3 py-2.5 text-left">
-                        <span className="flex items-center gap-1.5 text-[0.72rem] font-bold uppercase tracking-[0.1em]">
-                          {flow.kind === 'income' ? (
-                            <ArrowUpRight
-                              className="h-3.5 w-3.5 text-neo-green"
-                              aria-label={t('kind.income')}
-                            />
-                          ) : (
-                            <ArrowDownRight
-                              className="h-3.5 w-3.5 text-neo-orange"
-                              aria-label={t('kind.expense')}
-                            />
+              {groupedFlows.map((group) => (
+                <tbody
+                  key={group.key}
+                  className="divide-y-3 divide-neo-black border-t-3 border-neo-black"
+                >
+                  <tr className="bg-muted/40" data-testid={`cashflow-group-${group.key}`}>
+                    <td
+                      colSpan={4}
+                      className="px-3 py-1.5 text-[0.58rem] font-extrabold uppercase tracking-[0.16em] text-muted-foreground"
+                    >
+                      {t(`table.groups.${group.key}`, { count: group.flows.length })}
+                    </td>
+                  </tr>
+                  {group.flows.map((flow) =>
+                    editingId === flow.id ? (
+                      <tr key={flow.id} className="bg-neo-blue/5">
+                        <td colSpan={4} className="px-3 py-3">
+                          {renderDraftForm(editDraft, setEditDraft, editAmountField, flow.id)}
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={flow.id}>
+                        <td className="px-3 py-2.5 text-left">
+                          <span className="flex items-center gap-1.5 text-[0.72rem] font-bold uppercase tracking-[0.1em]">
+                            {flow.kind === 'pension' ? (
+                              <Landmark
+                                className="h-3.5 w-3.5 text-neo-blue"
+                                aria-label={t('kind.pension')}
+                              />
+                            ) : flow.kind === 'income' ? (
+                              <ArrowUpRight
+                                className="h-3.5 w-3.5 text-neo-green"
+                                aria-label={t('kind.income')}
+                              />
+                            ) : (
+                              <ArrowDownRight
+                                className="h-3.5 w-3.5 text-neo-orange"
+                                aria-label={t('kind.expense')}
+                              />
+                            )}
+                            {displayName(flow)}
+                          </span>
+                          <span className="mt-0.5 block text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                            {/* Narrow screens fold the period column into this line. */}
+                            <span className="sm:hidden">{windowLabel(flow)} · </span>
+                            {frequencyLabel(flow.frequency)}
+                            {flow.inflationLinked === false ? ` · ${t('fields.nominalTag')}` : ''}
+                            {flow.growthRate
+                              ? ` · ${format.number(flow.growthRate, { style: 'percent', maximumFractionDigits: 1 })}`
+                              : ''}
+                          </span>
+                        </td>
+                        <td className="hidden px-3 py-2.5 text-left text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:table-cell">
+                          {windowLabel(flow)}
+                        </td>
+                        <td
+                          className={cn(
+                            'px-3 py-2.5 text-right text-[0.72rem] font-bold tabular-nums',
+                            flow.kind === 'expense' ? 'text-neo-black' : 'text-neo-green'
                           )}
-                          {displayName(flow)}
-                        </span>
-                        <span className="mt-0.5 block text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                          {/* Narrow screens fold the period column into this line. */}
-                          <span className="sm:hidden">{windowLabel(flow)} · </span>
-                          {frequencyLabel(flow.frequency)}
-                          {flow.inflationLinked === false ? ` · ${t('fields.nominalTag')}` : ''}
-                          {flow.growthRate
-                            ? ` · ${format.number(flow.growthRate, { style: 'percent', maximumFractionDigits: 1 })}`
-                            : ''}
-                        </span>
-                      </td>
-                      <td className="hidden px-3 py-2.5 text-left text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:table-cell">
-                        {windowLabel(flow)}
-                      </td>
-                      <td
-                        className={cn(
-                          'px-3 py-2.5 text-right text-[0.72rem] font-bold tabular-nums',
-                          flow.kind === 'income' ? 'text-neo-green' : 'text-neo-black'
-                        )}
-                      >
-                        {`${flow.kind === 'income' ? '+' : '−'}${formatCurrency(flow.amount)}`}
-                      </td>
-                      <td className="w-20 px-2 py-2.5 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-neo-black hover:bg-neo-blue hover:text-neo-white"
-                            aria-label={`${t('actions.edit')}: ${displayName(flow)}`}
-                            onClick={() => {
-                              setEditDraft(
-                                draftFromFlow(flow, editAmountField.format, displayName(flow))
-                              )
-                              setEditingId(flow.id)
-                            }}
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-neo-black hover:bg-neo-red hover:text-neo-white"
-                            aria-label={`${t('actions.remove')}: ${displayName(flow)}`}
-                            onClick={() => handleRemove(flow.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
+                        >
+                          {`${flow.kind === 'expense' ? '−' : '+'}${formatCurrency(flow.amount)}`}
+                        </td>
+                        <td className="w-20 px-2 py-2.5 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-neo-black hover:bg-neo-blue hover:text-neo-white"
+                              aria-label={`${t('actions.edit')}: ${displayName(flow)}`}
+                              onClick={() => {
+                                setEditDraft(
+                                  draftFromFlow(
+                                    flow,
+                                    editAmountField.format,
+                                    displayName(flow),
+                                    legalRetirementAge
+                                  )
+                                )
+                                setEditingId(flow.id)
+                              }}
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-neo-black hover:bg-neo-red hover:text-neo-white"
+                              aria-label={`${t('actions.remove')}: ${displayName(flow)}`}
+                              onClick={() => handleRemove(flow.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              ))}
             </table>
           </div>
         </>
@@ -707,7 +844,9 @@ export function CashFlowList({
                 className="border-2 border-dashed border-neo-black bg-neo-white/50 px-3 py-2 text-left text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-neo-black transition-neo hover:-translate-x-[1px] hover:-translate-y-[1px] hover:bg-neo-yellow/20 hover:shadow-neo-sm"
               >
                 <span className="flex items-center gap-1.5">
-                  {template.kind === 'income' ? (
+                  {template.kind === 'pension' ? (
+                    <Landmark className="h-3 w-3 text-neo-blue" aria-hidden="true" />
+                  ) : template.kind === 'income' ? (
                     <ArrowUpRight className="h-3 w-3 text-neo-green" aria-hidden="true" />
                   ) : (
                     <ArrowDownRight className="h-3 w-3 text-neo-orange" aria-hidden="true" />
@@ -749,17 +888,23 @@ export function CashFlowList({
         {renderDraftForm(draft, setDraft, amountField)}
         {safeFlows.length > 0 && (
           <dl className="mt-4 space-y-1.5 border-t-3 border-dashed border-neo-black pt-3 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            {totals.pension > 0 && (
+              <div className="flex justify-between">
+                <dt>{t('summary.pension')}</dt>
+                <dd className="tabular-nums text-neo-blue">+{formatCurrency(totals.pension)}</dd>
+              </div>
+            )}
             <div className="flex justify-between">
               <dt>{t('summary.income')}</dt>
               <dd className="tabular-nums text-neo-green">+{formatCurrency(totals.income)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt>{t('summary.expense')}</dt>
+              <dt className="flex items-center gap-1.5">
+                {t('summary.expense')}
+                <InfoTip content={t('summary.note')} label={t('summary.expense')} side="bottom" />
+              </dt>
               <dd className="tabular-nums text-neo-black">−{formatCurrency(totals.expense)}</dd>
             </div>
-            <p className="pt-1 text-[0.55rem] font-medium normal-case tracking-normal">
-              {t('summary.note')}
-            </p>
           </dl>
         )}
       </div>

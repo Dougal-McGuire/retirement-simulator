@@ -15,6 +15,7 @@ import {
   projectOneTimeIncomes,
   reconcileCashFlows,
   sanitizeCashFlows,
+  statutoryPensionMonthly,
 } from '@/lib/simulation/cashFlows'
 import {
   bootstrapPlans,
@@ -60,7 +61,6 @@ const SAVED_SETUPS_KEY = () => storageKey(BASE_SAVED_SETUPS_KEY)
  * v3: unified `cashFlows`; `customExpenses`/`oneTimeIncomes` become projections.
  */
 const STORE_VERSION = 3
-
 
 const normalizeSavedSetups = (value: unknown): SavedSetup[] => {
   if (!Array.isArray(value)) return []
@@ -458,6 +458,9 @@ export const useSimulationStore = create<SimulationStore>()(
                   cashFlows: currentParams.cashFlows,
                   customExpenses: merged.customExpenses,
                   oneTimeIncomes: merged.oneTimeIncomes,
+                  // The wizard's pension field is a legacy write into the
+                  // statutory pension flow; anything else leaves pensions alone.
+                  monthlyPension: partial.monthlyPension,
                   currentAge: merged.currentAge,
                 })
 
@@ -466,6 +469,7 @@ export const useSimulationStore = create<SimulationStore>()(
             cashFlows,
             customExpenses: projectCustomExpenses(cashFlows),
             oneTimeIncomes: projectOneTimeIncomes(cashFlows, merged.currentAge),
+            monthlyPension: statutoryPensionMonthly(cashFlows),
           }
 
           applyParams(newParams)

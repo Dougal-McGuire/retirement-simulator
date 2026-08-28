@@ -20,6 +20,7 @@ import {
   projectCustomExpenses,
   projectOneTimeIncomes,
   reconcileCashFlows,
+  statutoryPensionMonthly,
 } from '@/lib/simulation/cashFlows'
 
 type NumericParamKey = keyof Omit<
@@ -265,12 +266,14 @@ export const normalizePersistedParams = (persistedParams: unknown): SimulationPa
     cashFlows: params.cashFlows,
     customExpenses,
     oneTimeIncomes,
+    monthlyPension: numerics.monthlyPension,
     currentAge,
   })
 
   return {
     ...DEFAULT_PARAMS,
     ...numerics,
+    monthlyPension: statutoryPensionMonthly(cashFlows),
     withdrawalStrategy: sanitizeWithdrawalStrategy(rawWithdrawalStrategy),
     marketModel: sanitizeMarketModel(rawMarketModel),
     glidePathEnabled: sanitizeBoolean(rawGlidePathEnabled, DEFAULT_PARAMS.glidePathEnabled),

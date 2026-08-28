@@ -11,6 +11,7 @@ test.describe('withdrawal planner', () => {
   test('offers four strategies and reacts to the withdrawal rate', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-withdrawal').click()
 
     const planner = page.getByTestId('withdrawal-planner')
     await expect(planner).toBeVisible()
@@ -51,6 +52,7 @@ test.describe('withdrawal planner', () => {
   test('swaps the strategy parameters when the rule changes', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-withdrawal').click()
 
     const planner = page.getByTestId('withdrawal-planner')
     await expect(planner.locator('#planner-dsCeilingRate')).toBeVisible()
@@ -78,6 +80,7 @@ test.describe('withdrawal planner', () => {
   test('compares all four strategies over the same market paths', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-withdrawal').click()
 
     const planner = page.getByTestId('withdrawal-planner')
     await planner.getByTestId('strategy-compare-run').click()
@@ -99,6 +102,7 @@ test.describe('withdrawal planner', () => {
   test('renders the planner in German', async ({ page }) => {
     await page.goto('/de/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-withdrawal').click()
 
     const planner = page.getByTestId('withdrawal-planner')
     await expect(planner).toContainText('Entnahmeplaner')

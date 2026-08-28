@@ -6,6 +6,7 @@ import { useFormatter, useTranslations } from 'next-intl'
 import type { SimulationResults } from '@/types'
 import { axisTick, chartInk, ChartTooltipCard, fanHue } from '@/components/charts/chartTheme'
 import { useIsMobile } from '@/lib/hooks/useMediaQuery'
+import { InfoTip } from '@/components/ui/info-tip'
 
 interface ShortfallChartProps {
   results: SimulationResults
@@ -90,20 +91,14 @@ export function ShortfallChart({ results }: ShortfallChartProps) {
   }
 
   return (
-    <div
-      role="img"
-      aria-label={t('ariaLabel')}
-      className="w-full min-w-0 space-y-4 border-3 border-neo-black bg-neo-white p-4 shadow-neo sm:p-6"
-    >
-      <div>
+    <div className="w-full min-w-0 space-y-4 border-3 border-neo-black bg-neo-white p-4 shadow-neo sm:p-6">
+      <div className="flex items-center gap-2">
         <h4 className="text-base font-extrabold uppercase tracking-[0.16em] text-neo-black sm:text-lg">
           {t('title')}
         </h4>
-        <p className="mt-1.5 text-xs font-medium leading-relaxed text-muted-foreground">
-          {t('subtitle')}
-        </p>
+        <InfoTip content={t('subtitle')} label={t('title')} side="bottom" />
       </div>
-      <div ref={frameRef} className="h-56 w-full min-w-0">
+      <div ref={frameRef} role="img" aria-label={t('ariaLabel')} className="h-56 w-full min-w-0">
         {chartSize.width > 0 && chartSize.height > 0 && (
           <AreaChart
             data={data}

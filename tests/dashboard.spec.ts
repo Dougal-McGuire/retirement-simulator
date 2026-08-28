@@ -135,6 +135,7 @@ test.describe('simulation dashboard', () => {
 
     // Edit through the full plan editor.
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-income').click()
     const assets = page.locator('#editor-currentAssets')
     await assets.fill('900000')
     await assets.blur()
@@ -174,6 +175,7 @@ test.describe('simulation dashboard', () => {
     await page.getByRole('button', { name: 'Create plan' }).click()
 
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-income').click()
     const savings = page.locator('#editor-annualSavings')
     await savings.fill('12000')
     await savings.blur()
@@ -200,6 +202,7 @@ test.describe('simulation dashboard', () => {
   test('confirms before resetting a plan and offers an undo', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-income').click()
 
     const assets = page.locator('#editor-currentAssets')
     await assets.fill('900000')
@@ -279,6 +282,7 @@ test.describe('market model and glide path', () => {
   test('switches to a historical backtest and freezes the inputs it ignores', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-market').click()
 
     await page.getByTestId('market-model-historical').click()
     await expect(page.getByTestId('market-model-historical-notice')).toContainText(
@@ -310,6 +314,7 @@ test.describe('market model and glide path', () => {
   test('narrows the outcome band when the glide path is switched on', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-market').click()
 
     const spread = () =>
       page.evaluate(() => {
@@ -334,6 +339,7 @@ test.describe('unified cash flows', () => {
   test('adds a windowed income and a one-off expense, and moves the plan', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-cashFlows').click()
 
     const card = page.locator('#plan-editor-expenses')
     await expect(card.getByTestId('cashflow-timeline')).toBeVisible()
@@ -381,7 +387,7 @@ test.describe('unified cash flows', () => {
         }
       })
 
-    await expect.poll(stored).toEqual({ version: 3, flows: 10, expenses: 8, windowed: 2 })
+    await expect.poll(stored).toEqual({ version: 3, flows: 11, expenses: 8, windowed: 2 })
   })
 })
 
@@ -389,6 +395,7 @@ test.describe('German taxes and the legacy goal', () => {
   test('edits German tax assumptions and reports the resulting tax drag', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-market').click()
 
     const tax = page.getByTestId('tax-block')
     await expect(tax).toBeVisible()
@@ -434,7 +441,6 @@ test.describe('German taxes and the legacy goal', () => {
 })
 
 test.describe('onboarding, overlays and template ergonomics', () => {
-
   test('greets a first-time visitor once and never again', async ({ page }) => {
     await page.goto('/en/simulation')
 
@@ -485,9 +491,44 @@ test.describe('onboarding, overlays and template ergonomics', () => {
     expect(positioned).toBe(true)
   })
 
+  test('adds a second pension with its own start age next to the statutory one', async ({
+    page,
+  }) => {
+    await page.goto('/en/simulation')
+    await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-cashFlows').click()
+
+    const card = page.locator('#plan-editor-expenses')
+    const list = card.getByTestId('cashflow-list')
+    // The seeded pension is an income row like any other, incomes first.
+    await expect(list).toContainText('Statutory pension')
+    await expect(list.getByTestId('cashflow-group-income')).toContainText('Income · 1')
+    await expect(list.getByTestId('cashflow-group-expense')).toContainText('Expenses · 8')
+    await expect(list).toContainText('From age 67')
+
+    await card.getByTestId('cashflow-kind-pension').click()
+    // A pension cannot be a one-off payment, so that option is gone.
+    await card.locator('#cashflow-frequency-new').click()
+    await expect(page.getByRole('option', { name: 'One-off' })).toHaveCount(0)
+    await page.keyboard.press('Escape')
+
+    await card.locator('#cashflow-name-new').fill('Company pension')
+    await card.locator('#cashflow-amount-new').fill('400')
+    await card.locator('#cashflow-start-new').fill('70')
+    await card.getByTestId('cashflow-add').click()
+
+    await expect(list).toContainText('Company pension')
+    await expect(list).toContainText('From age 70')
+    await expect(list.getByTestId('cashflow-group-income')).toContainText('Income · 2')
+    // Two pensions in the plan; at 67 only the statutory one pays out yet.
+    await expect(card).toContainText('2 pensions')
+    await expect(card).toContainText('€5,000')
+  })
+
   test('opens a cash-flow template in edit mode and lets the add be undone', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-cashFlows').click()
 
     const list = page.getByTestId('cashflow-list')
     const rowsBefore = await list.locator('tbody tr').count()
@@ -514,9 +555,7 @@ test.describe('onboarding, overlays and template ergonomics', () => {
 
     // The lever writes the lifetime expenses only; the caption has to say so
     // and show the total it covers.
-    await expect(page.getByTestId('quick-adjust')).toContainText(
-      /Scales the \d+ lifetime expenses/
-    )
+    await expect(page.getByTestId('quick-adjust')).toContainText(/Scales the \d+ lifetime expenses/)
   })
 
   test('jumps from the differences chip to the first differing row', async ({ page }) => {
@@ -576,7 +615,12 @@ test.describe('dashboard quick wins', () => {
 
     // `role="slider"` lives on the thumb, so that is the element that has to
     // carry the name — an aria-label on the Radix root names nothing.
-    for (const name of ['Retirement age', 'Annual savings', 'Monthly expenses', 'Expected return']) {
+    for (const name of [
+      'Retirement age',
+      'Annual savings',
+      'Monthly expenses',
+      'Expected return',
+    ]) {
       await expect(quickAdjust.getByRole('slider', { name })).toHaveCount(1)
     }
 
@@ -584,9 +628,9 @@ test.describe('dashboard quick wins', () => {
     // chart has none of: it used to announce "Min value: undefined".
     const brushHandles = page.getByRole('slider', { name: /Age range shown/ })
     await expect(brushHandles.first()).toBeAttached()
-    const labels = await page.getByRole('slider').evaluateAll((nodes) =>
-      nodes.map((node) => node.getAttribute('aria-label') ?? '')
-    )
+    const labels = await page
+      .getByRole('slider')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label') ?? ''))
     expect(labels.some((label) => label.includes('undefined'))).toBe(false)
   })
 

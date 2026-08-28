@@ -112,7 +112,7 @@ export function LabeledNumberInput({
   max,
   className,
   helpText,
-  helpPlacement = 'inline',
+  helpPlacement = 'tooltip',
   tooltip,
   tooltipAriaLabel,
   unit,

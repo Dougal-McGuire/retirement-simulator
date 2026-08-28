@@ -3,9 +3,10 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { NumberFormatOptions } from 'next-intl'
 import { useFormatter, useTranslations } from 'next-intl'
-import { AlertTriangle, ChevronDown, RotateCcw, Save } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, RotateCcw, Save } from 'lucide-react'
 import { DEFAULT_PARAMS, HOUSEHOLD_TYPES, MARKET_MODELS, type SimulationParams } from '@/types'
 import { Button } from '@/components/ui/button'
+import { InfoTip } from '@/components/ui/info-tip'
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput
 import { EquityGlideSparkline } from '@/components/charts/EquityGlideSparkline'
 import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
 import { CashFlowList } from '@/components/forms/fields/CashFlowList'
+import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
 import { WithdrawalPlanner } from '@/components/plans/WithdrawalPlanner'
 import { buildCashFlowTemplates } from '@/components/forms/fields/cashFlowTemplates'
 import { toast, TOAST_DURATION } from '@/components/ui/toast'
@@ -26,6 +28,7 @@ import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts'
 import {
   annualTaxAllowance,
   calculateCombinedExpenses,
+  netAnnualPension,
   netPensionFactor,
 } from '@/lib/simulation/engine'
 import {
@@ -36,11 +39,14 @@ import {
 import { planDisplayName } from '@/lib/plans/planName'
 import { timelineIssues } from '@/lib/validation/fieldValidation'
 import { PlanSectionNav } from '@/components/plans/PlanSectionNav'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import {
-  usePlanSectionsCollapsed,
-  useSetPlanSectionCollapsed,
-  useTogglePlanSection,
-} from '@/lib/stores/displayStore'
+  adjacentSections,
+  isPlanSectionGroup,
+  scrollToPlanSection,
+  type PlanSectionGroup,
+} from '@/components/plans/planSections'
+import { usePlanSection, useSetPlanSection } from '@/lib/stores/displayStore'
 import {
   useActivePlan,
   usePlanIsDirty,
@@ -108,9 +114,6 @@ function EditorCard({
   stats,
   statsStale = false,
   statsStaleNote,
-  collapsed = false,
-  onToggleCollapsed,
-  collapseLabel,
   children,
   className,
 }: {
@@ -120,9 +123,6 @@ function EditorCard({
   stats?: StatItem[]
   statsStale?: boolean
   statsStaleNote?: string
-  collapsed?: boolean
-  onToggleCollapsed?: () => void
-  collapseLabel?: string
   children: React.ReactNode
   className?: string
 }) {
@@ -130,38 +130,18 @@ function EditorCard({
     <section
       id={id}
       data-testid={id}
-      data-collapsed={collapsed || undefined}
       className={cn(
         'theme-panel-card flex scroll-mt-32 flex-col gap-5 border-3 border-neo-black bg-neo-white p-5 shadow-neo',
         className
       )}
     >
       <header className="flex items-start justify-between gap-3 border-b-2 border-neo-black pb-3">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           <h3 className="text-[0.92rem] font-black uppercase tracking-[0.16em] text-neo-black">
             {title}
           </h3>
-          <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">
-            {description}
-          </p>
+          <InfoTip content={description} label={title} side="bottom" />
         </div>
-        {onToggleCollapsed && (
-          <button
-            type="button"
-            data-testid={`${id}-toggle`}
-            aria-expanded={!collapsed}
-            aria-controls={`${id}-body`}
-            aria-label={collapseLabel}
-            title={collapseLabel}
-            onClick={onToggleCollapsed}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center border-2 border-neo-black bg-neo-white text-neo-black transition-neo hover:bg-neo-yellow"
-          >
-            <ChevronDown
-              className={cn('h-4 w-4 transition-transform', collapsed && '-rotate-90')}
-              aria-hidden="true"
-            />
-          </button>
-        )}
       </header>
       {stats && stats.length > 0 && <StatStrip items={stats} stale={statsStale} />}
       {statsStale && statsStaleNote && (
@@ -172,7 +152,7 @@ function EditorCard({
           {statsStaleNote}
         </p>
       )}
-      <div id={`${id}-body`} className={cn('flex-col gap-6', collapsed ? 'hidden' : 'flex')}>
+      <div id={`${id}-body`} className="flex flex-col gap-6">
         {children}
       </div>
     </section>
@@ -275,12 +255,19 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
     []
   )
 
-  const collapsedSections = usePlanSectionsCollapsed()
-  const toggleSection = useTogglePlanSection()
-  const setSectionCollapsed = useSetPlanSectionCollapsed()
-  const expandSection = useCallback(
-    (id: string) => setSectionCollapsed(id, false),
-    [setSectionCollapsed]
+  const section = usePlanSection()
+  const setSection = useSetPlanSection()
+  /**
+   * Switches page and brings the switcher back into view. A footer click at the
+   * bottom of the withdrawal planner would otherwise land the reader at the
+   * *bottom* of the next page, which reads as nothing having happened.
+   */
+  const goToSection = useCallback(
+    (next: PlanSectionGroup) => {
+      setSection(next)
+      window.requestAnimationFrame(() => scrollToPlanSection('plan-editor-sections'))
+    },
+    [setSection]
   )
 
   const planName = activePlan ? planDisplayName(activePlan, tPlans) : ''
@@ -371,6 +358,14 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
   // the number the projection actually paid.
   const effectiveAllowance = annualTaxAllowance(params)
   const pensionFactor = netPensionFactor(params)
+  // Every pension paying out at the statutory age — gross, and after the tax
+  // on each one's taxable share.
+  const pensionGrossMonthly = pensionMonthlyAtAge(
+    params.cashFlows ?? [],
+    params.legalRetirementAge,
+    params.legalRetirementAge
+  ).total
+  const pensionNetMonthly = netAnnualPension(params) / 12
   const taxDrag = results?.withdrawalTaxDrag
 
   const handleReset = () => {
@@ -404,14 +399,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
   const onceIncomeCount = cashFlows.filter(
     (flow) => flow.kind === 'income' && flow.frequency === 'once'
   ).length
-  /** Flows the legacy "expenses" list could never express — windows and one-offs. */
-  const scheduledFlowCount = cashFlows.filter(
-    (flow) =>
-      flow.kind === 'income' ||
-      flow.frequency === 'once' ||
-      flow.startAge !== undefined ||
-      flow.endAge !== undefined
-  ).length
+  const pensionFlowCount = cashFlows.filter((flow) => flow.kind === 'pension').length
 
   const cashFlowTemplates = useMemo(
     () =>
@@ -424,13 +412,6 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
     [tSetup, params.currentAge, params.retirementAge, params.legalRetirementAge, params.endAge]
   )
 
-  /** Collapse wiring shared by every card, so the five sections behave alike. */
-  const sectionProps = (id: string) => ({
-    collapsed: Boolean(collapsedSections[id]),
-    onToggleCollapsed: () => toggleSection(id),
-    collapseLabel: collapsedSections[id] ? t('sections.expand') : t('sections.collapse'),
-  })
-
   /** Field-level refusal copy. Always translated — never the component default. */
   const ageRange = (min: number, max: number) => tSetup('validation.ageRange', { min, max })
   const numberRange = (min: number, max: number) =>
@@ -438,21 +419,21 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
   const atLeast = (min: number) => tSetup('validation.atLeast', { min: formatInteger(min) })
   const notANumber = tSetup('validation.notANumber')
 
-  const gridClass =
-    variant === 'drawer'
-      ? 'grid grid-cols-1 gap-5'
-      : 'grid grid-cols-1 gap-5 xl:grid-cols-2 xl:items-start'
+  const { previous, next } = adjacentSections(section)
+  const sectionTitle = (group: PlanSectionGroup) => t(`groups.${group}.title`)
 
   return (
     <div className={cn('space-y-5', className)} data-testid="plan-editor">
       <div className="flex flex-col gap-3 border-3 border-neo-black bg-neo-white px-5 py-4 shadow-neo sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           <h2 className="text-[1rem] font-black uppercase tracking-[0.2em] text-neo-black">
             {t('title')}
           </h2>
-          <p className="mt-1 max-w-2xl text-xs font-medium leading-relaxed text-muted-foreground">
-            {planName ? t('description', { name: planName }) : t('descriptionGeneric')}
-          </p>
+          <InfoTip
+            content={planName ? t('description', { name: planName }) : t('descriptionGeneric')}
+            label={t('title')}
+            side="bottom"
+          />
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Button
@@ -488,702 +469,603 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
         </div>
       </div>
 
-      {/* Sticky sub-navigation. The Plan tab is one very tall column; the pills
-          are how you get to the withdrawal planner without scrolling past
-          everything else first. */}
-      <PlanSectionNav collapsed={collapsedSections} onExpand={expandSection} />
+      {/* One section at a time. The Plan tab used to be a five-thousand-pixel
+          column with a scroll spy; now it is five pages behind a switcher
+          built like the dashboard's own tabs, so the two levels read alike. */}
+      <Tabs
+        id="plan-editor-sections"
+        value={section}
+        onValueChange={(value) => isPlanSectionGroup(value) && setSection(value)}
+        className="scroll-mt-32 space-y-5"
+      >
+        <PlanSectionNav compact={variant === 'drawer'} />
 
-      <div className={gridClass}>
-        <EditorCard
-          id="plan-editor-personal"
-          {...sectionProps('plan-editor-personal')}
-          title={t('groups.personal.title')}
-          description={t('groups.personal.description')}
-          statsStale={personalFieldsInvalid}
-          statsStaleNote={t('sections.staleStats')}
-          stats={[
-            {
-              label: t('summary.workingYears'),
-              value: t('summary.years', { count: workingYears }),
-            },
-            {
-              label: t('summary.retirementYears'),
-              value: t('summary.years', { count: retirementYears }),
-            },
-            {
-              label: t('summary.pensionGap', { age: params.legalRetirementAge }),
-              value: t('summary.years', {
-                count: Math.max(0, params.legalRetirementAge - params.retirementAge),
-              }),
-            },
-          ]}
-        >
-          <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
-            <LabeledNumberInput
-              id="editor-currentAge"
-              label={tSetup('personal.fields.currentAge.label')}
-              value={params.currentAge}
-              onChange={(value) => updateParams({ currentAge: value })}
-              helpText={tSetup('personal.fields.currentAge.help')}
-              className="w-full"
-              min={16}
-              max={100}
-              rangeMessage={ageRange(16, 100)}
-              invalidMessage={notANumber}
-              onInvalidChange={(invalid) => markInvalid('editor-currentAge', invalid)}
-            />
-            <LabeledNumberInput
-              id="editor-legalRetirementAge"
-              label={tSetup('personal.fields.legalRetirementAge.label')}
-              value={params.legalRetirementAge}
-              onChange={(value) => updateParams({ legalRetirementAge: value })}
-              helpText={tSetup('personal.fields.legalRetirementAge.help')}
-              tooltip={tSetup('personal.fields.legalRetirementAge.tooltip')}
-              className="w-full"
-              min={60}
-              max={75}
-              rangeMessage={ageRange(60, 75)}
-              invalidMessage={notANumber}
-              onInvalidChange={(invalid) => markInvalid('editor-legalRetirementAge', invalid)}
-            />
-          </div>
-
-          <WizardSliderField
-            id="editor-retirementAge"
-            label={tSetup('personal.fields.retirementAge.label')}
-            value={params.retirementAge}
-            onValueChange={(value) => updateParams({ retirementAge: value })}
-            min={retirementSliderMin}
-            max={70}
-            step={1}
-            valueLabel={formatInteger(params.retirementAge)}
-            minLabel={formatInteger(retirementSliderMin)}
-            maxLabel={formatInteger(70)}
-            helpText={tSetup('personal.fields.retirementAge.help')}
-          />
-
-          {/* Cross-field callout, sitting between the fields it is about. */}
-          {ageIssues.length > 0 && (
-            <div
-              role="alert"
-              data-testid="editor-timeline-issues"
-              className={cn(
-                'flex items-start gap-3 border-2 px-4 py-3',
-                ageIssues.some((issue) => issue.severity === 'error')
-                  ? 'border-neo-red bg-neo-red/10'
-                  : 'border-neo-orange bg-neo-orange/10'
-              )}
-            >
-              <AlertTriangle
-                className="mt-0.5 h-4 w-4 flex-shrink-0 text-neo-orange"
-                aria-hidden="true"
-              />
-              <div className="space-y-1 text-xs font-medium leading-relaxed text-neo-black">
-                {ageIssues.map((issue) => (
-                  <p key={issue.id}>{tSetup(`validation.${issue.id}`)}</p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="sm:max-w-[50%]">
-            <LabeledNumberInput
-              id="editor-endAge"
-              label={tSetup('personal.fields.endAge.label')}
-              value={params.endAge}
-              onChange={(value) => updateParams({ endAge: value })}
-              helpText={tSetup('personal.fields.endAge.help')}
-              className="w-full"
-              min={65}
-              max={110}
-              rangeMessage={ageRange(65, 110)}
-              invalidMessage={notANumber}
-              onInvalidChange={(invalid) => markInvalid('editor-endAge', invalid)}
-            />
-          </div>
-        </EditorCard>
-
-        <EditorCard
-          id="plan-editor-income"
-          {...sectionProps('plan-editor-income')}
-          title={t('groups.income.title')}
-          description={t('groups.income.description')}
-          stats={[
-            {
-              label: t('summary.savingsRate'),
-              value: formatPercent(savingsRate),
-              hint: t('summary.savingsRateHint'),
-            },
-            {
-              label: tSetup('assets.fields.annualSavings.label'),
-              value: formatCurrency(params.annualSavings),
-            },
-            {
-              label: tSetup('assets.fields.monthlyPension.label'),
-              value: formatCurrency(params.monthlyPension),
-            },
-          ]}
-        >
-          <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
-            <LabeledNumberInput
-              id="editor-currentAssets"
-              label={tSetup('assets.fields.currentAssets.label')}
-              value={params.currentAssets}
-              onChange={(value) => updateParams({ currentAssets: value })}
-              helpText={tSetup('assets.fields.currentAssets.help')}
-              className="w-full"
-              unit={tSetup('units.currency')}
-              groupThousands
-              min={0}
-              rangeMessage={atLeast(0)}
-              invalidMessage={notANumber}
-              onInvalidChange={(invalid) => markInvalid('editor-currentAssets', invalid)}
-            />
-            <LabeledNumberInput
-              id="editor-annualSavings"
-              label={tSetup('assets.fields.annualSavings.label')}
-              value={params.annualSavings}
-              onChange={(value) => updateParams({ annualSavings: value })}
-              helpText={tSetup('assets.fields.annualSavings.help')}
-              className="w-full"
-              unit={tSetup('units.currency')}
-              groupThousands
-              min={0}
-              rangeMessage={atLeast(0)}
-              invalidMessage={notANumber}
-              onInvalidChange={(invalid) => markInvalid('editor-annualSavings', invalid)}
-            />
-            <LabeledNumberInput
-              id="editor-annualSavingsGrowthRate"
-              label={tSetup('assets.fields.annualSavingsGrowthRate.label')}
-              value={Number((params.annualSavingsGrowthRate * 100).toFixed(2))}
-              onChange={(value) => updateParams({ annualSavingsGrowthRate: value / 100 })}
-              helpText={tSetup('assets.fields.annualSavingsGrowthRate.help')}
-              className="w-full"
-              unit={tSetup('units.percentPerYear')}
-              min={-10}
-              max={20}
-              rangeMessage={numberRange(-10, 20)}
-              invalidMessage={notANumber}
-              onInvalidChange={(invalid) => markInvalid('editor-annualSavingsGrowthRate', invalid)}
-            />
-            <LabeledNumberInput
-              id="editor-monthlyPension"
-              label={tSetup('assets.fields.monthlyPension.label')}
-              value={params.monthlyPension}
-              onChange={(value) => updateParams({ monthlyPension: value })}
-              helpText={tSetup('assets.fields.monthlyPension.help')}
-              className="w-full"
-              unit={tSetup('units.currency')}
-              groupThousands
-              min={0}
-              rangeMessage={atLeast(0)}
-              invalidMessage={notANumber}
-              onInvalidChange={(invalid) => markInvalid('editor-monthlyPension', invalid)}
-            />
-          </div>
-
-          {/* One-off income used to live here. It is a cash flow like any
-              other now, so the card below owns it — two editors writing the
-              same list is how they drift apart. */}
-          <p className="border-2 border-dashed border-neo-black/40 bg-background px-4 py-3 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-            {t('groups.cashFlows.incomePointer', { count: onceIncomeCount })}
-          </p>
-        </EditorCard>
-
-        <EditorCard
-          id="plan-editor-expenses"
-          {...sectionProps('plan-editor-expenses')}
-          title={t('groups.cashFlows.title')}
-          description={t('groups.cashFlows.description')}
-          stats={[
-            {
-              label: t('summary.monthlyTotal'),
-              value: formatCurrency(combined.totalMonthly),
-              hint: t('summary.expenseCount', {
-                count: expenses.filter((entry) => entry.interval === 'monthly').length,
-              }),
-            },
-            {
-              label: t('summary.annualExtras'),
-              value: formatCurrency(combined.totalAnnual),
-              hint: t('summary.expenseCount', {
-                count: expenses.filter((entry) => entry.interval === 'annual').length,
-              }),
-            },
-            {
-              label: t('summary.scheduledFlows'),
-              value: formatInteger(scheduledFlowCount),
-              hint: t('summary.scheduledFlowsHint'),
-            },
-          ]}
-        >
-          <CashFlowList
-            compact
-            flows={cashFlows}
-            currentAge={params.currentAge}
-            retirementAge={params.retirementAge}
-            endAge={params.endAge}
-            templates={cashFlowTemplates}
-            onChange={(next) => updateParams({ cashFlows: next })}
-          />
-        </EditorCard>
-
-        <EditorCard
-          id="plan-editor-market"
-          {...sectionProps('plan-editor-market')}
-          title={t('groups.market.title')}
-          description={t('groups.market.description')}
-          stats={
-            usesHistory
-              ? [
-                  {
-                    label: tControls('fields.marketModel.label'),
-                    value: tControls('fields.marketModel.options.historical.label'),
-                    hint: `${HISTORICAL_FIRST_YEAR}–${HISTORICAL_LAST_YEAR}`,
-                  },
-                  {
-                    label: tControls('fields.marketModel.pathsLabel'),
-                    value: formatInteger(HISTORICAL_PATH_COUNT),
-                    hint: tControls('fields.marketModel.pathsHint'),
-                  },
-                  {
-                    label: tControls('fields.glidePath.label'),
-                    value: glideOn ? tControls('toggle.on') : tControls('toggle.off'),
-                    hint: glideOn
-                      ? `${formatPercent(params.equityAllocationStart, 0)} → ${formatPercent(params.equityAllocationEnd, 0)}`
-                      : undefined,
-                  },
-                ]
-              : [
-                  {
-                    label: t('summary.realReturn'),
-                    value: formatPercent(realReturn, 1),
-                  },
-                  {
-                    label: glideOn
-                      ? tControls('fields.glidePath.equitySleeveLabel', {
-                          label: tControls('fields.roiVolatility.label'),
-                        })
-                      : tControls('fields.roiVolatility.label'),
-                    value: `± ${formatPercent(params.roiVolatility)}`,
-                    hint: glideOn
-                      ? `${formatPercent(params.equityAllocationStart, 0)} → ${formatPercent(params.equityAllocationEnd, 0)}`
-                      : undefined,
-                  },
-                  {
-                    label: tControls('fields.simulationRuns.label'),
-                    value: formatInteger(params.simulationRuns),
-                  },
-                ]
-          }
-        >
-          <div className="space-y-2" data-testid="market-model-switch">
-            <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
-              {tControls('fields.marketModel.label')}
-            </span>
-            <div className="grid gap-2 sm:grid-cols-2" role="group">
-              {MARKET_MODELS.map((model) => {
-                const isSelected = params.marketModel === model
-                return (
-                  <button
-                    key={model}
-                    type="button"
-                    aria-pressed={isSelected}
-                    data-testid={`market-model-${model}`}
-                    onClick={() => updateParams({ marketModel: model })}
-                    className={cn(
-                      'flex flex-col items-start gap-1 border-2 border-neo-black px-3 py-2.5 text-left transition-neo',
-                      isSelected
-                        ? 'bg-neo-blue text-neo-white shadow-neo-xs'
-                        : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
-                    )}
-                  >
-                    <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.1em]">
-                      {tControls(`fields.marketModel.options.${model}.label`)}
-                    </span>
-                    <span className="text-[0.58rem] font-medium leading-snug opacity-90">
-                      {tControls(`fields.marketModel.options.${model}.description`)}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            {usesHistory && (
-              <p
-                className="border-2 border-neo-black bg-neo-yellow px-3 py-2 text-[0.62rem] font-semibold leading-snug text-neo-black"
-                data-testid="market-model-historical-notice"
-              >
-                {tControls('fields.marketModel.historicalNotice', {
-                  count: formatInteger(HISTORICAL_PATH_COUNT),
-                  from: HISTORICAL_FIRST_YEAR,
-                  to: HISTORICAL_LAST_YEAR,
-                })}
-              </p>
-            )}
-          </div>
-
-          <PresetRow
-            label={tControls('presets.investment.title')}
-            activeKey={investmentPresetKey}
-            disabled={usesHistory}
-            options={INVESTMENT_PRESETS.map((preset) => ({
-              key: preset.key,
-              label: tControls(`presets.investment.items.${preset.key}.name`),
-              detail: `${formatPercent(preset.values.averageROI)} · σ ${formatPercent(preset.values.roiVolatility)}`,
-            }))}
-            onSelect={(key) => {
-              const preset = INVESTMENT_PRESETS.find((entry) => entry.key === key)
-              if (preset) updateParams({ ...preset.values })
-            }}
-          />
-
-          <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
-            <WizardSliderField
-              id="editor-averageROI"
-              disabled={usesHistory}
-              label={
-                glideOn
-                  ? tControls('fields.glidePath.equitySleeveLabel', {
-                      label: tSetup('market.averageROI.label'),
-                    })
-                  : tSetup('market.averageROI.label')
-              }
-              value={params.averageROI * 100}
-              onValueChange={(value) => updateParams({ averageROI: value / 100 })}
-              min={3}
-              max={12}
-              step={0.25}
-              valueLabel={formatPercent(params.averageROI, 2)}
-              minLabel={formatPercent(0.03, 0)}
-              maxLabel={formatPercent(0.12, 0)}
-            />
-            <WizardSliderField
-              id="editor-roiVolatility"
-              disabled={usesHistory}
-              label={
-                glideOn
-                  ? tControls('fields.glidePath.equitySleeveLabel', {
-                      label: tControls('fields.roiVolatility.label'),
-                    })
-                  : tControls('fields.roiVolatility.label')
-              }
-              value={params.roiVolatility * 100}
-              onValueChange={(value) => updateParams({ roiVolatility: value / 100 })}
-              min={2}
-              max={25}
-              step={0.5}
-              valueLabel={formatPercent(params.roiVolatility, 1)}
-              minLabel={formatPercent(0.02, 0)}
-              maxLabel={formatPercent(0.25, 0)}
-              helpText={tControls('fields.roiVolatility.range', {
-                range: '68%',
-                lower: formatPercent(params.averageROI - params.roiVolatility),
-                upper: formatPercent(params.averageROI + params.roiVolatility),
-              })}
-            />
-          </div>
-
-          <div
-            className="space-y-4 border-2 border-neo-black bg-background px-4 py-4"
-            data-testid="glide-path-block"
+        <TabsContent value="personal" className="mt-0 focus-visible:outline-none">
+          <EditorCard
+            id="plan-editor-personal"
+            title={t('groups.personal.title')}
+            description={t('groups.personal.description')}
+            statsStale={personalFieldsInvalid}
+            statsStaleNote={t('sections.staleStats')}
+            stats={[
+              {
+                label: t('summary.workingYears'),
+                value: t('summary.years', { count: workingYears }),
+              },
+              {
+                label: t('summary.retirementYears'),
+                value: t('summary.years', { count: retirementYears }),
+              },
+              {
+                label: t('summary.pensionGap', { age: params.legalRetirementAge }),
+                value: t('summary.years', {
+                  count: Math.max(0, params.legalRetirementAge - params.retirementAge),
+                }),
+              },
+            ]}
           >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h4 className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
-                  {tControls('fields.glidePath.label')}
-                </h4>
-                <p className="mt-1 max-w-md text-[0.62rem] font-medium leading-snug text-muted-foreground">
-                  {tControls('fields.glidePath.description')}
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={glideOn}
-                data-testid="glide-path-toggle"
-                onClick={() => updateParams({ glidePathEnabled: !glideOn })}
-                className={cn(
-                  'flex shrink-0 items-center gap-2 border-2 border-neo-black px-3 py-1.5 text-[0.62rem] font-extrabold uppercase tracking-[0.12em] transition-neo',
-                  glideOn
-                    ? 'bg-neo-blue text-neo-white shadow-neo-xs'
-                    : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
-                )}
-              >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    'inline-block h-3 w-3 border-2 border-neo-black',
-                    glideOn ? 'bg-neo-yellow' : 'bg-transparent'
-                  )}
-                />
-                {glideOn ? tControls('toggle.on') : tControls('toggle.off')}
-              </button>
-            </div>
-
-            {glideOn && (
-              <>
-                <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
-                  <WizardSliderField
-                    id="editor-equityAllocationStart"
-                    label={tControls('fields.glidePath.start')}
-                    value={Math.round(params.equityAllocationStart * 100)}
-                    onValueChange={(value) => updateParams({ equityAllocationStart: value / 100 })}
-                    min={0}
-                    max={100}
-                    step={5}
-                    valueLabel={formatPercent(params.equityAllocationStart, 0)}
-                    minLabel={formatPercent(0, 0)}
-                    maxLabel={formatPercent(1, 0)}
-                  />
-                  <WizardSliderField
-                    id="editor-equityAllocationEnd"
-                    label={tControls('fields.glidePath.end')}
-                    value={Math.round(params.equityAllocationEnd * 100)}
-                    onValueChange={(value) => updateParams({ equityAllocationEnd: value / 100 })}
-                    min={0}
-                    max={100}
-                    step={5}
-                    valueLabel={formatPercent(params.equityAllocationEnd, 0)}
-                    minLabel={formatPercent(0, 0)}
-                    maxLabel={formatPercent(1, 0)}
-                  />
-                </div>
-
-                <EquityGlideSparkline
-                  params={params}
-                  label={tControls('fields.glidePath.sparklineLabel')}
-                  caption={tControls('fields.glidePath.sparklineCaption', {
-                    start: formatPercent(params.equityAllocationStart, 0),
-                    startAge: params.currentAge,
-                    end: formatPercent(params.equityAllocationEnd, 0),
-                    retirementAge: Math.max(params.currentAge, params.retirementAge),
-                  })}
-                />
-
-                <details className="border-2 border-neo-black bg-neo-white px-3 py-2">
-                  <summary className="cursor-pointer text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
-                    {tControls('fields.glidePath.advanced')}
-                  </summary>
-                  <div className="mt-3 grid gap-x-5 gap-y-6 sm:grid-cols-2">
-                    <LabeledNumberInput
-                      id="editor-bondReturn"
-                      disabled={usesHistory}
-                      label={tControls('fields.glidePath.bondReturn')}
-                      value={Number((params.bondReturn * 100).toFixed(2))}
-                      onChange={(value) => updateParams({ bondReturn: value / 100 })}
-                      className="w-full"
-                      unit={tSetup('units.percentPerYear')}
-                      min={-5}
-                      max={15}
-                      rangeMessage={numberRange(-5, 15)}
-                      invalidMessage={notANumber}
-                    />
-                    <LabeledNumberInput
-                      id="editor-bondVolatility"
-                      disabled={usesHistory}
-                      label={tControls('fields.glidePath.bondVolatility')}
-                      value={Number((params.bondVolatility * 100).toFixed(2))}
-                      onChange={(value) => updateParams({ bondVolatility: value / 100 })}
-                      className="w-full"
-                      unit="%"
-                      min={0}
-                      max={30}
-                      rangeMessage={numberRange(0, 30)}
-                      invalidMessage={notANumber}
-                    />
-                  </div>
-                  <p className="mt-3 text-[0.6rem] font-medium leading-snug text-muted-foreground">
-                    {usesHistory
-                      ? tControls('fields.glidePath.historicalNote')
-                      : tControls('fields.glidePath.correlationNote')}
-                  </p>
-                </details>
-              </>
-            )}
-          </div>
-
-          <PresetRow
-            label={tControls('presets.inflation.title')}
-            activeKey={inflationPresetKey}
-            disabled={usesHistory}
-            options={INFLATION_PRESETS.map((preset) => ({
-              key: preset.key,
-              label: tControls(`presets.inflation.items.${preset.key}.name`),
-              detail: `${formatPercent(preset.values.averageInflation)} · σ ${formatPercent(preset.values.inflationVolatility)}`,
-            }))}
-            onSelect={(key) => {
-              const preset = INFLATION_PRESETS.find((entry) => entry.key === key)
-              if (preset) updateParams({ ...preset.values })
-            }}
-          />
-
-          <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
-            <WizardSliderField
-              id="editor-averageInflation"
-              disabled={usesHistory}
-              label={tSetup('market.averageInflation.label')}
-              value={params.averageInflation * 100}
-              onValueChange={(value) => updateParams({ averageInflation: value / 100 })}
-              min={1}
-              max={6}
-              step={0.1}
-              valueLabel={formatPercent(params.averageInflation, 1)}
-              minLabel={formatPercent(0.01, 0)}
-              maxLabel={formatPercent(0.06, 0)}
-            />
-            <WizardSliderField
-              id="editor-inflationVolatility"
-              disabled={usesHistory}
-              label={tControls('fields.inflationVolatility.label')}
-              value={params.inflationVolatility * 100}
-              onValueChange={(value) => updateParams({ inflationVolatility: value / 100 })}
-              min={0.1}
-              max={3}
-              step={0.1}
-              valueLabel={formatPercent(params.inflationVolatility, 2)}
-              minLabel={formatPercent(0.001, 1)}
-              maxLabel={formatPercent(0.03, 0)}
-            />
-            <LabeledNumberInput
-              id="editor-simulationRuns"
-              disabled={usesHistory}
-              label={tControls('fields.simulationRuns.label')}
-              value={params.simulationRuns}
-              onChange={(value) => updateParams({ simulationRuns: value })}
-              helpText={
-                usesHistory
-                  ? tControls('fields.marketModel.runsIgnored', {
-                      count: formatInteger(HISTORICAL_PATH_COUNT),
-                    })
-                  : tControls('fields.simulationRuns.tooltip')
-              }
-              className="w-full"
-              groupThousands
-              min={100}
-              max={10000}
-              rangeMessage={numberRange(100, 10000)}
-              invalidMessage={notANumber}
-            />
-          </div>
-
-          <div
-            className="space-y-4 border-2 border-neo-black bg-background px-4 py-4"
-            data-testid="tax-block"
-          >
-            <div className="min-w-0">
-              <h4 className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
-                {tTax('title')}
-              </h4>
-              <p className="mt-1 max-w-md text-[0.62rem] font-medium leading-snug text-muted-foreground">
-                {tTax('description')}
-              </p>
-            </div>
-
             <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
               <LabeledNumberInput
-                id="editor-capitalGainsTax"
-                label={tControls('fields.capitalGainsTax.label')}
-                value={params.capitalGainsTax}
-                onChange={(value) => updateParams({ capitalGainsTax: value })}
-                helpText={tControls('fields.capitalGainsTax.tooltip')}
+                id="editor-currentAge"
+                label={tSetup('personal.fields.currentAge.label')}
+                value={params.currentAge}
+                onChange={(value) => updateParams({ currentAge: value })}
+                helpText={tSetup('personal.fields.currentAge.help')}
                 className="w-full"
-                unit="%"
-                min={0}
-                max={50}
-                rangeMessage={numberRange(0, 50)}
+                min={16}
+                max={100}
+                rangeMessage={ageRange(16, 100)}
                 invalidMessage={notANumber}
+                onInvalidChange={(invalid) => markInvalid('editor-currentAge', invalid)}
               />
               <LabeledNumberInput
-                id="editor-taxAllowanceAnnual"
-                label={tTax('allowance.label')}
-                value={params.taxAllowanceAnnual}
-                onChange={(value) => updateParams({ taxAllowanceAnnual: value })}
-                helpText={tTax('allowance.help')}
+                id="editor-legalRetirementAge"
+                label={tSetup('personal.fields.legalRetirementAge.label')}
+                value={params.legalRetirementAge}
+                onChange={(value) => updateParams({ legalRetirementAge: value })}
+                helpText={tSetup('personal.fields.legalRetirementAge.help')}
+                tooltip={tSetup('personal.fields.legalRetirementAge.tooltip')}
+                className="w-full"
+                min={60}
+                max={75}
+                rangeMessage={ageRange(60, 75)}
+                invalidMessage={notANumber}
+                onInvalidChange={(invalid) => markInvalid('editor-legalRetirementAge', invalid)}
+              />
+            </div>
+
+            <WizardSliderField
+              id="editor-retirementAge"
+              label={tSetup('personal.fields.retirementAge.label')}
+              value={params.retirementAge}
+              onValueChange={(value) => updateParams({ retirementAge: value })}
+              min={retirementSliderMin}
+              max={70}
+              step={1}
+              valueLabel={formatInteger(params.retirementAge)}
+              minLabel={formatInteger(retirementSliderMin)}
+              maxLabel={formatInteger(70)}
+              helpText={tSetup('personal.fields.retirementAge.help')}
+            />
+
+            {/* Cross-field callout, sitting between the fields it is about. */}
+            {ageIssues.length > 0 && (
+              <div
+                role="alert"
+                data-testid="editor-timeline-issues"
+                className={cn(
+                  'flex items-start gap-3 border-2 px-4 py-3',
+                  ageIssues.some((issue) => issue.severity === 'error')
+                    ? 'border-neo-red bg-neo-red/10'
+                    : 'border-neo-orange bg-neo-orange/10'
+                )}
+              >
+                <AlertTriangle
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 text-neo-orange"
+                  aria-hidden="true"
+                />
+                <div className="space-y-1 text-xs font-medium leading-relaxed text-neo-black">
+                  {ageIssues.map((issue) => (
+                    <p key={issue.id}>{tSetup(`validation.${issue.id}`)}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="sm:max-w-[50%]">
+              <LabeledNumberInput
+                id="editor-endAge"
+                label={tSetup('personal.fields.endAge.label')}
+                value={params.endAge}
+                onChange={(value) => updateParams({ endAge: value })}
+                helpText={tSetup('personal.fields.endAge.help')}
+                className="w-full"
+                min={65}
+                max={110}
+                rangeMessage={ageRange(65, 110)}
+                invalidMessage={notANumber}
+                onInvalidChange={(invalid) => markInvalid('editor-endAge', invalid)}
+              />
+            </div>
+          </EditorCard>
+        </TabsContent>
+
+        <TabsContent value="income" className="mt-0 focus-visible:outline-none">
+          <EditorCard
+            id="plan-editor-income"
+            title={t('groups.income.title')}
+            description={t('groups.income.description')}
+            stats={[
+              {
+                label: t('summary.savingsRate'),
+                value: formatPercent(savingsRate),
+                hint: t('summary.savingsRateHint'),
+              },
+              {
+                label: tSetup('assets.fields.annualSavings.label'),
+                value: formatCurrency(params.annualSavings),
+              },
+            ]}
+          >
+            <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
+              <LabeledNumberInput
+                id="editor-currentAssets"
+                label={tSetup('assets.fields.currentAssets.label')}
+                value={params.currentAssets}
+                onChange={(value) => updateParams({ currentAssets: value })}
+                helpText={tSetup('assets.fields.currentAssets.help')}
                 className="w-full"
                 unit={tSetup('units.currency')}
                 groupThousands
                 min={0}
-                max={10000}
-                rangeMessage={numberRange(0, 10000)}
+                rangeMessage={atLeast(0)}
                 invalidMessage={notANumber}
+                onInvalidChange={(invalid) => markInvalid('editor-currentAssets', invalid)}
+              />
+              <LabeledNumberInput
+                id="editor-annualSavings"
+                label={tSetup('assets.fields.annualSavings.label')}
+                value={params.annualSavings}
+                onChange={(value) => updateParams({ annualSavings: value })}
+                helpText={tSetup('assets.fields.annualSavings.help')}
+                className="w-full"
+                unit={tSetup('units.currency')}
+                groupThousands
+                min={0}
+                rangeMessage={atLeast(0)}
+                invalidMessage={notANumber}
+                onInvalidChange={(invalid) => markInvalid('editor-annualSavings', invalid)}
+              />
+              <LabeledNumberInput
+                id="editor-annualSavingsGrowthRate"
+                label={tSetup('assets.fields.annualSavingsGrowthRate.label')}
+                value={Number((params.annualSavingsGrowthRate * 100).toFixed(2))}
+                onChange={(value) => updateParams({ annualSavingsGrowthRate: value / 100 })}
+                helpText={tSetup('assets.fields.annualSavingsGrowthRate.help')}
+                className="w-full"
+                unit={tSetup('units.percentPerYear')}
+                min={-10}
+                max={20}
+                rangeMessage={numberRange(-10, 20)}
+                invalidMessage={notANumber}
+                onInvalidChange={(invalid) =>
+                  markInvalid('editor-annualSavingsGrowthRate', invalid)
+                }
               />
             </div>
 
-            <div className="space-y-2" data-testid="household-type-switch">
+            {/* One-off income used to live here. It is a cash flow like any
+              other now, so the card below owns it — two editors writing the
+              same list is how they drift apart. */}
+            <p className="border-2 border-dashed border-neo-black/40 bg-background px-4 py-3 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              {t('groups.cashFlows.incomePointer', { count: onceIncomeCount })}
+            </p>
+          </EditorCard>
+        </TabsContent>
+
+        <TabsContent value="cashFlows" className="mt-0 focus-visible:outline-none">
+          <EditorCard
+            id="plan-editor-expenses"
+            title={t('groups.cashFlows.title')}
+            description={t('groups.cashFlows.description')}
+            stats={[
+              {
+                label: t('summary.monthlyTotal'),
+                value: formatCurrency(combined.totalMonthly),
+                hint: t('summary.expenseCount', {
+                  count: expenses.filter((entry) => entry.interval === 'monthly').length,
+                }),
+              },
+              {
+                label: t('summary.annualExtras'),
+                value: formatCurrency(combined.totalAnnual),
+                hint: t('summary.expenseCount', {
+                  count: expenses.filter((entry) => entry.interval === 'annual').length,
+                }),
+              },
+              {
+                label: t('summary.pensions', { age: params.legalRetirementAge }),
+                value: formatCurrency(pensionGrossMonthly),
+                hint: t('summary.pensionsHint', { count: pensionFlowCount }),
+              },
+            ]}
+          >
+            <CashFlowList
+              compact
+              flows={cashFlows}
+              currentAge={params.currentAge}
+              retirementAge={params.retirementAge}
+              legalRetirementAge={params.legalRetirementAge}
+              endAge={params.endAge}
+              pensionTaxablePortion={params.pensionTaxablePortion}
+              templates={cashFlowTemplates}
+              onChange={(next) => updateParams({ cashFlows: next })}
+            />
+          </EditorCard>
+        </TabsContent>
+
+        <TabsContent value="market" className="mt-0 focus-visible:outline-none">
+          <EditorCard
+            id="plan-editor-market"
+            title={t('groups.market.title')}
+            description={t('groups.market.description')}
+            stats={
+              usesHistory
+                ? [
+                    {
+                      label: tControls('fields.marketModel.label'),
+                      value: tControls('fields.marketModel.options.historical.label'),
+                      hint: `${HISTORICAL_FIRST_YEAR}–${HISTORICAL_LAST_YEAR}`,
+                    },
+                    {
+                      label: tControls('fields.marketModel.pathsLabel'),
+                      value: formatInteger(HISTORICAL_PATH_COUNT),
+                      hint: tControls('fields.marketModel.pathsHint'),
+                    },
+                    {
+                      label: tControls('fields.glidePath.label'),
+                      value: glideOn ? tControls('toggle.on') : tControls('toggle.off'),
+                      hint: glideOn
+                        ? `${formatPercent(params.equityAllocationStart, 0)} → ${formatPercent(params.equityAllocationEnd, 0)}`
+                        : undefined,
+                    },
+                  ]
+                : [
+                    {
+                      label: t('summary.realReturn'),
+                      value: formatPercent(realReturn, 1),
+                    },
+                    {
+                      label: glideOn
+                        ? tControls('fields.glidePath.equitySleeveLabel', {
+                            label: tControls('fields.roiVolatility.label'),
+                          })
+                        : tControls('fields.roiVolatility.label'),
+                      value: `± ${formatPercent(params.roiVolatility)}`,
+                      hint: glideOn
+                        ? `${formatPercent(params.equityAllocationStart, 0)} → ${formatPercent(params.equityAllocationEnd, 0)}`
+                        : undefined,
+                    },
+                    {
+                      label: tControls('fields.simulationRuns.label'),
+                      value: formatInteger(params.simulationRuns),
+                    },
+                  ]
+            }
+          >
+            <div className="space-y-2" data-testid="market-model-switch">
               <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
-                {tTax('household.label')}
+                {tControls('fields.marketModel.label')}
               </span>
               <div className="grid gap-2 sm:grid-cols-2" role="group">
-                {HOUSEHOLD_TYPES.map((type) => {
-                  const isSelected = params.householdType === type
+                {MARKET_MODELS.map((model) => {
+                  const isSelected = params.marketModel === model
                   return (
                     <button
-                      key={type}
+                      key={model}
                       type="button"
                       aria-pressed={isSelected}
-                      data-testid={`household-type-${type}`}
-                      onClick={() => updateParams({ householdType: type })}
+                      data-testid={`market-model-${model}`}
+                      onClick={() => updateParams({ marketModel: model })}
                       className={cn(
-                        'flex flex-col items-start gap-1 border-2 border-neo-black px-3 py-2 text-left transition-neo',
+                        'flex flex-col items-start gap-1 border-2 border-neo-black px-3 py-2.5 text-left transition-neo',
                         isSelected
                           ? 'bg-neo-blue text-neo-white shadow-neo-xs'
                           : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
                       )}
                     >
-                      <span className="text-[0.66rem] font-extrabold uppercase tracking-[0.1em]">
-                        {tTax(`household.options.${type}.label`)}
+                      <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.1em]">
+                        {tControls(`fields.marketModel.options.${model}.label`)}
                       </span>
                       <span className="text-[0.58rem] font-medium leading-snug opacity-90">
-                        {tTax(`household.options.${type}.description`)}
+                        {tControls(`fields.marketModel.options.${model}.description`)}
                       </span>
                     </button>
                   )
                 })}
               </div>
-              <p className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                {tTax('allowance.effective', { amount: formatCurrency(effectiveAllowance) })}
-              </p>
+              {usesHistory && (
+                <p
+                  className="border-2 border-neo-black bg-neo-yellow px-3 py-2 text-[0.62rem] font-semibold leading-snug text-neo-black"
+                  data-testid="market-model-historical-notice"
+                >
+                  {tControls('fields.marketModel.historicalNotice', {
+                    count: formatInteger(HISTORICAL_PATH_COUNT),
+                    from: HISTORICAL_FIRST_YEAR,
+                    to: HISTORICAL_LAST_YEAR,
+                  })}
+                </p>
+              )}
             </div>
 
-            <WizardSliderField
-              id="editor-equityFundExemption"
-              label={tTax('exemption.label')}
-              value={Math.round(params.equityFundExemption * 100)}
-              onValueChange={(value) => updateParams({ equityFundExemption: value / 100 })}
-              min={0}
-              max={50}
-              step={5}
-              valueLabel={formatPercent(params.equityFundExemption, 0)}
-              minLabel={formatPercent(0, 0)}
-              maxLabel={formatPercent(0.5, 0)}
-              helpText={tTax('exemption.help')}
+            <PresetRow
+              label={tControls('presets.investment.title')}
+              activeKey={investmentPresetKey}
+              disabled={usesHistory}
+              options={INVESTMENT_PRESETS.map((preset) => ({
+                key: preset.key,
+                label: tControls(`presets.investment.items.${preset.key}.name`),
+                detail: `${formatPercent(preset.values.averageROI)} · σ ${formatPercent(preset.values.roiVolatility)}`,
+              }))}
+              onSelect={(key) => {
+                const preset = INVESTMENT_PRESETS.find((entry) => entry.key === key)
+                if (preset) updateParams({ ...preset.values })
+              }}
             />
 
-            <details className="border-2 border-neo-black bg-neo-white px-3 py-2">
-              <summary className="cursor-pointer text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
-                {tTax('pension.summary')}
-              </summary>
-              <div className="mt-3 grid gap-x-5 gap-y-6 sm:grid-cols-2">
+            <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
+              <WizardSliderField
+                id="editor-averageROI"
+                disabled={usesHistory}
+                label={
+                  glideOn
+                    ? tControls('fields.glidePath.equitySleeveLabel', {
+                        label: tSetup('market.averageROI.label'),
+                      })
+                    : tSetup('market.averageROI.label')
+                }
+                value={params.averageROI * 100}
+                onValueChange={(value) => updateParams({ averageROI: value / 100 })}
+                min={3}
+                max={12}
+                step={0.25}
+                valueLabel={formatPercent(params.averageROI, 2)}
+                minLabel={formatPercent(0.03, 0)}
+                maxLabel={formatPercent(0.12, 0)}
+              />
+              <WizardSliderField
+                id="editor-roiVolatility"
+                disabled={usesHistory}
+                label={
+                  glideOn
+                    ? tControls('fields.glidePath.equitySleeveLabel', {
+                        label: tControls('fields.roiVolatility.label'),
+                      })
+                    : tControls('fields.roiVolatility.label')
+                }
+                value={params.roiVolatility * 100}
+                onValueChange={(value) => updateParams({ roiVolatility: value / 100 })}
+                min={2}
+                max={25}
+                step={0.5}
+                valueLabel={formatPercent(params.roiVolatility, 1)}
+                minLabel={formatPercent(0.02, 0)}
+                maxLabel={formatPercent(0.25, 0)}
+                helpText={tControls('fields.roiVolatility.range', {
+                  range: '68%',
+                  lower: formatPercent(params.averageROI - params.roiVolatility),
+                  upper: formatPercent(params.averageROI + params.roiVolatility),
+                })}
+                helpPlacement="inline"
+              />
+            </div>
+
+            <div
+              className="space-y-4 border-2 border-neo-black bg-background px-4 py-4"
+              data-testid="glide-path-block"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h4 className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                    {tControls('fields.glidePath.label')}
+                  </h4>
+                  <InfoTip
+                    content={tControls('fields.glidePath.description')}
+                    label={tControls('fields.glidePath.label')}
+                    side="bottom"
+                  />
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={glideOn}
+                  data-testid="glide-path-toggle"
+                  onClick={() => updateParams({ glidePathEnabled: !glideOn })}
+                  className={cn(
+                    'flex shrink-0 items-center gap-2 border-2 border-neo-black px-3 py-1.5 text-[0.62rem] font-extrabold uppercase tracking-[0.12em] transition-neo',
+                    glideOn
+                      ? 'bg-neo-blue text-neo-white shadow-neo-xs'
+                      : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'inline-block h-3 w-3 border-2 border-neo-black',
+                      glideOn ? 'bg-neo-yellow' : 'bg-transparent'
+                    )}
+                  />
+                  {glideOn ? tControls('toggle.on') : tControls('toggle.off')}
+                </button>
+              </div>
+
+              {glideOn && (
+                <>
+                  <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
+                    <WizardSliderField
+                      id="editor-equityAllocationStart"
+                      label={tControls('fields.glidePath.start')}
+                      value={Math.round(params.equityAllocationStart * 100)}
+                      onValueChange={(value) =>
+                        updateParams({ equityAllocationStart: value / 100 })
+                      }
+                      min={0}
+                      max={100}
+                      step={5}
+                      valueLabel={formatPercent(params.equityAllocationStart, 0)}
+                      minLabel={formatPercent(0, 0)}
+                      maxLabel={formatPercent(1, 0)}
+                    />
+                    <WizardSliderField
+                      id="editor-equityAllocationEnd"
+                      label={tControls('fields.glidePath.end')}
+                      value={Math.round(params.equityAllocationEnd * 100)}
+                      onValueChange={(value) => updateParams({ equityAllocationEnd: value / 100 })}
+                      min={0}
+                      max={100}
+                      step={5}
+                      valueLabel={formatPercent(params.equityAllocationEnd, 0)}
+                      minLabel={formatPercent(0, 0)}
+                      maxLabel={formatPercent(1, 0)}
+                    />
+                  </div>
+
+                  <EquityGlideSparkline
+                    params={params}
+                    label={tControls('fields.glidePath.sparklineLabel')}
+                    caption={tControls('fields.glidePath.sparklineCaption', {
+                      start: formatPercent(params.equityAllocationStart, 0),
+                      startAge: params.currentAge,
+                      end: formatPercent(params.equityAllocationEnd, 0),
+                      retirementAge: Math.max(params.currentAge, params.retirementAge),
+                    })}
+                  />
+
+                  <details className="border-2 border-neo-black bg-neo-white px-3 py-2">
+                    <summary className="cursor-pointer text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+                      {tControls('fields.glidePath.advanced')}
+                    </summary>
+                    <div className="mt-3 grid gap-x-5 gap-y-6 sm:grid-cols-2">
+                      <LabeledNumberInput
+                        id="editor-bondReturn"
+                        disabled={usesHistory}
+                        label={tControls('fields.glidePath.bondReturn')}
+                        value={Number((params.bondReturn * 100).toFixed(2))}
+                        onChange={(value) => updateParams({ bondReturn: value / 100 })}
+                        className="w-full"
+                        unit={tSetup('units.percentPerYear')}
+                        min={-5}
+                        max={15}
+                        rangeMessage={numberRange(-5, 15)}
+                        invalidMessage={notANumber}
+                      />
+                      <LabeledNumberInput
+                        id="editor-bondVolatility"
+                        disabled={usesHistory}
+                        label={tControls('fields.glidePath.bondVolatility')}
+                        value={Number((params.bondVolatility * 100).toFixed(2))}
+                        onChange={(value) => updateParams({ bondVolatility: value / 100 })}
+                        className="w-full"
+                        unit="%"
+                        min={0}
+                        max={30}
+                        rangeMessage={numberRange(0, 30)}
+                        invalidMessage={notANumber}
+                      />
+                    </div>
+                    <p className="mt-3 text-[0.6rem] font-medium leading-snug text-muted-foreground">
+                      {usesHistory
+                        ? tControls('fields.glidePath.historicalNote')
+                        : tControls('fields.glidePath.correlationNote')}
+                    </p>
+                  </details>
+                </>
+              )}
+            </div>
+
+            <PresetRow
+              label={tControls('presets.inflation.title')}
+              activeKey={inflationPresetKey}
+              disabled={usesHistory}
+              options={INFLATION_PRESETS.map((preset) => ({
+                key: preset.key,
+                label: tControls(`presets.inflation.items.${preset.key}.name`),
+                detail: `${formatPercent(preset.values.averageInflation)} · σ ${formatPercent(preset.values.inflationVolatility)}`,
+              }))}
+              onSelect={(key) => {
+                const preset = INFLATION_PRESETS.find((entry) => entry.key === key)
+                if (preset) updateParams({ ...preset.values })
+              }}
+            />
+
+            <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
+              <WizardSliderField
+                id="editor-averageInflation"
+                disabled={usesHistory}
+                label={tSetup('market.averageInflation.label')}
+                value={params.averageInflation * 100}
+                onValueChange={(value) => updateParams({ averageInflation: value / 100 })}
+                min={1}
+                max={6}
+                step={0.1}
+                valueLabel={formatPercent(params.averageInflation, 1)}
+                minLabel={formatPercent(0.01, 0)}
+                maxLabel={formatPercent(0.06, 0)}
+              />
+              <WizardSliderField
+                id="editor-inflationVolatility"
+                disabled={usesHistory}
+                label={tControls('fields.inflationVolatility.label')}
+                value={params.inflationVolatility * 100}
+                onValueChange={(value) => updateParams({ inflationVolatility: value / 100 })}
+                min={0.1}
+                max={3}
+                step={0.1}
+                valueLabel={formatPercent(params.inflationVolatility, 2)}
+                minLabel={formatPercent(0.001, 1)}
+                maxLabel={formatPercent(0.03, 0)}
+              />
+              <LabeledNumberInput
+                id="editor-simulationRuns"
+                disabled={usesHistory}
+                label={tControls('fields.simulationRuns.label')}
+                value={params.simulationRuns}
+                onChange={(value) => updateParams({ simulationRuns: value })}
+                helpText={
+                  usesHistory
+                    ? tControls('fields.marketModel.runsIgnored', {
+                        count: formatInteger(HISTORICAL_PATH_COUNT),
+                      })
+                    : tControls('fields.simulationRuns.tooltip')
+                }
+                helpPlacement={usesHistory ? 'inline' : 'tooltip'}
+                className="w-full"
+                groupThousands
+                min={100}
+                max={10000}
+                rangeMessage={numberRange(100, 10000)}
+                invalidMessage={notANumber}
+              />
+            </div>
+
+            <div
+              className="space-y-4 border-2 border-neo-black bg-background px-4 py-4"
+              data-testid="tax-block"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <h4 className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                  {tTax('title')}
+                </h4>
+                <InfoTip content={tTax('description')} label={tTax('title')} side="bottom" />
+              </div>
+
+              <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
                 <LabeledNumberInput
-                  id="editor-pensionTaxablePortion"
-                  label={tTax('pension.taxablePortion.label')}
-                  value={Number((params.pensionTaxablePortion * 100).toFixed(1))}
-                  onChange={(value) => updateParams({ pensionTaxablePortion: value / 100 })}
-                  helpText={tTax('pension.taxablePortion.help')}
-                  className="w-full"
-                  unit="%"
-                  min={0}
-                  max={100}
-                  rangeMessage={numberRange(0, 100)}
-                  invalidMessage={notANumber}
-                />
-                <LabeledNumberInput
-                  id="editor-pensionTaxRate"
-                  label={tTax('pension.rate.label')}
-                  value={Number((params.pensionTaxRate * 100).toFixed(1))}
-                  onChange={(value) => updateParams({ pensionTaxRate: value / 100 })}
-                  helpText={tTax('pension.rate.help')}
+                  id="editor-capitalGainsTax"
+                  label={tControls('fields.capitalGainsTax.label')}
+                  value={params.capitalGainsTax}
+                  onChange={(value) => updateParams({ capitalGainsTax: value })}
+                  helpText={tControls('fields.capitalGainsTax.tooltip')}
                   className="w-full"
                   unit="%"
                   min={0}
@@ -1191,46 +1073,183 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                   rangeMessage={numberRange(0, 50)}
                   invalidMessage={notANumber}
                 />
+                <LabeledNumberInput
+                  id="editor-taxAllowanceAnnual"
+                  label={tTax('allowance.label')}
+                  value={params.taxAllowanceAnnual}
+                  onChange={(value) => updateParams({ taxAllowanceAnnual: value })}
+                  helpText={tTax('allowance.help')}
+                  className="w-full"
+                  unit={tSetup('units.currency')}
+                  groupThousands
+                  min={0}
+                  max={10000}
+                  rangeMessage={numberRange(0, 10000)}
+                  invalidMessage={notANumber}
+                />
               </div>
+
+              <div className="space-y-2" data-testid="household-type-switch">
+                <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                  {tTax('household.label')}
+                </span>
+                <div className="grid gap-2 sm:grid-cols-2" role="group">
+                  {HOUSEHOLD_TYPES.map((type) => {
+                    const isSelected = params.householdType === type
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        aria-pressed={isSelected}
+                        data-testid={`household-type-${type}`}
+                        onClick={() => updateParams({ householdType: type })}
+                        className={cn(
+                          'flex flex-col items-start gap-1 border-2 border-neo-black px-3 py-2 text-left transition-neo',
+                          isSelected
+                            ? 'bg-neo-blue text-neo-white shadow-neo-xs'
+                            : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
+                        )}
+                      >
+                        <span className="text-[0.66rem] font-extrabold uppercase tracking-[0.1em]">
+                          {tTax(`household.options.${type}.label`)}
+                        </span>
+                        <span className="text-[0.58rem] font-medium leading-snug opacity-90">
+                          {tTax(`household.options.${type}.description`)}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                  {tTax('allowance.effective', { amount: formatCurrency(effectiveAllowance) })}
+                </p>
+              </div>
+
+              <WizardSliderField
+                id="editor-equityFundExemption"
+                label={tTax('exemption.label')}
+                value={Math.round(params.equityFundExemption * 100)}
+                onValueChange={(value) => updateParams({ equityFundExemption: value / 100 })}
+                min={0}
+                max={50}
+                step={5}
+                valueLabel={formatPercent(params.equityFundExemption, 0)}
+                minLabel={formatPercent(0, 0)}
+                maxLabel={formatPercent(0.5, 0)}
+                helpText={tTax('exemption.help')}
+              />
+
+              <details className="border-2 border-neo-black bg-neo-white px-3 py-2">
+                <summary className="cursor-pointer text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+                  {tTax('pension.summary')}
+                </summary>
+                <div className="mt-3 grid gap-x-5 gap-y-6 sm:grid-cols-2">
+                  <LabeledNumberInput
+                    id="editor-pensionTaxablePortion"
+                    label={tTax('pension.taxablePortion.label')}
+                    value={Number((params.pensionTaxablePortion * 100).toFixed(1))}
+                    onChange={(value) => updateParams({ pensionTaxablePortion: value / 100 })}
+                    helpText={tTax('pension.taxablePortion.help')}
+                    className="w-full"
+                    unit="%"
+                    min={0}
+                    max={100}
+                    rangeMessage={numberRange(0, 100)}
+                    invalidMessage={notANumber}
+                  />
+                  <LabeledNumberInput
+                    id="editor-pensionTaxRate"
+                    label={tTax('pension.rate.label')}
+                    value={Number((params.pensionTaxRate * 100).toFixed(1))}
+                    onChange={(value) => updateParams({ pensionTaxRate: value / 100 })}
+                    helpText={tTax('pension.rate.help')}
+                    className="w-full"
+                    unit="%"
+                    min={0}
+                    max={50}
+                    rangeMessage={numberRange(0, 50)}
+                    invalidMessage={notANumber}
+                  />
+                </div>
+                <p
+                  className="mt-3 text-[0.6rem] font-semibold leading-snug text-muted-foreground"
+                  data-testid="pension-net-readout"
+                >
+                  {tTax('pension.net', {
+                    gross: formatCurrency(pensionGrossMonthly),
+                    net: formatCurrency(pensionNetMonthly),
+                    rate: formatPercent(
+                      pensionGrossMonthly > 0
+                        ? pensionNetMonthly / pensionGrossMonthly
+                        : pensionFactor,
+                      1
+                    ),
+                  })}
+                </p>
+              </details>
+
               <p
-                className="mt-3 text-[0.6rem] font-semibold leading-snug text-muted-foreground"
-                data-testid="pension-net-readout"
+                className="border-2 border-neo-black bg-neo-yellow px-3 py-2 text-[0.62rem] font-bold leading-snug text-neo-black"
+                data-testid="tax-drag-readout"
               >
-                {tTax('pension.net', {
-                  gross: formatCurrency(params.monthlyPension),
-                  net: formatCurrency(params.monthlyPension * pensionFactor),
-                  rate: formatPercent(pensionFactor, 1),
-                })}
+                <span className="uppercase tracking-[0.12em]">{tTax('drag.label')}: </span>
+                {taxDrag === undefined
+                  ? tTax('drag.empty')
+                  : `${tTax('drag.value', { rate: formatPercent(taxDrag, 1) })} — ${tTax('drag.hint')}`}
               </p>
-            </details>
+            </div>
 
-            <p
-              className="border-2 border-neo-black bg-neo-yellow px-3 py-2 text-[0.62rem] font-bold leading-snug text-neo-black"
-              data-testid="tax-drag-readout"
-            >
-              <span className="uppercase tracking-[0.12em]">{tTax('drag.label')}: </span>
-              {taxDrag === undefined
-                ? tTax('drag.empty')
-                : `${tTax('drag.value', { rate: formatPercent(taxDrag, 1) })} — ${tTax('drag.hint')}`}
-            </p>
-          </div>
-
-          {/* The withdrawal rule used to live here as a picker plus three
+            {/* The withdrawal rule used to live here as a picker plus three
               anonymous sliders. It has its own full-width surface below now —
               the corridor, the readouts and the four-strategy comparison do not
               fit in half a column, and splitting the controls across two cards
               would be worse than moving all of them. */}
-          <p className="border-2 border-dashed border-neo-black/40 bg-background px-4 py-3 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-            {t('groups.withdrawal.pointer', {
-              strategy: tControls(
-                `fields.withdrawalStrategy.options.${params.withdrawalStrategy}.label`
-              ),
-            })}
-          </p>
-        </EditorCard>
-      </div>
+            <p className="border-2 border-dashed border-neo-black/40 bg-background px-4 py-3 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              {t('groups.withdrawal.pointer', {
+                strategy: tControls(
+                  `fields.withdrawalStrategy.options.${params.withdrawalStrategy}.label`
+                ),
+              })}
+            </p>
+          </EditorCard>
+        </TabsContent>
+        <TabsContent value="withdrawal" className="mt-0 focus-visible:outline-none">
+          <WithdrawalPlanner />
+        </TabsContent>
 
-      <WithdrawalPlanner {...sectionProps('plan-editor-withdrawal')} />
+        {/* Walk the plan front to back without reaching for the switcher. */}
+        <nav
+          aria-label={t('sections.navLabel')}
+          data-testid="plan-section-footer"
+          className="flex flex-wrap items-center justify-between gap-2"
+        >
+          {previous ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10"
+              data-testid="plan-section-previous"
+              onClick={() => goToSection(previous)}
+            >
+              <ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              {t('sections.previous', { title: sectionTitle(previous) })}
+            </Button>
+          ) : (
+            <span aria-hidden="true" />
+          )}
+          {next && (
+            <Button
+              size="sm"
+              className="h-10"
+              data-testid="plan-section-next"
+              onClick={() => goToSection(next)}
+            >
+              {t('sections.next', { title: sectionTitle(next) })}
+              <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
+            </Button>
+          )}
+        </nav>
+      </Tabs>
 
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
         <DialogContent className="bg-neo-white sm:max-w-[30rem]" data-testid="plan-reset-dialog">

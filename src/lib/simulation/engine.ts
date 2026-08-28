@@ -14,9 +14,11 @@ import { DEFAULT_PATH_SEED, effectiveRunCount } from '@/lib/simulation/context'
 import {
   buildCashFlowSeries,
   cashFlowSignature,
+  netPensionAnnualAtAge,
   projectCustomExpenses,
   projectOneTimeIncomes,
   reconcileCashFlows,
+  statutoryPensionMonthly,
   type CashFlowSeries,
 } from '@/lib/simulation/cashFlows'
 
@@ -701,6 +703,7 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
     cashFlows: params.cashFlows,
     customExpenses,
     oneTimeIncomes,
+    monthlyPension: params.monthlyPension,
     currentAge,
   }).map((flow) => ({
     ...flow,
@@ -725,7 +728,7 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
       -0.5,
       0.5
     ),
-    monthlyPension: Math.max(0, sanitizeFiniteNumber(params.monthlyPension, 0)),
+    monthlyPension: statutoryPensionMonthly(cashFlows),
     oneTimeIncomes: projectOneTimeIncomes(cashFlows, currentAge),
     averageROI: clamp(sanitizeFiniteNumber(params.averageROI, 0.07), -0.99, 0.3),
     roiVolatility: clamp(sanitizeFiniteNumber(params.roiVolatility, 0.15), 0, 1),
@@ -799,8 +802,6 @@ type SimulationSchedule = {
   annualAllowance: number
   /** Teilfreistellung on realised gains. */
   exemption: number
-  /** Statutory pension after income tax, per year. */
-  netPensionAnnual: number
 }
 
 function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
@@ -808,7 +809,11 @@ function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
   // totals (the model the plan has always had); everything a `CashFlow` can say
   // beyond that — an age window, a single payment, extra real growth, a fixed
   // nominal amount, income — is expanded per age.
-  const flows = buildCashFlowSeries(params.cashFlows ?? [], params.currentAge, params.endAge)
+  const flows = buildCashFlowSeries(params.cashFlows ?? [], params.currentAge, params.endAge, {
+    legalRetirementAge: params.legalRetirementAge,
+    pensionTaxablePortion: params.pensionTaxablePortion,
+    pensionTaxRate: params.pensionTaxRate,
+  })
 
   return {
     baseMonthlyExpense: flows.baselineMonthly,
@@ -818,7 +823,6 @@ function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
     usesRuleBasedSpending: params.withdrawalStrategy !== 'fixedReal',
     annualAllowance: annualTaxAllowance(params),
     exemption: clamp(params.equityFundExemption ?? 0, 0, 1),
-    netPensionAnnual: netAnnualPension(params),
   }
 }
 
@@ -987,13 +991,9 @@ function runSingleSimulation(
 
       const totalAnnualExpenseThisYear = guardrailedAnnualSpending + extraExpense
 
-      // Add pension income if at legal retirement age. Only the part that
-      // survives income tax can pay for groceries, so the net figure is what
-      // joins the year's income.
-      let annualIncome = extraIncome
-      if (age >= params.legalRetirementAge) {
-        annualIncome += schedule.netPensionAnnual
-      }
+      // Pensions are `pension` cash flows, already netted of income tax and
+      // expanded per age in `extraIncome` — see `buildCashFlowSeries`.
+      const annualIncome = extraIncome
 
       // Calculate how much we need to withdraw from investments
       const netNeeded = totalAnnualExpenseThisYear - annualIncome
@@ -1309,9 +1309,16 @@ export function netPensionFactor(params: SimulationParams): number {
   return 1 - taxablePortion * rate
 }
 
-/** Annual statutory pension after income tax, in the euros it is quoted in. */
+/**
+ * Annual pension income after income tax at the statutory retirement age —
+ * every pension paying out by then, in the euros each is quoted in.
+ */
 export function netAnnualPension(params: SimulationParams): number {
-  return Math.max(0, params.monthlyPension) * 12 * netPensionFactor(params)
+  return netPensionAnnualAtAge(params.cashFlows ?? [], params.legalRetirementAge, {
+    legalRetirementAge: params.legalRetirementAge,
+    pensionTaxablePortion: params.pensionTaxablePortion,
+    pensionTaxRate: params.pensionTaxRate,
+  })
 }
 
 /**

@@ -404,10 +404,11 @@
       "opening": "Opening the dashboard…"
     },
     "cashFlows": {
-      "intro": "Everything that flows in or out on top of your salary and pension. Each item can run for life or only between two ages — a rental income that ends, a repair in a single year, care costs late in the plan.",
+      "intro": "Everything that flows in or out on top of your salary — pensions included. Each item can run for life or only between two ages: a pension from 67, a rental income that ends, a repair in a single year, care costs late in the plan.",
       "kind": {
         "income": "Income",
-        "expense": "Expense"
+        "expense": "Expense",
+        "pension": "Pension"
       },
       "frequency": {
         "monthly": "Monthly",
@@ -427,7 +428,10 @@
         "inflationLinkedOff": "Fixed euro amount — it loses purchasing power over time.",
         "nominalTag": "fixed €",
         "growthRate": "Extra growth p.a. (%)",
-        "growthRateHint": "On top of inflation. Care costs typically rise faster; a fixed annuity does not."
+        "growthRateHint": "On top of inflation. Care costs typically rise faster; a fixed annuity does not.",
+        "taxablePortion": "Taxable share (%)",
+        "taxablePortionHint": "Share of this pension taxed at your income-tax rate. Blank = the plan’s default of {portion}.",
+        "pensionIndexedOff": "Fixed euro amount — set it to grow with inflation if this pension is adjusted yearly."
       },
       "window": {
         "lifetime": "Whole plan",
@@ -440,7 +444,11 @@
         "item": "Item",
         "period": "Period",
         "amount": "Amount",
-        "actions": "Actions"
+        "actions": "Actions",
+        "groups": {
+          "income": "Income · {count}",
+          "expense": "Expenses · {count}"
+        }
       },
       "actions": {
         "add": "Add cash flow",
@@ -464,7 +472,8 @@
       "summary": {
         "income": "Recurring income per year",
         "expense": "Recurring expenses per year",
-        "note": "Totals cover recurring items at full rate; one-off payments and age windows are shown in the timeline above."
+        "note": "Totals cover recurring items at full rate; one-off payments and age windows are shown in the timeline above.",
+        "pension": "Pension income per year (gross)"
       },
       "templates": {
         "label": "Templates (click to add)",
@@ -474,7 +483,8 @@
           "riester": "Riester payout",
           "partnerPension": "Partner’s pension",
           "care": "Care costs",
-          "roof": "Roof renovation"
+          "roof": "Roof renovation",
+          "companyPension": "Company pension"
         },
         "added": "Added “{name}” — check the amount and the age window below.",
         "undo": "Undo"
@@ -487,8 +497,10 @@
         "utilities": "Utilities",
         "vacations": "Vacations",
         "repairs": "Home repairs",
-        "carMaintenance": "Car maintenance"
-      }
+        "carMaintenance": "Car maintenance",
+        "statutoryPension": "Statutory pension"
+      },
+      "listTitle": "Income, expenses & pensions"
     },
     "liveResult": {
       "label": "Live preview",
@@ -2207,7 +2219,9 @@
       "pensionGap": "Statutory pension starts at {age}",
       "expenseCount": "{count, plural, =0 {No entries} =1 {# entry} other {# entries}}",
       "scheduledFlows": "Scheduled flows",
-      "scheduledFlowsHint": "Windowed or one-off items"
+      "scheduledFlowsHint": "Windowed or one-off items",
+      "pensions": "Pensions at {age}",
+      "pensionsHint": "{count, plural, =0 {no pension} =1 {# pension} other {# pensions}} · gross per month"
     },
     "reset": {
       "trigger": "Reset to defaults",
@@ -2238,9 +2252,9 @@
     },
     "sections": {
       "navLabel": "Plan sections",
-      "collapse": "Collapse section",
-      "expand": "Expand section",
-      "staleStats": "A value below is out of range — these figures still describe the last accepted entry."
+      "staleStats": "A value below is out of range — these figures still describe the last accepted entry.",
+      "previous": "Back: {title}",
+      "next": "Next: {title}"
     }
   },
   "quickAdjust": {

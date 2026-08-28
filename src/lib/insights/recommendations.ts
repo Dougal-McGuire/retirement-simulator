@@ -1,4 +1,5 @@
 import type { SimulationParams, SimulationResults } from '@/types'
+import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
 import type { Recommendation } from '@/lib/pdf-generator/schema/reportData'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { computeBridgeAnalysis } from '@/lib/insights/bridge'
@@ -122,7 +123,8 @@ export function generateRecommendations(
   // the median run holds at that point.
   const annualSpend = calculateCombinedExpenses(params.customExpenses).combinedAnnual
   const pensionAtRetirement =
-    params.retirementAge >= params.legalRetirementAge ? params.monthlyPension * 12 : 0
+    pensionMonthlyAtAge(params.cashFlows ?? [], params.retirementAge, params.legalRetirementAge)
+      .total * 12
   const retirementAssets =
     results.assetPercentiles.p50[Math.max(0, params.retirementAge - params.currentAge)] ?? 0
   const withdrawalRate =

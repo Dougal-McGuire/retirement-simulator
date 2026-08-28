@@ -5,6 +5,8 @@ import {
   cashFlowSignature,
   isLifetimeExpenseFlow,
   isOnceIncomeFlow,
+  isPensionFlow,
+  pensionMonthlyAtAge,
 } from '@/lib/simulation/cashFlows'
 
 /**
@@ -85,7 +87,8 @@ const sum = (values: readonly number[]) => values.reduce((total, value) => total
  */
 function scheduledTotals(params: SimulationParams): { income: number; expense: number } {
   const series = buildCashFlowSeries(
-    params.cashFlows ?? [],
+    // Pensions have their own row; here only the windowed extras count.
+    (params.cashFlows ?? []).filter((flow) => !isPensionFlow(flow)),
     params.currentAge,
     Math.max(params.currentAge, params.endAge)
   )
@@ -98,7 +101,7 @@ function scheduledTotals(params: SimulationParams): { income: number; expense: n
 /** How many flows are scheduled rather than lifetime-recurring. */
 function countScheduledFlows(params: SimulationParams): number {
   return (params.cashFlows ?? []).filter(
-    (flow) => !isLifetimeExpenseFlow(flow) && !isOnceIncomeFlow(flow)
+    (flow) => !isLifetimeExpenseFlow(flow) && !isOnceIncomeFlow(flow) && !isPensionFlow(flow)
   ).length
 }
 
@@ -140,7 +143,15 @@ const rowSpecs: RowSpec[] = [
     read: (p) => p.annualSavingsGrowthRate,
     optional: true,
   },
-  { key: 'monthlyPension', group: 'income', kind: 'currency', read: (p) => p.monthlyPension },
+  {
+    key: 'monthlyPension',
+    group: 'income',
+    kind: 'currency',
+    // Every pension paying out at the statutory age, so a second pension in
+    // one plan shows up as the difference it is.
+    read: (p) =>
+      pensionMonthlyAtAge(p.cashFlows ?? [], p.legalRetirementAge, p.legalRetirementAge).total,
+  },
   {
     key: 'oneTimeIncomes',
     group: 'income',
@@ -366,7 +377,14 @@ export function buildAssumptionRows(paramsList: SimulationParams[]): AssumptionR
   // left the default Monte Carlo behind.
   const usesHistory = paramsList.some((params) => params.marketModel === 'historical')
   // Pension taxation is only a fact about plans that have a pension.
-  const hasPension = paramsList.some((params) => params.monthlyPension > 0)
+  const hasPension = paramsList.some(
+    (params) =>
+      pensionMonthlyAtAge(
+        params.cashFlows ?? [],
+        params.legalRetirementAge,
+        params.legalRetirementAge
+      ).total > 0
+  )
 
   return rowSpecs
     .filter((spec) => (spec.key === 'marketModel' ? usesHistory : true))

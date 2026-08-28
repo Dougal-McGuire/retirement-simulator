@@ -1,4 +1,5 @@
 import type { SimulationParams, SimulationResults } from '@/types'
+import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
 import type { ReportData } from '@/lib/pdf-generator/schema/reportData'
 import { isLifetimeExpenseFlow } from '@/lib/simulation/cashFlows'
 import { buildSimulationContext } from '@/lib/simulation/context'
@@ -66,7 +67,12 @@ export function transformToReportData(
     finances: {
       currentAssetsEUR: params.currentAssets,
       annualSavingsEUR: params.annualSavings,
-      expectedMonthlyPensionEUR: params.monthlyPension,
+      // Every pension paying out at the statutory age, not just the statutory one.
+      expectedMonthlyPensionEUR: pensionMonthlyAtAge(
+        params.cashFlows ?? [],
+        params.legalRetirementAge,
+        params.legalRetirementAge
+      ).total,
     },
     spending: {
       monthly: {

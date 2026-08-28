@@ -91,9 +91,7 @@ export function ExpenseList({
   // only the ones still missing are offered.
   const availableTemplates = useMemo(() => {
     const present = new Set(safeExpenses.map((expense) => expense.name.trim().toLowerCase()))
-    return (templates ?? []).filter(
-      (template) => !present.has(template.name.trim().toLowerCase())
-    )
+    return (templates ?? []).filter((template) => !present.has(template.name.trim().toLowerCase()))
   }, [safeExpenses, templates])
 
   const totalMonthly = safeExpenses
@@ -136,7 +134,9 @@ export function ExpenseList({
     const trimmedName = editName.trim()
     if (!trimmedName) return
     const parsedAmount = editAmountField.parse(editAmount)
-    const sanitizedAmount = Number.isFinite(parsedAmount) ? Math.max(0, Math.round(parsedAmount)) : 0
+    const sanitizedAmount = Number.isFinite(parsedAmount)
+      ? Math.max(0, Math.round(parsedAmount))
+      : 0
     if (sanitizedAmount === 0) return
 
     onUpdate(editingId, {
@@ -192,12 +192,12 @@ export function ExpenseList({
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder={strings.namePlaceholder}
-                className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase"
+                className="h-10 border-2 border-neo-black px-2 text-[0.68rem] font-semibold uppercase"
                 aria-label={getExpenseControlLabel(strings.nameLabel, expense)}
               />
               <Select value={editInterval} onValueChange={handleEditIntervalChange}>
                 <SelectTrigger
-                  className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.62rem]"
+                  className="h-10 border-2 border-neo-black px-2 text-[0.62rem]"
                   aria-label={getExpenseControlLabel(strings.intervalLabel, expense)}
                 >
                   <SelectValue />
@@ -226,7 +226,7 @@ export function ExpenseList({
                   setEditAmount(editAmountField.format(clamped))
                 }
               }}
-              className="h-10 border-2 border-neo-black bg-neo-white px-2 text-[0.68rem] font-semibold uppercase text-right"
+              className="h-10 border-2 border-neo-black px-2 text-[0.68rem] font-semibold uppercase text-right"
               aria-label={getExpenseControlLabel(strings.amountLabel, expense)}
             />
           </td>
@@ -345,7 +345,10 @@ export function ExpenseList({
               >
                 <span className="block">{template.name}</span>
                 <span className="mt-1 block text-[0.62rem] text-muted-foreground">
-                  {formatCurrency(template.amount)} / {template.interval === 'monthly' ? strings.intervalMonthly : strings.intervalAnnual}
+                  {formatCurrency(template.amount)} /{' '}
+                  {template.interval === 'monthly'
+                    ? strings.intervalMonthly
+                    : strings.intervalAnnual}
                 </span>
               </button>
             ))}
@@ -390,7 +393,7 @@ export function ExpenseList({
                 value={draftName}
                 placeholder={strings.namePlaceholder}
                 onChange={(event) => setDraftName(event.target.value)}
-                className="h-11 w-full border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+                className="h-11 w-full border-2 border-neo-black px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
               />
             </div>
 
@@ -418,7 +421,7 @@ export function ExpenseList({
                     setDraftAmount(draftAmountField.format(clamped))
                   }
                 }}
-                className="h-11 w-full border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+                className="h-11 w-full border-2 border-neo-black px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
               />
             </div>
 
@@ -430,7 +433,7 @@ export function ExpenseList({
                 {strings.intervalLabel}
               </Label>
               <Select value={draftInterval} onValueChange={handleDraftIntervalChange}>
-                <SelectTrigger id="expense-interval" className="h-11 border-2 border-neo-black bg-neo-white">
+                <SelectTrigger id="expense-interval" className="h-11 border-2 border-neo-black">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
 import { useFormatter } from 'next-intl'
 import type { ChartDataPoint, SimulationResults } from '@/types'
 import type { BandPoint } from '@/components/charts/AssetsChart'
@@ -40,8 +41,17 @@ export function useChartData(results: SimulationResults, displayReal = false) {
       const deflator = real ? (results.inflationIndexP50?.[index] ?? 1) : 1
       const monthlySavings =
         nominalMonthlySavings === null ? null : nominalMonthlySavings / deflator
-      const monthlyPensionAtAge =
-        age >= results.params.legalRetirementAge ? results.params.monthlyPension / deflator : 0
+      // Nominal pensions lose ground in real mode; indexed ones hold their
+      // value and grow in nominal mode instead.
+      const pension = pensionMonthlyAtAge(
+        results.params.cashFlows ?? [],
+        age,
+        results.params.legalRetirementAge
+      )
+      const priceLevel = results.inflationIndexP50?.[index] ?? 1
+      const monthlyPensionAtAge = real
+        ? pension.fixed / deflator + pension.linked
+        : pension.fixed + pension.linked * priceLevel
       const medianPortfolioDraw = Math.max(0, spending.p50[index] - monthlyPensionAtAge)
 
       return {

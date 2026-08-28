@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useMemo } from 'react'
+import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
 import { useTranslations } from 'next-intl'
 import type { SimulationResults } from '@/types'
 import { SpendingChart } from '@/components/charts/SpendingChart'
@@ -29,14 +30,21 @@ export function SpendingSection({ results }: SpendingSectionProps) {
 
   const spendingTableNoteKey = `spendingTable.note.${results.params.withdrawalStrategy}`
 
-  // The pension is a fixed nominal amount, so in today's euros it shrinks with
-  // the median realised price level rather than staying flat.
+  // A nominal pension shrinks in today's euros with the median realised price
+  // level; an indexed one holds its value (and grows in nominal terms).
   const monthlyPensionAtAge = useCallback(
-    (age: number) =>
-      age >= results.params.legalRetirementAge
-        ? results.params.monthlyPension / deflatorForAge(age)
-        : 0,
-    [deflatorForAge, results.params.legalRetirementAge, results.params.monthlyPension]
+    (age: number) => {
+      const pension = pensionMonthlyAtAge(
+        results.params.cashFlows ?? [],
+        age,
+        results.params.legalRetirementAge
+      )
+      const deflator = deflatorForAge(age)
+      return displayReal
+        ? pension.fixed / deflator + pension.linked
+        : pension.fixed + pension.linked * deflator
+    },
+    [deflatorForAge, displayReal, results.params.cashFlows, results.params.legalRetirementAge]
   )
 
   return (

@@ -10,6 +10,7 @@ import {
 } from '@/lib/insights/recommendations'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { InfoTip } from '@/components/ui/info-tip'
 import { toast, TOAST_DURATION } from '@/components/ui/toast'
 import { ActionToast } from '@/components/ui/action-toast'
 import { useUpdateParams } from '@/lib/stores/simulationStore'
@@ -74,8 +75,8 @@ export function RecommendationList({ params, results }: RecommendationListProps)
         <div className="flex items-center gap-3">
           <Lightbulb className="h-5 w-5 text-neo-blue" aria-hidden="true" />
           <h4 className="text-sm font-extrabold uppercase tracking-[0.16em]">{t('title')}</h4>
+          <InfoTip content={t('subtitle')} label={t('title')} side="bottom" />
         </div>
-        <p className="mt-2 text-xs font-medium text-muted-foreground">{t('subtitle')}</p>
 
         {recommendations.length === 0 ? (
           <p className="mt-5 text-sm font-medium text-muted-foreground">{t('empty')}</p>

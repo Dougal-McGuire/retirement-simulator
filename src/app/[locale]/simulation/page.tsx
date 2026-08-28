@@ -36,8 +36,8 @@ import { VersionInfo } from '@/components/navigation/VersionInfo'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
 import { ChartSkeleton } from '@/components/ui/skeleton'
 import { HISTORICAL_PATH_COUNT } from '@/lib/simulation/data/historicalMarket'
-import { useSetPlanSectionCollapsed } from '@/lib/stores/displayStore'
-import { scrollToPlanSection } from '@/components/plans/planSections'
+import { useSetPlanSection } from '@/lib/stores/displayStore'
+import { scrollToPlanSection, sectionForField } from '@/components/plans/planSections'
 
 type TabValue = 'overview' | 'details' | 'scenarios' | 'plan'
 
@@ -61,7 +61,7 @@ export default function SimulationPage() {
   const t = useTranslations('simulation')
   const tControls = useTranslations('parameterControls')
   const format = useFormatter()
-  const setPlanSectionCollapsed = useSetPlanSectionCollapsed()
+  const setPlanSection = useSetPlanSection()
   const params = useSimulationParams()
   const results = useSimulationResults()
   const isLoading = useSimulationLoading()
@@ -128,6 +128,9 @@ export default function SimulationPage() {
    */
   const editPlanField = useCallback(
     (fieldId: string) => {
+      // Sections mount one at a time, so open the field's page first.
+      const section = sectionForField(fieldId)
+      if (section) setPlanSection(section)
       handleTabChange('plan')
 
       let attempts = 0
@@ -152,15 +155,15 @@ export default function SimulationPage() {
 
       window.requestAnimationFrame(focusTarget)
     },
-    [handleTabChange]
+    [handleTabChange, setPlanSection]
   )
 
   /**
    * The one pointer from the dashboard into the withdrawal planner. It opens
-   * the section first: a folded card cannot be scrolled to usefully.
+   * the planner's page first — the planner is not in the DOM until then.
    */
   const openWithdrawalPlanner = useCallback(() => {
-    setPlanSectionCollapsed('plan-editor-withdrawal', false)
+    setPlanSection('withdrawal')
     handleTabChange('plan')
 
     // The editor tab mounts on demand, so wait for the section to exist before
@@ -176,7 +179,7 @@ export default function SimulationPage() {
       scrollToPlanSection('plan-editor-withdrawal')
     }
     window.requestAnimationFrame(settle)
-  }, [handleTabChange, setPlanSectionCollapsed])
+  }, [handleTabChange, setPlanSection])
 
   const renderTabBody = (content: React.ReactNode) => {
     if (isLoading) return <ChartSkeleton />
@@ -289,11 +292,14 @@ export default function SimulationPage() {
               <div ref={tabsRef} className="scroll-mt-[4.75rem] lg:scroll-mt-4">
                 <TabsList className="grid w-full grid-cols-2 border-3 border-neo-black bg-neo-white shadow-neo sm:grid-cols-4">
                   <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
-                  <TabsTrigger value="details">{t('tabs.details')}</TabsTrigger>
-                  <TabsTrigger value="scenarios">{t('tabs.scenarios')}</TabsTrigger>
+                  {/* The editor sits right after the overview: read the
+                      verdict, then change the inputs — the two things people
+                      do most, one keystroke apart. */}
                   <TabsTrigger value="plan" data-testid="tab-plan">
                     {t('tabs.plan')}
                   </TabsTrigger>
+                  <TabsTrigger value="details">{t('tabs.details')}</TabsTrigger>
+                  <TabsTrigger value="scenarios">{t('tabs.scenarios')}</TabsTrigger>
                 </TabsList>
               </div>
 

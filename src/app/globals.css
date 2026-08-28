@@ -22,6 +22,9 @@
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 8%;
     --input: 223 31% 12%;
+    /* Ground of editable controls — a step off the panel white so inputs
+       read as "type here" without a border change. */
+    --field: 216 100% 97%;
     --ring: 220 92% 54%;
     --chart-1: 222 94% 54%;
     --chart-2: 43 97% 54%;
@@ -140,6 +143,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 220 18% 89%;
     --input: 220 18% 84%;
+    --field: 220 60% 96%;
     --ring: 224 79% 44%;
     --chart-1: 224 79% 44%;
     --chart-2: 272 74% 59%;
@@ -239,6 +243,7 @@
     --destructive-foreground: 219 35% 9%;
     --border: 219 20% 26%;
     --input: 219 20% 32%;
+    --field: 220 30% 16%;
     --ring: 42 49% 58%;
     --chart-1: 213 80% 58%;
     --chart-2: 297 30% 59%;
@@ -349,6 +354,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 30 32% 88%;
     --input: 30 32% 82%;
+    --field: 36 100% 94%;
     --ring: 201 77% 36%;
     --chart-1: 201 77% 36%;
     --chart-2: 265 76% 64%;
@@ -445,6 +451,7 @@
     --destructive-foreground: 225 67% 6%;
     --border: 210 40% 96%;
     --input: 210 40% 96%;
+    --field: 225 50% 14%;
     --ring: 213 87% 72%;
     --chart-1: 213 87% 72%;
     --chart-2: 198 100% 68%;

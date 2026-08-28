@@ -68,6 +68,11 @@ export interface SimulationParams {
   currentAssets: number
   annualSavings: number
   annualSavingsGrowthRate: number
+  /**
+   * Projection of the statutory pension: the monthly amount of the `pension`
+   * cash flow with id `pension-statutory`, kept in sync like `customExpenses`.
+   * Writing it edits that flow; other pensions live only in `cashFlows`.
+   */
   monthlyPension: number
   oneTimeIncomes: OneTimeIncome[]
 
@@ -394,7 +399,7 @@ export type CashFlowFrequency = (typeof CASHFLOW_FREQUENCIES)[number]
 export const isCashFlowFrequency = (value: unknown): value is CashFlowFrequency =>
   typeof value === 'string' && (CASHFLOW_FREQUENCIES as readonly string[]).includes(value)
 
-export const CASHFLOW_KINDS = ['income', 'expense'] as const
+export const CASHFLOW_KINDS = ['income', 'expense', 'pension'] as const
 
 export type CashFlowKind = (typeof CASHFLOW_KINDS)[number]
 
@@ -435,6 +440,14 @@ export interface CashFlow {
   inflationLinked?: boolean
   /** Extra real growth per year on top of inflation (0 by default). */
   growthRate?: number
+  /**
+   * Pension flows only: the share of this pension that counts as taxable
+   * income (Besteuerungsanteil), 0–1. Undefined = the plan's
+   * `pensionTaxablePortion`. A pension starting undefined (`startAge`) follows
+   * the plan's statutory retirement age, and is a fixed nominal amount unless
+   * `inflationLinked` is explicitly true.
+   */
+  taxablePortion?: number
 }
 
 // Chart data interfaces
@@ -490,7 +503,13 @@ export const DEFAULT_PARAMS: SimulationParams = {
   // the English `name` stays as the fallback and as the stable identity used by
   // the report's category matching.
   customExpenses: [
-    { id: 'health', nameKey: 'health', name: 'Health Insurance', amount: 1300, interval: 'monthly' },
+    {
+      id: 'health',
+      nameKey: 'health',
+      name: 'Health Insurance',
+      amount: 1300,
+      interval: 'monthly',
+    },
     { id: 'food', nameKey: 'food', name: 'Groceries', amount: 1200, interval: 'monthly' },
     {
       id: 'entertainment',
@@ -514,6 +533,17 @@ export const DEFAULT_PARAMS: SimulationParams = {
   // The same eight expenses as unified cash flows — `customExpenses` above is
   // the lifetime-expense projection of this list, regenerated on every write.
   cashFlows: [
+    {
+      id: 'pension-statutory',
+      kind: 'pension',
+      nameKey: 'statutoryPension',
+      name: 'Statutory pension',
+      amount: 5000,
+      frequency: 'monthly',
+      // No `startAge`: it follows `legalRetirementAge`. Nominal, as the
+      // statutory pension has always been modelled here.
+      inflationLinked: false,
+    },
     {
       id: 'health',
       kind: 'expense',

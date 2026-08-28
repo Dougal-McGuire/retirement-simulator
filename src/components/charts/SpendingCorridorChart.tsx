@@ -14,6 +14,7 @@ import {
 import { useTranslations } from 'next-intl'
 import type { SpendingCorridorPoint } from '@/lib/simulation/spendingCorridor'
 import { useIsMobile } from '@/lib/hooks/useMediaQuery'
+import { InfoTip } from '@/components/ui/info-tip'
 import {
   axisTick,
   chartInk,
@@ -184,7 +185,10 @@ export function SpendingCorridorChart({
 
   return (
     <div className="space-y-3" data-testid="spending-corridor-chart">
-      <ChartLegend items={legendItems} />
+      <div className="flex items-center gap-2">
+        <ChartLegend items={legendItems} />
+        {hasFloor && <InfoTip content={t('caveat')} label={t('legend.floor')} side="bottom" />}
+      </div>
       <div
         ref={frameRef}
         className="relative h-[17rem] w-full min-w-0 sm:h-[20rem]"
@@ -322,9 +326,11 @@ export function SpendingCorridorChart({
           </div>
         )}
       </div>
-      <p className="text-[0.62rem] font-medium leading-snug text-muted-foreground">
-        {hasFloor ? t('caveat') : t('noFloor')}
-      </p>
+      {!hasFloor && (
+        <p className="text-[0.62rem] font-medium leading-snug text-muted-foreground">
+          {t('noFloor')}
+        </p>
+      )}
     </div>
   )
 }

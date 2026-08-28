@@ -42,8 +42,16 @@ export function buildCashFlowTemplates(
       startAge: clampAge(legalRetirementAge),
     },
     {
+      key: 'companyPension',
+      kind: 'pension',
+      name: t('companyPension'),
+      amount: 400,
+      frequency: 'monthly',
+      startAge: clampAge(legalRetirementAge),
+    },
+    {
       key: 'partnerPension',
-      kind: 'income',
+      kind: 'pension',
       name: t('partnerPension'),
       amount: 800,
       frequency: 'monthly',

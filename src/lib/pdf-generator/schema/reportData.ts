@@ -55,7 +55,7 @@ export const SpendingSchema = z.object({
     .array(
       z.object({
         id: z.string(),
-        kind: z.enum(['income', 'expense']),
+        kind: z.enum(['income', 'expense', 'pension']),
         name: z.string(),
         nameKey: z.string().max(64).optional(),
         amount: z.number().min(0).max(100_000_000),

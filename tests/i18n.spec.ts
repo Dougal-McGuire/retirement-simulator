@@ -25,6 +25,7 @@ test.describe('i18n routing', () => {
   test('localises the seeded cash-flow names in German', async ({ page }) => {
     await page.goto('/de/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-cashFlows').click()
 
     // The eight default flows carry a `nameKey`, so they follow the UI
     // language instead of rendering the English strings stored in the plan.
@@ -38,6 +39,7 @@ test.describe('i18n routing', () => {
   test('keeps a user-renamed flow verbatim in every language', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-cashFlows').click()
 
     const list = page.getByTestId('cashflow-list')
     // The seeded "Groceries" flow keeps the id `food`, so its edit form fields
@@ -53,6 +55,7 @@ test.describe('i18n routing', () => {
 
     await page.goto('/de/simulation')
     await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-cashFlows').click()
     // The user's own text wins over the seeded translation.
     await expect(page.getByTestId('cashflow-list')).toContainText('Wocheneinkauf')
     await expect(page.getByTestId('cashflow-list')).not.toContainText('Lebensmittel')

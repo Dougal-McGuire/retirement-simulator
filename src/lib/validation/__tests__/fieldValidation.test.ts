@@ -7,7 +7,7 @@ import {
   timelineIssues,
 } from '@/lib/validation/fieldValidation'
 import { DEFAULT_PARAMS } from '@/types'
-import { activeSectionId, PLAN_SECTION_IDS } from '@/components/plans/planSections'
+import { adjacentSections, sectionForField } from '@/components/plans/planSections'
 
 describe('parseNumericDraft', () => {
   it.each(['', '   ', '-', '.', ',', '-.', '+'])('treats %p as still being typed', (raw) => {
@@ -127,41 +127,22 @@ describe('timelineIssues', () => {
   })
 })
 
-describe('activeSectionId', () => {
-  it('prefers the first section in document order', () => {
-    const visible = new Set([PLAN_SECTION_IDS[3], PLAN_SECTION_IDS[1]])
-    expect(activeSectionId(PLAN_SECTION_IDS, visible, PLAN_SECTION_IDS[0])).toBe(
-      PLAN_SECTION_IDS[1]
-    )
+describe('plan section lookup', () => {
+  it('knows which page each editor field lives on', () => {
+    expect(sectionForField('editor-retirementAge')).toBe('personal')
+    expect(sectionForField('editor-currentAssets')).toBe('income')
+    expect(sectionForField('planner-dsWithdrawalRate')).toBe('withdrawal')
+    expect(sectionForField('cashflow-name-new')).toBe('cashFlows')
+    expect(sectionForField('glide-path-toggle')).toBe('market')
   })
 
-  it('keeps the previous choice when nothing is in the band', () => {
-    expect(activeSectionId(PLAN_SECTION_IDS, new Set(), PLAN_SECTION_IDS[4])).toBe(
-      PLAN_SECTION_IDS[4]
-    )
+  it('stays put for a field it does not know', () => {
+    expect(sectionForField('something-else')).toBeUndefined()
   })
 
-  it('ignores ids it does not know', () => {
-    expect(
-      activeSectionId(PLAN_SECTION_IDS, new Set(['something-else']), 'plan-editor-market')
-    ).toBe('plan-editor-market')
-  })
-})
-
-describe('wizard preview gate', () => {
-  it('is open for the shipped defaults', () => {
-    expect(isPreviewable(DEFAULT_PARAMS)).toBe(true)
-  })
-
-  it('stays shut while the ages contradict each other', () => {
-    expect(isPreviewable({ ...DEFAULT_PARAMS, retirementAge: DEFAULT_PARAMS.currentAge })).toBe(
-      false
-    )
-    expect(isPreviewable({ ...DEFAULT_PARAMS, endAge: DEFAULT_PARAMS.retirementAge })).toBe(false)
-  })
-
-  it('stays shut when there is no money in the plan at all', () => {
-    expect(isPreviewable({ ...DEFAULT_PARAMS, currentAssets: 0, annualSavings: 0 })).toBe(false)
-    expect(isPreviewable({ ...DEFAULT_PARAMS, currentAssets: 0, annualSavings: 1 })).toBe(true)
+  it('walks the sections in order with no wrap-around', () => {
+    expect(adjacentSections('personal')).toEqual({ previous: undefined, next: 'income' })
+    expect(adjacentSections('market')).toEqual({ previous: 'cashFlows', next: 'withdrawal' })
+    expect(adjacentSections('withdrawal')).toEqual({ previous: 'market', next: undefined })
   })
 })

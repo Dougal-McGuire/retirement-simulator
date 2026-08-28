@@ -2,9 +2,13 @@ import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 import {
   applyCashFlows,
   buildCashFlowSeries,
+  netPensionAnnualAtAge,
+  pensionMonthlyAtAge,
   projectCustomExpenses,
   projectOneTimeIncomes,
   reconcileCashFlows,
+  STATUTORY_PENSION_FLOW_ID,
+  withStatutoryPension,
 } from '@/lib/simulation/cashFlows'
 import { DEFAULT_PARAMS, type CashFlow, type SimulationParams } from '@/types'
 
@@ -494,5 +498,146 @@ describe('projections and reconciliation', () => {
     expect(series.baselineMonthly).toBe(1_000)
     expect(series.expenseLinked).toEqual([0, 0, 0, 0, 0])
     expect(series.incomeLinked).toEqual([0, 0, 900 * 12, 900 * 12, 900 * 12])
+  })
+})
+
+describe('pension flows', () => {
+  const pension = (overrides: Partial<CashFlow> = {}): CashFlow => ({
+    id: 'company',
+    kind: 'pension',
+    name: 'Company pension',
+    amount: 1_000,
+    frequency: 'monthly',
+    ...overrides,
+  })
+  const untaxed = { legalRetirementAge: 62, pensionTaxablePortion: 0, pensionTaxRate: 0 }
+
+  it('starts at the statutory age when it has no start of its own', () => {
+    const series = buildCashFlowSeries([pension()], 60, 64, untaxed)
+
+    // Offsets 0–1 are ages 60–61: nothing yet. From 62 on, €12k a year.
+    expect(series.incomeFixed).toEqual([0, 0, 12_000, 12_000, 12_000])
+    expect(series.incomeLinked.every((value) => value === 0)).toBe(true)
+  })
+
+  it('keeps its own start and end ages when it has them', () => {
+    const series = buildCashFlowSeries([pension({ startAge: 63, endAge: 63 })], 60, 64, untaxed)
+    expect(series.incomeFixed).toEqual([0, 0, 0, 12_000, 0])
+  })
+
+  it('joins the year net of income tax on its taxable share', () => {
+    const taxed = { legalRetirementAge: 60, pensionTaxablePortion: 0.8, pensionTaxRate: 0.25 }
+    const series = buildCashFlowSeries([pension()], 60, 60, taxed)
+    // 1 − 0.8 × 0.25 = 0.8 of €12k.
+    expect(series.incomeFixed).toEqual([9_600])
+
+    // A pension with its own taxable share (a Riester annuity, say) overrides
+    // the plan's default.
+    const own = buildCashFlowSeries([pension({ taxablePortion: 0.5 })], 60, 60, taxed)
+    expect(own.incomeFixed).toEqual([10_500])
+    expect(netPensionAnnualAtAge([pension({ taxablePortion: 0.5 })], 60, taxed)).toBe(10_500)
+  })
+
+  it('is a fixed nominal amount unless indexing is switched on', () => {
+    const fixed = buildCashFlowSeries([pension()], 60, 60, { legalRetirementAge: 60 })
+    expect(fixed.incomeFixed).toEqual([12_000])
+    expect(fixed.incomeLinked).toEqual([0])
+
+    const indexed = buildCashFlowSeries([pension({ inflationLinked: true })], 60, 60, {
+      legalRetirementAge: 60,
+    })
+    expect(indexed.incomeFixed).toEqual([0])
+    expect(indexed.incomeLinked).toEqual([12_000])
+  })
+
+  it('sums every pension paying out at an age, split by indexing', () => {
+    const flows = [
+      pension(),
+      pension({ id: 'partner', amount: 600, startAge: 65, inflationLinked: true }),
+    ]
+    expect(pensionMonthlyAtAge(flows, 64, 62)).toEqual({ fixed: 1_000, linked: 0, total: 1_000 })
+    expect(pensionMonthlyAtAge(flows, 65, 62)).toEqual({ fixed: 1_000, linked: 600, total: 1_600 })
+    expect(pensionMonthlyAtAge(flows, 61, 62).total).toBe(0)
+  })
+
+  it('never lets a pension be a one-off payment', () => {
+    const [flow] = applyCashFlows(flat({ cashFlows: [pension({ frequency: 'once' })] })).cashFlows
+    expect(flow.frequency).toBe('monthly')
+  })
+
+  it('funds spending out of the net pension inside the simulation', () => {
+    const living: CashFlow = {
+      id: 'living',
+      kind: 'expense',
+      name: 'Living',
+      amount: 40_000,
+      frequency: 'annual',
+    }
+    const params = flat({
+      legalRetirementAge: 62,
+      pensionTaxablePortion: 0.8,
+      pensionTaxRate: 0.25,
+      cashFlows: [living, pension()],
+    })
+
+    // Before the pension starts a year costs the full €40k; once it pays out,
+    // €9,600 of net pension covers part of it.
+    expect(assetsAt(params, 61) - assetsAt(params, 60)).toBeCloseTo(-40_000, 6)
+    expect(assetsAt(params, 64) - assetsAt(params, 63)).toBeCloseTo(-30_400, 6)
+  })
+})
+
+describe('the statutory pension as a cash flow', () => {
+  it('projects monthlyPension from the statutory flow and back', () => {
+    const flows = withStatutoryPension([], 2_500)
+    expect(flows).toEqual([
+      expect.objectContaining({
+        id: STATUTORY_PENSION_FLOW_ID,
+        kind: 'pension',
+        amount: 2_500,
+        frequency: 'monthly',
+        inflationLinked: false,
+      }),
+    ])
+    expect(applyCashFlows({ ...DEFAULT_PARAMS, cashFlows: flows }).monthlyPension).toBe(2_500)
+
+    // Writing the legacy field edits the flow; zero removes it.
+    expect(reconcileCashFlows({ cashFlows: flows, monthlyPension: 3_000 })[0].amount).toBe(3_000)
+    expect(reconcileCashFlows({ cashFlows: flows, monthlyPension: 0 })).toEqual([])
+    // Removing the flow zeroes the field.
+    expect(applyCashFlows({ ...DEFAULT_PARAMS, cashFlows: [] }).monthlyPension).toBe(0)
+  })
+
+  it('keeps the start age, tax share and indexing of an edited statutory pension', () => {
+    const custom = withStatutoryPension([], 1_000).map((flow) => ({
+      ...flow,
+      startAge: 65,
+      taxablePortion: 0.9,
+      inflationLinked: true,
+    }))
+    const [flow] = withStatutoryPension(custom, 1_200)
+    expect(flow).toMatchObject({
+      amount: 1_200,
+      startAge: 65,
+      taxablePortion: 0.9,
+      inflationLinked: true,
+    })
+  })
+
+  it('reproduces a plan saved before pensions were cash flows', () => {
+    // A v2-era parameter set: `monthlyPension` and no pension flow at all.
+    const legacy: SimulationParams = {
+      ...DEFAULT_PARAMS,
+      cashFlows: DEFAULT_PARAMS.cashFlows.filter((flow) => flow.kind !== 'pension'),
+      simulationRuns: 50,
+    }
+    const migrated = runMonteCarloSimulation(legacy)
+    const shipped = runMonteCarloSimulation({ ...DEFAULT_PARAMS, simulationRuns: 50 })
+
+    expect(migrated.params.cashFlows.some((flow) => flow.id === STATUTORY_PENSION_FLOW_ID)).toBe(
+      true
+    )
+    expect(migrated.successRate).toBe(shipped.successRate)
+    expect(migrated.assetPercentiles.p50).toEqual(shipped.assetPercentiles.p50)
   })
 })

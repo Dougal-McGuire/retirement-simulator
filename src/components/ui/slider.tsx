@@ -32,7 +32,7 @@ const Slider = React.forwardRef<React.ElementRef<typeof SliderPrimitive.Root>, S
       className={cn('relative flex w-full touch-none select-none items-center', className)}
       {...props}
     >
-      <SliderPrimitive.Track className="relative h-3 w-full grow bg-neo-white border-2 border-neo-black">
+      <SliderPrimitive.Track className="relative h-3 w-full grow bg-field border-2 border-neo-black">
         <SliderPrimitive.Range className="absolute h-full bg-neo-blue" />
       </SliderPrimitive.Track>
       <SliderPrimitive.Thumb

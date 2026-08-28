@@ -97,9 +97,7 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
                 <Settings className="mr-2 h-5 w-5 shrink-0" />
                 {t('title')}
               </SheetTitle>
-              <SheetDescription className="text-sm font-medium text-muted-foreground">
-                {t('description')}
-              </SheetDescription>
+              <SheetDescription className="sr-only">{t('description')}</SheetDescription>
             </SheetHeader>
             {/* The sheet already names the panel — `hideHeading` stops the
                 controls from repeating that title one row further down. */}

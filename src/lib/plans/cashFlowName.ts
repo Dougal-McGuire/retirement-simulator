@@ -17,6 +17,8 @@ export const DEFAULT_CASH_FLOW_NAME_KEYS = [
   'vacations',
   'repairs',
   'carMaintenance',
+  // The statutory pension — the one `monthlyPension` projects.
+  'statutoryPension',
   // Seeded only by the example plan (see `demoPlan.ts`).
   'demoPartTime',
   'demoInheritance',
@@ -39,6 +41,7 @@ const DEFAULT_NAMES_DE: Record<DefaultCashFlowNameKey, string> = {
   vacations: 'Urlaub',
   repairs: 'Instandhaltung Haus',
   carMaintenance: 'Auto-Unterhalt',
+  statutoryPension: 'Gesetzliche Rente',
   demoPartTime: 'Teilzeit-Beratung',
   demoInheritance: 'Erbschaft',
   demoRoof: 'Dachsanierung',
@@ -55,6 +58,7 @@ const DEFAULT_NAMES_EN: Record<DefaultCashFlowNameKey, string> = {
   vacations: 'Vacations',
   repairs: 'Home repairs',
   carMaintenance: 'Car maintenance',
+  statutoryPension: 'Statutory pension',
   demoPartTime: 'Part-time consulting',
   demoInheritance: 'Inheritance',
   demoRoof: 'Roof renovation',

@@ -183,6 +183,15 @@ const GOLDEN_PARAMS: SimulationParams = {
   ],
   cashFlows: [
     {
+      id: 'pension-statutory',
+      kind: 'pension',
+      nameKey: 'statutoryPension',
+      name: 'Statutory pension',
+      amount: 5000,
+      frequency: 'monthly',
+      inflationLinked: false,
+    },
+    {
       id: 'health',
       kind: 'expense',
       nameKey: 'health',

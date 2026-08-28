@@ -27,6 +27,15 @@ import {
 
 const MAX_GROWTH_RATE = 0.5
 
+/**
+ * The one pension the wizard and the legacy `monthlyPension` field talk about.
+ * Any further pension (a company scheme, a partner's pension, an annuity) is
+ * an ordinary `pension` flow with its own id, start age and tax share.
+ */
+export const STATUTORY_PENSION_FLOW_ID = 'pension-statutory'
+const STATUTORY_PENSION_NAME_KEY = 'statutoryPension'
+const STATUTORY_PENSION_NAME = 'Statutory pension'
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 const finiteOrNull = (value: unknown): number | null => {
@@ -55,6 +64,112 @@ export function isOnceIncomeFlow(flow: CashFlow): boolean {
   return flow.kind === 'income' && flow.frequency === 'once'
 }
 
+export function isPensionFlow(flow: CashFlow): boolean {
+  return flow.kind === 'pension'
+}
+
+/** Tax and timing defaults a pension flow inherits from the plan. */
+export interface PensionContext {
+  legalRetirementAge: number
+  pensionTaxablePortion?: number
+  pensionTaxRate?: number
+}
+
+/** What is left of a pension after income tax on its taxable share. */
+export function pensionNetFactor(flow: CashFlow, context: PensionContext): number {
+  const portion = clamp(flow.taxablePortion ?? context.pensionTaxablePortion ?? 0, 0, 1)
+  const rate = clamp(context.pensionTaxRate ?? 0, 0, 1)
+  return 1 - portion * rate
+}
+
+/** First age a pension pays out: its own start, else the statutory age. */
+export function pensionStartAge(flow: CashFlow, legalRetirementAge: number): number {
+  return flow.startAge ?? legalRetirementAge
+}
+
+const pensionMonthlyAmount = (flow: CashFlow) =>
+  flow.frequency === 'annual' ? flow.amount / 12 : flow.amount
+
+/**
+ * Gross pension income per month at `age`, in the euros each pension is quoted
+ * in, split by how inflation treats it. A pension that has not started, or has
+ * ended, contributes nothing.
+ */
+export function pensionMonthlyAtAge(
+  flows: readonly CashFlow[],
+  age: number,
+  legalRetirementAge: number
+): { fixed: number; linked: number; total: number } {
+  let fixed = 0
+  let linked = 0
+  for (const flow of flows) {
+    if (!isPensionFlow(flow) || flow.amount <= 0) continue
+    if (age < pensionStartAge(flow, legalRetirementAge)) continue
+    if (flow.endAge !== undefined && age > flow.endAge) continue
+    if (flow.inflationLinked === true) linked += pensionMonthlyAmount(flow)
+    else fixed += pensionMonthlyAmount(flow)
+  }
+  return { fixed, linked, total: fixed + linked }
+}
+
+/** Net pension income per year at `age`, after the income tax on each pension. */
+export function netPensionAnnualAtAge(
+  flows: readonly CashFlow[],
+  age: number,
+  context: PensionContext
+): number {
+  let net = 0
+  for (const flow of flows) {
+    if (!isPensionFlow(flow) || flow.amount <= 0) continue
+    if (age < pensionStartAge(flow, context.legalRetirementAge)) continue
+    if (flow.endAge !== undefined && age > flow.endAge) continue
+    net += pensionMonthlyAmount(flow) * 12 * pensionNetFactor(flow, context)
+  }
+  return Math.max(0, net)
+}
+
+/** The statutory pension's monthly amount — what `monthlyPension` projects. */
+export function statutoryPensionMonthly(flows: readonly CashFlow[]): number {
+  const flow = flows.find((entry) => entry.id === STATUTORY_PENSION_FLOW_ID && isPensionFlow(entry))
+  return flow ? pensionMonthlyAmount(flow) : 0
+}
+
+/**
+ * Writes `monthlyPension` into the flow list: updates the statutory pension's
+ * amount, creates it when the plan has none, removes it at zero. Everything
+ * else on an existing statutory flow (start age, tax share, indexing) is kept.
+ */
+export function withStatutoryPension(flows: readonly CashFlow[], amount: number): CashFlow[] {
+  const monthly = Math.max(0, Number.isFinite(amount) ? amount : 0)
+  const index = flows.findIndex((entry) => entry.id === STATUTORY_PENSION_FLOW_ID)
+  if (monthly <= 0) return index === -1 ? [...flows] : flows.filter((_, i) => i !== index)
+  if (index === -1) {
+    return [
+      {
+        id: STATUTORY_PENSION_FLOW_ID,
+        kind: 'pension',
+        nameKey: STATUTORY_PENSION_NAME_KEY,
+        name: STATUTORY_PENSION_NAME,
+        amount: monthly,
+        frequency: 'monthly',
+        inflationLinked: false,
+      },
+      ...flows,
+    ]
+  }
+  const existing = flows[index]
+  if (
+    existing.kind === 'pension' &&
+    existing.frequency === 'monthly' &&
+    existing.amount === monthly
+  ) {
+    return [...flows]
+  }
+  return flows.map((entry, i) =>
+    i === index ? { ...entry, kind: 'pension', frequency: 'monthly', amount: monthly } : entry
+  )
+}
+
 /**
  * A lifetime expense with no per-flow overrides: exactly the thing the engine's
  * inflation-indexed spending baseline (and the Vanguard guardrails) has always
@@ -77,7 +192,14 @@ export function sanitizeCashFlow(entry: unknown, fallbackId: string): CashFlow |
 
   const id = typeof raw.id === 'string' && raw.id.trim() !== '' ? raw.id.trim() : fallbackId
   const kind = isCashFlowKind(raw.kind) ? raw.kind : 'expense'
-  const frequency = isCashFlowFrequency(raw.frequency) ? raw.frequency : 'monthly'
+  const pension = kind === 'pension'
+  // A pension is an income stream by definition — a single payment is a
+  // one-off income, not a pension.
+  const frequency =
+    isCashFlowFrequency(raw.frequency) && !(pension && raw.frequency === 'once')
+      ? raw.frequency
+      : 'monthly'
+  const taxablePortion = pension ? finiteOrNull(raw.taxablePortion) : null
   const name = typeof raw.name === 'string' ? raw.name : ''
   // Seeded flows carry a translation key so they follow the UI language; it
   // survives round-tripping through storage but never affects the model.
@@ -98,11 +220,16 @@ export function sanitizeCashFlow(entry: unknown, fallbackId: string): CashFlow |
     frequency,
     ...(startAge !== undefined ? { startAge } : {}),
     ...(endAge !== undefined ? { endAge } : {}),
-    ...(raw.inflationLinked === false ? { inflationLinked: false } : {}),
+    // Pensions are nominal unless indexing is switched on explicitly; every
+    // other flow is inflation-linked unless switched off.
+    ...(raw.inflationLinked === false || (pension && raw.inflationLinked !== true)
+      ? { inflationLinked: false }
+      : {}),
     ...(raw.inflationLinked === true ? { inflationLinked: true } : {}),
     ...(growth !== null && growth !== 0
       ? { growthRate: clamp(growth, -MAX_GROWTH_RATE, MAX_GROWTH_RATE) }
       : {}),
+    ...(taxablePortion !== null ? { taxablePortion: clamp(taxablePortion, 0, 1) } : {}),
   }
 }
 
@@ -208,9 +335,13 @@ export function reconcileCashFlows(params: {
   cashFlows?: unknown
   customExpenses?: unknown
   oneTimeIncomes?: unknown
+  /** Legacy statutory-pension field; a number here edits the statutory flow. */
+  monthlyPension?: unknown
   currentAge?: number
 }): CashFlow[] {
-  const flows = sanitizeCashFlows(params.cashFlows)
+  const sanitized = sanitizeCashFlows(params.cashFlows)
+  const legacyPension = finiteOrNull(params.monthlyPension)
+  const flows = legacyPension === null ? sanitized : withStatutoryPension(sanitized, legacyPension)
   const legacyExpenses = readLegacyExpenses(params.customExpenses)
   const legacyIncomes = readLegacyIncomes(params.oneTimeIncomes)
   if (!legacyExpenses && !legacyIncomes) return flows
@@ -316,6 +447,7 @@ export function withCashFlowProjections<T extends SimulationParams>(params: T): 
     cashFlows,
     customExpenses: projectCustomExpenses(cashFlows),
     oneTimeIncomes: projectOneTimeIncomes(cashFlows, params.currentAge),
+    monthlyPension: statutoryPensionMonthly(cashFlows),
   }
 }
 
@@ -335,6 +467,7 @@ export function applyCashFlows<T extends SimulationParams>(params: T): T {
     cashFlows,
     customExpenses: projectCustomExpenses(cashFlows),
     oneTimeIncomes: projectOneTimeIncomes(cashFlows, params.currentAge),
+    monthlyPension: statutoryPensionMonthly(cashFlows),
   }
 }
 
@@ -368,7 +501,9 @@ export interface CashFlowSeries {
 export function buildCashFlowSeries(
   flows: readonly CashFlow[],
   currentAge: number,
-  endAge: number
+  endAge: number,
+  /** Needed for pension flows; without it they start at `currentAge` untaxed. */
+  pension: PensionContext = { legalRetirementAge: currentAge }
 ): CashFlowSeries {
   const years = Math.max(0, endAge - currentAge + 1)
   const incomeLinked = new Array<number>(years).fill(0)
@@ -404,14 +539,21 @@ export function buildCashFlowSeries(
       continue
     }
 
-    const perYear = flow.frequency === 'monthly' ? amount * 12 : amount
-    const linked = flow.inflationLinked !== false
+    const isPension = isPensionFlow(flow)
+    // A pension joins the year's income net of the tax on its taxable share —
+    // only what survives income tax can pay for groceries.
+    const perYearGross = flow.frequency === 'monthly' ? amount * 12 : amount
+    const perYear = isPension ? perYearGross * pensionNetFactor(flow, pension) : perYearGross
+    const linked = isPension ? flow.inflationLinked === true : flow.inflationLinked !== false
     const growth = flow.growthRate ?? 0
-    const start = Math.max(currentAge, flow.startAge ?? currentAge)
+    const start = Math.max(
+      currentAge,
+      isPension ? pensionStartAge(flow, pension.legalRetirementAge) : (flow.startAge ?? currentAge)
+    )
     const last = flow.frequency === 'once' ? start : Math.min(endAge, flow.endAge ?? endAge)
     if (start > endAge || last < start) continue
 
-    const income = flow.kind === 'income'
+    const income = flow.kind === 'income' || isPension
     const target = income
       ? linked
         ? incomeLinked
@@ -455,6 +597,7 @@ export function cashFlowSignature(flows: readonly CashFlow[]): string[] {
         flow.endAge ?? '',
         flow.inflationLinked === false ? 'fixed' : 'linked',
         flow.growthRate ?? 0,
+        flow.taxablePortion ?? '',
       ].join('|')
     )
     .sort()
