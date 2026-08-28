@@ -38,15 +38,8 @@ test.describe('shared app header', () => {
     await expect(strip.locator(':scope > *').last()).toHaveText('Go to Simulation')
   })
 
-  test('dashboard: same shell, report and setup actions at the end', async ({ page }) => {
-    await page.goto('/en/simulation')
-
-    const strip = page.getByTestId('app-header-actions')
-    await expect(strip).toBeVisible()
-    await expectSingleRow(strip)
-    await expect(strip.getByRole('combobox', { name: 'Theme' })).toBeVisible()
-    await expect(strip.getByRole('link', { name: 'Setup' })).toBeVisible()
-  })
+  // The simulation page no longer uses the shared header (compact redesign);
+  // its chrome is covered in dashboard.spec.ts.
 
   test('setup header keeps plan context as one chip and folds the hints away', async ({ page }) => {
     await page.goto('/en/setup')

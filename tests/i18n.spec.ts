@@ -11,15 +11,12 @@ test.describe('i18n routing', () => {
 
   test('renders German translations on simulation page', async ({ page }) => {
     await page.goto('/de/simulation')
+    // The compact chrome, in German: the run button, a lever label and a tab.
+    await expect(page.getByTestId('run-button')).toContainText('Rechnen')
+    await expect(page.getByTestId('tab-overview')).toContainText('Überblick')
     await expect(
-      page.getByRole('heading', { level: 1, name: 'Ruhestandssimulation' })
+      page.getByTestId('compact-command-bar').getByRole('slider', { name: 'Jährliche Sparrate' })
     ).toBeVisible()
-    await expect(
-      page.getByText(
-        'Planen, justieren und überwachen Sie Ihren Ruhestand mit Live-Monte-Carlo-Ergebnissen.'
-      )
-    ).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Keine Daten' })).toBeVisible()
   })
 
   test('localises the seeded cash-flow names in German', async ({ page }) => {

@@ -234,6 +234,15 @@ export interface SimulationResults {
    * Optional because results persisted before this field existed lack it.
    */
   depletionByAge?: number[]
+  /**
+   * A handful of individual asset paths (the first few run indices), kept so
+   * the fan chart can draw real sample trajectories on top of the percentile
+   * bands. Deterministic seeding makes them stable across parameter changes.
+   * Optional because results persisted before this field existed lack it.
+   */
+  sampleAssetPaths?: number[][]
+  /** The same sample paths deflated by their own realised inflation. */
+  sampleAssetPathsReal?: number[][]
   params: SimulationParams
 }
 

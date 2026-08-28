@@ -114,31 +114,8 @@ test.describe('plan tab sections', () => {
     )
   })
 
-  test('opens the right section from a dashboard shortcut', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-market').click()
-    await page.getByRole('tab', { name: 'Overview' }).click()
-
-    // The hero's retirement-age pencil lives on the personal page, not the
-    // market page that was open last.
-    await page.getByTestId('hero-edit-bridge').click()
-    await expect(page.getByRole('tab', { name: 'Plan' })).toHaveAttribute('data-state', 'active')
-    await expect(page.locator('#editor-retirementAge')).toBeVisible()
-    await expect(page.locator('#editor-retirementAge [role="slider"]')).toBeFocused()
-  })
-
-  test('points at the withdrawal planner from the scenarios tab', async ({ page }) => {
-    await page.goto('/en/simulation')
-
-    await page.getByRole('tab', { name: 'Scenarios & advice' }).click()
-    const jump = page.getByTestId('scenarios-withdrawal-jump')
-    await expect(jump).toBeVisible()
-
-    await page.getByTestId('scenarios-withdrawal-jump-action').click()
-    await expect(page.getByRole('tab', { name: 'Plan' })).toHaveAttribute('data-state', 'active')
-    await expect(page.getByTestId('withdrawal-planner')).toBeInViewport()
-  })
+  // The hero's edit-shortcut pencils and the scenarios-tab withdrawal pointer
+  // were dashboard chrome the compact redesign removed; their tests went too.
 })
 
 test.describe('wizard live preview', () => {
@@ -163,23 +140,5 @@ test.describe('wizard live preview', () => {
   })
 })
 
-test.describe('what the gauge is a percentage of', () => {
-  test('names the legacy goal inside the gauge card', async ({ page }) => {
-    await page.goto('/en/simulation')
-
-    const qualifier = page.getByTestId('hero-success-qualifier')
-    await expect(qualifier).toHaveAttribute('data-definition', 'depletion')
-    await expect(qualifier).toContainText('no legacy goal set')
-
-    const target = page.locator('#editor-legacyTargetReal')
-    await target.fill('150000')
-    await target.blur()
-
-    await expect(qualifier).toHaveAttribute('data-definition', 'legacyConditioned', {
-      timeout: 20000,
-    })
-    await expect(qualifier).toContainText('Incl. legacy goal')
-    // ...with plain survival kept as the secondary line.
-    await expect(qualifier).toContainText('Money lasts on its own in')
-  })
-})
+// The hero gauge (and its success-definition qualifier) was removed with the
+// compact redesign; the KPI strip's success cell is covered in dashboard.spec.

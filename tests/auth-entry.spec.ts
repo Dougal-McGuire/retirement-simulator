@@ -25,7 +25,9 @@ test.describe('account entry points', () => {
     await page.goto('/en')
 
     await expect(page).toHaveURL(/\/en\/simulation$/)
-    await expect(page.getByTestId('auth-account')).toContainText(TEST_USER.name)
+    // The compact dashboard carries no account chrome of its own; landing on
+    // it is the observable outcome.
+    await expect(page.getByTestId('compact-command-bar')).toBeVisible()
   })
 
   test('?stay keeps a signed-in visitor on the landing page with a dashboard shortcut', async ({
@@ -42,16 +44,14 @@ test.describe('account entry points', () => {
     await expect(page.getByTestId('auth-account')).toContainText(TEST_USER.name)
   })
 
-  test('setup and dashboard headers show the account in a single-row action strip', async ({
-    page,
-  }) => {
+  // The compact dashboard dropped the shared header, so the account strip is
+  // asserted on the setup page only.
+  test('setup header shows the account in a single-row action strip', async ({ page }) => {
     await stubSignedIn(page)
 
-    for (const path of ['/en/setup', '/en/simulation']) {
-      await page.goto(path)
-      const strip = page.getByTestId('app-header-actions')
-      await expect(strip.getByTestId('auth-account')).toContainText(TEST_USER.name)
-      await expect(strip.getByTestId('auth-sync-status')).toBeVisible()
-    }
+    await page.goto('/en/setup')
+    const strip = page.getByTestId('app-header-actions')
+    await expect(strip.getByTestId('auth-account')).toContainText(TEST_USER.name)
+    await expect(strip.getByTestId('auth-sync-status')).toBeVisible()
   })
 })

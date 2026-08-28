@@ -1069,6 +1069,9 @@ function runSingleSimulation(
  * @param params - Simulation parameters
  * @returns Complete simulation results including percentiles and success rate
  */
+/** How many individual trajectories the fan chart's sample overlay gets. */
+export const SAMPLE_PATH_COUNT = 7
+
 export function runMonteCarloSimulation(
   params: SimulationParams,
   options: { random?: RandomSource; seed?: number; sampler?: MarketSampler } = {}
@@ -1122,6 +1125,13 @@ export function runMonteCarloSimulation(
 
   const depletionCounts = new Array<number>(ages.length).fill(0)
 
+  // A few real trajectories for the fan chart's sample-path overlay. The first
+  // run indices are kept (not a random pick): deterministic per-run seeds make
+  // them the *same* handful of market histories on every recompute, so the
+  // overlay stays steady while sliders are scrubbed.
+  const sampleAssetPaths: number[][] = []
+  const sampleAssetPathsReal: number[][] = []
+
   // Run all simulations
   for (let run = 0; run < effectiveRuns; run++) {
     const random = sharedRandom ?? mulberry32(mixSeed(baseSeed, run))
@@ -1133,6 +1143,10 @@ export function runMonteCarloSimulation(
     // taken. Deflating the nominal percentile band by an average price level
     // would mix quantiles of two different distributions; this does not.
     const realAssets = deflatePath(result.assetHistory, result.inflationIndexHistory)
+    if (run < SAMPLE_PATH_COUNT) {
+      sampleAssetPaths.push(result.assetHistory)
+      sampleAssetPathsReal.push(realAssets)
+    }
     assetRunsReal.push(realAssets)
     spendingRunsReal.push(deflatePath(result.spendingHistory, result.inflationIndexHistory))
     inflationIndexRuns.push(result.inflationIndexHistory)
@@ -1187,6 +1201,8 @@ export function runMonteCarloSimulation(
     depletionSuccessRate,
     withdrawalTaxDrag,
     depletionByAge,
+    sampleAssetPaths,
+    sampleAssetPathsReal,
     params: normalizedParams,
   }
 }

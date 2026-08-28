@@ -567,6 +567,117 @@
       "action": "Entnahmestrategie wählen"
     }
   },
+  "simulationCompact": {
+    "tabs": {
+      "overview": "Überblick",
+      "plan": "Plan",
+      "cashflow": "Cashflows",
+      "scenarios": "Szenarien"
+    },
+    "compareButton": "Vergleichen",
+    "computing": "Simulation läuft…",
+    "srComplete": "Simulation abgeschlossen. Erfolgsquote: {rate}.",
+    "meta": {
+      "live": "Live-Berechnung",
+      "runs": "{count} Läufe",
+      "seconds": "{seconds} s",
+      "plans": "{count} / {max} Plänen gespeichert"
+    },
+    "commandBar": {
+      "planAria": "Plan",
+      "age": "Alter",
+      "ageAria": "Renteneintrittsalter",
+      "save": "Sparen",
+      "saveAria": "Jährliche Sparrate",
+      "spend": "Ausgaben",
+      "spendAria": "Monatliche Ausgaben",
+      "spendValue": "{amount} pro Monat",
+      "roi": "Rendite",
+      "roiAria": "Erwartete Rendite",
+      "advanced": "Erweitert",
+      "setup": "Einrichtung",
+      "run": "Rechnen",
+      "successAria": "Erfolgsquote",
+      "unsavedSwitch": "Plan wechseln und ungespeicherte Änderungen verwerfen?"
+    },
+    "advanced": {
+      "volatility": "Volatilität",
+      "volatilityAria": "Renditevolatilität",
+      "inflation": "Inflation",
+      "inflationAria": "Durchschnittliche Inflation",
+      "pension": "Rente /Mon.",
+      "pensionAria": "Monatliche gesetzliche Rente",
+      "endAge": "Planen bis",
+      "endAgeAria": "Endalter des Plans",
+      "runs": "Läufe",
+      "runsAria": "Simulationsläufe",
+      "glidePath": "Gleitpfad {start} → {end}",
+      "editFullPlan": "Ganzen Plan bearbeiten"
+    },
+    "kpi": {
+      "success": "Erfolg",
+      "lastsTo": "Reicht bis",
+      "firstYearDraw": "Entnahme 1. Jahr",
+      "medianEnd": "Median Ende",
+      "p10Age": "P10: {age}",
+      "perMonth": "{amount}/Mon.",
+      "p10End": "P10: {value}"
+    },
+    "chart": {
+      "bandOuter": "P10–90",
+      "bandInner": "P20–80",
+      "median": "Median",
+      "nominal": "Nominal",
+      "real": "Real"
+    },
+    "bottom": {
+      "bridge": "Brücke",
+      "bridgeMeta": "{years} Jahre selbst finanziert {from} → {to}, dann {pension}/Mon. Rente",
+      "bridgeMetaImmediate": "Rente von {pension}/Mon. ab Renteneintritt",
+      "recs": "Tipps",
+      "recsPending": "wird gemessen…",
+      "recApply": "Änderung auf die Arbeitskopie anwenden",
+      "recRetire": "Rente mit {age}",
+      "recSpend": "Ausgaben −10 %",
+      "recGlide": "Gleitpfad {start} → {end}",
+      "editFullPlan": "Ganzen Plan bearbeiten →"
+    },
+    "compare": {
+      "title": "Pläne vergleichen",
+      "addPlan": "+ Plan hinzufügen (max. {max})",
+      "running": "Wird neu berechnet…",
+      "meta": "{count} Pläne neu berechnet · je {runs} Läufe",
+      "exit": "Vergleich beenden",
+      "legendBase": "{name} (P20–80-Band)",
+      "changedRows": "Geänderte Zeilen hervorgehoben",
+      "openEditor": "Plan-Editor öffnen →",
+      "perMonth": "{amount}/Mon.",
+      "kpi": {
+        "success": "Erfolgsquote",
+        "lastsTo": "Vermögen reicht bis",
+        "firstYearDraw": "Entnahme im 1. Jahr",
+        "medianEnd": "Median-Endvermögen",
+        "years": "J."
+      },
+      "rows": {
+        "parameter": "Parameter",
+        "retirementAge": "Renteneintrittsalter",
+        "bridgeYears": "Brückenjahre bis Rente",
+        "savingsYears": "Verbleibende Sparjahre",
+        "annualSavings": "Jährliche Sparrate",
+        "monthlySpending": "Monatliche Ausgaben",
+        "expectedReturn": "Erwartete Rendite",
+        "withdrawalRule": "Entnahmeregel",
+        "pension": "Gesetzliche Rente ab {age}"
+      },
+      "strategy": {
+        "fixedReal": "Fest real",
+        "vanguardDynamic": "Vanguard {rate}",
+        "guytonKlinger": "Guyton-Klinger {rate}",
+        "percentOfPortfolio": "% vom Portfolio {rate}"
+      }
+    }
+  },
   "parameterSidebar": {
     "trigger": "Parameter",
     "title": "Simulationsparameter",
