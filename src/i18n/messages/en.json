@@ -425,20 +425,40 @@
         "atAge": "At age",
         "inflationLinked": "Grows with inflation",
         "inflationLinkedOn": "Amount stays worth the same in today’s money.",
-        "inflationLinkedOff": "Fixed euro amount — it loses purchasing power over time.",
+        "inflationLinkedOff": "Fixed euro amount — it loses purchasing power over time. Extra growth below still compounds it nominally.",
         "nominalTag": "fixed €",
         "growthRate": "Extra growth p.a. (%)",
-        "growthRateHint": "On top of inflation. Care costs typically rise faster; a fixed annuity does not.",
+        "growthRateHint": "Compounds every year regardless of the inflation setting: with indexing on it comes on top of inflation, with indexing off it is the nominal raise (€2,140 → €2,161 at 1 %).",
         "taxablePortion": "Taxable share (%)",
         "taxablePortionHint": "Share of this pension taxed at your income-tax rate. Blank = the plan’s default of {portion}.",
-        "pensionIndexedOff": "Fixed euro amount — set it to grow with inflation if this pension is adjusted yearly."
+        "pensionIndexedOff": "Fixed euro amount — set it to grow with inflation if this pension is adjusted yearly.",
+        "startDate": "Month & year (optional)",
+        "startDateHint": "Sets the age from the year; the month is shown, not simulated.",
+        "note": "Note",
+        "notePlaceholder": "e.g. source: Kapitaloption, gross €642,460",
+        "taxTreatment": "Tax treatment",
+        "taxTreatmentOptions": {
+          "none": "None — amount is net",
+          "ordinary": "Ordinary income (§ 32a EStG)",
+          "oneFifth": "One-fifth rule (§ 34 EStG)"
+        },
+        "taxTreatmentHint": "Taxed in the year it arrives on top of that year’s pensions and other taxed income, with the 2025 tariff (splitting for couples). Solidaritätszuschlag and church tax are not modelled.",
+        "pensionTaxMode": "Taxation",
+        "pensionTaxModeOptions": {
+          "share": "Taxable share (static)",
+          "statutory": "Statutory pension — Besteuerungsanteil by start year (§ 22 EStG)",
+          "versorgungsbezuege": "Versorgungsbezüge — Freibetrag + Zuschlag by start year (§ 19 Abs. 2 EStG)"
+        },
+        "pensionTaxModeHint": "The start year follows from the start age ({year}). Both German modes freeze the tax-free amount in euros, so every later raise is fully taxable; for an inflation-indexed pension that is applied in today’s euros.",
+        "taxTag": "tax {tax} · net {net}"
       },
       "window": {
         "lifetime": "Whole plan",
         "range": "Age {from}–{to}",
         "from": "From age {age}",
         "until": "Until age {age}",
-        "at": "At age {age}"
+        "at": "At age {age}",
+        "atDate": "{date} · age {age}"
       },
       "table": {
         "item": "Item",
@@ -999,7 +1019,8 @@
     "bridge": {
       "label": "Pension bridge",
       "value": "{years, plural, =0 {No gap} one {# year} other {# years}}",
-      "detail": "until statutory pension at {age}"
+      "detail": "until statutory pension at {age}",
+      "detailEarly": "first pension at {age} · statutory reference age {legal}"
     },
     "notAvailable": "—",
     "warnings": {
@@ -2056,7 +2077,9 @@
         "successRate": "Success rate",
         "medianEnd": "Median assets at end",
         "depletionRisk": "Depletion risk",
-        "shortfallAge": "First shortfall (P10)"
+        "shortfallAge": "First shortfall (P10)",
+        "healthScore": "Health score",
+        "firstYearWithdrawal": "First-year withdrawal"
       },
       "chart": {
         "title": "Median assets by age",

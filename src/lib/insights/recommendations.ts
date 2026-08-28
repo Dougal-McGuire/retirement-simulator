@@ -140,10 +140,10 @@ export function generateRecommendations(
     })
   }
 
-  if (successRate < 85 && params.retirementAge < params.legalRetirementAge) {
+  if (successRate < 85 && bridge.yearsInBridge > 0) {
     push('delayRetirement', successRate < 70 ? 'High' : 'Medium', {
-      en: `Retiring at ${params.retirementAge} opens a ${bridge.yearsInBridge}-year gap to the statutory pension at ${params.legalRetirementAge}, worth ${eur(bridge.cashNeedEUR)} of spending the portfolio carries alone. Each extra working year shortens that gap and adds a year of contributions.`,
-      de: `Ein Ruhestand mit ${params.retirementAge} öffnet ${bridge.yearsInBridge} Jahre bis zur gesetzlichen Rente mit ${params.legalRetirementAge} — ${eur(bridge.cashNeedEUR)} Ausgaben, die allein das Depot trägt. Jedes zusätzliche Arbeitsjahr verkürzt die Lücke und bringt ein weiteres Beitragsjahr.`,
+      en: `Retiring at ${params.retirementAge} opens a ${bridge.yearsInBridge}-year gap to the first pension at ${bridge.pensionAge}, worth ${eur(bridge.cashNeedEUR)} of spending the portfolio carries alone. Each extra working year shortens that gap and adds a year of contributions.`,
+      de: `Ein Ruhestand mit ${params.retirementAge} öffnet ${bridge.yearsInBridge} Jahre bis zur ersten Rente mit ${bridge.pensionAge} — ${eur(bridge.cashNeedEUR)} Ausgaben, die allein das Depot trägt. Jedes zusätzliche Arbeitsjahr verkürzt die Lücke und bringt ein weiteres Beitragsjahr.`,
     })
   }
 

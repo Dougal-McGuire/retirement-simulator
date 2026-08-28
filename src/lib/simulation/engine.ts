@@ -12,6 +12,8 @@ import {
 } from '@/lib/simulation/data/historicalMarket'
 import { DEFAULT_PATH_SEED, effectiveRunCount } from '@/lib/simulation/context'
 import {
+  type CashFlowSeries,
+  type PensionContext,
   buildCashFlowSeries,
   cashFlowSignature,
   netPensionAnnualAtAge,
@@ -19,7 +21,6 @@ import {
   projectOneTimeIncomes,
   reconcileCashFlows,
   statutoryPensionMonthly,
-  type CashFlowSeries,
 } from '@/lib/simulation/cashFlows'
 
 /**
@@ -809,11 +810,12 @@ function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
   // totals (the model the plan has always had); everything a `CashFlow` can say
   // beyond that — an age window, a single payment, extra real growth, a fixed
   // nominal amount, income — is expanded per age.
-  const flows = buildCashFlowSeries(params.cashFlows ?? [], params.currentAge, params.endAge, {
-    legalRetirementAge: params.legalRetirementAge,
-    pensionTaxablePortion: params.pensionTaxablePortion,
-    pensionTaxRate: params.pensionTaxRate,
-  })
+  const flows = buildCashFlowSeries(
+    params.cashFlows ?? [],
+    params.currentAge,
+    params.endAge,
+    taxContext(params)
+  )
 
   return {
     baseMonthlyExpense: flows.baselineMonthly,
@@ -1314,11 +1316,17 @@ export function netPensionFactor(params: SimulationParams): number {
  * every pension paying out by then, in the euros each is quoted in.
  */
 export function netAnnualPension(params: SimulationParams): number {
-  return netPensionAnnualAtAge(params.cashFlows ?? [], params.legalRetirementAge, {
+  return netPensionAnnualAtAge(params.cashFlows ?? [], params.legalRetirementAge, taxContext(params))
+}
+
+/** The plan-level tax and timing defaults every cash flow is read against. */
+export function taxContext(params: SimulationParams): PensionContext {
+  return {
     legalRetirementAge: params.legalRetirementAge,
     pensionTaxablePortion: params.pensionTaxablePortion,
     pensionTaxRate: params.pensionTaxRate,
-  })
+    householdType: params.householdType === 'couple' ? 'couple' : 'single',
+  }
 }
 
 /**

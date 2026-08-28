@@ -425,20 +425,40 @@
         "atAge": "Im Alter",
         "inflationLinked": "Wächst mit der Inflation",
         "inflationLinkedOn": "Der Betrag behält seine heutige Kaufkraft.",
-        "inflationLinkedOff": "Fester Eurobetrag — die Kaufkraft sinkt über die Zeit.",
+        "inflationLinkedOff": "Fester Euro-Betrag — verliert mit der Zeit Kaufkraft. Das Zusatzwachstum unten verzinst ihn trotzdem nominal.",
         "nominalTag": "fester €-Betrag",
         "growthRate": "Zusätzliches Wachstum p. a. (%)",
-        "growthRateHint": "Zusätzlich zur Inflation. Pflegekosten steigen typischerweise schneller, eine feste Rente nicht.",
+        "growthRateHint": "Wirkt jedes Jahr unabhängig von der Inflationsanpassung: mit Anpassung zusätzlich zur Inflation, ohne Anpassung als nominale Steigerung (2.140 € → 2.161 € bei 1 %).",
         "taxablePortion": "Besteuerungsanteil (%)",
         "taxablePortionHint": "Anteil dieser Rente, der mit Ihrem Einkommensteuersatz besteuert wird. Leer = Plan-Standard von {portion}.",
-        "pensionIndexedOff": "Fester Euro-Betrag — aktivieren Sie die Inflationsanpassung, wenn diese Rente jährlich angepasst wird."
+        "pensionIndexedOff": "Fester Euro-Betrag — aktivieren Sie die Inflationsanpassung, wenn diese Rente jährlich angepasst wird.",
+        "startDate": "Monat & Jahr (optional)",
+        "startDateHint": "Legt das Alter über das Jahr fest; der Monat wird angezeigt, nicht simuliert.",
+        "note": "Notiz",
+        "notePlaceholder": "z. B. Quelle: Kapitaloption, brutto 642.460 €",
+        "taxTreatment": "Besteuerung",
+        "taxTreatmentOptions": {
+          "none": "Keine — Betrag ist netto",
+          "ordinary": "Normales Einkommen (§ 32a EStG)",
+          "oneFifth": "Fünftelregelung (§ 34 EStG)"
+        },
+        "taxTreatmentHint": "Wird im Zuflussjahr zusätzlich zu den Renten und anderen besteuerten Einkünften des Jahres nach Tarif 2025 besteuert (Splitting bei Paaren). Solidaritätszuschlag und Kirchensteuer sind nicht abgebildet.",
+        "pensionTaxMode": "Besteuerung",
+        "pensionTaxModeOptions": {
+          "share": "Besteuerungsanteil (statisch)",
+          "statutory": "Gesetzliche Rente — Besteuerungsanteil nach Startjahr (§ 22 EStG)",
+          "versorgungsbezuege": "Versorgungsbezüge — Freibetrag + Zuschlag nach Startjahr (§ 19 Abs. 2 EStG)"
+        },
+        "pensionTaxModeHint": "Das Startjahr folgt aus dem Startalter ({year}). Beide deutschen Modi frieren den steuerfreien Betrag in Euro ein, spätere Erhöhungen sind voll steuerpflichtig; bei inflationsangepassten Renten in heutigen Euro gerechnet.",
+        "taxTag": "Steuer {tax} · netto {net}"
       },
       "window": {
         "lifetime": "Gesamter Plan",
         "range": "Alter {from}–{to}",
         "from": "Ab Alter {age}",
         "until": "Bis Alter {age}",
-        "at": "Mit {age}"
+        "at": "Mit {age}",
+        "atDate": "{date} · Alter {age}"
       },
       "table": {
         "item": "Position",
@@ -999,7 +1019,8 @@
     "bridge": {
       "label": "Rentenbrücke",
       "value": "{years, plural, =0 {Keine Lücke} one {# Jahr} other {# Jahre}}",
-      "detail": "bis zur gesetzlichen Rente mit {age}"
+      "detail": "bis zur gesetzlichen Rente mit {age}",
+      "detailEarly": "erste Rente mit {age} · gesetzliches Referenzalter {legal}"
     },
     "notAvailable": "n/v",
     "warnings": {
@@ -2056,7 +2077,9 @@
         "successRate": "Erfolgsquote",
         "medianEnd": "Median-Vermögen am Ende",
         "depletionRisk": "Erschöpfungsrisiko",
-        "shortfallAge": "Erste Lücke (P10)"
+        "shortfallAge": "Erste Lücke (P10)",
+        "healthScore": "Gesundheitswert",
+        "firstYearWithdrawal": "Entnahme im 1. Jahr"
       },
       "chart": {
         "title": "Median-Vermögen nach Alter",

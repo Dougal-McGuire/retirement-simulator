@@ -406,6 +406,18 @@ export type CashFlowKind = (typeof CASHFLOW_KINDS)[number]
 export const isCashFlowKind = (value: unknown): value is CashFlowKind =>
   typeof value === 'string' && (CASHFLOW_KINDS as readonly string[]).includes(value)
 
+/** How an income flow is taxed: not at all (the amount is net), as ordinary income, or under § 34 EStG. */
+export const INCOME_TAX_TREATMENTS = ['none', 'ordinary', 'oneFifth'] as const
+export type IncomeTaxTreatment = (typeof INCOME_TAX_TREATMENTS)[number]
+export const isIncomeTaxTreatment = (value: unknown): value is IncomeTaxTreatment =>
+  typeof value === 'string' && (INCOME_TAX_TREATMENTS as readonly string[]).includes(value)
+
+/** How a pension's taxable base is found: a static share, § 22 by start year, or § 19 Abs. 2 Versorgungsbezüge. */
+export const PENSION_TAX_MODES = ['share', 'statutory', 'versorgungsbezuege'] as const
+export type PensionTaxMode = (typeof PENSION_TAX_MODES)[number]
+export const isPensionTaxMode = (value: unknown): value is PensionTaxMode =>
+  typeof value === 'string' && (PENSION_TAX_MODES as readonly string[]).includes(value)
+
 /**
  * One money movement in the plan: rent that arrives for eight years, a roof
  * repair in a single year, groceries for life.
@@ -448,6 +460,27 @@ export interface CashFlow {
    * `inflationLinked` is explicitly true.
    */
   taxablePortion?: number
+  /**
+   * Income flows only. `none` (default) means the amount is already net.
+   * `ordinary` taxes it as income of the year it arrives, `oneFifth` applies
+   * the § 34 EStG one-fifth rule for severance and lump sums — both on top of
+   * whatever else is taxable that year.
+   */
+  taxTreatment?: IncomeTaxTreatment
+  /**
+   * Pension flows only. `share` (default) uses `taxablePortion`; `statutory`
+   * takes the Besteuerungsanteil from the start year and freezes the tax-free
+   * amount in euros (§ 22 EStG); `versorgungsbezuege` applies the
+   * Versorgungsfreibetrag plus Zuschlag of the start year (§ 19 Abs. 2 EStG).
+   */
+  pensionTaxMode?: PensionTaxMode
+  /**
+   * Optional calendar month ("2033-01") a one-off was scheduled for. Display
+   * only — `startAge` is what the model reads, derived from it when saved.
+   */
+  startDate?: string
+  /** Free text ("source: Kapitaloption, gross €642,460"); never read by the model. */
+  note?: string
 }
 
 // Chart data interfaces

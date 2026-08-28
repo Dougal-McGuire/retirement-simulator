@@ -19,6 +19,10 @@ export interface ComparisonSnapshot {
   planId: string
   name: string
   successRate: number
+  /** 0–100 plan health score; absent on snapshots taken before it was recorded. */
+  healthScore?: number
+  /** Portfolio need in the first retirement year over the median assets then; null when there are none. */
+  firstYearWithdrawalRate?: number | null
   medianEndAssets: number
   depletionRisk: number
   shortfallAge: number | null

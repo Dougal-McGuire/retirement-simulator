@@ -4,11 +4,17 @@ import { useMemo, useState } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { ArrowDownRight, ArrowUpRight, Edit2, Landmark, Plus, Trash2 } from 'lucide-react'
 import {
-  CASHFLOW_FREQUENCIES,
-  isCashFlowFrequency,
   type CashFlow,
+  CASHFLOW_FREQUENCIES,
   type CashFlowFrequency,
   type CashFlowKind,
+  INCOME_TAX_TREATMENTS,
+  type IncomeTaxTreatment,
+  isCashFlowFrequency,
+  isIncomeTaxTreatment,
+  isPensionTaxMode,
+  PENSION_TAX_MODES,
+  type PensionTaxMode,
 } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +31,12 @@ import { toast, TOAST_DURATION } from '@/components/ui/toast'
 import { ActionToast } from '@/components/ui/action-toast'
 import { useGroupedNumber } from './useGroupedNumber'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
+import {
+  buildCashFlowSeries,
+  currentBaseYear,
+  yearForAge,
+  type PensionContext,
+} from '@/lib/simulation/cashFlows'
 import { cn } from '@/lib/utils'
 
 /**
@@ -56,8 +68,8 @@ interface CashFlowListProps {
   /** Where a pension without its own start age begins. */
   legalRetirementAge: number
   endAge: number
-  /** The plan's default taxable share, shown as the placeholder for a pension. */
-  pensionTaxablePortion?: number
+  /** The plan's tax defaults: taxable share, income-tax rate, household, base year. */
+  tax: PensionContext
   templates?: CashFlowTemplate[]
   onChange: (flows: CashFlow[]) => void
   /** Compact mode drops the intro copy (used inside the plan editor card). */
@@ -75,6 +87,11 @@ interface DraftState {
   growthRate: string
   /** Pension only: taxable share as a percentage string; blank = plan default. */
   taxablePortion: string
+  taxTreatment: IncomeTaxTreatment
+  pensionTaxMode: PensionTaxMode
+  /** One-off only: "YYYY-MM"; blank = age-based. */
+  startDate: string
+  note: string
   /**
    * Translation key of a seeded flow, plus the label the form was opened with.
    * A save that leaves the name untouched keeps the key (so the row goes on
@@ -98,6 +115,10 @@ const emptyDraft = (kind: CashFlowKind = 'expense'): DraftState => ({
   inflationLinked: kind !== 'pension',
   growthRate: '',
   taxablePortion: '',
+  taxTreatment: 'none',
+  pensionTaxMode: 'share',
+  startDate: '',
+  note: '',
   nameSeed: '',
   storedName: '',
 })
@@ -123,6 +144,10 @@ const draftFromFlow = (
   growthRate: flow.growthRate ? String(Number((flow.growthRate * 100).toFixed(2))) : '',
   taxablePortion:
     flow.taxablePortion === undefined ? '' : String(Number((flow.taxablePortion * 100).toFixed(1))),
+  taxTreatment: flow.taxTreatment ?? 'none',
+  pensionTaxMode: flow.pensionTaxMode ?? 'share',
+  startDate: flow.startDate ?? '',
+  note: flow.note ?? '',
   ...(flow.nameKey !== undefined ? { nameKey: flow.nameKey } : {}),
   nameSeed: displayName,
   storedName: flow.name,
@@ -143,7 +168,7 @@ export function CashFlowList({
   retirementAge,
   legalRetirementAge,
   endAge,
-  pensionTaxablePortion,
+  tax,
   templates,
   onChange,
   compact = false,
@@ -162,6 +187,20 @@ export function CashFlowList({
 
   const safeFlows = Array.isArray(flows) ? flows : []
   const horizon = Math.max(1, endAge - currentAge)
+  const baseYear = tax.baseYear ?? currentBaseYear()
+  const taxContext = useMemo<PensionContext>(() => ({ ...tax, legalRetirementAge }), [tax, legalRetirementAge])
+
+  // What each taxed flow pays in its first year — the same arithmetic the
+  // engine runs, so the row shows the number the projection uses.
+  const taxByFlow = useMemo(
+    () => buildCashFlowSeries(safeFlows, currentAge, endAge, taxContext).taxByFlow,
+    [safeFlows, currentAge, endAge, taxContext]
+  )
+
+  const formatMonth = (value: string) => {
+    const [year, month] = value.split('-').map(Number)
+    return format.dateTime(new Date(year, month - 1, 1), { month: 'short', year: 'numeric' })
+  }
 
   const formatCurrency = (value: number) =>
     format.number(value, {
@@ -229,7 +268,20 @@ export function CashFlowList({
     const growth = Number(state.growthRate.trim())
     const taxable = Number(state.taxablePortion.trim())
     const pension = state.kind === 'pension'
-    const startAge = parseAge(state.startAge)
+    const once = state.frequency === 'once' && !pension
+    // A calendar month pins a one-off to a plan year: the year sets the age,
+    // the month is kept for display.
+    const startDate = once && /^\d{4}-(0[1-9]|1[0-2])$/.test(state.startDate.trim())
+      ? state.startDate.trim()
+      : undefined
+    const startAge =
+      startDate !== undefined
+        ? Math.min(
+            endAge,
+            Math.max(currentAge, currentAge + Number(startDate.slice(0, 4)) - baseYear)
+          )
+        : parseAge(state.startAge)
+    const note = state.note.trim()
     const endAgeValue = state.frequency === 'once' ? undefined : parseAge(state.endAge)
 
     // Untouched seeded name: keep the key and the canonical stored name, so a
@@ -250,9 +302,15 @@ export function CashFlowList({
       ...(state.growthRate.trim() !== '' && Number.isFinite(growth) && growth !== 0
         ? { growthRate: growth / 100 }
         : {}),
-      ...(pension && state.taxablePortion.trim() !== '' && Number.isFinite(taxable)
+      ...(pension && state.pensionTaxMode === 'share' && state.taxablePortion.trim() !== '' && Number.isFinite(taxable)
         ? { taxablePortion: Math.min(1, Math.max(0, taxable / 100)) }
         : {}),
+      ...(pension && state.pensionTaxMode !== 'share' ? { pensionTaxMode: state.pensionTaxMode } : {}),
+      ...(state.kind === 'income' && state.taxTreatment !== 'none'
+        ? { taxTreatment: state.taxTreatment }
+        : {}),
+      ...(startDate !== undefined ? { startDate } : {}),
+      ...(note !== '' ? { note } : {}),
     }
 
     onChange(id ? safeFlows.map((entry) => (entry.id === id ? flow : entry)) : [...safeFlows, flow])
@@ -335,7 +393,10 @@ export function CashFlowList({
         : t('window.range', { from: legalRetirementAge, to: flow.endAge })
     }
     if (flow.frequency === 'once') {
-      return t('window.at', { age: flow.startAge ?? currentAge })
+      const age = flow.startAge ?? currentAge
+      return flow.startDate
+        ? t('window.atDate', { date: formatMonth(flow.startDate), age })
+        : t('window.at', { age })
     }
     if (flow.startAge === undefined && flow.endAge === undefined) return t('window.lifetime')
     if (flow.startAge !== undefined && flow.endAge !== undefined) {
@@ -397,7 +458,9 @@ export function CashFlowList({
                       startAge:
                         state.startAge.trim() === '' ? String(legalRetirementAge) : state.startAge,
                     }
-                  : {}),
+                  : state.kind === 'pension'
+                    ? { inflationLinked: true, pensionTaxMode: 'share' }
+                    : {}),
               })
             }
             className={cn(
@@ -511,6 +574,36 @@ export function CashFlowList({
           />
         </div>
 
+        {state.frequency === 'once' && state.kind !== 'pension' && (
+          <div className="flex flex-col">
+            <Label
+              htmlFor={`cashflow-date-${id ?? 'new'}`}
+              className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.14em]"
+            >
+              {t('fields.startDate')}
+            </Label>
+            <Input
+              id={`cashflow-date-${id ?? 'new'}`}
+              type="month"
+              value={state.startDate}
+              onChange={(event) => {
+                const value = event.target.value
+                // The age follows the year immediately, so the two fields never
+                // disagree while the form is open.
+                const year = Number(value.slice(0, 4))
+                const derived = Number.isFinite(year) && value.length >= 4
+                  ? String(Math.min(endAge, Math.max(currentAge, currentAge + year - baseYear)))
+                  : state.startAge
+                setState({ ...state, startDate: value, startAge: derived })
+              }}
+              className="h-11 border-2 border-neo-black px-3 text-[0.68rem] font-semibold"
+            />
+            <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
+              {t('fields.startDateHint')}
+            </span>
+          </div>
+        )}
+
         {state.frequency !== 'once' && (
           <div className="flex flex-col">
             <Label
@@ -585,6 +678,95 @@ export function CashFlowList({
               </span>
             </div>
             {state.kind === 'pension' && (
+              <div className="flex flex-col sm:col-span-2">
+                <Label
+                  htmlFor={`cashflow-pension-tax-${id ?? 'new'}`}
+                  className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em]"
+                >
+                  {t('fields.pensionTaxMode')}
+                </Label>
+                <Select
+                  value={state.pensionTaxMode}
+                  onValueChange={(value) =>
+                    isPensionTaxMode(value) && setState({ ...state, pensionTaxMode: value })
+                  }
+                >
+                  <SelectTrigger
+                    id={`cashflow-pension-tax-${id ?? 'new'}`}
+                    className="h-11 border-2 border-neo-black text-[0.62rem] tracking-[0.08em]"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PENSION_TAX_MODES.map((mode) => (
+                      <SelectItem key={mode} value={mode}>
+                        {t(`fields.pensionTaxModeOptions.${mode}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
+                  {t('fields.pensionTaxModeHint', {
+                    year: yearForAge(
+                      parseAge(state.startAge) ?? legalRetirementAge,
+                      currentAge,
+                      taxContext
+                    ),
+                  })}
+                </span>
+              </div>
+            )}
+            {state.kind === 'income' && (
+              <div className="flex flex-col sm:col-span-2">
+                <Label
+                  htmlFor={`cashflow-tax-${id ?? 'new'}`}
+                  className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em]"
+                >
+                  {t('fields.taxTreatment')}
+                </Label>
+                <Select
+                  value={state.taxTreatment}
+                  onValueChange={(value) =>
+                    isIncomeTaxTreatment(value) && setState({ ...state, taxTreatment: value })
+                  }
+                >
+                  <SelectTrigger
+                    id={`cashflow-tax-${id ?? 'new'}`}
+                    className="h-11 border-2 border-neo-black text-[0.62rem] tracking-[0.08em]"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INCOME_TAX_TREATMENTS.map((treatment) => (
+                      <SelectItem key={treatment} value={treatment}>
+                        {t(`fields.taxTreatmentOptions.${treatment}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
+                  {t('fields.taxTreatmentHint')}
+                </span>
+              </div>
+            )}
+            <div className="flex flex-col sm:col-span-2">
+              <Label
+                htmlFor={`cashflow-note-${id ?? 'new'}`}
+                className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em]"
+              >
+                {t('fields.note')}
+              </Label>
+              <Input
+                id={`cashflow-note-${id ?? 'new'}`}
+                type="text"
+                maxLength={240}
+                value={state.note}
+                placeholder={t('fields.notePlaceholder')}
+                onChange={(event) => setState({ ...state, note: event.target.value })}
+                className="h-10 border-2 border-neo-black px-3 text-[0.68rem] font-medium normal-case tracking-normal"
+              />
+            </div>
+            {state.kind === 'pension' && state.pensionTaxMode === 'share' && (
               <div className="flex flex-col">
                 <Label
                   htmlFor={`cashflow-taxable-${id ?? 'new'}`}
@@ -600,13 +782,13 @@ export function CashFlowList({
                   min={0}
                   max={100}
                   value={state.taxablePortion}
-                  placeholder={String(Math.round((pensionTaxablePortion ?? 0) * 100))}
+                  placeholder={String(Math.round((tax.pensionTaxablePortion ?? 0) * 100))}
                   onChange={(event) => setState({ ...state, taxablePortion: event.target.value })}
                   className="h-10 border-2 border-neo-black px-3 text-[0.68rem] font-semibold"
                 />
                 <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
                   {t('fields.taxablePortionHint', {
-                    portion: format.number(pensionTaxablePortion ?? 0, {
+                    portion: format.number(tax.pensionTaxablePortion ?? 0, {
                       style: 'percent',
                       maximumFractionDigits: 0,
                     }),
@@ -773,7 +955,24 @@ export function CashFlowList({
                             {flow.growthRate
                               ? ` · ${format.number(flow.growthRate, { style: 'percent', maximumFractionDigits: 1 })}`
                               : ''}
+                            {(() => {
+                              const summary = taxByFlow.get(flow.id)
+                              return summary && flow.kind === 'income'
+                                ? ` · ${t('fields.taxTag', {
+                                    tax: formatCurrency(Math.round(summary.tax)),
+                                    net: formatCurrency(Math.round(summary.net)),
+                                  })}`
+                                : ''
+                            })()}
                           </span>
+                          {flow.note && (
+                            <span
+                              className="mt-0.5 block text-[0.58rem] font-medium normal-case tracking-normal text-muted-foreground"
+                              data-testid={`cashflow-note-${flow.id}`}
+                            >
+                              {flow.note}
+                            </span>
+                          )}
                         </td>
                         <td className="hidden px-3 py-2.5 text-left text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:table-cell">
                           {windowLabel(flow)}

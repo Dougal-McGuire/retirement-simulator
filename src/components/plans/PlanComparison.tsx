@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { computePlanHealthScore } from '@/lib/insights/planHealth'
+import { buildPlanInsightMetrics } from '@/lib/simulation/planInsights'
 import { CartesianGrid, Line, LineChart, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts'
 import { Check, GitCompareArrows } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
@@ -200,6 +202,9 @@ export function PlanComparison() {
           planId: plan.id,
           name: planDisplayName(plan, t),
           successRate: results.successRate,
+          healthScore: computePlanHealthScore(planParams, results).score,
+          firstYearWithdrawalRate: buildPlanInsightMetrics(planParams, results)
+            .firstYearWithdrawalRate,
           medianEndAssets: results.assetPercentiles.p50[lastIndex] ?? 0,
           depletionRisk:
             typeof depletionShare === 'number' ? depletionShare * 100 : 100 - results.successRate,
@@ -573,6 +578,12 @@ export function PlanComparison() {
                       {tc('columns.successRate')}
                     </th>
                     <th scope="col" className="py-2 pr-3 text-right">
+                      {tc('columns.healthScore')}
+                    </th>
+                    <th scope="col" className="py-2 pr-3 text-right">
+                      {tc('columns.firstYearWithdrawal')}
+                    </th>
+                    <th scope="col" className="py-2 pr-3 text-right">
                       {tc('columns.medianEnd')}
                     </th>
                     <th scope="col" className="py-2 pr-3 text-right">
@@ -620,6 +631,16 @@ export function PlanComparison() {
                             formatPointsDelta(successDelta(snapshot)),
                             deltaTone(successDelta(snapshot), true)
                           )}
+                        </td>
+                        <td className={cn('py-3 pr-3 text-right tabular-nums', muted)}>
+                          {snapshot.healthScore !== undefined
+                            ? `${Math.round(snapshot.healthScore)}/100`
+                            : '—'}
+                        </td>
+                        <td className={cn('py-3 pr-3 text-right tabular-nums', muted)}>
+                          {typeof snapshot.firstYearWithdrawalRate === 'number'
+                            ? formatPercentValue(snapshot.firstYearWithdrawalRate * 100)
+                            : '—'}
                         </td>
                         <td className={cn('py-3 pr-3 text-right tabular-nums', muted)}>
                           {formatCurrency(snapshot.medianEndAssets)}
@@ -696,6 +717,26 @@ export function PlanComparison() {
                             index === 0
                               ? 'text-muted-foreground'
                               : deltaTone(successDelta(snapshot), true),
+                          delta: null,
+                        },
+                        {
+                          key: 'health',
+                          label: tc('columns.healthScore'),
+                          value:
+                            snapshot.healthScore !== undefined
+                              ? `${Math.round(snapshot.healthScore)}/100`
+                              : '—',
+                          tone: undefined,
+                          delta: null,
+                        },
+                        {
+                          key: 'withdrawal',
+                          label: tc('columns.firstYearWithdrawal'),
+                          value:
+                            typeof snapshot.firstYearWithdrawalRate === 'number'
+                              ? formatPercentValue(snapshot.firstYearWithdrawalRate * 100)
+                              : '—',
+                          tone: undefined,
                           delta: null,
                         },
                         {

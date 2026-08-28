@@ -525,6 +525,36 @@ test.describe('onboarding, overlays and template ergonomics', () => {
     await expect(card).toContainText('€5,000')
   })
 
+  test('taxes a lump sum under the one-fifth rule and shows the net amount', async ({
+    page,
+  }) => {
+    await page.goto('/en/simulation')
+    await page.getByTestId('tab-plan').click()
+    await page.getByTestId('plan-section-pill-cashFlows').click()
+
+    const card = page.locator('#plan-editor-expenses')
+    await card.getByTestId('cashflow-kind-income').click()
+    await card.locator('#cashflow-name-new').fill('Kapitaloption')
+    await card.locator('#cashflow-amount-new').fill('300000')
+    await card.locator('#cashflow-frequency-new').click()
+    await page.getByRole('option', { name: 'One-off' }).click()
+    // A calendar month pins the payment to a plan year; age 55 today → 2033
+    // is eight years out, so the row lands at 63.
+    const year = new Date().getFullYear() + 8
+    await card.locator('#cashflow-date-new').fill(`${year}-01`)
+    await card.getByRole('button', { name: 'Advanced options' }).click()
+    await card.locator('#cashflow-tax-new').click()
+    await page.getByRole('option', { name: /One-fifth rule/ }).click()
+    await card.locator('#cashflow-note-new').fill('source: company pension, gross')
+    await card.getByTestId('cashflow-add').click()
+
+    const list = card.getByTestId('cashflow-list')
+    await expect(list).toContainText('Kapitaloption')
+    await expect(list).toContainText(`Jan ${year} · age 63`)
+    await expect(list).toContainText(/tax €[\d,]+ · net €[\d,]+/)
+    await expect(list).toContainText('source: company pension, gross')
+  })
+
   test('opens a cash-flow template in edit mode and lets the add be undone', async ({ page }) => {
     await page.goto('/en/simulation')
     await page.getByTestId('tab-plan').click()

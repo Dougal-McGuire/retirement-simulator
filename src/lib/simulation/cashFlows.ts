@@ -1,11 +1,19 @@
 import {
   isCashFlowFrequency,
   isCashFlowKind,
+  isIncomeTaxTreatment,
+  isPensionTaxMode,
   type CashFlow,
   type CustomExpense,
   type OneTimeIncome,
   type SimulationParams,
 } from '@/types'
+import {
+  besteuerungsanteil,
+  oneFifthRuleTax,
+  ordinaryIncomeTax,
+  versorgungsfreibetrag,
+} from '@/lib/simulation/germanTax'
 
 /**
  * Cash flows are the plan's one list of money movements. Two older shapes are
@@ -26,6 +34,8 @@ import {
  */
 
 const MAX_GROWTH_RATE = 0.5
+const MAX_NOTE_LENGTH = 240
+const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
 
 /**
  * The one pension the wizard and the legacy `monthlyPension` field talk about.
@@ -68,11 +78,57 @@ export function isPensionFlow(flow: CashFlow): boolean {
   return flow.kind === 'pension'
 }
 
-/** Tax and timing defaults a pension flow inherits from the plan. */
+/** Tax and timing defaults the flows inherit from the plan. */
 export interface PensionContext {
   legalRetirementAge: number
   pensionTaxablePortion?: number
   pensionTaxRate?: number
+  /** A jointly assessed couple gets the splitting tariff on taxed income. */
+  householdType?: 'single' | 'couple'
+  /**
+   * Calendar year `currentAge` falls in — what turns an age into the start
+   * year the German pension tables are keyed by. Defaults to this year.
+   */
+  baseYear?: number
+}
+
+export const currentBaseYear = (): number => new Date().getFullYear()
+
+/** Calendar year a plan age falls in. */
+export function yearForAge(age: number, currentAge: number, context: PensionContext): number {
+  return (context.baseYear ?? currentBaseYear()) + (age - currentAge)
+}
+
+/**
+ * The taxable part of one year's pension, in the euros the pension is quoted
+ * in. `yearIndex` counts from the pension's first year; `grossAt` gives the
+ * gross annual amount for any year index, so the frozen allowances of the two
+ * German modes can be pinned to their reference year.
+ */
+export function pensionTaxableAnnual(
+  flow: CashFlow,
+  yearIndex: number,
+  grossAt: (index: number) => number,
+  startYear: number,
+  context: PensionContext
+): number {
+  const gross = grossAt(yearIndex)
+  const mode = flow.pensionTaxMode ?? 'share'
+  if (mode === 'statutory') {
+    // § 22 EStG: the tax-free amount is fixed in euros from the second year
+    // on; every later increase is fully taxable.
+    const share = besteuerungsanteil(startYear)
+    const allowance = (1 - share) * grossAt(1)
+    return Math.max(0, gross - allowance)
+  }
+  if (mode === 'versorgungsbezuege') {
+    // § 19 Abs. 2 EStG: Freibetrag (capped) plus Zuschlag, both fixed for life.
+    const { share, cap, supplement } = versorgungsfreibetrag(startYear)
+    const allowance = Math.min(grossAt(0) * share, cap) + supplement
+    return Math.max(0, gross - allowance)
+  }
+  const portion = clamp(flow.taxablePortion ?? context.pensionTaxablePortion ?? 0, 0, 1)
+  return gross * portion
 }
 
 /** What is left of a pension after income tax on its taxable share. */
@@ -85,6 +141,17 @@ export function pensionNetFactor(flow: CashFlow, context: PensionContext): numbe
 /** First age a pension pays out: its own start, else the statutory age. */
 export function pensionStartAge(flow: CashFlow, legalRetirementAge: number): number {
   return flow.startAge ?? legalRetirementAge
+}
+
+/**
+ * The age the first pension starts paying — what a "pension bridge" really
+ * has to reach. The statutory age when the plan has no pension at all.
+ */
+export function firstPensionAge(flows: readonly CashFlow[], legalRetirementAge: number): number {
+  const starts = flows
+    .filter((flow) => isPensionFlow(flow) && flow.amount > 0)
+    .map((flow) => pensionStartAge(flow, legalRetirementAge))
+  return starts.length > 0 ? Math.min(...starts) : legalRetirementAge
 }
 
 const pensionMonthlyAmount = (flow: CashFlow) =>
@@ -119,11 +186,18 @@ export function netPensionAnnualAtAge(
   context: PensionContext
 ): number {
   let net = 0
+  const rate = clamp(context.pensionTaxRate ?? 0, 0, 1)
   for (const flow of flows) {
     if (!isPensionFlow(flow) || flow.amount <= 0) continue
-    if (age < pensionStartAge(flow, context.legalRetirementAge)) continue
+    const start = pensionStartAge(flow, context.legalRetirementAge)
+    if (age < start) continue
     if (flow.endAge !== undefined && age > flow.endAge) continue
-    net += pensionMonthlyAmount(flow) * 12 * pensionNetFactor(flow, context)
+    const growth = flow.growthRate ?? 0
+    const grossAt = (index: number) => pensionMonthlyAmount(flow) * 12 * Math.pow(1 + growth, index)
+    const yearIndex = age - start
+    const startYear = yearForAge(start, age - yearIndex, context)
+    const taxable = pensionTaxableAnnual(flow, yearIndex, grossAt, startYear, context)
+    net += grossAt(yearIndex) - taxable * rate
   }
   return Math.max(0, net)
 }
@@ -200,6 +274,22 @@ export function sanitizeCashFlow(entry: unknown, fallbackId: string): CashFlow |
       ? raw.frequency
       : 'monthly'
   const taxablePortion = pension ? finiteOrNull(raw.taxablePortion) : null
+  const taxTreatment =
+    kind === 'income' && isIncomeTaxTreatment(raw.taxTreatment) && raw.taxTreatment !== 'none'
+      ? raw.taxTreatment
+      : undefined
+  const pensionTaxMode =
+    pension && isPensionTaxMode(raw.pensionTaxMode) && raw.pensionTaxMode !== 'share'
+      ? raw.pensionTaxMode
+      : undefined
+  const startDate =
+    frequency === 'once' && typeof raw.startDate === 'string' && MONTH_PATTERN.test(raw.startDate)
+      ? raw.startDate
+      : undefined
+  const note =
+    typeof raw.note === 'string' && raw.note.trim() !== ''
+      ? raw.note.trim().slice(0, MAX_NOTE_LENGTH)
+      : undefined
   const name = typeof raw.name === 'string' ? raw.name : ''
   // Seeded flows carry a translation key so they follow the UI language; it
   // survives round-tripping through storage but never affects the model.
@@ -230,6 +320,10 @@ export function sanitizeCashFlow(entry: unknown, fallbackId: string): CashFlow |
       ? { growthRate: clamp(growth, -MAX_GROWTH_RATE, MAX_GROWTH_RATE) }
       : {}),
     ...(taxablePortion !== null ? { taxablePortion: clamp(taxablePortion, 0, 1) } : {}),
+    ...(taxTreatment !== undefined ? { taxTreatment } : {}),
+    ...(pensionTaxMode !== undefined ? { pensionTaxMode } : {}),
+    ...(startDate !== undefined ? { startDate } : {}),
+    ...(note !== undefined ? { note } : {}),
   }
 }
 
@@ -489,6 +583,18 @@ export interface CashFlowSeries {
   incomeFixed: number[]
   expenseLinked: number[]
   expenseFixed: number[]
+  /**
+   * What tax each taxed flow pays in its first paying year (a one-off: its
+   * only year), keyed by flow id — for the editor to show "tax · net".
+   */
+  taxByFlow: ReadonlyMap<string, FlowTaxSummary>
+}
+
+export interface FlowTaxSummary {
+  age: number
+  gross: number
+  tax: number
+  net: number
 }
 
 /**
@@ -512,9 +618,27 @@ export function buildCashFlowSeries(
   const expenseFixed = new Array<number>(years).fill(0)
   const oneTimeIncomeLinkedByAge = new Map<number, number>()
   const oneTimeIncomeFixedByAge = new Map<number, number>()
+  const taxByFlow = new Map<string, FlowTaxSummary>()
 
   let baselineMonthly = 0
   let baselineAnnual = 0
+
+  const splitting = pension.householdType === 'couple'
+  const pensionRate = clamp(pension.pensionTaxRate ?? 0, 0, 1)
+
+  /** One flow expanded to gross euros per year offset (today's euros). */
+  interface Expanded {
+    flow: CashFlow
+    linked: boolean
+    /** Year offsets and the gross amount in each. */
+    gross: number[]
+    /** First offset the flow pays in, or -1. */
+    firstOffset: number
+    /** Pension only: taxable part of the gross per offset. */
+    taxable?: number[]
+  }
+
+  const expanded: Expanded[] = []
 
   for (const flow of flows) {
     const amount = Math.max(0, flow.amount)
@@ -527,23 +651,26 @@ export function buildCashFlowSeries(
 
     if (amount <= 0) continue
 
+    const gross = new Array<number>(years).fill(0)
+    const isPension = isPensionFlow(flow)
+
     // One-off income keeps its long-standing convention: it lands at the start
     // of the year *after* the age it is booked for. Changing that would move
     // every existing plan's numbers.
     if (isOnceIncomeFlow(flow)) {
       const depositAge = (flow.startAge ?? currentAge) + 1
       if (depositAge < currentAge || depositAge > endAge) continue
-      const target =
-        flow.inflationLinked === false ? oneTimeIncomeFixedByAge : oneTimeIncomeLinkedByAge
-      target.set(depositAge, (target.get(depositAge) ?? 0) + amount)
+      gross[depositAge - currentAge] = amount
+      expanded.push({
+        flow,
+        linked: flow.inflationLinked !== false,
+        gross,
+        firstOffset: depositAge - currentAge,
+      })
       continue
     }
 
-    const isPension = isPensionFlow(flow)
-    // A pension joins the year's income net of the tax on its taxable share —
-    // only what survives income tax can pay for groceries.
-    const perYearGross = flow.frequency === 'monthly' ? amount * 12 : amount
-    const perYear = isPension ? perYearGross * pensionNetFactor(flow, pension) : perYearGross
+    const perYear = flow.frequency === 'monthly' ? amount * 12 : amount
     const linked = isPension ? flow.inflationLinked === true : flow.inflationLinked !== false
     const growth = flow.growthRate ?? 0
     const start = Math.max(
@@ -553,18 +680,95 @@ export function buildCashFlowSeries(
     const last = flow.frequency === 'once' ? start : Math.min(endAge, flow.endAge ?? endAge)
     if (start > endAge || last < start) continue
 
-    const income = flow.kind === 'income' || isPension
-    const target = income
-      ? linked
-        ? incomeLinked
-        : incomeFixed
-      : linked
-        ? expenseLinked
-        : expenseFixed
+    // Extra growth compounds from the first year regardless of indexing:
+    // a fixed-euro pension with 1 % grows nominally, an indexed one grows on
+    // top of inflation.
+    const grossAt = (index: number) =>
+      growth === 0 ? perYear : perYear * Math.pow(1 + growth, index)
+    for (let age = start; age <= last; age++) gross[age - currentAge] = grossAt(age - start)
 
-    for (let age = start; age <= last; age++) {
-      const grown = growth === 0 ? perYear : perYear * Math.pow(1 + growth, age - start)
-      target[age - currentAge] += grown
+    let taxable: number[] | undefined
+    if (isPension) {
+      taxable = new Array<number>(years).fill(0)
+      const startYear = yearForAge(start, currentAge, pension)
+      for (let age = start; age <= last; age++) {
+        taxable[age - currentAge] = pensionTaxableAnnual(
+          flow,
+          age - start,
+          grossAt,
+          startYear,
+          pension
+        )
+      }
+    }
+
+    expanded.push({ flow, linked, gross, firstOffset: start - currentAge, taxable })
+  }
+
+  // The year's other taxable income, which is what taxed income flows are
+  // taxed on top of: pensions' taxable parts plus every ordinary-income flow.
+  const pensionBase = new Array<number>(years).fill(0)
+  const ordinaryGross = new Array<number>(years).fill(0)
+  for (const entry of expanded) {
+    if (entry.taxable) {
+      entry.taxable.forEach((value, offset) => {
+        pensionBase[offset] += value
+      })
+    } else if (entry.flow.kind === 'income' && entry.flow.taxTreatment === 'ordinary') {
+      entry.gross.forEach((value, offset) => {
+        ordinaryGross[offset] += value
+      })
+    }
+  }
+
+  for (const entry of expanded) {
+    const { flow, linked, gross } = entry
+    const isPension = isPensionFlow(flow)
+    const income = flow.kind === 'income' || isPension
+    const once = isOnceIncomeFlow(flow)
+    const target = once
+      ? null
+      : income
+        ? linked
+          ? incomeLinked
+          : incomeFixed
+        : linked
+          ? expenseLinked
+          : expenseFixed
+    const onceTarget = linked ? oneTimeIncomeLinkedByAge : oneTimeIncomeFixedByAge
+
+    for (let offset = 0; offset < years; offset++) {
+      const amount = gross[offset]
+      if (amount <= 0) continue
+
+      let tax = 0
+      if (isPension && entry.taxable) {
+        tax = entry.taxable[offset] * pensionRate
+      } else if (flow.kind === 'income' && flow.taxTreatment === 'ordinary') {
+        // Every ordinary-income flow of the year is taxed jointly on top of the
+        // pensions; each carries its share of that tax.
+        const total = ordinaryGross[offset]
+        const jointTax = ordinaryIncomeTax(total, pensionBase[offset], splitting)
+        tax = total > 0 ? (jointTax * amount) / total : 0
+      } else if (flow.kind === 'income' && flow.taxTreatment === 'oneFifth') {
+        // A one-off is taxed in the year it is booked for, not the year the
+        // engine credits it.
+        const taxYear = once ? Math.max(0, offset - 1) : offset
+        const rest = pensionBase[taxYear] + ordinaryGross[taxYear]
+        tax = oneFifthRuleTax(amount, rest, splitting)
+      }
+
+      const net = Math.max(0, amount - tax)
+      if (tax > 0 && !taxByFlow.has(flow.id)) {
+        taxByFlow.set(flow.id, { age: currentAge + offset - (once ? 1 : 0), gross: amount, tax, net })
+      }
+
+      if (once) {
+        const age = currentAge + offset
+        onceTarget.set(age, (onceTarget.get(age) ?? 0) + net)
+      } else if (target) {
+        target[offset] += net
+      }
     }
   }
 
@@ -577,6 +781,7 @@ export function buildCashFlowSeries(
     incomeFixed,
     expenseLinked,
     expenseFixed,
+    taxByFlow,
   }
 }
 
@@ -598,6 +803,8 @@ export function cashFlowSignature(flows: readonly CashFlow[]): string[] {
         flow.inflationLinked === false ? 'fixed' : 'linked',
         flow.growthRate ?? 0,
         flow.taxablePortion ?? '',
+        flow.taxTreatment ?? '',
+        flow.pensionTaxMode ?? '',
       ].join('|')
     )
     .sort()

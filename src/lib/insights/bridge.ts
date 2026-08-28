@@ -1,11 +1,14 @@
 import type { SimulationParams } from '@/types'
 import { defaultPdfConfig } from '@/lib/pdf-generator/utils/config'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
+import { firstPensionAge } from '@/lib/simulation/cashFlows'
 
 export type BridgeAnalysis = {
   startAge: number
   endAge: number
   yearsInBridge: number
+  /** The age the first pension starts — what the bridge has to reach. */
+  pensionAge: number
   /** Inflation-adjusted cash need across the bridge years, unrounded. */
   cashNeedEUR: number
   cashBucketYears: number
@@ -16,7 +19,10 @@ export type BridgeAnalysis = {
 export function computeBridgeAnalysis(params: SimulationParams): BridgeAnalysis {
   const totalYearlyExpenses = calculateCombinedExpenses(params.customExpenses).combinedAnnual
   const startAge = Math.max(params.retirementAge, params.currentAge)
-  const endAge = Math.max(params.legalRetirementAge - 1, startAge - 1)
+  // The bridge ends when the first pension pays, which may be years before
+  // the statutory age (a Versorgungswerk at 63, say).
+  const pensionAge = firstPensionAge(params.cashFlows ?? [], params.legalRetirementAge)
+  const endAge = Math.max(pensionAge - 1, startAge - 1)
   const yearsInBridge = Math.max(0, endAge - startAge + 1)
   const inflation = params.averageInflation
 
@@ -42,6 +48,7 @@ export function computeBridgeAnalysis(params: SimulationParams): BridgeAnalysis 
     startAge,
     endAge,
     yearsInBridge,
+    pensionAge,
     cashNeedEUR,
     cashBucketYears,
     cashBucketSharePct,

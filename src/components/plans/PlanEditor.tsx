@@ -30,6 +30,7 @@ import {
   calculateCombinedExpenses,
   netAnnualPension,
   netPensionFactor,
+  taxContext,
 } from '@/lib/simulation/engine'
 import {
   HISTORICAL_FIRST_YEAR,
@@ -697,7 +698,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               retirementAge={params.retirementAge}
               legalRetirementAge={params.legalRetirementAge}
               endAge={params.endAge}
-              pensionTaxablePortion={params.pensionTaxablePortion}
+              tax={taxContext(params)}
               templates={cashFlowTemplates}
               onChange={(next) => updateParams({ cashFlows: next })}
             />

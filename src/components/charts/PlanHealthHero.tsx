@@ -211,7 +211,13 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
       key: 'bridge',
       label: t('bridge.label'),
       value: t('bridge.value', { years: metrics.bridgeYears }),
-      detail: t('bridge.detail', { age: params.legalRetirementAge }),
+      detail:
+        metrics.firstPensionAge !== params.legalRetirementAge
+          ? t('bridge.detailEarly', {
+              age: metrics.firstPensionAge,
+              legal: params.legalRetirementAge,
+            })
+          : t('bridge.detail', { age: params.legalRetirementAge }),
       edit: { fieldId: 'editor-retirementAge', label: `${params.retirementAge}` },
     },
   ]

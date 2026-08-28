@@ -1,7 +1,9 @@
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
+import { oneFifthRuleTax, ordinaryIncomeTax } from '@/lib/simulation/germanTax'
 import {
   applyCashFlows,
   buildCashFlowSeries,
+  firstPensionAge,
   netPensionAnnualAtAge,
   pensionMonthlyAtAge,
   projectCustomExpenses,
@@ -639,5 +641,167 @@ describe('the statutory pension as a cash flow', () => {
     )
     expect(migrated.successRate).toBe(shipped.successRate)
     expect(migrated.assetPercentiles.p50).toEqual(shipped.assetPercentiles.p50)
+  })
+})
+
+describe('extra growth and inflation indexing', () => {
+  const flow = (overrides: Partial<CashFlow>): CashFlow => ({
+    id: 'f',
+    kind: 'income',
+    name: 'Flow',
+    amount: 1_000,
+    frequency: 'monthly',
+    ...overrides,
+  })
+
+  it('a fixed-euro flow without extra growth stays flat in nominal euros', () => {
+    const series = buildCashFlowSeries([flow({ inflationLinked: false })], 60, 62)
+    expect(series.incomeFixed).toEqual([12_000, 12_000, 12_000])
+    expect(series.incomeLinked).toEqual([0, 0, 0])
+  })
+
+  it('a fixed-euro flow with 1 % extra growth compounds nominally', () => {
+    const series = buildCashFlowSeries([flow({ inflationLinked: false, growthRate: 0.01 })], 60, 62)
+    expect(series.incomeFixed[0]).toBeCloseTo(12_000, 6)
+    expect(series.incomeFixed[1]).toBeCloseTo(12_120, 6)
+    expect(series.incomeFixed[2]).toBeCloseTo(12_241.2, 6)
+    expect(series.incomeLinked).toEqual([0, 0, 0])
+  })
+
+  it('an inflation-linked flow without extra growth stays flat in today’s euros', () => {
+    const series = buildCashFlowSeries([flow({})], 60, 62)
+    expect(series.incomeLinked).toEqual([12_000, 12_000, 12_000])
+    expect(series.incomeFixed).toEqual([0, 0, 0])
+  })
+
+  it('an inflation-linked flow with 1 % extra growth compounds on top of inflation', () => {
+    const series = buildCashFlowSeries([flow({ growthRate: 0.01 })], 60, 62)
+    expect(series.incomeLinked[1]).toBeCloseTo(12_120, 6)
+    expect(series.incomeLinked[2]).toBeCloseTo(12_241.2, 6)
+    expect(series.incomeFixed).toEqual([0, 0, 0])
+  })
+
+  it('the same holds for a pension: nominal compounding when not indexed', () => {
+    const series = buildCashFlowSeries(
+      [{ ...flow({ kind: 'pension', amount: 2_140, growthRate: 0.01 }) }],
+      60,
+      61,
+      { legalRetirementAge: 60 }
+    )
+    // €2,140 → €2,161.40 a month next year, in nominal euros.
+    expect(series.incomeFixed[1] / 12).toBeCloseTo(2_161.4, 6)
+  })
+})
+
+describe('income tax on cash flows', () => {
+  const context = {
+    legalRetirementAge: 60,
+    pensionTaxablePortion: 0.8,
+    pensionTaxRate: 0.25,
+    householdType: 'single' as const,
+    baseYear: 2033,
+  }
+  const statutory = (overrides: Partial<CashFlow> = {}): CashFlow => ({
+    id: 'dr',
+    kind: 'pension',
+    name: 'DRV',
+    amount: 2_000,
+    frequency: 'monthly',
+    growthRate: 0.01,
+    pensionTaxMode: 'statutory',
+    ...overrides,
+  })
+
+  it('freezes the statutory tax-free amount in euros (§ 22 EStG)', () => {
+    // Starts 2033 → Besteuerungsanteil 87.5 %. Year 2 gross: 24,000 × 1.01.
+    const series = buildCashFlowSeries([statutory()], 60, 62, context)
+    const gross = [24_000, 24_240, 24_482.4]
+    const allowance = 0.125 * gross[1]
+    const expectedNet = gross.map((g, i) => g - Math.max(0, g - allowance) * 0.25)
+    series.incomeFixed.forEach((value, i) => expect(value).toBeCloseTo(expectedNet[i], 6))
+    // …so the increase from year 2 to 3 is taxed in full: the tax rises by
+    // 25 % of the whole raise, not 87.5 % of it.
+    const taxYear2 = gross[1] - series.incomeFixed[1]
+    const taxYear3 = gross[2] - series.incomeFixed[2]
+    expect(taxYear3 - taxYear2).toBeCloseTo(0.25 * (gross[2] - gross[1]), 6)
+  })
+
+  it('applies the Versorgungsfreibetrag plus Zuschlag of the start year (§ 19 Abs. 2)', () => {
+    const flow = statutory({ id: 'vb', amount: 1_000, growthRate: 0, pensionTaxMode: 'versorgungsbezuege' })
+    const series = buildCashFlowSeries([flow], 60, 60, context)
+    // 2033: 10 % of 12,000 = 1,200 capped at 750, plus 225 → 975 tax-free.
+    const taxable = 12_000 - 975
+    expect(series.incomeFixed[0]).toBeCloseTo(12_000 - taxable * 0.25, 6)
+  })
+
+  it('leaves the static share as the default and unchanged', () => {
+    const series = buildCashFlowSeries([statutory({ pensionTaxMode: undefined, growthRate: 0 })], 60, 60, context)
+    expect(series.incomeFixed[0]).toBeCloseTo(24_000 - 24_000 * 0.8 * 0.25, 6)
+  })
+
+  it('taxes a one-off under the one-fifth rule on top of the year’s pension income', () => {
+    const lump: CashFlow = {
+      id: 'lump',
+      kind: 'income',
+      name: 'Kapitaloption',
+      amount: 100_000,
+      frequency: 'once',
+      startAge: 60,
+      taxTreatment: 'oneFifth',
+    }
+    const pension = statutory({ pensionTaxMode: undefined, growthRate: 0 })
+    const series = buildCashFlowSeries([pension, lump], 60, 62, context)
+    const rest = 24_000 * 0.8
+    const tax = oneFifthRuleTax(100_000, rest)
+    expect(tax).toBeGreaterThan(0)
+    // Credited the year after it is booked, net of the tax computed for the
+    // year it was received.
+    expect(series.oneTimeIncomeLinkedByAge.get(61)).toBeCloseTo(100_000 - tax, 6)
+    expect(series.taxByFlow.get('lump')).toMatchObject({ age: 60, gross: 100_000, tax })
+  })
+
+  it('taxes ordinary income jointly and shares the tax pro rata', () => {
+    const a: CashFlow = { id: 'a', kind: 'income', name: 'A', amount: 30_000, frequency: 'annual', taxTreatment: 'ordinary' }
+    const b: CashFlow = { id: 'b', kind: 'income', name: 'B', amount: 10_000, frequency: 'annual', taxTreatment: 'ordinary' }
+    const series = buildCashFlowSeries([a, b], 60, 60, { legalRetirementAge: 60 })
+    const joint = ordinaryIncomeTax(40_000, 0)
+    expect(series.incomeLinked[0]).toBeCloseTo(40_000 - joint, 6)
+    expect(series.taxByFlow.get('a')?.tax).toBeCloseTo(joint * 0.75, 6)
+    expect(series.taxByFlow.get('b')?.tax).toBeCloseTo(joint * 0.25, 6)
+  })
+
+  it('uses the splitting tariff for a couple', () => {
+    const lump: CashFlow = { id: 'l', kind: 'income', name: 'L', amount: 100_000, frequency: 'once', startAge: 60, taxTreatment: 'oneFifth' }
+    const single = buildCashFlowSeries([lump], 60, 61, { legalRetirementAge: 60, householdType: 'single' })
+    const couple = buildCashFlowSeries([lump], 60, 61, { legalRetirementAge: 60, householdType: 'couple' })
+    expect(couple.oneTimeIncomeLinkedByAge.get(61)!).toBeGreaterThan(single.oneTimeIncomeLinkedByAge.get(61)!)
+  })
+
+  it('round-trips the new fields and drops them where they make no sense', () => {
+    const [income, pension, expense] = applyCashFlows(
+      flat({
+        cashFlows: [
+          { id: 'i', kind: 'income', name: 'I', amount: 1, frequency: 'once', startAge: 61, taxTreatment: 'oneFifth', startDate: '2034-03', note: '  source: refund  ' },
+          { id: 'p', kind: 'pension', name: 'P', amount: 1, frequency: 'monthly', pensionTaxMode: 'statutory', taxTreatment: 'ordinary' },
+          { id: 'e', kind: 'expense', name: 'E', amount: 1, frequency: 'monthly', taxTreatment: 'ordinary', pensionTaxMode: 'statutory', startDate: '2034-03' },
+        ] as CashFlow[],
+      })
+    ).cashFlows
+    expect(income).toMatchObject({ taxTreatment: 'oneFifth', startDate: '2034-03', note: 'source: refund' })
+    expect(pension).toMatchObject({ pensionTaxMode: 'statutory' })
+    expect(pension.taxTreatment).toBeUndefined()
+    expect(expense.taxTreatment).toBeUndefined()
+    expect(expense.pensionTaxMode).toBeUndefined()
+    expect(expense.startDate).toBeUndefined()
+  })
+})
+
+describe('the bridge ends at the first pension', () => {
+  it('reads the earliest pension start, falling back to the statutory age', () => {
+    const early: CashFlow = { id: 'vw', kind: 'pension', name: 'VW', amount: 1_000, frequency: 'monthly', startAge: 63 }
+    expect(firstPensionAge([early], 67)).toBe(63)
+    expect(firstPensionAge([{ ...early, startAge: undefined }], 67)).toBe(67)
+    expect(firstPensionAge([], 67)).toBe(67)
+    expect(firstPensionAge([{ ...early, amount: 0 }], 67)).toBe(67)
   })
 })

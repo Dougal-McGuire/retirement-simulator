@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { taxContext } from '@/lib/simulation/engine'
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react'
 import { useTranslations, useFormatter } from 'next-intl'
 import { Link, useRouter } from '@/navigation'
@@ -543,7 +544,7 @@ export default function SetupPage() {
               retirementAge={params.retirementAge}
               legalRetirementAge={params.legalRetirementAge}
               endAge={params.endAge}
-              pensionTaxablePortion={params.pensionTaxablePortion}
+              tax={taxContext(params)}
               templates={templates}
               onChange={(cashFlows) => updateParams({ cashFlows })}
             />

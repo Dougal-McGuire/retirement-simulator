@@ -1,5 +1,9 @@
 import type { CashFlow, CustomExpense, SimulationParams, SimulationResults } from '@/types'
-import { netPensionAnnualAtAge, pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
+import {
+  firstPensionAge,
+  netPensionAnnualAtAge,
+  pensionMonthlyAtAge,
+} from '@/lib/simulation/cashFlows'
 import { calculateCombinedExpenses, netAnnualPension } from '@/lib/simulation/engine'
 import { cashFlowsEqual } from '@/lib/simulation/cashFlows'
 
@@ -13,6 +17,8 @@ export type PlanInsightMetrics = {
   /** Same pension after the Besteuerungsanteil × income-tax rate haircut. */
   pensionAnnualNet: number
   bridgeYears: number
+  /** Age the first pension starts paying — the far end of the bridge. */
+  firstPensionAge: number
   retirementMedianAssets: number
   horizonMedianAssets: number
   firstYearPortfolioNeed: number
@@ -179,6 +185,7 @@ export function buildPlanInsightMetrics(
   const firstYearWithdrawalRate =
     retirementMedianAssets > 0 ? firstYearPortfolioNeed / retirementMedianAssets : null
   const realReturn = (1 + params.averageROI) / (1 + params.averageInflation) - 1
+  const pensionStart = firstPensionAge(params.cashFlows ?? [], params.legalRetirementAge)
 
   return {
     health: getPlanHealth(results?.successRate ?? 0),
@@ -186,7 +193,8 @@ export function buildPlanInsightMetrics(
     monthlySpending: combinedExpenses.combinedMonthly,
     pensionAnnual,
     pensionAnnualNet,
-    bridgeYears: Math.max(0, params.legalRetirementAge - params.retirementAge),
+    bridgeYears: Math.max(0, pensionStart - params.retirementAge),
+    firstPensionAge: pensionStart,
     retirementMedianAssets,
     horizonMedianAssets,
     firstYearPortfolioNeed,
