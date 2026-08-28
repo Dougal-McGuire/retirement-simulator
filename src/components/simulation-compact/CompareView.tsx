@@ -312,10 +312,16 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
         <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t('title')}</span>
         <div style={{ width: 1, height: 22, background: 'var(--line)', flex: 'none' }} />
         {plans.map((plan) => {
-          const selectedIndex = selectedIds.indexOf(plan.id)
-          const selected = selectedIndex !== -1
+          const selected = selectedIds.includes(plan.id)
           const isBase = plan.id === activePlanId
-          const altColor = selected && !isBase ? ALT_COLORS[(selectedIndex - 1) % ALT_COLORS.length] : null
+          // Alt hues follow the order among the *non-base* selected plans —
+          // the base can sit anywhere in the selection (adding a duplicate
+          // activates the copy, which re-bases mid-list).
+          const altIndex = selectedIds.filter((id) => id !== activePlanId).indexOf(plan.id)
+          const altColor =
+            selected && !isBase && altIndex !== -1
+              ? ALT_COLORS[altIndex % ALT_COLORS.length]
+              : null
           return (
             <button
               key={plan.id}

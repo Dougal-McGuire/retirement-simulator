@@ -87,6 +87,24 @@ export default function SimulationPage() {
     }
   }, [isLoading])
 
+  /**
+   * One visual language on this page. The legacy tab bodies (plan editor,
+   * cash-flow lists, scenario cards) and every portaled overlay (dialogs,
+   * select popovers, toasts) restyle through the app's `data-theme` machinery,
+   * so the hairline analyst theme is pinned while this page is mounted and
+   * `.simx` re-tunes its variables to the handoff's exact tokens. The stored
+   * theme preference is untouched; whatever was active comes back on unmount.
+   */
+  useEffect(() => {
+    const root = document.documentElement
+    const previous = root.dataset.theme
+    root.dataset.theme = 'klar'
+    return () => {
+      if (previous === undefined) delete root.dataset.theme
+      else root.dataset.theme = previous
+    }
+  }, [])
+
   const kpis = useMemo(
     () => (results ? buildCompactKpis(params, results, { displayReal }) : null),
     [params, results, displayReal]

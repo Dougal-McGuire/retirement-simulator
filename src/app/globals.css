@@ -581,11 +581,13 @@
     border-bottom: var(--theme-border-width) solid var(--neo-border-strong);
   }
 
-  /* Force active tab inversion in ParameterControls */
+  /* Force active tab inversion in ParameterControls. The `--tab-active-*`
+     indirection lets a page-scoped design (the compact simulation page) paint
+     selection with its accent instead; everywhere else the ink slab stands. */
   .grid button[data-state='active'],
   .grid [role='tab'][data-state='active'] {
-    background-color: var(--neo-black) !important;
-    color: var(--neo-white) !important;
+    background-color: var(--tab-active-bg, var(--neo-black)) !important;
+    color: var(--tab-active-fg, var(--neo-white)) !important;
   }
 }
 

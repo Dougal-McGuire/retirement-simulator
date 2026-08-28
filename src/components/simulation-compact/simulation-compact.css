@@ -417,3 +417,118 @@
   background: var(--gray-50);
   border-color: var(--line-strong);
 }
+
+/* ── one visual language: legacy components inside the page ─────────────
+   The page pins <html data-theme="klar"> while it is mounted (see the effect
+   in simulation/page.tsx), which already restyles the legacy tab bodies and
+   every portaled overlay (dialogs, select popovers, toasts) to the app's
+   hairline analyst theme: 1px borders, soft shadows, sentence case. The
+   overrides below re-tune that theme's variables to this handoff's exact
+   tokens for everything rendered inside the page, so the plan editor and the
+   scenario cards paint with the same ink, accent and radii as the compact
+   chrome around them. Portaled overlays keep plain klar values — the same
+   language with a marginally different blue.
+
+   (`--accent` doubles as a shadcn HSL triplet name at the root; inside .simx
+   it holds the design system's oklch color instead. The only shadcn consumer
+   of `bg-accent` is the dialog, which portals outside this scope.) */
+.simx {
+  /* ink + accents for the `neo-*` utility family */
+  --neo-black-rgb: 16 24 40; /* gray-900 */
+  --neo-blue-rgb: 26 96 158; /* accent oklch(48% .12 250) */
+  --neo-red-rgb: 231 0 11; /* red-600 */
+  --neo-green-rgb: 0 130 54; /* green-700 */
+  --neo-yellow-rgb: 255 210 48; /* amber-300 */
+  --neo-cyan-rgb: 0 124 140; /* viz-1 */
+  --neo-purple-rgb: 123 82 164; /* viz-5 — the spending chart's hue */
+  --neo-pink-rgb: 155 70 122; /* viz-6 */
+  --neo-orange-rgb: 157 83 0; /* viz-3 */
+  --neo-border-strong: var(--line);
+  --neo-surface: var(--surface);
+  --neo-surface-muted: var(--gray-100);
+
+  /* The `--neo-<hue>` aliases are declared at :root as rgb(var(--…-rgb)) and
+     resolve *there*, so overriding only the -rgb triplets above never reaches
+     a consumer of the alias form (chart strokes, the tab-inversion rule).
+     Re-declaring the aliases here re-resolves them against this scope. */
+  --neo-black: rgb(var(--neo-black-rgb));
+  --neo-white: rgb(var(--neo-white-rgb));
+  --neo-yellow: rgb(var(--neo-yellow-rgb));
+  --neo-blue: rgb(var(--neo-blue-rgb));
+  --neo-red: rgb(var(--neo-red-rgb));
+  --neo-green: rgb(var(--neo-green-rgb));
+  --neo-pink: rgb(var(--neo-pink-rgb));
+  --neo-purple: rgb(var(--neo-purple-rgb));
+  --neo-cyan: rgb(var(--neo-cyan-rgb));
+  --neo-orange: rgb(var(--neo-orange-rgb));
+
+  /* Selection inside this page is accent-painted, not an ink slab (consumed
+     by the tab-inversion rule in globals.css). */
+  --tab-active-bg: var(--accent);
+  --tab-active-fg: #fff;
+
+  /* shadcn ladder (HSL triplets) */
+  --background: 210 20% 98%; /* gray-50 */
+  --foreground: 220 43% 11%; /* gray-900 */
+  --primary: 208 72% 36%; /* accent */
+  --primary-foreground: 0 0% 100%;
+  --destructive: 357 100% 45%; /* red-600 */
+  --destructive-foreground: 0 0% 100%;
+  --muted: 220 14% 96%; /* gray-100 */
+  --muted-foreground: 216 15% 34%; /* gray-600 */
+  --border: 220 13% 91%; /* gray-200 */
+  --input: 218 14% 84%; /* gray-300 */
+  --field: 210 20% 98%; /* gray-50 */
+  --ring: 208 72% 36%;
+
+  /* structure + type, consumed by the theme's restyle rules */
+  --theme-border-width: 1px;
+  --theme-border-thin: 1px;
+  --theme-radius-panel: 0.5rem; /* --radius-lg */
+  --theme-radius-control: 0.25rem; /* --radius */
+  --theme-radius-chip: 9999px; /* --radius-full */
+  --theme-focus: var(--gray-900);
+  --theme-font-body: var(--font-sans);
+  --theme-font-heading: var(--font-sans);
+  --theme-ui-letter-spacing: 0;
+  --theme-chip-spacing: 0.01em;
+  --chart-axis: var(--text);
+  --chart-brush: var(--gray-400);
+}
+
+/* The non-neo themes give .app-page a generous page-end padding; the compact
+   layout manages its own rhythm. */
+html[data-theme] .simx.app-page {
+  padding-bottom: 0;
+}
+
+/* Selected state on legacy controls: the design paints selection with the
+   accent, never with an ink slab. Covers the plan-section pills (Radix tabs
+   activate via data-state) and the nominal/real chart segments (plain
+   `bg-neo-black` toggles). */
+.simx button[class*='bg-neo-black'][data-state='active'],
+.simx button.bg-neo-black {
+  background-color: var(--accent) !important;
+  color: #fff !important;
+}
+
+/* Legacy table heads: the design's tables carry a light head with gray label
+   text, not an ink slab. */
+.simx thead[class*='bg-neo-black'] {
+  background-color: var(--gray-50) !important;
+}
+.simx thead[class*='bg-neo-black'] th,
+.simx thead[class*='bg-neo-black'] th * {
+  color: var(--text-label) !important;
+}
+
+/* Editor sliders (every Radix thumb outside the command bar): the design's
+   round accent thumb instead of the neo yellow square. */
+.simx span[role='slider']:not(.simx-slider-thumb) {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50% !important;
+  background: var(--surface) !important;
+  border: 2px solid var(--accent) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
