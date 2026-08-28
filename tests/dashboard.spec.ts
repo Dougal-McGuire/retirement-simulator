@@ -220,7 +220,7 @@ test.describe('simulation dashboard', () => {
     await page.goto('/en/setup')
     await expect(page.getByTestId('wizard-plan-context')).toContainText('Base plan')
 
-    const age = page.getByLabel('Current Age')
+    const age = page.getByRole('spinbutton', { name: 'Current Age' })
     await age.fill('44')
     await age.blur()
 

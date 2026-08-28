@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { HelpCircle, AlertTriangle, AlertCircle } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { evaluateNumericDraft, type RangeIssue } from '@/lib/validation/fieldValidation'
 import { useGroupedNumber } from './useGroupedNumber'
@@ -27,6 +28,13 @@ interface LabeledNumberInputProps {
   max?: number
   className?: string
   helpText?: string
+  /**
+   * Where `helpText` is shown. `inline` (default) prints it under the field;
+   * `tooltip` folds it into the ⓘ next to the label and keeps it visually
+   * hidden for `aria-describedby`, so the form stays quiet without losing the
+   * words for assistive technology.
+   */
+  helpPlacement?: 'inline' | 'tooltip'
   tooltip?: string
   /** Accessible label for the tooltip trigger (defaults to the field label). */
   tooltipAriaLabel?: string
@@ -104,6 +112,7 @@ export function LabeledNumberInput({
   max,
   className,
   helpText,
+  helpPlacement = 'inline',
   tooltip,
   tooltipAriaLabel,
   unit,
@@ -234,6 +243,8 @@ export function LabeledNumberInput({
     descriptionIds.push(`${id}-validation-message`)
   }
   const describedBy = descriptionIds.length > 0 ? descriptionIds.join(' ') : undefined
+  const foldedHelp = Boolean(helpText) && helpPlacement === 'tooltip'
+  const tUi = useTranslations('ui')
 
   return (
     <div
@@ -247,14 +258,14 @@ export function LabeledNumberInput({
         >
           {label}
         </Label>
-        {tooltip && (
+        {(tooltip || foldedHelp) && (
           <TooltipProvider delayDuration={150}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   className="cursor-help rounded-full focus:outline-none focus:ring-2 focus:ring-neo-blue focus:ring-offset-2"
-                  aria-label={tooltipAriaLabel ?? label}
+                  aria-label={tooltipAriaLabel ?? tUi('fieldHelp', { label })}
                 >
                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/70 transition-colors hover:text-neo-black" />
                 </button>
@@ -263,7 +274,19 @@ export function LabeledNumberInput({
                 side="top"
                 className="max-w-xs border-2 border-neo-black bg-neo-white px-3 py-2 text-neo-black shadow-neo-sm"
               >
-                <p className="text-xs font-medium normal-case leading-relaxed">{tooltip}</p>
+                {tooltip && (
+                  <p className="text-xs font-medium normal-case leading-relaxed">{tooltip}</p>
+                )}
+                {foldedHelp && (
+                  <p
+                    className={cn(
+                      'text-xs font-medium normal-case leading-relaxed',
+                      tooltip && 'mt-1.5 text-muted-foreground'
+                    )}
+                  >
+                    {helpText}
+                  </p>
+                )}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -356,7 +379,12 @@ export function LabeledNumberInput({
 
       {/* Help text */}
       {helpText && (
-        <p id={`${id}-help`} className="text-xs font-medium leading-relaxed text-muted-foreground">
+        <p
+          id={`${id}-help`}
+          className={cn(
+            foldedHelp ? 'sr-only' : 'text-xs font-medium leading-relaxed text-muted-foreground'
+          )}
+        >
           {helpText}
         </p>
       )}

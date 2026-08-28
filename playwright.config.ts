@@ -11,6 +11,16 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
+    // Placeholder OAuth credentials so the server Playwright starts itself
+    // runs the auth-*enabled* code path (SessionProvider mounted, sign-in
+    // control rendered). Nothing ever reaches Google: the specs stub
+    // `/api/auth/session` in the browser. Real values in the environment win.
+    env: {
+      AUTH_SECRET: process.env.AUTH_SECRET ?? 'playwright-only-secret-not-for-production',
+      GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? 'playwright-client-id',
+      GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ?? 'playwright-client-secret',
+      AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST ?? 'true',
+    },
   },
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',

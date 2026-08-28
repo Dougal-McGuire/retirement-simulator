@@ -29,6 +29,7 @@ import {
   type TooltipRow,
 } from '@/components/charts/chartTheme'
 import { cn } from '@/lib/utils'
+import { InfoTip } from '@/components/ui/info-tip'
 
 export type BandPoint = ChartDataPoint & {
   assets_band_lower: number
@@ -223,13 +224,16 @@ export function AssetsChart({
         <div className="min-w-0">
           <h4
             id="asset-chart-title"
-            className="text-base font-extrabold uppercase tracking-[0.16em] text-neo-black sm:text-lg"
+            className="flex items-center gap-2 text-base font-extrabold uppercase tracking-[0.16em] text-neo-black sm:text-lg"
           >
             {t('title')}
+            <InfoTip
+              content={marketModel === 'historical' ? t('descriptionHistorical') : t('description')}
+              label={t('title')}
+              side="bottom"
+              descriptionId="asset-chart-description"
+            />
           </h4>
-          <p className="mt-1.5 max-w-2xl text-xs font-medium leading-relaxed text-muted-foreground">
-            {marketModel === 'historical' ? t('descriptionHistorical') : t('description')}
-          </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {headerControls}

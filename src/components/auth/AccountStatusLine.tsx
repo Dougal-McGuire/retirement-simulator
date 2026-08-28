@@ -27,12 +27,13 @@ function useRelativeLabel(lastSyncedAt: number | null): string | null {
 }
 
 /**
- * The sub-label under the account name in the auth menu.
+ * Sync status next to the account name in the auth menu: a coloured dot with
+ * the sentence ("Synced · just now", "Offline (stored on this device)") in its
+ * tooltip and read out to assistive technology.
  *
  * Without a cloud store — the default, and every deployment that only
- * configured Google sign-in — this is exactly the "Signed in" label it always
- * was, tooltip included. Sync only ever *adds* a line; it never changes what an
- * unsynced deployment shows.
+ * configured Google sign-in — this is a neutral "Signed in" dot. Sync only
+ * ever *adds* state; it never changes what an unsynced deployment shows.
  */
 export function AccountStatusLine() {
   const t = useTranslations('auth')
@@ -52,28 +53,36 @@ export function AccountStatusLine() {
   const isSynced = phase === 'synced'
   const tooltip = label === null ? t('localOnly') : isSynced ? t('sync.hint') : t('sync.offlineHint')
 
+  const dotClass =
+    phase === 'syncing'
+      ? 'bg-neo-blue animate-pulse'
+      : phase === 'offline'
+        ? 'bg-neo-orange'
+        : isSynced
+          ? 'bg-neo-green'
+          : 'bg-neo-black/30'
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <span
-          className={
-            // A sync status is a sentence, not a label: it wraps instead of
-            // ellipsising, and drops the wide uppercase tracking that makes
-            // "Offline (stored on this device)" twice as wide as its box.
-            label === null
-              ? 'truncate text-[0.6rem] uppercase tracking-[0.14em] text-muted-foreground'
-              : 'text-[0.6rem] font-semibold leading-tight text-muted-foreground'
-          }
-          title={tooltip}
-          // Screen readers get told when a background sync finishes, but never
-          // interrupted: this is ambient status, not an action result.
-          aria-live="polite"
+          data-testid="auth-sync-status"
+          data-phase={phase}
+          className="inline-flex h-8 w-5 shrink-0 cursor-help items-center justify-center"
+          tabIndex={0}
+          aria-label={label ?? t('signedIn')}
         >
-          {label ?? t('signedIn')}
+          <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${dotClass}`} />
+          {/* Screen readers get told when a background sync finishes, but never
+              interrupted: this is ambient status, not an action result. */}
+          <span className="sr-only" aria-live="polite">
+            {label ?? t('signedIn')}
+          </span>
         </span>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="max-w-[16rem]">
-        {tooltip}
+        <span className="block font-bold">{label ?? t('signedIn')}</span>
+        <span className="block text-muted-foreground">{tooltip}</span>
       </TooltipContent>
     </Tooltip>
   )

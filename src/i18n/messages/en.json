@@ -34,7 +34,11 @@
     "nav": {
       "appName": "Retirement Simulator",
       "launch": "Launch app",
-      "launchShort": "Start"
+      "launchShort": "Start",
+      "dashboard": "Go to my dashboard",
+      "dashboardShort": "Dashboard",
+      "forwarding": "Signed in — opening your dashboard…",
+      "stay": "Stay on this page"
     },
     "hero": {
       "badge": "Monte Carlo engine · runs in your browser",
@@ -178,7 +182,8 @@
     "increaseValue": "Increase value",
     "decreaseValue": "Decrease value",
     "age": "Age",
-    "ageLabel": "Age {age}"
+    "ageLabel": "Age {age}",
+    "fieldHelp": "Help: {label}"
   },
   "stepStatus": {
     "completed": "Completed",
@@ -2154,7 +2159,8 @@
     "trigger": "Language and theme",
     "title": "Display settings",
     "description": "Switch the interface language or pick a different visual theme.",
-    "close": "Close"
+    "close": "Close",
+    "account": "Account"
   },
   "planEditor": {
     "title": "Plan assumptions",

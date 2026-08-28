@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { Loader2 } from 'lucide-react'
+import { InfoTip } from '@/components/ui/info-tip'
 import { useSimulationParams } from '@/lib/stores/simulationStore'
 import { isPreviewable } from '@/lib/validation/fieldValidation'
 import { useCompactCurrency } from '@/lib/hooks/useCompactCurrency'
@@ -142,9 +143,12 @@ export function WizardLiveResult({ className }: { className?: string }) {
         </span>
       )}
 
-      <span className="ml-auto text-[0.55rem] font-medium normal-case tracking-normal text-muted-foreground">
-        {t('note', { runs: format.number(Math.min(params.simulationRuns, PREVIEW_RUNS)) })}
-      </span>
+      <InfoTip
+        className="ml-auto"
+        side="bottom"
+        label={t('label')}
+        content={t('note', { runs: format.number(Math.min(params.simulationRuns, PREVIEW_RUNS)) })}
+      />
     </div>
   )
 }

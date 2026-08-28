@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { InfoTip } from '@/components/ui/info-tip'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
@@ -19,6 +20,8 @@ interface WizardSliderFieldProps {
   minLabel: string
   maxLabel: string
   helpText?: string
+  /** `tooltip` folds `helpText` into an ⓘ next to the label (kept for AT via `aria-describedby`). */
+  helpPlacement?: 'inline' | 'tooltip'
   /** Optional derived context rendered below the help text (e.g. a timeline summary). */
   meta?: ReactNode
   /** Greys the control out and stops interaction (e.g. an input the active market model ignores). */
@@ -42,23 +45,31 @@ export function WizardSliderField({
   minLabel,
   maxLabel,
   helpText,
+  helpPlacement = 'inline',
   meta,
   disabled = false,
   className,
 }: WizardSliderFieldProps) {
+  const foldedHelp = Boolean(helpText) && helpPlacement === 'tooltip'
+  const helpId = helpText ? `${id}-help` : undefined
   return (
     <div
       className={cn('space-y-2', disabled && 'opacity-55', className)}
       aria-disabled={disabled || undefined}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Label
-          id={`${id}-label`}
-          htmlFor={id}
-          className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-neo-black"
-        >
-          {label}
-        </Label>
+        <span className="flex items-center gap-1.5">
+          <Label
+            id={`${id}-label`}
+            htmlFor={id}
+            className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-neo-black"
+          >
+            {label}
+          </Label>
+          {foldedHelp && helpText && (
+            <InfoTip content={helpText} label={label} descriptionId={helpId} />
+          )}
+        </span>
         <output
           htmlFor={id}
           aria-live="off"
@@ -81,6 +92,7 @@ export function WizardSliderField({
           // the visible label rather than repeating the string, and reads its
           // value out formatted ("€3,200") instead of as a raw number.
           aria-labelledby={`${id}-label`}
+          aria-describedby={helpId}
           aria-valuetext={valueLabel}
         />
         <div className="mt-2.5 flex items-center justify-between text-[0.65rem] font-medium tabular-nums text-muted-foreground">
@@ -88,8 +100,10 @@ export function WizardSliderField({
           <span>{maxLabel}</span>
         </div>
       </div>
-      {helpText && (
-        <p className="text-xs font-medium leading-relaxed text-muted-foreground">{helpText}</p>
+      {helpText && !foldedHelp && (
+        <p id={helpId} className="text-xs font-medium leading-relaxed text-muted-foreground">
+          {helpText}
+        </p>
       )}
       {meta}
     </div>

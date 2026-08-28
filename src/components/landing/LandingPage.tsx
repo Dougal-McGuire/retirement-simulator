@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import Image from 'next/image'
 import {
   Activity,
@@ -12,10 +13,8 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { Link } from '@/navigation'
 import { Button } from '@/components/ui/button'
 import { ExamplePlanButton } from '@/components/plans/ExamplePlanButton'
-import { HeaderControlsMenu } from '@/components/navigation/HeaderControlsMenu'
-import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
-import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { FanChartPreview } from './FanChartPreview'
+import { LandingHeaderActions } from './LandingHeaderActions'
 import {
   APP_DEFAULT_RUNS,
   PREVIEW_DEFAULT_RUNS_SUCCESS_RATE,
@@ -109,22 +108,21 @@ export function LandingPage() {
                   "preloaded but not used" console warning. */}
               <Image src="/piggy.svg" alt="" width={24} height={24} />
             </span>
-            <span className="landing-label font-heading text-[0.72rem] font-black text-neo-black [overflow-wrap:anywhere] sm:text-sm">
+            {/* On phones the 20-character compound broke mid-word next to
+                three buttons; the logo carries the link there, the name
+                stays for assistive technology. */}
+            <span className="landing-label hidden font-heading text-[0.72rem] font-black text-neo-black [overflow-wrap:anywhere] sm:inline sm:text-sm">
               {t('nav.appName')}
             </span>
+            <span className="sr-only sm:hidden">{t('nav.appName')}</span>
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <LocaleSwitcher className="hidden w-auto px-3 tracking-[0.08em] lg:flex" />
-            <ThemeSwitcher className="hidden lg:flex" />
-            <HeaderControlsMenu className="lg:hidden" />
-            <Button size="sm" asChild className="landing-label shrink-0">
-              <Link href="/setup">
-                <span className="sm:hidden">{t('nav.launchShort')}</span>
-                <span className="hidden sm:inline">{t('nav.launch')}</span>
-                <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-              </Link>
-            </Button>
+            {/* `useSearchParams` inside needs a boundary for static rendering;
+                the fallback is the header without its buttons for one tick. */}
+            <Suspense fallback={null}>
+              <LandingHeaderActions />
+            </Suspense>
           </div>
         </div>
       </header>

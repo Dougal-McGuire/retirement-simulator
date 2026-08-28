@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { SlidersHorizontal } from 'lucide-react'
 import type { CustomExpense } from '@/types'
 import { Button } from '@/components/ui/button'
+import { InfoTip } from '@/components/ui/info-tip'
 import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { useActivePlan, useSimulationParams, useUpdateParams } from '@/lib/stores/simulationStore'
@@ -94,9 +95,7 @@ export function QuickAdjustBar({ onOpenEditor, className }: QuickAdjustBarProps)
           <h2 className="text-[0.78rem] font-black uppercase tracking-[0.2em] text-neo-black">
             {t('title')}
           </h2>
-          <p className="hidden text-xs font-medium text-muted-foreground lg:block">
-            {t('description')}
-          </p>
+          <InfoTip content={t('description')} label={t('title')} side="bottom" />
         </div>
         {onOpenEditor && (
           <Button

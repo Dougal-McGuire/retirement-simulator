@@ -14,6 +14,14 @@ interface AuthMenuProps {
   className?: string
   /** Icon-only rendering for tight mobile toolbars. */
   compact?: boolean
+  /**
+   * Where Google should send the user after signing in. Defaults to the page
+   * the button was clicked on; the landing page passes `/simulation` so a
+   * returning user lands straight on their dashboard.
+   */
+  signInRedirectTo?: string
+  /** Render nothing (instead of a disabled button) when OAuth is not configured. */
+  hideWhenUnavailable?: boolean
 }
 
 function GoogleIcon({ className }: { className?: string }) {
@@ -80,7 +88,7 @@ function AuthUnavailable({ className, compact }: AuthMenuProps) {
 }
 
 /** Rendered when credentials exist — real sign-in / signed-in state. */
-function AuthSession({ className, compact }: AuthMenuProps) {
+function AuthSession({ className, compact, signInRedirectTo }: AuthMenuProps) {
   const t = useTranslations('auth')
   const { data: session, status } = useSession()
   const [isPending, setIsPending] = useState(false)
@@ -94,8 +102,10 @@ function AuthSession({ className, compact }: AuthMenuProps) {
     setIsPending(true)
     // Relative target only; the server-side `redirect` callback re-anchors it
     // to this origin, so no external callback URL can be injected.
-    void signIn('google', { redirectTo: currentPath() }).finally(() => setIsPending(false))
-  }, [])
+    void signIn('google', { redirectTo: signInRedirectTo ?? currentPath() }).finally(() =>
+      setIsPending(false)
+    )
+  }, [signInRedirectTo])
 
   const handleSignOut = useCallback(() => {
     setIsPending(true)
@@ -185,43 +195,40 @@ function AuthSession({ className, compact }: AuthMenuProps) {
   }
 
   return (
-    // The status line sits on its own row rather than beside the avatar: in a
-    // 12rem action strip "Offline (stored on this device)" has no chance next
-    // to an avatar and a sign-out button, and truncating a status to
-    // "OFFLINE (STORED ON…" tells the user nothing.
+    // One 40px row like every other header control: avatar, name, a sync dot
+    // and sign-out. The sync sentence lives in the dot's tooltip — it is
+    // ambient status, not something that needs a line of its own.
     <div
+      data-testid="auth-account"
       className={cn(
-        'flex flex-col gap-1 border-3 border-neo-black bg-neo-white px-2 py-1.5 shadow-neo-sm',
+        'flex h-10 items-center gap-2 border-3 border-neo-black bg-neo-white px-2 shadow-neo-sm',
         className
       )}
     >
-      <div className="flex items-center gap-2">
-        {avatar}
-        <span
-          className="min-w-0 flex-1 truncate text-[0.7rem] font-bold leading-tight text-neo-black"
-          title={displayName}
-        >
-          {displayName}
-        </span>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={handleSignOut}
-              disabled={isPending}
-              aria-label={t('signOut')}
-              className="h-8 w-8 shrink-0 p-0"
-            >
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">{t('signOut')}</TooltipContent>
-        </Tooltip>
-      </div>
-      {/* "Signed in" without a cloud store, the sync status with one. */}
+      {avatar}
+      <span
+        className="min-w-0 flex-1 truncate text-[0.7rem] font-bold leading-tight text-neo-black"
+        title={displayName}
+      >
+        {displayName}
+      </span>
       <AccountStatusLine />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleSignOut}
+            disabled={isPending}
+            aria-label={t('signOut')}
+            className="h-8 w-8 shrink-0 p-0"
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{t('signOut')}</TooltipContent>
+      </Tooltip>
     </div>
   )
 }
@@ -233,12 +240,20 @@ function AuthSession({ className, compact }: AuthMenuProps) {
  * Safe to mount anywhere beneath `AuthProvider` (simulation header, setup
  * header, and — later — the landing header).
  */
-export function AuthMenu({ className, compact = false }: AuthMenuProps) {
+export function AuthMenu({
+  className,
+  compact = false,
+  signInRedirectTo,
+  hideWhenUnavailable = false,
+}: AuthMenuProps) {
   const enabled = useAuthEnabled()
 
   if (!enabled) {
+    if (hideWhenUnavailable) return null
     return <AuthUnavailable className={className} compact={compact} />
   }
 
-  return <AuthSession className={className} compact={compact} />
+  return (
+    <AuthSession className={className} compact={compact} signInRedirectTo={signInRedirectTo} />
+  )
 }

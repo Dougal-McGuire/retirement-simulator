@@ -34,7 +34,11 @@
     "nav": {
       "appName": "Ruhestandssimulator",
       "launch": "App starten",
-      "launchShort": "Starten"
+      "launchShort": "Starten",
+      "dashboard": "Zu meinem Dashboard",
+      "dashboardShort": "Dashboard",
+      "forwarding": "Angemeldet — Dashboard wird geöffnet…",
+      "stay": "Auf dieser Seite bleiben"
     },
     "hero": {
       "badge": "Monte-Carlo-Engine · läuft in Ihrem Browser",
@@ -178,7 +182,8 @@
     "increaseValue": "Wert erhöhen",
     "decreaseValue": "Wert verringern",
     "age": "Alter",
-    "ageLabel": "Alter {age}"
+    "ageLabel": "Alter {age}",
+    "fieldHelp": "Hilfe: {label}"
   },
   "stepStatus": {
     "completed": "Abgeschlossen",
@@ -2154,7 +2159,8 @@
     "trigger": "Sprache und Theme",
     "title": "Darstellung",
     "description": "Sprache der Oberfläche wechseln oder ein anderes Theme wählen.",
-    "close": "Schließen"
+    "close": "Schließen",
+    "account": "Konto"
   },
   "planEditor": {
     "title": "Plan-Annahmen",

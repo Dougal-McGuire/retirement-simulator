@@ -61,14 +61,14 @@ test.describe('i18n routing', () => {
   test('renders English translations on setup page', async ({ page }) => {
     await page.goto('/en/setup')
     await expect(page.getByRole('heading', { level: 1, name: 'Setup' })).toBeVisible()
-    await expect(page.getByLabel('Current Age')).toBeVisible()
+    await expect(page.getByRole('spinbutton', { name: 'Current Age' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeVisible()
   })
 
   test('links setup input help text to the number field', async ({ page }) => {
     await page.goto('/en/setup')
 
-    await expect(page.getByLabel('Current Age')).toHaveAttribute(
+    await expect(page.getByRole('spinbutton', { name: 'Current Age' })).toHaveAttribute(
       'aria-describedby',
       /currentAge-help/
     )

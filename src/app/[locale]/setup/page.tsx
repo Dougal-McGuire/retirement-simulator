@@ -27,9 +27,10 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { OneTimeIncome } from '@/types'
+import { AppHeader } from '@/components/navigation/AppHeader'
 import { AuthMenu } from '@/components/auth/AuthMenu'
-import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
-import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
+import { HeaderControlsMenu } from '@/components/navigation/HeaderControlsMenu'
+import { InfoTip } from '@/components/ui/info-tip'
 import { cn } from '@/lib/utils'
 import { parseSetupProgressStep } from './setupProgress'
 
@@ -283,6 +284,7 @@ export default function SetupPage() {
                 value={params.currentAge}
                 onChange={(value) => updateParams({ currentAge: value })}
                 helpText={t('personal.fields.currentAge.help')}
+                helpPlacement="tooltip"
                 className="w-full"
                 min={16}
                 max={100}
@@ -303,6 +305,7 @@ export default function SetupPage() {
                 value={params.legalRetirementAge}
                 onChange={(value) => updateParams({ legalRetirementAge: value })}
                 helpText={t('personal.fields.legalRetirementAge.help')}
+                helpPlacement="tooltip"
                 tooltip={t('personal.fields.legalRetirementAge.tooltip')}
                 className="w-full"
                 min={60}
@@ -333,6 +336,7 @@ export default function SetupPage() {
               minLabel={formatInteger(retirementSliderMin)}
               maxLabel={formatInteger(70)}
               helpText={t('personal.fields.retirementAge.help')}
+              helpPlacement="tooltip"
               meta={
                 <p
                   data-testid="wizard-timeline-chip"
@@ -376,6 +380,7 @@ export default function SetupPage() {
                 value={params.endAge}
                 onChange={(value) => updateParams({ endAge: value })}
                 helpText={t('personal.fields.endAge.help')}
+                helpPlacement="tooltip"
                 tooltip={t('personal.fields.endAge.tooltip')}
                 className="w-full"
                 min={65}
@@ -405,6 +410,7 @@ export default function SetupPage() {
                 value={params.currentAssets}
                 onChange={(value) => updateParams({ currentAssets: value })}
                 helpText={t('assets.fields.currentAssets.help')}
+                helpPlacement="tooltip"
                 className="w-full"
                 unit={t('units.currency')}
                 groupThousands
@@ -428,6 +434,7 @@ export default function SetupPage() {
                 value={params.annualSavings}
                 onChange={(value) => updateParams({ annualSavings: value })}
                 helpText={t('assets.fields.annualSavings.help')}
+                helpPlacement="tooltip"
                 className="w-full"
                 unit={t('units.currency')}
                 groupThousands
@@ -451,6 +458,7 @@ export default function SetupPage() {
                 value={params.annualSavingsGrowthRate * 100}
                 onChange={(value) => updateParams({ annualSavingsGrowthRate: value / 100 })}
                 helpText={t('assets.fields.annualSavingsGrowthRate.help')}
+                helpPlacement="tooltip"
                 className="w-full"
                 unit={t('units.percentPerYear')}
                 min={-10}
@@ -478,6 +486,7 @@ export default function SetupPage() {
                 value={params.monthlyPension}
                 onChange={(value) => updateParams({ monthlyPension: value })}
                 helpText={t('assets.fields.monthlyPension.help')}
+                helpPlacement="tooltip"
                 className="w-full"
                 unit={t('units.currency')}
                 groupThousands
@@ -585,6 +594,7 @@ export default function SetupPage() {
               minLabel={formatPercent(0.03, 0)}
               maxLabel={formatPercent(0.12, 0)}
               helpText={t('market.averageROI.help')}
+              helpPlacement="tooltip"
             />
 
             <WizardSliderField
@@ -599,6 +609,7 @@ export default function SetupPage() {
               minLabel={formatPercent(0.01, 0)}
               maxLabel={formatPercent(0.06, 0)}
               helpText={t('market.averageInflation.help')}
+              helpPlacement="tooltip"
             />
 
             <div className="flex items-center justify-between gap-3 border-2 border-dashed border-neo-black/30 bg-neo-blue/5 px-4 py-3">
@@ -622,6 +633,7 @@ export default function SetupPage() {
               minLabel={formatInteger(100)}
               maxLabel={formatInteger(5000)}
               helpText={t('market.simulationRuns.help')}
+              helpPlacement="tooltip"
             />
           </div>
         )
@@ -652,68 +664,58 @@ export default function SetupPage() {
           <span className="sr-only">{t('finish.opening')}</span>
         </div>
       )}
-      <header id="navigation" className="theme-page-header relative z-10 pt-12 pb-10">
-        <div className="theme-container mx-auto max-w-[90rem] px-2 sm:px-3 lg:px-4">
-          <div
-            className={cn(glassCardClass, 'theme-hero relative overflow-hidden px-5 py-7 sm:px-8 sm:py-10')}
-          >
-            <div className="theme-hero-accent absolute right-8 top-8 hidden h-12 w-12 rotate-6 border-3 border-neo-black bg-neo-yellow/40 md:block" />
-            <div className="theme-hero-mark pointer-events-none absolute -left-8 -bottom-6 hidden h-16 w-16 -rotate-3 border-3 border-neo-black bg-neo-blue/20 md:block" />
-
-            <div className="theme-hero-layout relative flex flex-col gap-8">
-              <div className="theme-hero-top flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex flex-col gap-5 text-neo-black">
-                  <div className="theme-badge-row flex flex-wrap items-center gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.18em]">
-                    <span className="inline-flex items-center gap-2 border-3 border-neo-black bg-secondary px-4 py-1.5 text-secondary-foreground shadow-neo-sm">
-                      {t('header.badges.guide')}
-                    </span>
-                    <span className="inline-flex items-center gap-2 border-3 border-neo-black bg-neo-white px-4 py-1.5 text-muted-foreground shadow-neo-sm">
-                      {t('header.badges.time')}
-                    </span>
-                    {/* Which plan this session is editing — the wizard writes to
-                        a working copy, never straight into the stored plan. */}
-                    <span
-                      data-testid="wizard-plan-context"
-                      className="inline-flex items-center gap-2 border-3 border-neo-black bg-neo-blue/10 px-4 py-1.5 text-neo-black shadow-neo-sm"
-                    >
-                      {t('planContext.editing', { name: activePlanName })}
-                    </span>
-                    {isDirty && (
-                      <span className="inline-flex items-center gap-2 border-3 border-neo-black bg-neo-yellow px-4 py-1.5 text-neo-black shadow-neo-sm">
-                        {t('planContext.unsaved')}
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-black sm:text-4xl">{t('header.title')}</h1>
-                    <p className="mt-3 max-w-2xl text-sm font-medium leading-relaxed text-foreground/80">
-                      {t('header.subtitle')}
-                    </p>
-                    <p className="mt-2 max-w-2xl text-xs font-medium leading-relaxed text-muted-foreground">
-                      {t('planContext.hint')}
-                    </p>
-                  </div>
-
-                  {/* Live preview of the plan being typed. The wizard suspends
-                      the store's auto-run, so without this the first number a
-                      user ever sees is on a different page. */}
-                  <WizardLiveResult className="max-w-3xl" />
-                </div>
-
-                <div className="theme-action-strip flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                  <AuthMenu className="w-full sm:w-56" />
-                  <ThemeSwitcher className="w-full sm:w-56" />
-                  <LocaleSwitcher className="w-full sm:w-40" />
-                  <Button variant="secondary" size="sm" asChild className="min-w-[11rem]">
-                    <Link href="/simulation">{t('header.simulationLink')}</Link>
-                  </Button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        eyebrow={
+          <>
+            <span className="text-muted-foreground">
+              {t('header.badges.guide')} · {t('header.badges.time')}
+            </span>
+            {/* Which plan this session is editing — the wizard writes to a
+                working copy, never straight into the stored plan. The chip
+                turns yellow while that copy differs from the saved plan. */}
+            <span
+              data-testid="wizard-plan-context"
+              data-dirty={isDirty || undefined}
+              className={cn(
+                'inline-flex items-center gap-1.5 border-2 border-neo-black px-2.5 py-1 normal-case tracking-[0.04em] text-neo-black shadow-neo-xs',
+                isDirty ? 'bg-neo-yellow' : 'bg-neo-blue/10'
+              )}
+            >
+              <span className="font-bold">{activePlanName}</span>
+              {isDirty && (
+                <span className="font-semibold text-neo-black/70">· {t('planContext.unsaved')}</span>
+              )}
+              <InfoTip
+                content={t('planContext.hint')}
+                label={t('planContext.editing', { name: activePlanName })}
+                side="bottom"
+                iconClassName="h-3 w-3"
+              />
+            </span>
+          </>
+        }
+        title={t('header.title')}
+        subtitle={t('header.subtitle')}
+        actions={
+          <Button variant="secondary" size="sm" asChild>
+            <Link href="/simulation">{t('header.simulationLink')}</Link>
+          </Button>
+        }
+        mobileActions={
+          <>
+            <AuthMenu compact className="shrink-0" />
+            <Button variant="secondary" size="sm" asChild className="min-w-0 flex-1">
+              <Link href="/simulation">{t('header.simulationLink')}</Link>
+            </Button>
+            <HeaderControlsMenu />
+          </>
+        }
+      >
+        {/* Live preview of the plan being typed. The wizard suspends the
+            store's auto-run, so without this the first number a user ever
+            sees is on a different page. */}
+        <WizardLiveResult className="max-w-3xl" />
+      </AppHeader>
 
       <main
         id="main-content"
@@ -754,13 +756,17 @@ export default function SetupPage() {
                 />
               </div>
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                <span>
+                <span className="inline-flex items-center gap-1.5">
                   {t('progress.timeRemaining')}:{' '}
                   <span className="tabular-nums text-neo-black">
                     {t('progress.minutesRemaining', { minutes: minutesLeft })}
                   </span>
+                  <InfoTip
+                    content={t('progress.autosave')}
+                    label={t('progress.autosave')}
+                    iconClassName="h-3 w-3"
+                  />
                 </span>
-                <span className="normal-case tracking-normal">{t('progress.autosave')}</span>
               </div>
             </div>
 

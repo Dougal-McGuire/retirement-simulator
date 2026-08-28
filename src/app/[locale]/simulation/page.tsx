@@ -28,6 +28,7 @@ import { QuickAdjustBar } from '@/components/plans/QuickAdjustBar'
 import { ParameterSidebar } from '@/components/navigation/ParameterSidebar'
 import { WelcomeStrip } from '@/components/navigation/WelcomeStrip'
 import { AuthMenu } from '@/components/auth/AuthMenu'
+import { AppHeader } from '@/components/navigation/AppHeader'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { MobileMenu } from '@/components/navigation/MobileMenu'
@@ -71,11 +72,6 @@ export default function SimulationPage() {
 
   const successRate = results?.successRate
   const usesHistory = params.marketModel === 'historical'
-  const formattedRuns = useMemo(
-    () => format.number(params.simulationRuns),
-    [format, params.simulationRuns]
-  )
-
   const formattedSuccessRate = useMemo(() => {
     if (successRate == null) return null
     return format.number(successRate / 100, {
@@ -196,119 +192,77 @@ export default function SimulationPage() {
           `Simulation complete. Success rate: ${formattedSuccessRate}. ${successMessage}`}
       </div>
       {/* Header */}
-      {/* Mobile pays for every row above the first number, so the chrome is
-          tighter there and the marketing copy only appears from `sm` up. */}
-      <header
-        id="navigation"
-        className="theme-page-header relative z-10 pt-5 pb-5 sm:pt-12 sm:pb-10"
-      >
-        <div className="theme-container mx-auto max-w-[90rem] px-2 sm:px-3 lg:px-4">
-          <div className="theme-hero neo-surface relative overflow-hidden px-4 py-5 transition-neo sm:px-8 sm:py-10">
-            <div className="theme-hero-layout relative flex flex-col gap-6 sm:gap-10">
-              <div className="theme-hero-top flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex min-w-0 flex-1 flex-col gap-3 text-neo-black sm:gap-5">
-                  <div className="theme-badge-row flex flex-wrap items-center gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.32em]">
-                    <span className="neo-chip bg-neo-yellow text-neo-black shadow-neo-sm">
-                      {usesHistory
-                        ? t('header.badges.engineHistorical')
-                        : t('header.badges.engine')}
-                    </span>
-                    {/* The run count is repeated under the success gauge. */}
-                    {!usesHistory && (
-                      <span className="neo-chip hidden bg-neo-white text-muted-foreground shadow-neo-sm sm:inline-flex">
-                        {t('header.badges.runs', { count: formattedRuns })}
-                      </span>
-                    )}
-                    {/* Historical mode does not sample: the badge says how many
-                        real start years the numbers above are made of. */}
-                    {usesHistory && (
-                      <span
-                        className="neo-chip bg-neo-yellow px-2 py-1 text-[0.58rem] tracking-[0.18em] text-neo-black shadow-neo-sm"
-                        data-testid="market-model-badge"
-                      >
-                        {t('header.badges.historical', {
-                          count: format.number(HISTORICAL_PATH_COUNT),
-                        })}
-                      </span>
-                    )}
-                    <VersionInfo />
-                  </div>
-                  <div>
-                    {/* "Ruhestandssimulation" is one 20-character compound
-                        with no break opportunity: at 390px it ran straight out
-                        of the (overflow-hidden) hero. Anywhere-wrapping plus
-                        tighter tracking on small screens keeps every locale
-                        inside the card. */}
-                    <h1 className="text-2xl font-black tracking-[0.06em] [overflow-wrap:anywhere] sm:text-4xl sm:tracking-[0.14em]">
-                      {t('header.title')}
-                    </h1>
-                    <p className="mt-4 hidden max-w-2xl font-medium text-foreground/80 sm:block">
-                      {/* "live Monte Carlo confidence" is simply untrue in
-                          historical mode, where nothing is sampled. */}
-                      {usesHistory ? t('header.subtitleHistorical') : t('header.subtitle')}
-                    </p>
-                    {successMessage && (
-                      <span className="neo-chip mt-3 bg-neo-white px-3 py-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] shadow-neo-sm sm:mt-5 sm:px-5 sm:py-2 sm:text-[0.68rem] sm:tracking-[0.24em]">
-                        {successMessage}
-                      </span>
-                    )}
-                  </div>
-                  {/* One plan bar: switcher, plan actions and the state of the
-                      working copy live here and nowhere else. */}
-                  <PlanSwitcher className="max-w-3xl" />
-                </div>
-
-                {/* Desktop Actions */}
-                <div className="theme-action-strip hidden lg:flex lg:flex-col lg:gap-3">
-                  <AuthMenu className="w-48" />
-                  <LocaleSwitcher className="w-48" />
-                  {/* The dashboard is where people spend their time, and it was
-                      the one page with no way to change theme — you had to go
-                      back to the landing page to do it. */}
-                  <ThemeSwitcher className="w-48" />
-                  <GenerateReportButton
-                    results={results}
-                    params={params}
-                    disabled={isLoading}
-                    variant="secondary"
-                    size="sm"
-                    buttonClassName="w-48"
-                  />
-                  <Button variant="secondary" size="sm" asChild className="w-48">
-                    <Link href="/setup">{t('header.setupLink')}</Link>
-                  </Button>
-                </div>
-
-                {/* Mobile Actions */}
-                {/* Mobile Actions — every child either shrinks (`min-w-0`) or
-                    refuses to (`shrink-0`); without that the report button's
-                    nowrap label pushed the menu trigger past the header's
-                    right edge, where `overflow-hidden` clipped it. */}
-                <div className="theme-mobile-actions flex items-center gap-2 lg:hidden">
-                  <AuthMenu compact className="shrink-0" />
-                  <GenerateReportButton
-                    results={results}
-                    params={params}
-                    disabled={isLoading}
-                    variant="default"
-                    size="lg"
-                    wrapperClassName="min-w-0 flex-1"
-                    buttonClassName="w-full min-w-0 min-h-[44px] px-3"
-                  />
-                  <div className="shrink-0">
-                    <MobileMenu
-                      results={results}
-                      params={params}
-                      isLoading={isLoading}
-                      showSetupLink
-                    />
-                  </div>
-                </div>
-              </div>
+      <AppHeader
+        eyebrow={
+          <>
+            <span className="neo-chip bg-neo-yellow text-neo-black shadow-neo-sm">
+              {usesHistory ? t('header.badges.engineHistorical') : t('header.badges.engine')}
+            </span>
+            {/* The run count is not repeated here: it sits under the success
+                gauge, where the number it qualifies is. */}
+            {/* Historical mode does not sample: the badge says how many real
+                start years the numbers above are made of. */}
+            {usesHistory && (
+              <span
+                className="neo-chip bg-neo-yellow px-2 py-1 text-[0.58rem] tracking-[0.18em] text-neo-black shadow-neo-sm"
+                data-testid="market-model-badge"
+              >
+                {t('header.badges.historical', {
+                  count: format.number(HISTORICAL_PATH_COUNT),
+                })}
+              </span>
+            )}
+            <VersionInfo />
+          </>
+        }
+        title={t('header.title')}
+        // "live Monte Carlo confidence" is simply untrue in historical mode,
+        // where nothing is sampled.
+        subtitle={usesHistory ? t('header.subtitleHistorical') : t('header.subtitle')}
+        actions={
+          <>
+            <GenerateReportButton
+              results={results}
+              params={params}
+              disabled={isLoading}
+              variant="secondary"
+              size="sm"
+            />
+            <Button variant="secondary" size="sm" asChild>
+              <Link href="/setup">{t('header.setupLink')}</Link>
+            </Button>
+          </>
+        }
+        // Every child either shrinks (`min-w-0`) or refuses to (`shrink-0`);
+        // without that the report button's nowrap label pushed the menu
+        // trigger past the header's right edge.
+        mobileActions={
+          <>
+            <AuthMenu compact className="shrink-0" />
+            <GenerateReportButton
+              results={results}
+              params={params}
+              disabled={isLoading}
+              variant="default"
+              size="lg"
+              wrapperClassName="min-w-0 flex-1"
+              buttonClassName="w-full min-w-0 min-h-[44px] px-3"
+            />
+            <div className="shrink-0">
+              <MobileMenu results={results} params={params} isLoading={isLoading} showSetupLink />
             </div>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      >
+        {successMessage && (
+          <span className="neo-chip w-fit bg-neo-white px-3 py-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] shadow-neo-sm sm:px-5 sm:py-2 sm:text-[0.68rem] sm:tracking-[0.2em]">
+            {successMessage}
+          </span>
+        )}
+        {/* One plan bar: switcher, plan actions and the state of the working
+            copy live here and nowhere else. */}
+        <PlanSwitcher className="max-w-3xl" />
+      </AppHeader>
 
       <main
         id="main-content"
