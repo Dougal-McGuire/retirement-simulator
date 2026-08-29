@@ -25,20 +25,12 @@ import { CashflowCard } from '@/components/charts/CashflowCard'
 import { ScenarioList } from '@/components/charts/ScenarioList'
 import { RecommendationList } from '@/components/charts/RecommendationList'
 
-type TabValue = 'overview' | 'plan' | 'cashflow' | 'scenarios'
+type TabValue = 'overview' | 'plan' | 'cashflow' | 'scenarios' | 'compare'
+const TABS: TabValue[] = ['overview', 'plan', 'cashflow', 'scenarios', 'compare']
 
-const TABS: TabValue[] = ['overview', 'plan', 'cashflow', 'scenarios']
-
-/**
- * The simulation dashboard, rebuilt to the compact design handoff:
- * screen 1b (merged command bar, inline KPI strip, fan chart above the fold)
- * with screen 1c (plan compare) one click away. The former Plan / Cash flow /
- * Scenario tab bodies stay available under the new chrome.
- */
 export default function SimulationPage() {
   const t = useTranslations('simulationCompact')
   const format = useFormatter()
-
   const params = useSimulationParams()
   const results = useSimulationResults()
   const isLoading = useSimulationLoading()
@@ -46,20 +38,12 @@ export default function SimulationPage() {
   const resultsComputedAt = useSimulationStore((state) => state.resultsComputedAt)
   const plans = usePlans()
   const displayReal = useDisplayReal()
-
   const [activeTab, setActiveTab] = useState<TabValue>('overview')
   const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [compareMode, setCompareMode] = useState(false)
 
-  // Run the initial simulation once — but only after the persisted store has
-  // rehydrated. Firing on bare mount raced the async localStorage rehydration
-  // and could overwrite persisted results with a default-params run (the race
-  // was latent for as long as webfonts and the theme init script delayed the
-  // first React tick; the design-system rollout removed both).
   useEffect(() => {
     const runIfEmpty = () => {
-      const { results: current, isLoading: loading, runSimulation: run } =
-        useSimulationStore.getState()
+      const { results: current, isLoading: loading, runSimulation: run } = useSimulationStore.getState()
       if (!current && !loading) run()
     }
     if (useSimulationStore.persist.hasHydrated()) {
@@ -69,7 +53,6 @@ export default function SimulationPage() {
     return useSimulationStore.persist.onFinishHydration(runIfEmpty)
   }, [])
 
-  // The mockup's "Run [R]" keyboard shortcut. Ignored while typing.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'r' && event.key !== 'R') return
@@ -83,166 +66,103 @@ export default function SimulationPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [runSimulation])
 
-  // Wall-clock duration of the last run, for the meta line ("0,4 s").
   const runStartRef = useRef<number | null>(null)
   const [runSeconds, setRunSeconds] = useState<number | null>(null)
   useEffect(() => {
-    if (isLoading) {
-      runStartRef.current = performance.now()
-    } else if (runStartRef.current != null) {
+    if (isLoading) runStartRef.current = performance.now()
+    else if (runStartRef.current != null) {
       setRunSeconds((performance.now() - runStartRef.current) / 1000)
       runStartRef.current = null
     }
   }, [isLoading])
 
-
   const kpis = useMemo(
     () => (results ? buildCompactKpis(params, results, { displayReal }) : null),
     [params, results, displayReal]
   )
-
   const successRate = results?.successRate ?? null
-  const formattedSuccessRate =
-    successRate == null
-      ? null
-      : format.number(successRate / 100, {
-          style: 'percent',
-          minimumFractionDigits: 0,
-          maximumFractionDigits: successRate % 1 === 0 ? 0 : 1,
-        })
-
+  const formattedSuccessRate = successRate == null ? null : format.number(successRate / 100, {
+    style: 'percent', minimumFractionDigits: 0, maximumFractionDigits: successRate % 1 === 0 ? 0 : 1,
+  })
   const metaLine = [
     t('meta.live'),
     t('meta.runs', { count: format.number(effectiveRunCount(params)) }),
-    runSeconds != null
-      ? t('meta.seconds', {
-          seconds: format.number(runSeconds, { maximumFractionDigits: 1, minimumFractionDigits: 1 }),
-        })
-      : null,
+    runSeconds != null ? t('meta.seconds', { seconds: format.number(runSeconds, { maximumFractionDigits: 1, minimumFractionDigits: 1 }) }) : null,
     t('meta.plans', { count: format.number(plans.length), max: format.number(MAX_PLANS) }),
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  ].filter(Boolean).join(' · ')
 
   return (
     <div className="app-page app-page-simulation" style={{ minHeight: '100vh', background: 'var(--canvas)' }}>
-      {/* Live region for screen readers to announce simulation results */}
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {successRate != null && t('srComplete', { rate: formattedSuccessRate ?? '' })}
       </div>
 
-      {compareMode ? (
-        <CompareView
-          onExit={() => setCompareMode(false)}
-          onOpenPlanEditor={() => {
-            setCompareMode(false)
-            setActiveTab('plan')
-          }}
+      <div style={{ position: 'sticky', top: 0, zIndex: 20 }}>
+        <CompactCommandBar
+          successRate={successRate}
+          isLoading={isLoading}
+          advancedOpen={advancedOpen}
+          onToggleAdvanced={() => setAdvancedOpen((open) => !open)}
+          onRun={() => runSimulation()}
         />
-      ) : (
-        <>
-          {/* Sticky chrome: the levers and the verdict stay on screen. */}
-          <div style={{ position: 'sticky', top: 0, zIndex: 20 }}>
-            <CompactCommandBar
-              successRate={successRate}
-              isLoading={isLoading}
-              advancedOpen={advancedOpen}
-              onToggleAdvanced={() => setAdvancedOpen((open) => !open)}
-              onRun={() => runSimulation()}
-            />
-            {advancedOpen && <AdvancedParamsPanel onOpenFullEditor={() => setActiveTab('plan')} />}
-          </div>
+        {advancedOpen && <AdvancedParamsPanel onOpenFullEditor={() => setActiveTab('plan')} />}
+      </div>
 
-          {/* tabs + meta */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0 14px',
-              background: 'var(--surface)',
-              borderBottom: '1px solid var(--line)',
-              gap: 14,
-            }}
-          >
-            <div className="ds-tabs" style={{ borderBottom: 0, gap: 14 }} role="tablist">
-              {TABS.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  role="tab"
-                  className="ds-tab"
-                  aria-selected={activeTab === tab}
-                  data-testid={`tab-${tab}`}
-                  onClick={() => setActiveTab(tab)}
-                >
-                  {t(`tabs.${tab}`)}
-                </button>
-              ))}
-            </div>
+      <div style={{ display: 'flex', alignItems: 'center', minHeight: 48, padding: '0 14px', background: 'var(--surface)', borderBottom: '1px solid var(--line)', gap: 14, overflowX: 'auto' }}>
+        <div className="ds-tabs" style={{ borderBottom: 0, gap: 6, minHeight: 48 }} role="tablist" aria-label={t('navigationLabel')}>
+          {TABS.map((tab) => (
             <button
+              key={tab}
               type="button"
-              className="ds-btn ds-btn--outline ds-btn--sm"
-              data-testid="enter-compare"
-              onClick={() => setCompareMode(true)}
+              role="tab"
+              className="ds-tab"
+              aria-selected={activeTab === tab}
+              data-testid={tab === 'compare' ? 'enter-compare' : `tab-${tab}`}
+              onClick={() => setActiveTab(tab)}
+              style={{ minHeight: 44, padding: '0 14px', fontSize: 13, fontWeight: 650, whiteSpace: 'nowrap' }}
             >
-              {t('compareButton')}
+              {tab === 'compare' ? t('compareButton') : t(`tabs.${tab}`)}
             </button>
-            <div style={{ flex: 1 }} />
-            <span className="ds-meta" style={{ whiteSpace: 'nowrap' }}>
-              {metaLine}
-            </span>
-          </div>
+          ))}
+        </div>
+        <div style={{ flex: 1 }} />
+        <span className="ds-meta" style={{ whiteSpace: 'nowrap' }}>{metaLine}</span>
+      </div>
 
-          {/* KPI strip — chart-derived numbers, so it needs results */}
-          {results && kpis && (
-            <KpiStrip kpis={kpis} endAge={params.endAge} resultsComputedAt={resultsComputedAt} />
-          )}
-
-          <main id="main-content">
-            {activeTab === 'overview' && (
-              <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {results && kpis ? (
-                  <>
-                    <FanChartCard results={results} displayReal={displayReal} />
-                    <BottomStrip
-                      params={params}
-                      results={results}
-                      kpis={kpis}
-                      onOpenFullEditor={() => setActiveTab('plan')}
-                    />
-                  </>
-                ) : (
-                  <div
-                    className="ds-card"
-                    style={{ height: 250, display: 'grid', placeItems: 'center' }}
-                  >
-                    <span className="ds-meta">{t('computing')}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Existing tab bodies keep their functionality under the new chrome. */}
-            {activeTab === 'plan' && (
-              <div style={{ padding: '10px 14px' }}>
-                <PlanEditor />
-              </div>
-            )}
-            {activeTab === 'cashflow' && results && (
-              <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <SpendingSection results={results} />
-                <CashflowCard params={params} results={results} />
-              </div>
-            )}
-            {activeTab === 'scenarios' && (
-              <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <ScenarioList params={params} results={results} isLoading={isLoading} />
-                <RecommendationList params={params} results={results} />
-              </div>
-            )}
-          </main>
-        </>
+      {activeTab !== 'compare' && results && kpis && (
+        <KpiStrip kpis={kpis} endAge={params.endAge} resultsComputedAt={resultsComputedAt} />
       )}
+
+      <main id="main-content">
+        {activeTab === 'overview' && (
+          <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {results && kpis ? (
+              <>
+                <FanChartCard results={results} displayReal={displayReal} />
+                <BottomStrip params={params} results={results} kpis={kpis} onOpenFullEditor={() => setActiveTab('plan')} />
+              </>
+            ) : (
+              <div className="ds-card" style={{ height: 250, display: 'grid', placeItems: 'center' }}><span className="ds-meta">{t('computing')}</span></div>
+            )}
+          </div>
+        )}
+        {activeTab === 'plan' && <div style={{ padding: '12px 14px' }}><PlanEditor /></div>}
+        {activeTab === 'cashflow' && results && (
+          <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <SpendingSection results={results} />
+            <CashflowCard params={params} results={results} />
+          </div>
+        )}
+        {activeTab === 'scenarios' && (
+          <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <ScenarioList params={params} results={results} isLoading={isLoading} />
+            <RecommendationList params={params} results={results} />
+          </div>
+        )}
+        {activeTab === 'compare' && (
+          <CompareView onExit={() => setActiveTab('overview')} onOpenPlanEditor={() => setActiveTab('plan')} />
+        )}
+      </main>
     </div>
   )
 }
