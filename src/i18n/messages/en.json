@@ -589,7 +589,8 @@
       "setup": "Setup",
       "run": "Run",
       "successAria": "Success rate",
-      "unsavedSwitch": "Switch plans and discard unsaved changes?"
+      "unsavedSwitch": "Switch plans and discard unsaved changes?",
+      "saveButton": "Save"
     },
     "advanced": {
       "volatility": "Volatility",

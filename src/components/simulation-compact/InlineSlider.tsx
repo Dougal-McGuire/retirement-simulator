@@ -38,7 +38,18 @@ export function InlineSlider({
   onChange,
 }: InlineSliderProps) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 7, width }}>
+    // The design width is the target; on narrower viewports the track gives up
+    // to 45px before anything else in the bar has to wrap.
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 7,
+        flex: '1 1 auto',
+        maxWidth: width,
+        minWidth: width - 45,
+      }}
+    >
       <span
         style={{
           fontSize: 11,
