@@ -110,10 +110,10 @@ export function CompactCommandBar({
     successRate == null ? 'ok' : successRate >= 90 ? 'ok' : successRate >= 75 ? 'warn' : 'danger'
   const pillClass =
     successTone === 'ok'
-      ? 'simx-pill'
+      ? 'ds-pill'
       : successTone === 'warn'
-        ? 'simx-pill simx-pill--warn'
-        : 'simx-pill simx-pill--danger'
+        ? 'ds-pill ds-pill--warn'
+        : 'ds-pill ds-pill--danger'
 
   return (
     <header
@@ -238,7 +238,7 @@ export function CompactCommandBar({
       </Link>
       {successRate != null && (
         <span className={pillClass} aria-label={t('successAria')} data-testid="success-pill">
-          <span className="simx-pill-dot" />
+          <span className="ds-pill-dot" />
           {format.number(successRate / 100, {
             style: 'percent',
             minimumFractionDigits: 0,

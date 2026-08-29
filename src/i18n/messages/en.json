@@ -197,15 +197,6 @@
       "de": "Deutsch"
     }
   },
-  "themeSwitcher": {
-    "label": "Theme",
-    "options": {
-      "neo": "Neo Brutal",
-      "klar": "Clear",
-      "elegant": "Elegant",
-      "spiel": "Playful"
-    }
-  },
   "setup": {
     "header": {
       "title": "Setup",

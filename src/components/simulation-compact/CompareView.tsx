@@ -46,7 +46,7 @@ function deltaBadge(
   key?: string | number
 ) {
   return (
-    <span key={key} className={`simx-delta simx-delta--${tone}`}>
+    <span key={key} className={`ds-delta ds-delta--${tone}`}>
       {text}
     </span>
   )

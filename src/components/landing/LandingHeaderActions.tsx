@@ -10,7 +10,6 @@ import { useAuthEnabled } from '@/components/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
 import { HeaderControlsMenu } from '@/components/navigation/HeaderControlsMenu'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
-import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { Link, useRouter } from '@/navigation'
 
 /** Where a sign-in started on the landing page ends up. */
@@ -104,7 +103,6 @@ function SessionAwareActions() {
         signInRedirectTo={DASHBOARD_PATH}
         hideWhenUnavailable
       />
-      <ThemeSwitcher className="hidden lg:flex" />
       <LocaleSwitcher className="hidden w-auto px-3 tracking-[0.08em] lg:flex" />
       <HeaderControlsMenu className="lg:hidden" signInRedirectTo={DASHBOARD_PATH} />
       <PrimaryCta signedIn={signedIn} />
@@ -124,7 +122,6 @@ export function LandingHeaderActions() {
   if (!enabled) {
     return (
       <>
-        <ThemeSwitcher className="hidden lg:flex" />
         <LocaleSwitcher className="hidden w-auto px-3 tracking-[0.08em] lg:flex" />
         <HeaderControlsMenu className="lg:hidden" />
         <PrimaryCta signedIn={false} />

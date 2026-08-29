@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
-import '@/components/simulation-compact/simulation-compact.css'
 import {
   usePlans,
   useSimulationLoading,
@@ -53,12 +52,22 @@ export default function SimulationPage() {
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [compareMode, setCompareMode] = useState(false)
 
-  // Run initial simulation if no results exist (first visit, or params changed
-  // and results were invalidated).
+  // Run the initial simulation once — but only after the persisted store has
+  // rehydrated. Firing on bare mount raced the async localStorage rehydration
+  // and could overwrite persisted results with a default-params run (the race
+  // was latent for as long as webfonts and the theme init script delayed the
+  // first React tick; the design-system rollout removed both).
   useEffect(() => {
-    if (!results && !isLoading) {
-      runSimulation()
+    const runIfEmpty = () => {
+      const { results: current, isLoading: loading, runSimulation: run } =
+        useSimulationStore.getState()
+      if (!current && !loading) run()
     }
+    if (useSimulationStore.persist.hasHydrated()) {
+      runIfEmpty()
+      return
+    }
+    return useSimulationStore.persist.onFinishHydration(runIfEmpty)
   }, [])
 
   // The mockup's "Run [R]" keyboard shortcut. Ignored while typing.
@@ -87,23 +96,6 @@ export default function SimulationPage() {
     }
   }, [isLoading])
 
-  /**
-   * One visual language on this page. The legacy tab bodies (plan editor,
-   * cash-flow lists, scenario cards) and every portaled overlay (dialogs,
-   * select popovers, toasts) restyle through the app's `data-theme` machinery,
-   * so the hairline analyst theme is pinned while this page is mounted and
-   * `.simx` re-tunes its variables to the handoff's exact tokens. The stored
-   * theme preference is untouched; whatever was active comes back on unmount.
-   */
-  useEffect(() => {
-    const root = document.documentElement
-    const previous = root.dataset.theme
-    root.dataset.theme = 'klar'
-    return () => {
-      if (previous === undefined) delete root.dataset.theme
-      else root.dataset.theme = previous
-    }
-  }, [])
 
   const kpis = useMemo(
     () => (results ? buildCompactKpis(params, results, { displayReal }) : null),
@@ -134,7 +126,7 @@ export default function SimulationPage() {
     .join(' · ')
 
   return (
-    <div className="simx app-page app-page-simulation" style={{ minHeight: '100vh', background: 'var(--canvas)' }}>
+    <div className="app-page app-page-simulation" style={{ minHeight: '100vh', background: 'var(--canvas)' }}>
       {/* Live region for screen readers to announce simulation results */}
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {successRate != null && t('srComplete', { rate: formattedSuccessRate ?? '' })}

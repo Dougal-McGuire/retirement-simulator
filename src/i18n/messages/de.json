@@ -197,15 +197,6 @@
       "de": "Deutsch"
     }
   },
-  "themeSwitcher": {
-    "label": "Design",
-    "options": {
-      "neo": "Neo Brutal",
-      "klar": "Klar",
-      "elegant": "Elegant",
-      "spiel": "Verspielt"
-    }
-  },
   "setup": {
     "header": {
       "title": "Einrichtung",

@@ -51,18 +51,18 @@ export function InlineSlider({
         {label}
       </span>
       <SliderPrimitive.Root
-        className="simx-slider"
+        className="ds-slider"
         value={[value]}
         min={min}
         max={max}
         step={step}
         onValueChange={([next]) => onChange(next)}
       >
-        <SliderPrimitive.Track className="simx-slider-track">
-          <SliderPrimitive.Range className="simx-slider-range" />
+        <SliderPrimitive.Track className="ds-slider-track">
+          <SliderPrimitive.Range className="ds-slider-range" />
         </SliderPrimitive.Track>
         <SliderPrimitive.Thumb
-          className="simx-slider-thumb"
+          className="ds-slider-thumb"
           aria-label={ariaLabel}
           aria-valuetext={valueText ?? formattedValue}
         />
