@@ -117,9 +117,9 @@ const sanitizeNumberInput = (rawValue: string): number => {
 const isClose = (a: number, b: number, epsilon = 0.0005) => Math.abs(a - b) <= epsilon
 
 const FIELD_INPUT_CLASS =
-  'h-11 border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em]'
+  'rounded-sm h-11 border-2 border-border bg-white px-3 py-2 text-[0.72rem] font-semibold  '
 const COMPACT_INPUT_CLASS =
-  'h-10 w-24 border-2 border-neo-black bg-neo-white px-2 text-right text-[0.68rem] font-semibold uppercase tracking-[0.12em]'
+  'rounded-sm h-10 w-24 border-2 border-border bg-white px-2 text-right text-[0.68rem] font-semibold  '
 
 // Helper component for parameters with tooltips
 interface ParameterFieldProps {
@@ -132,7 +132,7 @@ function ParameterField({ label, tooltip, children }: ParameterFieldProps) {
   return (
     <div>
       <div className="mb-2 flex items-center gap-2">
-        <Label className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-neo-black">
+        <Label className="text-[0.68rem] font-semibold   text-ink">
           {label}
         </Label>
         <TooltipProvider>
@@ -140,7 +140,7 @@ function ParameterField({ label, tooltip, children }: ParameterFieldProps) {
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="inline-flex h-5 w-5 items-center justify-center text-muted-foreground/70 transition-colors hover:text-neo-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neo-blue focus-visible:ring-offset-2 focus-visible:ring-offset-neo-white"
+                className="inline-flex h-5 w-5 items-center justify-center text-muted-foreground/70 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 aria-label={tooltip}
               >
                 <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
@@ -148,9 +148,9 @@ function ParameterField({ label, tooltip, children }: ParameterFieldProps) {
             </TooltipTrigger>
             <TooltipContent
               side="right"
-              className="max-w-xs border-4 border-neo-black bg-neo-white px-3 py-2 text-neo-black shadow-neo"
+              className="max-w-xs border-4 border-border bg-white px-3 py-2 text-ink shadow-sm"
             >
-              <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] leading-relaxed">
+              <p className="text-[0.6rem] font-semibold   leading-relaxed">
                 {tooltip}
               </p>
             </TooltipContent>
@@ -183,14 +183,14 @@ function CollapsibleSection({
       <CollapsibleTrigger asChild>
         <Button
           variant="outline"
-          className="flex h-auto min-h-16 w-full items-center justify-between border-3 border-neo-black bg-neo-white px-6 py-4 text-left text-[0.74rem] font-extrabold uppercase tracking-[0.14em] text-neo-black shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md whitespace-normal"
+          className="rounded-sm flex h-auto min-h-16 w-full items-center justify-between border border-border bg-white px-6 py-4 text-left text-[0.74rem] font-extrabold   text-ink shadow-sm hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-sm whitespace-normal"
         >
           <div className="flex flex-1 flex-col items-start gap-1 pr-2 overflow-hidden min-w-0">
-            <span className="text-left text-[0.82rem] font-extrabold uppercase tracking-[0.14em] leading-tight break-words w-full">
+            <span className="text-left text-[0.82rem] font-extrabold   leading-tight break-words w-full">
               {title}
             </span>
             {description && (
-              <span className="text-left text-[0.6rem] font-semibold uppercase tracking-[0.08em] leading-tight text-muted-foreground break-words w-full">
+              <span className="text-left text-[0.6rem] font-semibold   leading-tight text-muted-foreground break-words w-full">
                 {description}
               </span>
             )}
@@ -518,10 +518,10 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
   }
 
   return (
-    <Card className="w-full min-w-0 border-3 border-neo-black bg-neo-white shadow-neo">
+    <Card className="rounded-sm w-full min-w-0 border border-border bg-white shadow-sm">
       {!hideHeading && (
-        <CardHeader className="border-b-3 border-neo-black bg-neo-white px-6 py-5">
-          <CardTitle className="text-[1.05rem] font-black uppercase tracking-[0.22em] text-neo-black">
+        <CardHeader className="border-b border-border bg-white px-6 py-5">
+          <CardTitle className="text-[1.05rem] font-black   text-ink">
             {t('title')}
           </CardTitle>
         </CardHeader>
@@ -529,7 +529,7 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
       <CardContent className="space-y-8 p-4 sm:p-6">
         <section className="grid gap-6">
           <div className="space-y-3">
-            <h4 className="text-[0.78rem] font-extrabold uppercase tracking-[0.2em] text-neo-black">
+            <h4 className="text-[0.78rem] font-extrabold   text-ink">
               {t('presets.investment.title')}
             </h4>
             <Select
@@ -543,19 +543,19 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
               <SelectTrigger
                 size="sm"
                 aria-label={t('presets.investment.title')}
-                className="h-auto min-h-10 justify-between bg-neo-white py-2"
+                className="h-auto min-h-10 justify-between bg-white py-2"
               >
                 <SelectValue placeholder={t('presets.investment.placeholder')}>
                   {investmentPresetKey ? (
-                    <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em]">
+                    <span className="text-[0.68rem] font-extrabold  ">
                       {t(`presets.investment.items.${investmentPresetKey}.name`)}
                     </span>
                   ) : (
                     <div className="flex flex-col items-start gap-1">
-                      <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+                      <span className="text-[0.68rem] font-extrabold   text-ink">
                         {t('customConfiguration')}
                       </span>
-                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                      <span className="text-[0.6rem] font-semibold   text-muted-foreground">
                         {formatPercent(params.averageROI)} ROI · σ{' '}
                         {formatPercent(params.roiVolatility)}
                       </span>
@@ -567,13 +567,13 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
                 {INVESTMENT_PRESETS.map((preset) => (
                   <SelectItem key={preset.key} value={preset.key}>
                     <div className="flex flex-col gap-1">
-                      <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.18em]">
+                      <span className="text-[0.68rem] font-extrabold  ">
                         {t(`presets.investment.items.${preset.key}.name`)}
                       </span>
-                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <span className="text-[0.6rem] font-semibold   text-muted-foreground">
                         {t(`presets.investment.items.${preset.key}.description`)}
                       </span>
-                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <span className="text-[0.6rem] font-semibold   text-muted-foreground">
                         {formatPercent(preset.values.averageROI)} · σ{' '}
                         {formatPercent(preset.values.roiVolatility)}
                       </span>
@@ -585,7 +585,7 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-[0.78rem] font-extrabold uppercase tracking-[0.2em] text-neo-black">
+            <h4 className="text-[0.78rem] font-extrabold   text-ink">
               {t('presets.inflation.title')}
             </h4>
             <Select
@@ -599,19 +599,19 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
               <SelectTrigger
                 size="sm"
                 aria-label={t('presets.inflation.title')}
-                className="h-auto min-h-10 justify-between bg-neo-white py-2"
+                className="h-auto min-h-10 justify-between bg-white py-2"
               >
                 <SelectValue placeholder={t('presets.inflation.placeholder')}>
                   {inflationPresetKey ? (
-                    <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em]">
+                    <span className="text-[0.68rem] font-extrabold  ">
                       {t(`presets.inflation.items.${inflationPresetKey}.name`)}
                     </span>
                   ) : (
                     <div className="flex flex-col items-start gap-1">
-                      <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+                      <span className="text-[0.68rem] font-extrabold   text-ink">
                         {t('customConfiguration')}
                       </span>
-                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                      <span className="text-[0.6rem] font-semibold   text-muted-foreground">
                         {formatPercent(params.averageInflation)} · σ{' '}
                         {formatPercent(params.inflationVolatility)}
                       </span>
@@ -623,13 +623,13 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
                 {INFLATION_PRESETS.map((preset) => (
                   <SelectItem key={preset.key} value={preset.key}>
                     <div className="flex flex-col gap-1">
-                      <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.18em]">
+                      <span className="text-[0.68rem] font-extrabold  ">
                         {t(`presets.inflation.items.${preset.key}.name`)}
                       </span>
-                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <span className="text-[0.6rem] font-semibold   text-muted-foreground">
                         {t(`presets.inflation.items.${preset.key}.description`)}
                       </span>
-                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <span className="text-[0.6rem] font-semibold   text-muted-foreground">
                         {formatPercent(preset.values.averageInflation)} · σ{' '}
                         {formatPercent(preset.values.inflationVolatility)}
                       </span>
@@ -642,14 +642,14 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
         </section>
 
         <Tabs defaultValue="personal" className="w-full">
-          <div className="border-3 border-neo-black shadow-neo-sm">
-            <TabsList className="grid grid-cols-3 border-b border-neo-black divide-x-[3px] divide-neo-black bg-neo-white">
+          <div className="rounded-sm border border-border shadow-sm">
+            <TabsList className="grid grid-cols-3 border-b border-border divide-x-[3px] divide-border bg-white">
               <TabsTrigger value="personal">{t('tabs.personal')}</TabsTrigger>
               <TabsTrigger value="financial">{t('tabs.financial')}</TabsTrigger>
               <TabsTrigger value="simulation">{t('tabs.simulation')}</TabsTrigger>
             </TabsList>
 
-            <div className="border-t-3 border-neo-black bg-neo-white p-6">
+            <div className="border-t border-border bg-white p-6">
               {/* Personal Information Tab */}
               <TabsContent value="personal" className="space-y-6">
                 <CollapsibleSection
@@ -694,21 +694,21 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
                       />
 
                       {/* Enhanced working years display */}
-                      <div className="mt-4 border-3 border-neo-black bg-gradient-to-r from-neo-blue/10 to-neo-yellow/10 p-4 shadow-neo-sm">
+                      <div className="rounded-sm mt-4 border border-border bg-gradient-to-r from-accent/10 to-amber/10 p-4 shadow-sm">
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex-1">
-                            <div className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground mb-1">
+                            <div className="text-[0.62rem] font-semibold   text-muted-foreground mb-1">
                               {t('workingYearsRemaining')}
                             </div>
-                            <div className="text-[1.2rem] font-black uppercase tracking-[0.14em] text-neo-black">
+                            <div className="text-[1.2rem] font-black   text-ink">
                               {t('workingYears', { count: remainingWorkingYears })}
                             </div>
                           </div>
                           <div className="flex flex-col gap-1 text-right">
-                            <div className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-neo-blue">
+                            <div className="text-[0.58rem] font-bold   text-accent">
                               {t('accumulationPhase')}
                             </div>
-                            <div className="text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                            <div className="text-[0.58rem] font-semibold   text-muted-foreground">
                               {t('agesRange', {
                                 start: params.currentAge,
                                 end: params.retirementAge,
@@ -720,13 +720,13 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
                         {/* Visual timeline */}
                         <div className="mt-3 flex items-center gap-2">
                           <div
-                            className="h-2 bg-neo-blue border-2 border-neo-black transition-all duration-300"
+                            className="rounded-sm h-2 bg-accent border-2 border-border transition-all duration-300"
                             style={{
                               width: `${Math.max(10, (remainingWorkingYears / (params.endAge - params.currentAge)) * 100)}%`,
                             }}
                           />
-                          <div className="h-2 flex-1 bg-neo-yellow/30 border-2 border-neo-black" />
-                          <div className="text-[0.58rem] font-bold uppercase tracking-[0.1em] text-muted-foreground whitespace-nowrap">
+                          <div className="rounded-sm h-2 flex-1 bg-amber/15 border-2 border-border" />
+                          <div className="text-[0.58rem] font-bold   text-muted-foreground whitespace-nowrap">
                             {t('retirementYears', { years: params.endAge - params.retirementAge })}
                           </div>
                         </div>
@@ -980,7 +980,7 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
                         hint={`σ = ${formatPercent(params.roiVolatility)}`}
                         {...getSliderAriaLabels(t('fields.roiVolatility.label'))}
                       />
-                      <div className="text-center text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground border-2 border-neo-black bg-neo-blue/5 px-3 py-2">
+                      <div className="rounded-sm text-center text-[0.6rem] font-semibold   text-muted-foreground border-2 border-border bg-accent/5 px-3 py-2">
                         {t('fields.roiVolatility.range', {
                           range: '68%',
                           lower: formatPercent(params.averageROI - params.roiVolatility),
@@ -1046,13 +1046,13 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
                             type="button"
                             variant={isSelected ? 'default' : 'outline'}
                             onClick={() => handleWithdrawalStrategyChange(strategy)}
-                            className="h-auto min-h-16 flex-col items-start gap-1 whitespace-normal px-4 py-3 text-left tracking-[0.12em]"
+                            className="h-auto min-h-16 flex-col items-start gap-1 whitespace-normal px-4 py-3 text-left "
                             aria-pressed={isSelected}
                           >
                             <span className="text-[0.72rem] font-extrabold">
                               {t(`fields.withdrawalStrategy.options.${strategy}.label`)}
                             </span>
-                            <span className="text-[0.58rem] font-semibold leading-snug tracking-[0.08em] opacity-80">
+                            <span className="text-[0.58rem] font-semibold leading-snug  opacity-80">
                               {t(`fields.withdrawalStrategy.options.${strategy}.description`)}
                             </span>
                           </Button>
@@ -1136,9 +1136,9 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
                         formatValue={(value) => formatNumber(value)}
                         {...getSliderAriaLabels(t('fields.simulationRuns.label'))}
                       />
-                      <div className="text-center border-2 border-neo-black px-3 py-2">
+                      <div className="rounded-sm text-center border-2 border-border px-3 py-2">
                         <span
-                          className={`text-[0.68rem] font-extrabold uppercase tracking-[0.12em] ${
+                          className={`text-[0.68rem] font-extrabold   ${
                             params.simulationRuns >= 1000
                               ? 'text-green-600'
                               : params.simulationRuns >= 500
@@ -1166,21 +1166,21 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
           <div className="space-y-4">
             {/* Named Setups */}
             <div className="space-y-2">
-              <h4 className="text-[0.75rem] font-extrabold uppercase tracking-[0.18em]">
+              <h4 className="text-[0.75rem] font-extrabold  ">
                 {t('saved.title')}
               </h4>
               {lastLoadedSetup && (
-                <div className="rounded-md border-2 border-neo-black bg-neo-blue/10 px-3 py-2">
+                <div className="rounded-md border-2 border-border bg-accent/10 px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                      <span className="text-[0.6rem] font-semibold   text-muted-foreground">
                         {t('currentlyLoaded')}
                       </span>
-                      <span className="text-[0.72rem] font-bold uppercase tracking-[0.12em] text-neo-black">
+                      <span className="text-[0.72rem] font-bold   text-ink">
                         {lastLoadedSetup.name}
                       </span>
                     </div>
-                    <span className="text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                    <span className="text-[0.58rem] font-semibold   text-muted-foreground">
                       {format.dateTime(new Date(lastLoadedSetup.timestamp), {
                         month: 'short',
                         day: 'numeric',
@@ -1256,10 +1256,10 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
                       {savedSetups.length === 0 ? (
                         <SelectItem value="__placeholder" disabled>
                           <div className="py-2 text-center">
-                            <div className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                            <div className="text-[0.68rem] font-bold   text-muted-foreground">
                               {t('noSetupsYet')}
                             </div>
-                            <div className="mt-1 text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+                            <div className="mt-1 text-[0.58rem] font-semibold   text-muted-foreground/70">
                               {t('saveAsHint')}
                             </div>
                           </div>
@@ -1272,9 +1272,9 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
                                 className="flex items-center gap-2 flex-1"
                                 onClick={() => handleLoadSetup(setup.id)}
                               >
-                                <div className="rounded border-2 border-neo-black bg-neo-blue/10 p-1">
+                                <div className="rounded border-2 border-border bg-accent/10 p-1">
                                   <svg
-                                    className="h-3 w-3 text-neo-blue"
+                                    className="h-3 w-3 text-accent"
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"
@@ -1288,10 +1288,10 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
                                   </svg>
                                 </div>
                                 <div className="flex flex-col text-left">
-                                  <span className="text-[0.68rem] font-semibold uppercase tracking-[0.12em]">
+                                  <span className="text-[0.68rem] font-semibold  ">
                                     {setup.name}
                                   </span>
-                                  <div className="flex items-center gap-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                                  <div className="flex items-center gap-1.5 text-[0.58rem] font-semibold   text-muted-foreground">
                                     <svg
                                       className="h-2.5 w-2.5"
                                       fill="none"
@@ -1311,7 +1311,7 @@ export function ParameterControls({ hideHeading = false }: ParameterControlsProp
                               </div>
                               <button
                                 type="button"
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-md bg-neo-white text-muted-foreground shadow-neo-sm hover:bg-neo-red hover:text-neo-white transition-colors"
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-md bg-white text-muted-foreground shadow-sm hover:bg-danger hover:text-white transition-colors"
                                 onMouseDown={(event) => {
                                   event.preventDefault()
                                   event.stopPropagation()

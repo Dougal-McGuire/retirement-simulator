@@ -44,12 +44,12 @@ export function WelcomeStrip({ onOpenTab, className }: WelcomeStripProps) {
       data-testid="welcome-strip"
       aria-label={t('title')}
       className={cn(
-        'relative border-3 border-neo-black bg-neo-yellow/25 px-4 py-3 shadow-neo-sm',
+        'rounded-sm relative border border-border bg-amber/15 px-4 py-3 shadow-sm',
         className
       )}
     >
       <div className="flex flex-col gap-3 pr-8 sm:flex-row sm:items-center sm:gap-4">
-        <p className="shrink-0 text-[0.68rem] font-black uppercase tracking-[0.18em] text-neo-black">
+        <p className="shrink-0 text-[0.68rem] font-black   text-ink">
           {t('title')}
         </p>
         <ul className="flex list-none flex-col gap-2 p-0 sm:flex-row sm:flex-wrap sm:items-center">
@@ -57,7 +57,7 @@ export function WelcomeStrip({ onOpenTab, className }: WelcomeStripProps) {
             const label = t(`chips.${key}`)
             const content = (
               <>
-                <Icon className="h-3.5 w-3.5 shrink-0 text-neo-blue" aria-hidden="true" />
+                <Icon className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
                 {label}
               </>
             )
@@ -68,12 +68,12 @@ export function WelcomeStrip({ onOpenTab, className }: WelcomeStripProps) {
                     type="button"
                     data-testid={`welcome-chip-${key}`}
                     onClick={() => onOpenTab(tab)}
-                    className="inline-flex items-center gap-2 border-2 border-neo-black bg-neo-white px-2.5 py-1.5 text-left text-[0.62rem] font-semibold text-neo-black transition-neo hover:-translate-y-[1px] hover:bg-neo-white/70"
+                    className="rounded-sm inline-flex items-center gap-2 border-2 border-border bg-white px-2.5 py-1.5 text-left text-[0.62rem] font-semibold text-ink transition-colors hover:-translate-y-[1px] hover:bg-white/70"
                   >
                     {content}
                   </button>
                 ) : (
-                  <span className="inline-flex items-center gap-2 border-2 border-neo-black bg-neo-white px-2.5 py-1.5 text-[0.62rem] font-semibold text-neo-black">
+                  <span className="rounded-sm inline-flex items-center gap-2 border-2 border-border bg-white px-2.5 py-1.5 text-[0.62rem] font-semibold text-ink">
                     {content}
                   </span>
                 )}
@@ -88,7 +88,7 @@ export function WelcomeStrip({ onOpenTab, className }: WelcomeStripProps) {
         data-testid="welcome-dismiss"
         aria-label={t('dismiss')}
         title={t('dismiss')}
-        className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center border-2 border-neo-black bg-neo-white text-neo-black transition-neo hover:bg-neo-red hover:text-neo-white"
+        className="rounded-sm absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center border-2 border-border bg-white text-ink transition-colors hover:bg-danger hover:text-white"
       >
         <X className="h-3.5 w-3.5" aria-hidden="true" />
       </button>

@@ -214,7 +214,7 @@ export default function SetupPage() {
     setCurrentStep(stepIndex)
   }
 
-  const glassCardClass = 'border-3 border-neo-black bg-neo-white shadow-neo'
+  const glassCardClass = 'rounded-sm border border-border bg-white shadow-sm'
 
   const clampIncomeAge = (value: number) => {
     const rounded = Math.round(value)
@@ -340,7 +340,7 @@ export default function SetupPage() {
                   data-testid="wizard-timeline-chip"
                   data-stale={timelineStale || undefined}
                   className={cn(
-                    'border-2 border-dashed border-neo-black/30 bg-neo-blue/5 px-3 py-2 text-xs font-medium leading-relaxed text-neo-black',
+                    'rounded-sm border-2 border-dashed border-ink/30 bg-accent/5 px-3 py-2 text-xs font-medium leading-relaxed text-ink',
                     // The chip describes the last accepted ages; while a field
                     // is refusing input it is not describing what is on screen.
                     timelineStale && 'opacity-40 grayscale'
@@ -356,14 +356,14 @@ export default function SetupPage() {
                 role="alert"
                 data-testid="wizard-timeline-issues"
                 className={cn(
-                  'flex items-start gap-3 border-2 px-4 py-3',
+                  'rounded-sm flex items-start gap-3 border-2 px-4 py-3',
                   ageIssues.some((issue) => issue.severity === 'error')
-                    ? 'border-neo-red bg-neo-red/10'
-                    : 'border-neo-orange bg-neo-orange/10'
+                    ? 'border-danger bg-danger/10'
+                    : 'border-viz-orange bg-viz-orange/10'
                 )}
               >
-                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-neo-orange" />
-                <div className="space-y-1 text-xs font-medium leading-relaxed text-neo-black">
+                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-viz-orange" />
+                <div className="space-y-1 text-xs font-medium leading-relaxed text-ink">
                   {ageIssues.map((issue) => (
                     <p key={issue.id}>{t(`validation.${issue.id}`)}</p>
                   ))}
@@ -474,9 +474,9 @@ export default function SetupPage() {
               />
             </div>
 
-            <div className="space-y-4 border-2 border-neo-black bg-neo-white px-4 py-5 shadow-neo-xs sm:px-5">
+            <div className="rounded-sm space-y-4 border-2 border-border bg-white px-4 py-5 shadow-sm sm:px-5">
               <div className="flex items-center gap-2">
-                <h5 className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                <h5 className="text-[0.72rem] font-extrabold   text-ink">
                   {t('assets.oneTimeIncomes.title')}
                 </h5>
                 <InfoTip
@@ -583,11 +583,11 @@ export default function SetupPage() {
               helpText={t('market.averageInflation.help')}
             />
 
-            <div className="flex items-center justify-between gap-3 border-2 border-dashed border-neo-black/30 bg-neo-blue/5 px-4 py-3">
+            <div className="rounded-sm flex items-center justify-between gap-3 border-2 border-dashed border-ink/30 bg-accent/5 px-4 py-3">
               <span className="text-xs font-medium text-muted-foreground">
                 {t('market.realReturn')}
               </span>
-              <span className="text-sm font-bold tabular-nums text-neo-black">
+              <span className="text-sm font-bold tabular-nums text-ink">
                 {formatPercent(realReturn, 1)}
               </span>
             </div>
@@ -628,9 +628,9 @@ export default function SetupPage() {
           role="status"
           aria-live="polite"
           data-testid="route-transition"
-          className="fixed inset-x-0 top-0 z-[60] h-1 overflow-hidden bg-neo-black/10"
+          className="fixed inset-x-0 top-0 z-[60] h-1 overflow-hidden bg-ink/10"
         >
-          <span className="block h-full w-1/3 animate-route-progress bg-neo-blue" />
+          <span className="block h-full w-1/3 animate-route-progress bg-accent" />
           <span className="sr-only">{t('finish.opening')}</span>
         </div>
       )}
@@ -647,13 +647,13 @@ export default function SetupPage() {
               data-testid="wizard-plan-context"
               data-dirty={isDirty || undefined}
               className={cn(
-                'inline-flex items-center gap-1.5 border-2 border-neo-black px-2.5 py-1 normal-case tracking-[0.04em] text-neo-black shadow-neo-xs',
-                isDirty ? 'bg-neo-yellow' : 'bg-neo-blue/10'
+                'rounded-sm inline-flex items-center gap-1.5 border-2 border-border px-2.5 py-1 normal-case  text-ink shadow-sm',
+                isDirty ? 'bg-amber' : 'bg-accent/10'
               )}
             >
               <span className="font-bold">{activePlanName}</span>
               {isDirty && (
-                <span className="font-semibold text-neo-black/70">
+                <span className="font-semibold text-ink/70">
                   · {t('planContext.unsaved')}
                 </span>
               )}
@@ -704,18 +704,18 @@ export default function SetupPage() {
                 step counter, the bar and the time estimate live here only. */}
             <div className="space-y-3">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <p className="text-[0.78rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                <p className="text-[0.78rem] font-extrabold   text-ink">
                   {progressLabel}
                 </p>
-                <p className="flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <p className="flex items-center gap-1.5 text-[0.68rem] font-semibold   text-muted-foreground">
                   <span className="tabular-nums">{percentLabel}</span>
                   {progressPercent === 100 && (
-                    <Check className="h-3.5 w-3.5 text-neo-green" aria-hidden="true" />
+                    <Check className="h-3.5 w-3.5 text-ok" aria-hidden="true" />
                   )}
                 </p>
               </div>
               <div
-                className="theme-progress-bar relative h-3 w-full overflow-hidden border-2 border-neo-black bg-neo-white shadow-neo-xs"
+                className="rounded-sm theme-progress-bar relative h-3 w-full overflow-hidden border-2 border-border bg-white shadow-sm"
                 role="progressbar"
                 aria-label={`${progressLabel}, ${percentLabel}`}
                 aria-valuemin={0}
@@ -723,14 +723,14 @@ export default function SetupPage() {
                 aria-valuenow={progressPercent}
               >
                 <div
-                  className="h-full bg-neo-blue transition-all duration-300 ease-out"
+                  className="h-full bg-accent transition-all duration-300 ease-out"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[0.62rem] font-semibold   text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   {t('progress.timeRemaining')}:{' '}
-                  <span className="tabular-nums text-neo-black">
+                  <span className="tabular-nums text-ink">
                     {t('progress.minutesRemaining', { minutes: minutesLeft })}
                   </span>
                   <InfoTip
@@ -761,8 +761,8 @@ export default function SetupPage() {
                       {index < steps.length - 1 && (
                         <span
                           className={cn(
-                            'theme-step-connector absolute left-5 top-11 h-[calc(100%-2.75rem)] w-px bg-neo-black/20',
-                            isCompleted && 'bg-neo-black'
+                            'theme-step-connector absolute left-5 top-11 h-[calc(100%-2.75rem)] w-px bg-ink/20',
+                            isCompleted && 'bg-ink'
                           )}
                         />
                       )}
@@ -770,11 +770,11 @@ export default function SetupPage() {
                       <span
                         aria-hidden="true"
                         className={cn(
-                          'theme-step-button absolute left-0 top-0 flex h-10 w-10 items-center justify-center border-3 border-neo-black bg-neo-white font-extrabold text-neo-black shadow-neo-xs transition-neo',
+                          'rounded-sm theme-step-button absolute left-0 top-0 flex h-10 w-10 items-center justify-center border border-border bg-white font-extrabold text-ink shadow-sm transition-colors',
                           isCompleted && 'bg-secondary',
                           isActive &&
                             !isCompleted &&
-                            'bg-neo-white ring-3 ring-neo-blue ring-offset-2',
+                            'bg-white ring-3 ring-accent ring-offset-2',
                           !isCompleted && !isActive && 'bg-muted text-muted-foreground'
                         )}
                       >
@@ -794,17 +794,17 @@ export default function SetupPage() {
                       >
                         <p
                           className={cn(
-                            'text-[0.78rem] font-bold uppercase tracking-[0.16em] transition-colors',
-                            isCompleted || isActive ? 'text-neo-black' : 'text-muted-foreground',
-                            'group-hover:text-neo-blue'
+                            'text-[0.78rem] font-bold   transition-colors',
+                            isCompleted || isActive ? 'text-ink' : 'text-muted-foreground',
+                            'group-hover:text-accent'
                           )}
                         >
                           {step.title}
                         </p>
                         <p
                           className={cn(
-                            'mt-1 text-[0.6rem] font-semibold uppercase tracking-[0.12em]',
-                            isActive ? 'text-neo-blue' : 'text-muted-foreground/70'
+                            'mt-1 text-[0.6rem] font-semibold  ',
+                            isActive ? 'text-accent' : 'text-muted-foreground/70'
                           )}
                         >
                           {statusLabel}
@@ -819,12 +819,12 @@ export default function SetupPage() {
 
           <section className="theme-content theme-setup-content space-y-5">
             <Card className={cn(glassCardClass, 'theme-active-step-card')}>
-              <CardHeader className="border-b-3 border-neo-black bg-neo-white">
+              <CardHeader className="border-b border-border bg-white">
                 <div className="flex items-center gap-2">
                   <CardTitle
                     ref={stepHeadingRef}
                     tabIndex={-1}
-                    className="text-xl font-extrabold uppercase tracking-[0.12em] text-neo-black"
+                    className="text-xl font-extrabold   text-ink"
                   >
                     {steps[currentStep].title}
                   </CardTitle>
@@ -847,14 +847,14 @@ export default function SetupPage() {
                 rows of the step card. Desktop keeps the bar in flow. */}
             <div className="h-[5.5rem] sm:hidden" aria-hidden="true" />
 
-            <div className="theme-wizard-actions fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t-3 border-neo-black bg-background px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-3 shadow-[0_-4px_0_0_rgba(0,0,0,0.06)] sm:static sm:z-auto sm:mx-0 sm:flex-row sm:items-start sm:justify-between sm:border-t-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-0 sm:shadow-none">
+            <div className="theme-wizard-actions fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t border-border bg-background px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-3 shadow-[0_-4px_0_0_rgba(0,0,0,0.06)] sm:static sm:z-auto sm:mx-0 sm:flex-row sm:items-start sm:justify-between sm:border-t-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-0 sm:shadow-none">
               <div className="flex items-center gap-3 sm:contents">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleBack}
                   disabled={currentStep === 0}
-                  className="flex-1 disabled:border-neo-black/40 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none sm:flex-none sm:min-w-[10rem]"
+                  className="flex-1 disabled:border-ink/40 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none sm:flex-none sm:min-w-[10rem]"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   {t('buttons.back')}
@@ -900,7 +900,7 @@ export default function SetupPage() {
         // feedback that the click was received.
         onOpenChange={(open) => !isNavigating && setSavePlanOpen(open)}
       >
-        <DialogContent className="bg-neo-white sm:max-w-[32rem]" data-testid="wizard-finish-dialog">
+        <DialogContent className="bg-white sm:max-w-[32rem]" data-testid="wizard-finish-dialog">
           <DialogHeader>
             <DialogTitle>{isFirstRun ? t('finish.firstRunTitle') : t('finish.title')}</DialogTitle>
             <DialogDescription>
@@ -927,7 +927,7 @@ export default function SetupPage() {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') handleFirstRunFinish()
                 }}
-                className="mt-2 h-11 border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.78rem] font-semibold"
+                className="rounded-sm mt-2 h-11 border-2 border-border bg-white px-3 py-2 text-[0.78rem] font-semibold"
               />
             </div>
           )}
@@ -959,7 +959,7 @@ export default function SetupPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-neo-red"
+                    className="text-danger"
                     data-testid="wizard-finish-discard"
                     disabled={isNavigating}
                     onClick={() => {

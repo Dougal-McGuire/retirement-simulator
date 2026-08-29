@@ -31,7 +31,7 @@ export function RealToggle({ value, onChange, className }: RealToggleProps) {
       aria-label={t('label')}
       title={t('realHint')}
       className={cn(
-        'flex shrink-0 items-center border-2 border-neo-black bg-neo-white',
+        'rounded-sm flex shrink-0 items-center border-2 border-border bg-white',
         className
       )}
     >
@@ -44,10 +44,10 @@ export function RealToggle({ value, onChange, className }: RealToggleProps) {
           data-testid={`display-unit-${option.key}`}
           onClick={() => onChange(option.key === 'real')}
           className={cn(
-            'px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.12em] transition-neo',
+            'px-2.5 py-1 text-[0.62rem] font-bold   transition-colors',
             option.selected
-              ? 'bg-neo-black text-neo-white'
-              : 'bg-neo-white text-muted-foreground hover:text-neo-black'
+              ? 'bg-accent text-white'
+              : 'bg-white text-muted-foreground hover:text-ink'
           )}
         >
           {option.label}

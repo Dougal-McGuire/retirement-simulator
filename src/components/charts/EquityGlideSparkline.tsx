@@ -63,7 +63,7 @@ export function EquityGlideSparkline({
         role="img"
         aria-label={label}
         preserveAspectRatio="none"
-        className="h-12 w-full border-2 border-neo-black bg-neo-white"
+        className="rounded-sm h-12 w-full border-2 border-border bg-white"
       >
         <title>{label}</title>
         {/* Half-way reference: the fixed 0-100% scale is only readable with one. */}
@@ -72,15 +72,15 @@ export function EquityGlideSparkline({
           y1={HEIGHT / 2}
           x2={WIDTH}
           y2={HEIGHT / 2}
-          className="stroke-neo-black/20"
+          className="stroke-ink/20"
           strokeWidth={1}
           vectorEffect="non-scaling-stroke"
         />
-        <path d={areaPath} className="fill-neo-blue/25" />
+        <path d={areaPath} className="fill-accent/25" />
         <path
           d={linePath}
           fill="none"
-          className="stroke-neo-blue"
+          className="stroke-accent"
           strokeWidth={2}
           vectorEffect="non-scaling-stroke"
         />
@@ -90,7 +90,7 @@ export function EquityGlideSparkline({
           y1={0}
           x2={retirementX}
           y2={HEIGHT}
-          className="stroke-neo-black/50"
+          className="stroke-ink/50"
           strokeWidth={1}
           strokeDasharray="3 3"
           vectorEffect="non-scaling-stroke"
@@ -99,7 +99,7 @@ export function EquityGlideSparkline({
           cx={points[0]?.[0] ?? 0}
           cy={points[0]?.[1] ?? 0}
           r={2.5}
-          className="fill-neo-black"
+          className="fill-ink"
         />
       </svg>
       {caption && (

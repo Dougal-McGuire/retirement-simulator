@@ -1,7 +1,6 @@
 /* Retirement Simulator — design system (claude.ai/design export, "Direction B").
    Tokens + ds-* primitives, global. Source of truth: the uploaded DS bundle;
-   values are verbatim. The legacy-bridge rules at the end keep the remaining
-   neo-* markup rendering in this language until it is migrated for real. */
+   values are verbatim, plus a few app-level semantic aliases at the end. */
 
 @layer components {
 
@@ -155,37 +154,6 @@ a:where(:not([class])):hover{color:var(--link-hover)}
 .ds-slider-track{position:relative;flex:1;height:3px;border-radius:2px;background:var(--gray-200)}
 .ds-slider-range{position:absolute;top:0;bottom:0;border-radius:2px;background:var(--accent)}
 .ds-slider-thumb{display:block;width:9px;height:9px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);box-sizing:border-box}
-
-
-/* ── legacy bridge (app-specific, not part of the DS export) ─────────────
-   The remaining neo-* markup renders through the token machinery above; the
-   rules below cover the spots variables alone cannot reach. They shrink as
-   components are migrated to ds-* classes. */
-
-/* Selection is painted with the accent, never an ink slab: section pills
-   (Radix tabs) and pressed segments that hard-code bg-neo-black. */
-:root { --tab-active-bg: var(--accent); --tab-active-fg: #fff; }
-button[class*='bg-neo-black'][data-state='active'],
-button.bg-neo-black {
-  background-color: var(--accent) !important;
-  color: #fff !important;
-}
-
-/* Table heads are light with gray label text, not ink slabs. */
-thead[class*='bg-neo-black'] { background-color: var(--gray-50) !important; }
-thead[class*='bg-neo-black'] th,
-thead[class*='bg-neo-black'] th * { color: var(--text-label) !important; }
-
-/* Every Radix slider thumb outside the ds-slider primitive: the DS's round
-   accent thumb instead of the neo yellow square. */
-span[role='slider']:not(.ds-slider-thumb) {
-  width: 16px !important;
-  height: 16px !important;
-  border-radius: 50% !important;
-  background: var(--surface) !important;
-  border: 2px solid var(--accent) !important;
-  box-shadow: var(--shadow-sm) !important;
-}
 
 /* The compact dashboard manages its own rhythm; other pages keep the page-end
    padding from globals.css. */

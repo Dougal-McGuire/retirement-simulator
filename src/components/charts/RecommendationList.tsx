@@ -22,9 +22,9 @@ interface RecommendationListProps {
 }
 
 const impactClasses: Record<'High' | 'Medium' | 'Low', string> = {
-  High: 'border-neo-red bg-red-50 text-neo-red',
+  High: 'border-danger bg-red-50 text-danger',
   Medium: 'border-warning-600 bg-warning-50 text-warning-700',
-  Low: 'border-neo-black bg-muted text-muted-foreground',
+  Low: 'border-border bg-muted text-muted-foreground',
 }
 
 export function RecommendationList({ params, results }: RecommendationListProps) {
@@ -71,10 +71,10 @@ export function RecommendationList({ params, results }: RecommendationListProps)
 
   return (
     <Card className="overflow-hidden">
-      <CardContent className="bg-neo-white p-5">
+      <CardContent className="bg-white p-5">
         <div className="flex items-center gap-3">
-          <Lightbulb className="h-5 w-5 text-neo-blue" aria-hidden="true" />
-          <h4 className="text-sm font-extrabold uppercase tracking-[0.16em]">{t('title')}</h4>
+          <Lightbulb className="h-5 w-5 text-accent" aria-hidden="true" />
+          <h4 className="text-sm font-extrabold  ">{t('title')}</h4>
           <InfoTip content={t('subtitle')} label={t('title')} side="bottom" />
         </div>
 
@@ -88,21 +88,21 @@ export function RecommendationList({ params, results }: RecommendationListProps)
               return (
                 <li
                   key={rec.id}
-                  className="border-2 border-neo-black bg-background p-4 shadow-neo-sm"
+                  className="rounded-sm border-2 border-border bg-background p-4 shadow-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-neo-black">
+                    <p className="text-sm font-extrabold   text-ink">
                       {rec.title}
                     </p>
                     <span className="flex items-center gap-2">
                       {uplift && (
-                        <span className="border-2 border-success-600 bg-success-50 px-2 py-1 text-[0.68rem] font-extrabold uppercase tracking-[0.12em] text-success-700">
+                        <span className="rounded-sm border-2 border-success-600 bg-success-50 px-2 py-1 text-[0.68rem] font-extrabold   text-success-700">
                           {t('uplift', { min: uplift.upliftMin, max: uplift.upliftMax })}
                         </span>
                       )}
                       <span
                         className={cn(
-                          'border-2 px-2 py-1 text-[0.68rem] font-extrabold uppercase tracking-[0.12em]',
+                          'rounded-sm border-2 px-2 py-1 text-[0.68rem] font-extrabold  ',
                           impactClasses[rec.impact]
                         )}
                       >
@@ -113,7 +113,7 @@ export function RecommendationList({ params, results }: RecommendationListProps)
                   <p className="mt-2 text-xs font-medium leading-relaxed text-muted-foreground">
                     {rec.body}
                   </p>
-                  <p className="mt-2 text-[0.58rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  <p className="mt-2 text-[0.58rem] font-bold   text-muted-foreground">
                     {rec.category}
                   </p>
                   {rec.id === 'reduceVolatility' && !params.glidePathEnabled && (

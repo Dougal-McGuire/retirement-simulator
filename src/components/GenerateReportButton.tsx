@@ -188,7 +188,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
       </Button>
 
       {error && (
-        <div className="max-w-xs text-center text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-neo-red">
+        <div className="max-w-xs text-center text-[0.65rem] font-semibold   text-danger">
           {error}
         </div>
       )}

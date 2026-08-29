@@ -61,7 +61,7 @@ export function PlanNameDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-neo-white sm:max-w-[30rem]">
+      <DialogContent className="bg-white sm:max-w-[30rem]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -80,7 +80,7 @@ export function PlanNameDialog({
               if (event.key === 'Enter') confirm()
             }}
             placeholder={placeholder}
-            className="mt-2 h-11 border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.78rem] font-semibold"
+            className="rounded-sm mt-2 h-11 border-2 border-border bg-white px-3 py-2 text-[0.78rem] font-semibold"
           />
         </div>
         <DialogFooter className="sm:flex-wrap">

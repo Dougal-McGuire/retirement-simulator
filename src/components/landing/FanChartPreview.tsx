@@ -93,27 +93,27 @@ export function FanChartPreview() {
   })
 
   const outcomes = [
-    { key: 'low', value: PREVIEW_TERMINAL.p10, tone: 'bg-neo-orange' },
+    { key: 'low', value: PREVIEW_TERMINAL.p10, tone: 'bg-viz-orange' },
     { key: 'median', value: PREVIEW_TERMINAL.p50, tone: 'bg-chart-1' },
-    { key: 'high', value: PREVIEW_TERMINAL.p90, tone: 'bg-neo-green' },
+    { key: 'high', value: PREVIEW_TERMINAL.p90, tone: 'bg-ok' },
   ] as const
 
   return (
     <figure className="relative m-0">
-      <div className="theme-panel-card relative overflow-hidden border-3 border-neo-black bg-neo-white shadow-neo-lg">
+      <div className="rounded-sm theme-panel-card relative overflow-hidden border border-border bg-white shadow-lg">
         {/* Window chrome */}
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b-3 border-neo-black bg-[var(--neo-surface-muted)] px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-[var(--gray-100)] px-4 py-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="hidden items-center gap-1.5 sm:flex" aria-hidden="true">
-              <span className="h-3 w-3 border-2 border-neo-black bg-neo-red" />
-              <span className="h-3 w-3 border-2 border-neo-black bg-neo-yellow" />
-              <span className="h-3 w-3 border-2 border-neo-black bg-neo-green" />
+              <span className="rounded-sm h-3 w-3 border-2 border-border bg-danger" />
+              <span className="rounded-sm h-3 w-3 border-2 border-border bg-amber" />
+              <span className="rounded-sm h-3 w-3 border-2 border-border bg-ok" />
             </div>
-            <p className="landing-label truncate text-[0.66rem] font-bold text-neo-black">
+            <p className="landing-label truncate text-[0.66rem] font-bold text-ink">
               {t('windowTitle')}
             </p>
           </div>
-          <span className="landing-label inline-flex shrink-0 items-center gap-2 border-2 border-neo-black bg-neo-green px-2.5 py-1 text-[0.6rem] font-bold text-gray-950">
+          <span className="rounded-sm landing-label inline-flex shrink-0 items-center gap-2 border-2 border-border bg-ok px-2.5 py-1 text-[0.6rem] font-bold text-gray-950">
             {t('runsChip', { runs: runsLabel })}
           </span>
         </div>
@@ -139,7 +139,7 @@ export function FanChartPreview() {
                     x2={VIEW_W}
                     y1={yFor(tick)}
                     y2={yFor(tick)}
-                    className="stroke-neo-black"
+                    className="stroke-ink"
                     strokeOpacity={tick === 0 ? 0.35 : 0.12}
                     strokeWidth={1.5}
                     strokeDasharray={tick === 0 ? undefined : '2 6'}
@@ -188,7 +188,7 @@ export function FanChartPreview() {
                   cy={yFor(PREVIEW_TERMINAL.p50)}
                   r={7}
                   fill="none"
-                  className="stroke-neo-white"
+                  className="stroke-white"
                   strokeWidth={2.5}
                 />
               </svg>
@@ -211,7 +211,7 @@ export function FanChartPreview() {
                 className="pointer-events-none absolute -top-1 -translate-x-1/2"
                 style={{ left: `${percentFor(PREVIEW_PLAN.retirementAge)}%` }}
               >
-                <span className="landing-label border-2 border-neo-black bg-neo-white px-2 py-0.5 text-[0.55rem] font-bold text-neo-black shadow-neo-xs">
+                <span className="rounded-sm landing-label border-2 border-border bg-white px-2 py-0.5 text-[0.55rem] font-bold text-ink shadow-sm">
                   {t('retirementMarker', { age: PREVIEW_PLAN.retirementAge })}
                 </span>
               </div>
@@ -219,7 +219,7 @@ export function FanChartPreview() {
                 className="pointer-events-none absolute -top-1 hidden -translate-x-1/2 sm:block"
                 style={{ left: `${percentFor(PREVIEW_PLAN.legalRetirementAge)}%` }}
               >
-                <span className="landing-label border-2 border-neo-black bg-neo-white px-2 py-0.5 text-[0.55rem] font-bold text-neo-black shadow-neo-xs">
+                <span className="rounded-sm landing-label border-2 border-border bg-white px-2 py-0.5 text-[0.55rem] font-bold text-ink shadow-sm">
                   {t('pensionMarker', { age: PREVIEW_PLAN.legalRetirementAge })}
                 </span>
               </div>
@@ -247,7 +247,7 @@ export function FanChartPreview() {
         </div>
 
         {/* Readout: the same numbers the dashboard reports */}
-        <div className="grid grid-cols-3 border-t-3 border-neo-black bg-[var(--neo-surface-muted)] divide-x-[3px] divide-neo-black">
+        <div className="grid grid-cols-3 border-t border-border bg-[var(--gray-100)] divide-x-[3px] divide-border">
           {outcomes.map(({ key, value, tone }) => (
             <div
               key={key}
@@ -257,7 +257,7 @@ export function FanChartPreview() {
                 <span className={`h-2 w-4 ${tone}`} aria-hidden="true" />
                 {t(`outcomes.${key}`)}
               </span>
-              <p className="landing-display mt-1 font-heading text-sm font-black tabular-nums text-neo-black sm:text-lg">
+              <p className="landing-display mt-1 font-heading text-sm font-black tabular-nums text-ink sm:text-lg">
                 {compactMoney(value)}
               </p>
             </div>

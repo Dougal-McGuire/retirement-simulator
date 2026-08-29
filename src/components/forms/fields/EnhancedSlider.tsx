@@ -52,8 +52,8 @@ export function EnhancedSlider({
     <div className={cn('space-y-2', className)}>
       {/* Current value display - prominent but not floating */}
       <div className="flex justify-center">
-        <div className="inline-block border-2 border-neo-black bg-neo-yellow px-3 py-1 shadow-neo-sm">
-          <span className="text-sm font-extrabold uppercase tracking-wider text-neo-black">
+        <div className="rounded-sm inline-block border-2 border-border bg-amber px-3 py-1 shadow-sm">
+          <span className="text-sm font-extrabold  r text-ink">
             {formatValue(value)}
           </span>
         </div>
@@ -68,7 +68,7 @@ export function EnhancedSlider({
             variant="outline"
             onClick={handleDecrement}
             disabled={value <= min}
-            className="h-7 w-7 flex-shrink-0 border-2 border-neo-black bg-neo-white shadow-neo-xs hover:-translate-y-[1px] hover:-translate-x-[1px] hover:shadow-neo-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+            className="rounded-sm h-7 w-7 flex-shrink-0 border-2 border-border bg-white shadow-sm hover:-translate-y-[1px] hover:-translate-x-[1px] hover:shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0"
             aria-label={decrementControlAriaLabel}
           >
             <Minus className="h-3 w-3" />
@@ -93,7 +93,7 @@ export function EnhancedSlider({
             variant="outline"
             onClick={handleIncrement}
             disabled={value >= max}
-            className="h-7 w-7 flex-shrink-0 border-2 border-neo-black bg-neo-white shadow-neo-xs hover:-translate-y-[1px] hover:-translate-x-[1px] hover:shadow-neo-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+            className="rounded-sm h-7 w-7 flex-shrink-0 border-2 border-border bg-white shadow-sm hover:-translate-y-[1px] hover:-translate-x-[1px] hover:shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0"
             aria-label={incrementControlAriaLabel}
           >
             <Plus className="h-3 w-3" />
@@ -102,10 +102,10 @@ export function EnhancedSlider({
       </div>
 
       {/* Min/Max labels and optional hint */}
-      <div className="flex items-center justify-between text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+      <div className="flex items-center justify-between text-[0.62rem] font-semibold   text-muted-foreground">
         <span>{formatValue(min)}</span>
         {hint && (
-          <span className="text-center text-neo-blue font-extrabold tracking-wider">{hint}</span>
+          <span className="text-center text-accent font-extrabold r">{hint}</span>
         )}
         <span>{formatValue(max)}</span>
       </div>

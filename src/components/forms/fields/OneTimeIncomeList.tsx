@@ -167,7 +167,7 @@ export function OneTimeIncomeList({
 
     if (isEditing) {
       return (
-        <tr key={`edit-${income.index}`} className="bg-neo-blue/5">
+        <tr key={`edit-${income.index}`} className="bg-accent/5">
           <td className="px-4 py-3">
             <div className="flex flex-col gap-2">
               <Input
@@ -175,7 +175,7 @@ export function OneTimeIncomeList({
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder={strings.namePlaceholder}
-                className="h-10 border-2 border-neo-black px-2 text-[0.68rem] font-semibold uppercase"
+                className="rounded-sm h-10 border-2 border-border px-2 text-[0.68rem] font-semibold "
                 aria-label={getIncomeControlLabel(strings.nameLabel, income)}
               />
               <Input
@@ -191,7 +191,7 @@ export function OneTimeIncomeList({
                     setEditAge(String(clamped))
                   }
                 }}
-                className="h-10 border-2 border-neo-black px-2 text-[0.68rem] font-semibold uppercase"
+                className="rounded-sm h-10 border-2 border-border px-2 text-[0.68rem] font-semibold "
                 aria-label={getIncomeControlLabel(strings.ageLabel, income)}
               />
             </div>
@@ -213,7 +213,7 @@ export function OneTimeIncomeList({
                   setEditAmount(editAmountField.format(clamped))
                 }
               }}
-              className="h-10 border-2 border-neo-black px-2 text-[0.68rem] font-semibold uppercase text-right"
+              className="rounded-sm h-10 border-2 border-border px-2 text-[0.68rem] font-semibold  text-right"
               aria-label={getIncomeControlLabel(strings.amountLabel, income)}
             />
           </td>
@@ -224,7 +224,7 @@ export function OneTimeIncomeList({
                 variant="ghost"
                 size="icon"
                 onClick={handleSaveEdit}
-                className="h-8 w-8 text-green-600 hover:bg-green-600 hover:text-neo-white"
+                className="h-8 w-8 text-green-600 hover:bg-green-600 hover:text-muted-foreground"
                 aria-label={getIncomeControlLabel(strings.save, income)}
               >
                 <Check className="h-3.5 w-3.5" />
@@ -234,7 +234,7 @@ export function OneTimeIncomeList({
                 variant="ghost"
                 size="icon"
                 onClick={handleCancelEdit}
-                className="h-8 w-8 text-neo-black hover:bg-neo-red hover:text-neo-white"
+                className="h-8 w-8 text-ink hover:bg-danger hover:text-muted-foreground"
                 aria-label={getIncomeControlLabel(strings.cancel, income)}
               >
                 <X className="h-3.5 w-3.5" />
@@ -249,15 +249,15 @@ export function OneTimeIncomeList({
       <tr key={`view-${income.index}`}>
         <td className="px-4 py-3 text-left">
           <div className="flex flex-col gap-0.5">
-            <span className="text-[0.74rem] font-bold uppercase tracking-[0.12em]">
+            <span className="text-[0.74rem] font-bold  ">
               {income.name || `${strings.agePrefix} ${income.age}`}
             </span>
-            <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            <span className="text-[0.62rem] font-semibold   text-muted-foreground">
               {strings.agePrefix} {income.age}
             </span>
           </div>
         </td>
-        <td className="px-4 py-3 text-right text-[0.74rem] font-bold uppercase tracking-[0.12em]">
+        <td className="px-4 py-3 text-right text-[0.74rem] font-bold  ">
           {formatCurrency(income.amount)}
         </td>
         <td className="w-20 px-2 py-3 text-center">
@@ -268,7 +268,7 @@ export function OneTimeIncomeList({
                 variant="ghost"
                 size="icon"
                 onClick={() => handleStartEdit(income)}
-                className="h-8 w-8 text-neo-black hover:bg-neo-blue hover:text-neo-white"
+                className="h-8 w-8 text-ink hover:bg-accent hover:text-muted-foreground"
                 aria-label={getIncomeControlLabel(strings.edit, income)}
               >
                 <Edit2 className="h-3.5 w-3.5" />
@@ -279,7 +279,7 @@ export function OneTimeIncomeList({
               variant="ghost"
               size="icon"
               onClick={() => onRemove(income.index)}
-              className="h-8 w-8 text-neo-black hover:bg-neo-red hover:text-neo-white"
+              className="h-8 w-8 text-ink hover:bg-danger hover:text-muted-foreground"
               aria-label={getIncomeControlLabel(strings.remove, income)}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -293,22 +293,22 @@ export function OneTimeIncomeList({
   return (
     <div className="space-y-4">
       {!isEmpty && (
-        <div className="overflow-hidden border-3 border-neo-black bg-neo-white shadow-neo-sm">
+        <div className="rounded-sm overflow-hidden border border-border bg-white shadow-sm">
           <table className="w-full">
-            <thead className="border-b-3 border-neo-black bg-neo-black">
+            <thead className="border-b border-border bg-gray-50">
               <tr>
-                <th className="whitespace-nowrap px-4 py-3 text-left text-[0.65rem] font-bold uppercase tracking-[0.16em] text-neo-white">
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[0.65rem] font-bold   text-muted-foreground">
                   {strings.tableHeaders.name}
                 </th>
-                <th className="whitespace-nowrap px-4 py-3 text-right text-[0.65rem] font-bold uppercase tracking-[0.16em] text-neo-white">
+                <th className="whitespace-nowrap px-4 py-3 text-right text-[0.65rem] font-bold   text-muted-foreground">
                   {strings.tableHeaders.amount}
                 </th>
-                <th className="w-20 whitespace-nowrap px-2 py-3 text-center text-[0.65rem] font-bold uppercase tracking-[0.16em] text-neo-white">
+                <th className="w-20 whitespace-nowrap px-2 py-3 text-center text-[0.65rem] font-bold   text-muted-foreground">
                   {strings.tableHeaders.actions}
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y-3 divide-neo-black">
+            <tbody className="divide-y divide-border">
               {orderedIncomes.map(renderIncomeRow)}
             </tbody>
           </table>
@@ -317,20 +317,20 @@ export function OneTimeIncomeList({
 
       <div
         className={cn(
-          'border-3 border-neo-black px-4 py-5 shadow-neo-sm',
-          isEmpty ? 'bg-gradient-to-br from-neo-blue/5 to-neo-yellow/5' : 'bg-neo-white'
+          'rounded-sm border border-border px-4 py-5 shadow-sm',
+          isEmpty ? 'bg-gradient-to-br from-accent/5 to-amber/5' : 'bg-white'
         )}
       >
         {isEmpty && (
-          <div className="mb-5 flex items-start gap-3 border-b-3 border-dashed border-neo-black pb-4">
-            <span className="rounded-full border-3 border-neo-black bg-neo-yellow p-2 shadow-neo-xs">
-              <Plus className="h-4 w-4 text-neo-black" strokeWidth={3} aria-hidden="true" />
+          <div className="mb-5 flex items-start gap-3 border-b border-dashed border-border pb-4">
+            <span className="rounded-full border border-border bg-amber p-2 shadow-sm">
+              <Plus className="h-4 w-4 text-ink" strokeWidth={3} aria-hidden="true" />
             </span>
             <div className="space-y-1">
-              <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+              <p className="text-[0.72rem] font-extrabold   text-ink">
                 {strings.empty}
               </p>
-              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              <p className="text-[0.62rem] font-semibold   text-muted-foreground">
                 {strings.emptyHint ??
                   'Add expected windfalls like inheritances, insurance payouts, property sales, or bonus payments'}
               </p>
@@ -342,7 +342,7 @@ export function OneTimeIncomeList({
             <div className="flex flex-col sm:col-span-2">
               <Label
                 htmlFor="one-time-income-name"
-                className="mb-2 block min-h-[2rem] text-[0.68rem] font-semibold uppercase tracking-[0.14em] leading-tight"
+                className="mb-2 block min-h-[2rem] text-[0.68rem] font-semibold   leading-tight"
               >
                 {strings.nameLabel}
               </Label>
@@ -352,7 +352,7 @@ export function OneTimeIncomeList({
                 value={draftName}
                 placeholder={strings.namePlaceholder}
                 onChange={(event) => setDraftName(event.target.value)}
-                className="h-11 w-full border-2 border-neo-black px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+                className="rounded-sm h-11 w-full border-2 border-border px-3 py-2 text-[0.68rem] font-semibold  "
                 required
               />
             </div>
@@ -360,7 +360,7 @@ export function OneTimeIncomeList({
             <div className="flex flex-col">
               <Label
                 htmlFor="one-time-income-age"
-                className="mb-2 block min-h-[2rem] text-[0.68rem] font-semibold uppercase tracking-[0.14em] leading-tight"
+                className="mb-2 block min-h-[2rem] text-[0.68rem] font-semibold   leading-tight"
               >
                 {strings.ageLabel}
               </Label>
@@ -378,14 +378,14 @@ export function OneTimeIncomeList({
                     setDraftAge(String(clamped))
                   }
                 }}
-                className="h-11 w-full border-2 border-neo-black px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+                className="rounded-sm h-11 w-full border-2 border-border px-3 py-2 text-[0.68rem] font-semibold  "
               />
             </div>
 
             <div className="flex flex-col">
               <Label
                 htmlFor="one-time-income-amount"
-                className="mb-2 block min-h-[2rem] text-[0.68rem] font-semibold uppercase tracking-[0.14em] leading-tight"
+                className="mb-2 block min-h-[2rem] text-[0.68rem] font-semibold   leading-tight"
               >
                 {strings.amountLabel}
               </Label>
@@ -406,7 +406,7 @@ export function OneTimeIncomeList({
                     setDraftAmount(draftAmountField.format(clamped))
                   }
                 }}
-                className="h-11 w-full border-2 border-neo-black px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+                className="rounded-sm h-11 w-full border-2 border-border px-3 py-2 text-[0.68rem] font-semibold  "
               />
             </div>
           </div>
@@ -416,7 +416,7 @@ export function OneTimeIncomeList({
               type="submit"
               variant="secondary"
               size="sm"
-              className="h-11 w-full px-6 disabled:border-neo-black/40 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
+              className="h-11 w-full px-6 disabled:border-ink/40 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
               disabled={!canAddDraft}
               aria-describedby={
                 !canAddDraft && strings.addHint ? 'one-time-income-add-hint' : undefined
@@ -427,14 +427,14 @@ export function OneTimeIncomeList({
             {!canAddDraft && strings.addHint && (
               <p
                 id="one-time-income-add-hint"
-                className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
+                className="text-[0.62rem] font-semibold   text-muted-foreground"
               >
                 {strings.addHint}
               </p>
             )}
           </div>
         </form>
-        <div className="mt-4 border-t-3 border-dashed border-neo-black pt-4 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <div className="mt-4 border-t border-dashed border-border pt-4 text-[0.65rem] font-semibold   text-muted-foreground">
           {strings.summaryLabel}: {formatCurrency(totalAmount)}
         </div>
       </div>

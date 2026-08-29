@@ -27,7 +27,7 @@ export function PlanSectionNav({ compact = false, className }: PlanSectionNavPro
       aria-label={t('sections.navLabel')}
       data-testid="plan-section-nav"
       className={cn(
-        'grid w-full grid-cols-2 border-3 border-neo-black bg-neo-white shadow-neo',
+        'rounded-sm grid w-full grid-cols-2 border border-border bg-white shadow-sm',
         compact ? '[&>*:last-child]:col-span-2' : 'sm:grid-cols-3 lg:grid-cols-5',
         className
       )}

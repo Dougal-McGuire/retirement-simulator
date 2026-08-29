@@ -62,7 +62,7 @@ export function WizardSliderField({
           <Label
             id={`${id}-label`}
             htmlFor={id}
-            className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-neo-black"
+            className="text-[0.68rem] font-semibold   text-ink"
           >
             {label}
           </Label>
@@ -73,12 +73,12 @@ export function WizardSliderField({
         <output
           htmlFor={id}
           aria-live="off"
-          className="border-2 border-neo-black bg-secondary px-2.5 py-0.5 text-xs font-bold tabular-nums text-secondary-foreground shadow-neo-xs"
+          className="rounded-sm border-2 border-border bg-secondary px-2.5 py-0.5 text-xs font-bold tabular-nums text-secondary-foreground shadow-sm"
         >
           {valueLabel}
         </output>
       </div>
-      <div className="border-2 border-neo-black bg-field px-4 pb-3 pt-5 shadow-neo-xs">
+      <div className="rounded-sm border-2 border-border bg-field px-4 pb-3 pt-5 shadow-sm">
         <Slider
           id={id}
           value={[value]}

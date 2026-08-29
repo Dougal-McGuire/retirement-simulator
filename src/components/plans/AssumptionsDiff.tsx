@@ -70,7 +70,7 @@ export function AssumptionsDiff({ plans }: { plans: AssumptionsPlan[] }) {
       open={open}
       onOpenChange={setOpen}
       ref={containerRef}
-      className="mt-6 border-3 border-neo-black bg-neo-white shadow-neo-sm"
+      className="rounded-sm mt-6 border border-border bg-white shadow-sm"
       data-testid="plan-comparison-assumptions"
     >
       {/* The count chip is a sibling of the trigger, not a child: it is its own
@@ -83,14 +83,14 @@ export function AssumptionsDiff({ plans }: { plans: AssumptionsPlan[] }) {
             type="button"
             data-testid="plan-comparison-differences-chip"
             onClick={jumpToFirstDifference}
-            className="order-first shrink-0 self-start border-2 border-neo-black bg-warning-50 px-2 py-1 text-[0.58rem] font-extrabold uppercase tracking-[0.12em] text-warning-700 transition-neo hover:-translate-y-[1px] hover:bg-warning-100 sm:order-none"
+            className="rounded-sm order-first shrink-0 self-start border-2 border-border bg-warning-50 px-2 py-1 text-[0.58rem] font-extrabold   text-warning-700 transition-colors hover:-translate-y-[1px] hover:bg-warning-100 sm:order-none"
           >
             {t('differsCount', { count: differingCount })}
           </button>
         )}
-        <CollapsibleTrigger className="flex min-w-0 flex-1 flex-col items-start gap-2 text-left transition-neo hover:opacity-80 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <CollapsibleTrigger className="flex min-w-0 flex-1 flex-col items-start gap-2 text-left transition-colors hover:opacity-80 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <span className="min-w-0">
-            <span className="block text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+            <span className="block text-[0.72rem] font-extrabold   text-ink">
               {t('title')}
             </span>
             <span className="mt-1 block text-[0.66rem] font-medium text-muted-foreground">
@@ -98,7 +98,7 @@ export function AssumptionsDiff({ plans }: { plans: AssumptionsPlan[] }) {
             </span>
           </span>
           <span className="flex shrink-0 items-center gap-2">
-            <span className="text-[0.6rem] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+            <span className="text-[0.6rem] font-extrabold   text-muted-foreground">
               {open ? t('collapse') : t('expand')}
             </span>
             <ChevronDown
@@ -110,9 +110,9 @@ export function AssumptionsDiff({ plans }: { plans: AssumptionsPlan[] }) {
       </div>
 
       <CollapsibleContent>
-        <div className="border-t-2 border-neo-black/15 px-4 pb-4 pt-3">
+        <div className="border-t-2 border-ink/15 px-4 pb-4 pt-3">
           {differingCount === 0 && (
-            <p className="mb-3 border-2 border-dashed border-neo-black/30 px-3 py-2 text-[0.66rem] font-medium text-muted-foreground">
+            <p className="rounded-sm mb-3 border-2 border-dashed border-ink/30 px-3 py-2 text-[0.66rem] font-medium text-muted-foreground">
               {t('identical')}
             </p>
           )}
@@ -120,7 +120,7 @@ export function AssumptionsDiff({ plans }: { plans: AssumptionsPlan[] }) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[26rem] border-collapse text-left">
               <thead>
-                <tr className="border-b-2 border-neo-black text-[0.58rem] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+                <tr className="border-b-2 border-border text-[0.58rem] font-extrabold   text-muted-foreground">
                   <th scope="col" className="py-2 pr-3">
                     <span className="sr-only">{t('title')}</span>
                   </th>
@@ -141,7 +141,7 @@ export function AssumptionsDiff({ plans }: { plans: AssumptionsPlan[] }) {
                       <th
                         scope="colgroup"
                         colSpan={plans.length + 1}
-                        className="py-1.5 pr-3 text-[0.56rem] font-extrabold uppercase tracking-[0.16em] text-muted-foreground"
+                        className="py-1.5 pr-3 text-[0.56rem] font-extrabold   text-muted-foreground"
                       >
                         {t(`groups.${group.key}`)}
                       </th>
@@ -151,9 +151,9 @@ export function AssumptionsDiff({ plans }: { plans: AssumptionsPlan[] }) {
                         key={`${group.key}-${row.key}`}
                         data-differs={row.differs ? 'true' : 'false'}
                         className={cn(
-                          'border-b border-neo-black/10 text-[0.68rem]',
+                          'border-b border-ink/10 text-[0.68rem]',
                           row.differs
-                            ? 'bg-warning-50/70 font-extrabold text-neo-black'
+                            ? 'bg-warning-50/70 font-extrabold text-ink'
                             : 'font-semibold text-muted-foreground',
                           // Flashed after a jump from the count chip, so the
                           // reader's eye lands on the row the number meant.
@@ -166,7 +166,7 @@ export function AssumptionsDiff({ plans }: { plans: AssumptionsPlan[] }) {
                           scope="row"
                           className={cn(
                             'py-2 pr-3 text-left font-semibold',
-                            row.differs && 'font-extrabold text-neo-black'
+                            row.differs && 'font-extrabold text-ink'
                           )}
                         >
                           <span className="flex items-center gap-1.5">

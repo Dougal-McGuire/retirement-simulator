@@ -29,7 +29,7 @@ interface ActionToastProps {
 export function ActionToast({ message, actions, testId }: ActionToastProps) {
   return (
     <div className="flex min-w-0 flex-col gap-2" data-testid={testId}>
-      <p className="text-[0.72rem] font-semibold leading-snug text-neo-black">{message}</p>
+      <p className="text-[0.72rem] font-semibold leading-snug text-ink">{message}</p>
       <div className="flex flex-wrap gap-2">
         {actions.map((action) => (
           <button
@@ -38,10 +38,10 @@ export function ActionToast({ message, actions, testId }: ActionToastProps) {
             data-testid={action.testId}
             onClick={action.onClick}
             className={cn(
-              'border-2 border-neo-black px-2.5 py-1 text-[0.62rem] font-extrabold uppercase tracking-[0.12em] transition-neo hover:-translate-y-[1px]',
+              'rounded-sm border-2 border-border px-2.5 py-1 text-[0.62rem] font-extrabold   transition-colors hover:-translate-y-[1px]',
               action.tone === 'primary'
-                ? 'bg-neo-yellow text-neo-black'
-                : 'bg-neo-white text-neo-black'
+                ? 'bg-amber text-ink'
+                : 'bg-white text-ink'
             )}
           >
             {action.label}

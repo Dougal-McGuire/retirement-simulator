@@ -254,7 +254,7 @@ export function LabeledNumberInput({
       <div className="flex items-center gap-1.5">
         <Label
           htmlFor={id}
-          className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-neo-black"
+          className="text-[0.68rem] font-semibold   text-ink"
         >
           {label}
         </Label>
@@ -264,15 +264,15 @@ export function LabeledNumberInput({
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  className="cursor-help rounded-full focus:outline-none focus:ring-2 focus:ring-neo-blue focus:ring-offset-2"
+                  className="cursor-help rounded-full focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
                   aria-label={tooltipAriaLabel ?? tUi('fieldHelp', { label })}
                 >
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/70 transition-colors hover:text-neo-black" />
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/70 transition-colors hover:text-ink" />
                 </button>
               </TooltipTrigger>
               <TooltipContent
                 side="top"
-                className="max-w-xs border-2 border-neo-black bg-neo-white px-3 py-2 text-neo-black shadow-neo-sm"
+                className="rounded-sm max-w-xs border-2 border-border bg-white px-3 py-2 text-ink shadow-sm"
               >
                 {tooltip && (
                   <p className="text-xs font-medium normal-case leading-relaxed">{tooltip}</p>
@@ -326,10 +326,10 @@ export function LabeledNumberInput({
           aria-describedby={describedBy}
           aria-invalid={showValidation && validationState === 'error' ? true : undefined}
           className={cn(
-            'h-11 border-2 text-sm font-semibold tabular-nums',
+            'rounded-sm h-11 border-2 text-sm font-semibold tabular-nums',
             unit && 'pr-12',
-            showValidation && validationState === 'error' && 'border-neo-red',
-            showValidation && validationState === 'warning' && 'border-neo-orange',
+            showValidation && validationState === 'error' && 'border-danger',
+            showValidation && validationState === 'warning' && 'border-viz-orange',
             className
           )}
         />
@@ -350,16 +350,16 @@ export function LabeledNumberInput({
           data-testid={`${id}-validation-message`}
           role={validationState === 'error' ? 'alert' : 'status'}
           className={cn(
-            'flex items-start gap-2 border-2 px-3 py-2 text-xs font-medium leading-relaxed',
-            validationState === 'error' && 'border-neo-red/60 bg-neo-red/10 text-neo-red',
-            validationState === 'warning' && 'border-neo-orange/60 bg-neo-orange/10 text-neo-black'
+            'rounded-sm flex items-start gap-2 border-2 px-3 py-2 text-xs font-medium leading-relaxed',
+            validationState === 'error' && 'border-danger/60 bg-danger/10 text-danger',
+            validationState === 'warning' && 'border-viz-orange/60 bg-viz-orange/10 text-ink'
           )}
         >
           <span className="mt-0.5 flex-shrink-0">
             {validationState === 'error' ? (
               <AlertCircle className="h-3.5 w-3.5" />
             ) : (
-              <AlertTriangle className="h-3.5 w-3.5 text-neo-orange" />
+              <AlertTriangle className="h-3.5 w-3.5 text-viz-orange" />
             )}
           </span>
           <span className="flex-1">

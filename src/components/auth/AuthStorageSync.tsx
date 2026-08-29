@@ -189,7 +189,7 @@ export function AuthStorageSync() {
           <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <p className="text-[0.7rem] font-semibold   text-muted-foreground">
           {t('note')}
         </p>
         <DialogFooter>

@@ -91,9 +91,9 @@ export function ShortfallChart({ results }: ShortfallChartProps) {
   }
 
   return (
-    <div className="w-full min-w-0 space-y-4 border-3 border-neo-black bg-neo-white p-4 shadow-neo sm:p-6">
+    <div className="rounded-sm w-full min-w-0 space-y-4 border border-border bg-white p-4 shadow-sm sm:p-6">
       <div className="flex items-center gap-2">
-        <h4 className="text-base font-extrabold uppercase tracking-[0.16em] text-neo-black sm:text-lg">
+        <h4 className="text-base font-extrabold   text-ink sm:text-lg">
           {t('title')}
         </h4>
         <InfoTip content={t('subtitle')} label={t('title')} side="bottom" />
@@ -141,7 +141,7 @@ export function ShortfallChart({ results }: ShortfallChartProps) {
               strokeWidth={2}
               fill="url(#shortfallFill)"
               isAnimationActive={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--neo-white)', fill: hue.solid }}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--white)', fill: hue.solid }}
             />
           </AreaChart>
         )}

@@ -48,9 +48,9 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 // "Sign in with Google" / "Mit Google anmelden" are long strings for an
-// uppercase, wide-tracked button. Tightening tracking and padding keeps them on
+// , wide-tracked button. Tightening tracking and padding keeps them on
 // one line inside the 12rem action strips instead of ellipsising.
-const SIGN_IN_BUTTON_CLASS = 'w-full justify-center gap-2 px-3 text-[0.6rem] tracking-[0.06em]'
+const SIGN_IN_BUTTON_CLASS = 'w-full justify-center gap-2 px-3 text-[0.6rem] '
 
 /** Rendered when the deployment has no Google OAuth credentials. */
 function AuthUnavailable({ className, compact }: AuthMenuProps) {
@@ -116,7 +116,7 @@ function AuthSession({ className, compact, signInRedirectTo }: AuthMenuProps) {
     return (
       <div
         className={cn(
-          'inline-flex animate-pulse items-center border-3 border-neo-black bg-muted',
+          'rounded-sm inline-flex animate-pulse items-center border border-border bg-muted',
           compact ? 'h-10 w-10' : 'h-10 w-full',
           className
         )}
@@ -165,11 +165,11 @@ function AuthSession({ className, compact, signInRedirectTo }: AuthMenuProps) {
       width={28}
       height={28}
       referrerPolicy="no-referrer"
-      className="h-7 w-7 shrink-0 border-2 border-neo-black object-cover"
+      className="rounded-sm h-7 w-7 shrink-0 border-2 border-border object-cover"
     />
   ) : (
-    <span className="flex h-7 w-7 shrink-0 items-center justify-center border-2 border-neo-black bg-neo-yellow">
-      <UserIcon className="h-4 w-4 text-neo-black" aria-hidden="true" />
+    <span className="rounded-sm flex h-7 w-7 shrink-0 items-center justify-center border-2 border-border bg-amber">
+      <UserIcon className="h-4 w-4 text-ink" aria-hidden="true" />
     </span>
   )
 
@@ -201,13 +201,13 @@ function AuthSession({ className, compact, signInRedirectTo }: AuthMenuProps) {
     <div
       data-testid="auth-account"
       className={cn(
-        'flex h-10 items-center gap-2 border-3 border-neo-black bg-neo-white px-2 shadow-neo-sm',
+        'rounded-sm flex h-10 items-center gap-2 border border-border bg-white px-2 shadow-sm',
         className
       )}
     >
       {avatar}
       <span
-        className="min-w-0 flex-1 truncate text-[0.7rem] font-bold leading-tight text-neo-black"
+        className="min-w-0 flex-1 truncate text-[0.7rem] font-bold leading-tight text-ink"
         title={displayName}
       >
         {displayName}

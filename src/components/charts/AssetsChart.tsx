@@ -151,7 +151,7 @@ export function AssetsChart({
     fontSize: '10px',
     fontWeight: 600,
     letterSpacing: '0.08em',
-    textTransform: 'uppercase' as const,
+    textTransform: '' as const,
   }
 
   const renderTooltip = ({
@@ -219,12 +219,12 @@ export function AssetsChart({
   }
 
   return (
-    <div className="w-full min-w-0 space-y-5 border-3 border-neo-black bg-neo-white p-4 shadow-neo sm:p-6">
+    <div className="rounded-sm w-full min-w-0 space-y-5 border border-border bg-white p-4 shadow-sm sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <h4
             id="asset-chart-title"
-            className="text-base font-extrabold uppercase tracking-[0.16em] text-neo-black sm:text-lg"
+            className="text-base font-extrabold   text-ink sm:text-lg"
           >
             {t('title')}
           </h4>
@@ -240,7 +240,7 @@ export function AssetsChart({
           <div
             role="group"
             aria-label={t('scale.label')}
-            className="flex items-center border-2 border-neo-black bg-neo-white"
+            className="rounded-sm flex items-center border-2 border-border bg-white"
           >
             {(
               [
@@ -254,10 +254,10 @@ export function AssetsChart({
                 onClick={() => setFocusMedian(option.key === 'focus')}
                 aria-pressed={option.active}
                 className={cn(
-                  'px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.12em] transition-neo',
+                  'px-2.5 py-1 text-[0.62rem] font-bold   transition-colors',
                   option.active
-                    ? 'bg-neo-black text-neo-white'
-                    : 'bg-neo-white text-muted-foreground hover:text-neo-black'
+                    ? 'bg-accent text-white'
+                    : 'bg-white text-muted-foreground hover:text-ink'
                 )}
               >
                 {option.label}
@@ -436,12 +436,12 @@ export function AssetsChart({
               <ReferenceLine
                 x={p50DepletionAge}
                 yAxisId="assets"
-                stroke="var(--neo-red)"
+                stroke="var(--danger)"
                 strokeWidth={1.5}
                 label={{
                   value: t('markers.depletionP50'),
                   position: 'insideTopRight',
-                  style: { ...markerLabelStyle, fill: 'var(--neo-red)', fontWeight: 700 },
+                  style: { ...markerLabelStyle, fill: 'var(--danger)', fontWeight: 700 },
                 }}
               />
             )}
@@ -449,13 +449,13 @@ export function AssetsChart({
               <ReferenceLine
                 x={p10DepletionAge}
                 yAxisId="assets"
-                stroke="var(--neo-red)"
+                stroke="var(--danger)"
                 strokeDasharray="3 3"
                 strokeWidth={1.25}
                 label={{
                   value: t('markers.depletionP10'),
                   position: 'insideBottomRight',
-                  style: { ...markerLabelStyle, fill: 'var(--neo-red)' },
+                  style: { ...markerLabelStyle, fill: 'var(--danger)' },
                 }}
               />
             )}
@@ -491,7 +491,7 @@ export function AssetsChart({
               stroke={hue.solid}
               strokeWidth={isMobile ? 2 : 2.5}
               dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--neo-white)', fill: hue.solid }}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--white)', fill: hue.solid }}
               name={t('legend.p50')}
               isAnimationActive={false}
               yAxisId="assets"
@@ -511,7 +511,7 @@ export function AssetsChart({
             />
           </ComposedChart>
         ) : (
-          <div className="h-full w-full border border-dashed border-neo-black/30 bg-muted/30" />
+          <div className="rounded-sm h-full w-full border border-dashed border-ink/30 bg-muted/30" />
         )}
       </div>
       <div id="asset-chart-description" className="sr-only">
@@ -521,7 +521,7 @@ export function AssetsChart({
         {t('aria.controls')}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[0.62rem] font-medium tracking-[0.04em] text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[0.62rem] font-medium  text-muted-foreground">
         <p className="m-0">
           {isClipped ? t('scale.clipped', { value: formatCurrencyShort(outerMax) }) : ''}
         </p>

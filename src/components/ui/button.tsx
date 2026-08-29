@@ -5,23 +5,23 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'theme-control inline-flex items-center justify-center whitespace-nowrap text-[0.72rem] font-bold uppercase tracking-[0.24em] leading-none transition-neo focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neo-blue focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40',
+  'theme-control inline-flex items-center justify-center whitespace-nowrap text-[0.72rem] font-bold   leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40',
   {
     variants: {
       variant: {
         default:
-          'border-3 border-neo-black bg-neo-blue text-neo-white shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md active:translate-x-0 active:translate-y-0 active:shadow-none',
+          'rounded-sm border border-border bg-accent text-white shadow-sm hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-sm active:translate-x-0 active:translate-y-0 active:shadow-none',
         destructive:
-          'border-3 border-neo-black bg-neo-red text-neo-white shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md active:translate-x-0 active:translate-y-0 active:shadow-none',
+          'rounded-sm border border-border bg-danger text-white shadow-sm hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-sm active:translate-x-0 active:translate-y-0 active:shadow-none',
         outline:
-          'border-3 border-neo-black bg-neo-white text-neo-black shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md active:translate-x-0 active:translate-y-0 active:shadow-none',
+          'rounded-sm border border-border bg-white text-ink shadow-sm hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-sm active:translate-x-0 active:translate-y-0 active:shadow-none',
         secondary:
-          'border-3 border-neo-black bg-secondary text-secondary-foreground shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md active:translate-x-0 active:translate-y-0 active:shadow-none',
+          'rounded-sm border border-border bg-secondary text-secondary-foreground shadow-sm hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-sm active:translate-x-0 active:translate-y-0 active:shadow-none',
         success:
-          'border-3 border-neo-black bg-neo-green text-neo-black shadow-neo hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-neo-md active:translate-x-0 active:translate-y-0 active:shadow-none',
+          'rounded-sm border border-border bg-ok text-ink shadow-sm hover:-translate-y-[2px] hover:-translate-x-[2px] hover:shadow-sm active:translate-x-0 active:translate-y-0 active:shadow-none',
         ghost:
-          'border-3 border-transparent text-neo-black hover:border-neo-black hover:bg-muted shadow-none hover:shadow-neo-sm',
-        link: 'border-none shadow-none text-neo-blue underline-offset-4 hover:underline hover:text-neo-black tracking-[0.16em] uppercase',
+          'rounded-sm border border-transparent text-ink hover:border-border hover:bg-muted shadow-none hover:shadow-sm',
+        link: 'border-none shadow-none text-accent underline-offset-4 hover:underline hover:text-ink  ',
       },
       size: {
         default: 'h-12 px-6 py-3',

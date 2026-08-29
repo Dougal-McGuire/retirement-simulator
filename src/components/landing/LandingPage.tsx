@@ -39,27 +39,27 @@ const FEATURES = [
     tile: 'bg-primary text-primary-foreground',
     rotate: '-rotate-2',
   },
-  { key: 'phases', Icon: Route, tile: 'bg-neo-green text-white', rotate: 'rotate-2' },
-  { key: 'reports', Icon: FileText, tile: 'bg-neo-orange text-white', rotate: '-rotate-3' },
+  { key: 'phases', Icon: Route, tile: 'bg-ok text-white', rotate: 'rotate-2' },
+  { key: 'reports', Icon: FileText, tile: 'bg-viz-orange text-white', rotate: '-rotate-3' },
   {
     key: 'privacy',
     Icon: ShieldCheck,
-    tile: 'bg-neo-pink text-white',
+    tile: 'bg-viz-pink text-white',
     rotate: 'rotate-2',
   },
-  { key: 'bilingual', Icon: Languages, tile: 'bg-neo-purple text-white', rotate: '-rotate-2' },
+  { key: 'bilingual', Icon: Languages, tile: 'bg-viz-purple text-white', rotate: '-rotate-2' },
 ] as const
 
 const HOW_STEPS = [
-  { key: 'step1', accent: 'bg-neo-yellow' },
-  { key: 'step2', accent: 'bg-neo-blue' },
-  { key: 'step3', accent: 'bg-neo-green' },
+  { key: 'step1', accent: 'bg-amber' },
+  { key: 'step2', accent: 'bg-accent' },
+  { key: 'step3', accent: 'bg-ok' },
 ] as const
 
 const SPREAD_ITEMS = [
-  { key: 'low', value: PREVIEW_TERMINAL.p10, accent: 'bg-neo-orange' },
+  { key: 'low', value: PREVIEW_TERMINAL.p10, accent: 'bg-viz-orange' },
   { key: 'median', value: PREVIEW_TERMINAL.p50, accent: 'bg-chart-1' },
-  { key: 'high', value: PREVIEW_TERMINAL.p90, accent: 'bg-neo-green' },
+  { key: 'high', value: PREVIEW_TERMINAL.p90, accent: 'bg-ok' },
 ] as const
 
 export function LandingPage() {
@@ -102,7 +102,7 @@ export function LandingPage() {
       <header id="navigation" className="relative z-20">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
           <Link href="/" className="group flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center border-3 border-neo-black bg-neo-yellow shadow-neo-sm transition-neo group-hover:-translate-x-[1px] group-hover:-translate-y-[1px] group-hover:shadow-neo">
+            <span className="rounded-sm flex h-10 w-10 items-center justify-center border border-border bg-amber shadow-sm transition-colors group-hover:-translate-x-[1px] group-hover:-translate-y-[1px] group-hover:shadow-sm">
               {/* No `priority`: the 1 KB inline-size logo never wins a preload
                   race, and the emitted <link rel="preload"> only produced a
                   "preloaded but not used" console warning. */}
@@ -111,7 +111,7 @@ export function LandingPage() {
             {/* On phones the 20-character compound broke mid-word next to
                 three buttons; the logo carries the link there, the name
                 stays for assistive technology. */}
-            <span className="landing-label hidden font-heading text-[0.72rem] font-black text-neo-black [overflow-wrap:anywhere] sm:inline sm:text-sm">
+            <span className="landing-label hidden font-heading text-[0.72rem] font-black text-ink [overflow-wrap:anywhere] sm:inline sm:text-sm">
               {t('nav.appName')}
             </span>
             <span className="sr-only sm:hidden">{t('nav.appName')}</span>
@@ -132,7 +132,7 @@ export function LandingPage() {
         <section className="mx-auto max-w-6xl px-4 pb-14 pt-4 sm:px-6 sm:pt-8 lg:pb-20">
           <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12">
             <div className="lg:col-span-5">
-              <span className="neo-chip landing-label animate-fade-in text-[0.62rem]">
+              <span className="app-chip landing-label animate-fade-in text-[0.62rem]">
                 <span
                   className="h-2 w-2 animate-pulse-soft rounded-full bg-current"
                   aria-hidden="true"
@@ -140,15 +140,15 @@ export function LandingPage() {
                 {t('hero.badge')}
               </span>
 
-              <h1 className="landing-display animate-fade-in mt-5 text-balance font-heading text-[1.95rem] font-black leading-[1.08] text-neo-black sm:text-[2.6rem] lg:text-[2.7rem]">
+              <h1 className="landing-display animate-fade-in mt-5 text-balance font-heading text-[1.95rem] font-black leading-[1.08] text-ink sm:text-[2.6rem] lg:text-[2.7rem]">
                 {t('hero.titleLine1')}{' '}
-                <span className="mt-2 inline-block border-3 border-neo-black bg-secondary px-3 py-0.5 text-secondary-foreground shadow-neo">
+                <span className="rounded-sm mt-2 inline-block border border-border bg-secondary px-3 py-0.5 text-secondary-foreground shadow-sm">
                   {t('hero.titleLine2', { runs: runsLabel })}
                 </span>
               </h1>
 
               {/* The thesis of the whole product — front and centre, not buried. */}
-              <p className="landing-display animate-fade-in-delayed mt-5 max-w-xl font-heading text-lg font-bold leading-snug text-neo-black sm:text-xl">
+              <p className="landing-display animate-fade-in-delayed mt-5 max-w-xl font-heading text-lg font-bold leading-snug text-ink sm:text-xl">
                 {t('hero.lede')}
               </p>
 
@@ -199,9 +199,9 @@ export function LandingPage() {
             {STATS.map(({ key, value }) => (
               <div
                 key={key}
-                className="theme-panel-card border-3 border-neo-black bg-neo-white p-5 shadow-neo transition-neo hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-neo-md"
+                className="rounded-sm theme-panel-card border border-border bg-white p-5 shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
               >
-                <p className="landing-display font-heading text-2xl font-black tabular-nums text-neo-black sm:text-3xl">
+                <p className="landing-display font-heading text-2xl font-black tabular-nums text-ink sm:text-3xl">
                   {value}
                 </p>
                 <p className="landing-body mt-2 text-[0.68rem] font-semibold leading-snug text-muted-foreground">
@@ -215,10 +215,10 @@ export function LandingPage() {
         {/* ================= Same plan, different futures ================= */}
         <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:pb-28">
           <div className="mx-auto mb-10 flex max-w-2xl flex-col items-center text-center">
-            <span className="landing-label inline-block border-3 border-neo-black bg-neo-yellow px-3 py-1 text-[0.66rem] font-bold text-gray-950 shadow-neo-sm">
+            <span className="rounded-sm landing-label inline-block border border-border bg-amber px-3 py-1 text-[0.66rem] font-bold text-gray-950 shadow-sm">
               {t('spread.eyebrow')}
             </span>
-            <h2 className="landing-display mt-5 text-balance font-heading text-2xl font-black text-neo-black sm:text-4xl">
+            <h2 className="landing-display mt-5 text-balance font-heading text-2xl font-black text-ink sm:text-4xl">
               {t('spread.title')}
             </h2>
             <p className="landing-body mt-4 text-pretty text-sm font-medium leading-relaxed text-foreground/80">
@@ -230,14 +230,14 @@ export function LandingPage() {
             {SPREAD_ITEMS.map(({ key, value, accent }) => (
               <li
                 key={key}
-                className="theme-panel-card border-3 border-neo-black bg-neo-white shadow-neo transition-neo hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-neo-md"
+                className="rounded-sm theme-panel-card border border-border bg-white shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
               >
-                <span className={cn('block h-2 w-full border-b-3 border-neo-black', accent)} />
+                <span className={cn('block h-2 w-full border-b border-border', accent)} />
                 <div className="p-6">
                   <p className="landing-label text-[0.68rem] font-bold text-muted-foreground">
                     {t(`spread.items.${key}.label`)}
                   </p>
-                  <p className="landing-display mt-2 font-heading text-4xl font-black tabular-nums text-neo-black">
+                  <p className="landing-display mt-2 font-heading text-4xl font-black tabular-nums text-ink">
                     {compactMoney(value)}
                   </p>
                   <p className="landing-body mt-3 text-[0.8rem] font-medium leading-relaxed text-foreground/75">
@@ -260,10 +260,10 @@ export function LandingPage() {
         {/* ================= Features ================= */}
         <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:pb-28">
           <div className="mx-auto mb-12 flex max-w-2xl flex-col items-center text-center">
-            <span className="inline-block border-3 border-neo-black bg-secondary landing-label px-3 py-1 text-[0.66rem] font-bold text-secondary-foreground shadow-neo-sm">
+            <span className="rounded-sm inline-block border border-border bg-secondary landing-label px-3 py-1 text-[0.66rem] font-bold text-secondary-foreground shadow-sm">
               {t('features.eyebrow')}
             </span>
-            <h2 className="landing-display mt-5 text-balance font-heading text-2xl font-black text-neo-black sm:text-4xl">
+            <h2 className="landing-display mt-5 text-balance font-heading text-2xl font-black text-ink sm:text-4xl">
               {t('features.title')}
             </h2>
             <p className="landing-body mt-4 text-pretty text-sm font-medium leading-relaxed text-foreground/80">
@@ -275,18 +275,18 @@ export function LandingPage() {
             {FEATURES.map(({ key, Icon, tile, rotate }) => (
               <li
                 key={key}
-                className="theme-panel-card group border-3 border-neo-black bg-neo-white p-6 shadow-neo transition-neo hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-neo-md"
+                className="rounded-sm theme-panel-card group border border-border bg-white p-6 shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
               >
                 <span
                   className={cn(
-                    'flex h-12 w-12 items-center justify-center border-3 border-neo-black shadow-neo-sm transition-neo group-hover:rotate-0',
+                    'rounded-sm flex h-12 w-12 items-center justify-center border border-border shadow-sm transition-colors group-hover:rotate-0',
                     tile,
                     rotate
                   )}
                 >
                   <Icon className="h-6 w-6" aria-hidden="true" />
                 </span>
-                <h3 className="landing-label mt-5 text-sm font-extrabold text-neo-black">
+                <h3 className="landing-label mt-5 text-sm font-extrabold text-ink">
                   {t(`features.items.${key}.title`)}
                 </h3>
                 <p className="landing-body mt-3 text-[0.8rem] font-medium leading-relaxed text-foreground/75">
@@ -300,10 +300,10 @@ export function LandingPage() {
         {/* ================= How it works ================= */}
         <section className="mx-auto max-w-6xl px-4 pb-24 sm:px-6 lg:pb-32">
           <div className="mx-auto mb-12 flex max-w-2xl flex-col items-center text-center">
-            <span className="inline-block border-3 border-neo-black bg-neo-green landing-label px-3 py-1 text-[0.66rem] font-bold text-gray-950 shadow-neo-sm">
+            <span className="rounded-sm inline-block border border-border bg-ok landing-label px-3 py-1 text-[0.66rem] font-bold text-gray-950 shadow-sm">
               {t('how.eyebrow')}
             </span>
-            <h2 className="landing-display mt-5 text-balance font-heading text-2xl font-black text-neo-black sm:text-4xl">
+            <h2 className="landing-display mt-5 text-balance font-heading text-2xl font-black text-ink sm:text-4xl">
               {t('how.title')}
             </h2>
           </div>
@@ -312,14 +312,14 @@ export function LandingPage() {
             {HOW_STEPS.map(({ key, accent }, index) => (
               <li
                 key={key}
-                className="theme-panel-card relative border-3 border-neo-black bg-neo-white shadow-neo transition-neo hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-neo-md"
+                className="rounded-sm theme-panel-card relative border border-border bg-white shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
               >
-                <span className={cn('block h-2 w-full border-b-3 border-neo-black', accent)} />
+                <span className={cn('block h-2 w-full border-b border-border', accent)} />
                 <div className="p-6">
-                  <span className="flex h-11 w-11 items-center justify-center border-3 border-neo-black bg-neo-white font-heading text-base font-black text-neo-black shadow-neo-sm">
+                  <span className="rounded-sm flex h-11 w-11 items-center justify-center border border-border bg-white font-heading text-base font-black text-ink shadow-sm">
                     {index + 1}
                   </span>
-                  <h3 className="landing-label mt-5 text-sm font-extrabold text-neo-black">
+                  <h3 className="landing-label mt-5 text-sm font-extrabold text-ink">
                     {t(`how.steps.${key}.title`)}
                   </h3>
                   <p className="landing-body mt-3 text-[0.8rem] font-medium leading-relaxed text-foreground/75">
@@ -332,7 +332,7 @@ export function LandingPage() {
         </section>
 
         {/* ================= Final CTA ================= */}
-        <section className="landing-cta border-y-3 border-neo-black">
+        <section className="landing-cta border-y-3 border-border">
           <div className="mx-auto flex max-w-4xl flex-col items-center px-4 py-20 text-center sm:px-6 lg:py-24">
             <h2 className="landing-cta-title landing-display text-balance font-heading text-2xl font-black sm:text-4xl lg:text-5xl">
               {t('cta.title')}
@@ -352,7 +352,7 @@ export function LandingPage() {
             </Button>
             <Link
               href="/simulation"
-              className="landing-cta-link landing-body mt-6 text-xs font-semibold underline decoration-2 underline-offset-4 transition-neo"
+              className="landing-cta-link landing-body mt-6 text-xs font-semibold underline decoration-2 underline-offset-4 transition-colors"
             >
               {t('cta.secondary')}
             </Link>
@@ -362,14 +362,14 @@ export function LandingPage() {
       </main>
 
       {/* ================= Footer ================= */}
-      <footer className="relative z-10 bg-neo-white/70">
+      <footer className="relative z-10 bg-white/70">
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center border-3 border-neo-black bg-neo-yellow shadow-neo-xs">
+            <span className="rounded-sm flex h-9 w-9 items-center justify-center border border-border bg-amber shadow-sm">
               <Image src="/piggy.svg" alt="" width={20} height={20} />
             </span>
             <div>
-              <p className="landing-label text-[0.72rem] font-black text-neo-black">
+              <p className="landing-label text-[0.72rem] font-black text-ink">
                 {t('nav.appName')}
               </p>
               <p className="landing-body mt-1 text-[0.68rem] font-medium text-muted-foreground">
@@ -381,19 +381,19 @@ export function LandingPage() {
           <nav className="flex flex-wrap items-center gap-x-8 gap-y-3">
             <Link
               href="/setup"
-              className="landing-label text-[0.72rem] font-bold text-neo-black underline decoration-2 underline-offset-4 transition-neo hover:text-neo-blue"
+              className="landing-label text-[0.72rem] font-bold text-ink underline decoration-2 underline-offset-4 transition-colors hover:text-accent"
             >
               {t('footer.setup')}
             </Link>
             <Link
               href="/simulation"
-              className="landing-label text-[0.72rem] font-bold text-neo-black underline decoration-2 underline-offset-4 transition-neo hover:text-neo-blue"
+              className="landing-label text-[0.72rem] font-bold text-ink underline decoration-2 underline-offset-4 transition-colors hover:text-accent"
             >
               {t('footer.simulation')}
             </Link>
           </nav>
         </div>
-        <div className="border-t-2 border-neo-black/15">
+        <div className="border-t-2 border-ink/15">
           <p className="landing-body mx-auto max-w-6xl px-4 py-5 text-[0.66rem] font-medium text-muted-foreground sm:px-6">
             {t('footer.copyright', { year })}
           </p>

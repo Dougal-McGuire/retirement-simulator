@@ -32,8 +32,8 @@ export default {
           foreground: 'hsl(var(--muted-foreground))',
         },
         accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
+          DEFAULT: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          foreground: '#ffffff',
         },
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
@@ -50,17 +50,16 @@ export default {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
-        // Theme-aware application palette. Defaults preserve the original neo-brutalist look.
-        'neo-black': 'rgb(var(--neo-black-rgb) / <alpha-value>)',
-        'neo-white': 'rgb(var(--neo-white-rgb) / <alpha-value>)',
-        'neo-yellow': 'rgb(var(--neo-yellow-rgb) / <alpha-value>)',
-        'neo-blue': 'rgb(var(--neo-blue-rgb) / <alpha-value>)',
-        'neo-red': 'rgb(var(--neo-red-rgb) / <alpha-value>)',
-        'neo-green': 'rgb(var(--neo-green-rgb) / <alpha-value>)',
-        'neo-pink': 'rgb(var(--neo-pink-rgb) / <alpha-value>)',
-        'neo-purple': 'rgb(var(--neo-purple-rgb) / <alpha-value>)',
-        'neo-cyan': 'rgb(var(--neo-cyan-rgb) / <alpha-value>)',
-        'neo-orange': 'rgb(var(--neo-orange-rgb) / <alpha-value>)',
+        // Design-system palette: ink + one accent, semantic status colors, and
+        // the categorical viz hues (which deliberately avoid the accent band).
+        ink: 'rgb(var(--ink-rgb) / <alpha-value>)',
+        danger: 'rgb(var(--danger-rgb) / <alpha-value>)',
+        ok: 'rgb(var(--ok-rgb) / <alpha-value>)',
+        amber: 'rgb(var(--amber-rgb) / <alpha-value>)',
+        'viz-teal': 'rgb(var(--viz-teal-rgb) / <alpha-value>)',
+        'viz-purple': 'rgb(var(--viz-purple-rgb) / <alpha-value>)',
+        'viz-pink': 'rgb(var(--viz-pink-rgb) / <alpha-value>)',
+        'viz-orange': 'rgb(var(--viz-orange-rgb) / <alpha-value>)',
         // Enhanced color palette for retirement app
         success: {
           50: '#f0fdf4',
@@ -103,11 +102,6 @@ export default {
         sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
       },
-      borderWidth: {
-        '3': '3px',
-        '5': '5px',
-        '6': '6px',
-      },
       borderRadius: {
         neo: '0.25rem',
         'neo-soft': '0.25rem',
@@ -119,31 +113,6 @@ export default {
         '18': '4.5rem',
         '88': '22rem',
         '128': '32rem',
-      },
-      boxShadow: {
-        // Theme-aware shadows. Defaults preserve the original hard offsets.
-        'neo-xs': 'var(--shadow-neo-xs)',
-        neo: 'var(--shadow-neo)',
-        'neo-sm': 'var(--shadow-neo-sm)',
-        'neo-md': 'var(--shadow-neo-md)',
-        'neo-lg': 'var(--shadow-neo-lg)',
-        'neo-xl': 'var(--shadow-neo-xl)',
-        'neo-yellow': 'var(--shadow-neo-yellow)',
-        'neo-blue': 'var(--shadow-neo-blue)',
-        'neo-red': 'var(--shadow-neo-red)',
-        'neo-green': 'var(--shadow-neo-green)',
-        'neo-pink': 'var(--shadow-neo-pink)',
-        'neo-purple': 'var(--shadow-neo-purple)',
-        // Mobile-friendly shadows (smaller)
-        'neo-mobile': '2px 2px 0px #000000',
-        'neo-mobile-md': '3px 3px 0px #000000',
-        // Keep existing soft shadows for backwards compatibility
-        soft: '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
-        medium: '0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 30px -5px rgba(0, 0, 0, 0.04)',
-        strong: '0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-        glow: '0 0 0 1px rgba(59, 130, 246, 0.15), 0 4px 25px -5px rgba(59, 130, 246, 0.2)',
-        success: '0 0 0 1px rgba(34, 197, 94, 0.15), 0 4px 25px -5px rgba(34, 197, 94, 0.2)',
-        warning: '0 0 0 1px rgba(245, 158, 11, 0.15), 0 4px 25px -5px rgba(245, 158, 11, 0.2)',
       },
       transitionDuration: {
         neo: '100ms',

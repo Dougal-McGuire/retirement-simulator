@@ -184,7 +184,7 @@ export function ExpenseList({
 
     if (isEditing) {
       return (
-        <tr key={expense.id} className="bg-neo-blue/5">
+        <tr key={expense.id} className="bg-accent/5">
           <td className="px-4 py-3">
             <div className="flex flex-col gap-2">
               <Input
@@ -192,12 +192,12 @@ export function ExpenseList({
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder={strings.namePlaceholder}
-                className="h-10 border-2 border-neo-black px-2 text-[0.68rem] font-semibold uppercase"
+                className="rounded-sm h-10 border-2 border-border px-2 text-[0.68rem] font-semibold "
                 aria-label={getExpenseControlLabel(strings.nameLabel, expense)}
               />
               <Select value={editInterval} onValueChange={handleEditIntervalChange}>
                 <SelectTrigger
-                  className="h-10 border-2 border-neo-black px-2 text-[0.62rem]"
+                  className="rounded-sm h-10 border-2 border-border px-2 text-[0.62rem]"
                   aria-label={getExpenseControlLabel(strings.intervalLabel, expense)}
                 >
                   <SelectValue />
@@ -226,7 +226,7 @@ export function ExpenseList({
                   setEditAmount(editAmountField.format(clamped))
                 }
               }}
-              className="h-10 border-2 border-neo-black px-2 text-[0.68rem] font-semibold uppercase text-right"
+              className="rounded-sm h-10 border-2 border-border px-2 text-[0.68rem] font-semibold  text-right"
               aria-label={getExpenseControlLabel(strings.amountLabel, expense)}
             />
           </td>
@@ -237,7 +237,7 @@ export function ExpenseList({
                 variant="ghost"
                 size="icon"
                 onClick={handleSaveEdit}
-                className="h-8 w-8 text-green-600 hover:bg-green-600 hover:text-neo-white"
+                className="h-8 w-8 text-green-600 hover:bg-green-600 hover:text-muted-foreground"
                 aria-label={getExpenseControlLabel(strings.save, expense)}
               >
                 <Check className="h-3.5 w-3.5" />
@@ -247,7 +247,7 @@ export function ExpenseList({
                 variant="ghost"
                 size="icon"
                 onClick={handleCancelEdit}
-                className="h-8 w-8 text-neo-black hover:bg-neo-red hover:text-neo-white"
+                className="h-8 w-8 text-ink hover:bg-danger hover:text-muted-foreground"
                 aria-label={getExpenseControlLabel(strings.cancel, expense)}
               >
                 <X className="h-3.5 w-3.5" />
@@ -262,15 +262,15 @@ export function ExpenseList({
       <tr key={expense.id}>
         <td className="px-4 py-3 text-left">
           <div className="flex flex-col gap-0.5">
-            <span className="text-[0.74rem] font-bold uppercase tracking-[0.12em]">
+            <span className="text-[0.74rem] font-bold  ">
               {expense.name}
             </span>
-            <span className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            <span className="text-[0.62rem] font-semibold   text-muted-foreground">
               {expense.interval === 'monthly' ? strings.intervalMonthly : strings.intervalAnnual}
             </span>
           </div>
         </td>
-        <td className="px-4 py-3 text-right text-[0.74rem] font-bold uppercase tracking-[0.12em]">
+        <td className="px-4 py-3 text-right text-[0.74rem] font-bold  ">
           {formatCurrency(expense.amount)}
         </td>
         <td className="w-20 px-2 py-3 text-center">
@@ -281,7 +281,7 @@ export function ExpenseList({
                 variant="ghost"
                 size="icon"
                 onClick={() => handleStartEdit(expense)}
-                className="h-8 w-8 text-neo-black hover:bg-neo-blue hover:text-neo-white"
+                className="h-8 w-8 text-ink hover:bg-accent hover:text-muted-foreground"
                 aria-label={getExpenseControlLabel(strings.edit, expense)}
               >
                 <Edit2 className="h-3.5 w-3.5" />
@@ -292,7 +292,7 @@ export function ExpenseList({
               variant="ghost"
               size="icon"
               onClick={() => onRemove(expense.id)}
-              className="h-8 w-8 text-neo-black hover:bg-neo-red hover:text-neo-white"
+              className="h-8 w-8 text-ink hover:bg-danger hover:text-muted-foreground"
               aria-label={getExpenseControlLabel(strings.remove, expense)}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -306,22 +306,22 @@ export function ExpenseList({
   return (
     <div className="space-y-4">
       {!isEmpty && (
-        <div className="overflow-hidden border-3 border-neo-black bg-neo-white shadow-neo-sm">
+        <div className="rounded-sm overflow-hidden border border-border bg-white shadow-sm">
           <table className="w-full">
-            <thead className="border-b-3 border-neo-black bg-neo-black">
+            <thead className="border-b border-border bg-gray-50">
               <tr>
-                <th className="whitespace-nowrap px-4 py-3 text-left text-[0.65rem] font-bold uppercase tracking-[0.16em] text-neo-white">
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[0.65rem] font-bold   text-muted-foreground">
                   {strings.tableHeaders.name}
                 </th>
-                <th className="whitespace-nowrap px-4 py-3 text-right text-[0.65rem] font-bold uppercase tracking-[0.16em] text-neo-white">
+                <th className="whitespace-nowrap px-4 py-3 text-right text-[0.65rem] font-bold   text-muted-foreground">
                   {strings.tableHeaders.amount}
                 </th>
-                <th className="w-20 whitespace-nowrap px-2 py-3 text-center text-[0.65rem] font-bold uppercase tracking-[0.16em] text-neo-white">
+                <th className="w-20 whitespace-nowrap px-2 py-3 text-center text-[0.65rem] font-bold   text-muted-foreground">
                   {strings.tableHeaders.actions}
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y-3 divide-neo-black">
+            <tbody className="divide-y divide-border">
               {safeExpenses.map(renderExpenseRow)}
             </tbody>
           </table>
@@ -331,7 +331,7 @@ export function ExpenseList({
       {availableTemplates.length > 0 && (
         <div className="space-y-3">
           {strings.templatesLabel && (
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="text-[0.68rem] font-semibold   text-muted-foreground">
               {strings.templatesLabel}
             </p>
           )}
@@ -341,7 +341,7 @@ export function ExpenseList({
                 key={index}
                 type="button"
                 onClick={() => onAdd(template)}
-                className="border-2 border-dashed border-neo-black bg-neo-white/50 px-3 py-2 text-left text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-neo-black transition-neo hover:-translate-y-[1px] hover:-translate-x-[1px] hover:bg-neo-yellow/20 hover:shadow-neo-sm"
+                className="rounded-sm border-2 border-dashed border-border bg-white/50 px-3 py-2 text-left text-[0.68rem] font-semibold   text-ink transition-colors hover:-translate-y-[1px] hover:-translate-x-[1px] hover:bg-amber/15 hover:shadow-sm"
               >
                 <span className="block">{template.name}</span>
                 <span className="mt-1 block text-[0.62rem] text-muted-foreground">
@@ -358,20 +358,20 @@ export function ExpenseList({
 
       <div
         className={cn(
-          'border-3 border-neo-black px-4 py-5 shadow-neo-sm',
-          isEmpty ? 'bg-gradient-to-br from-neo-blue/5 to-neo-yellow/5' : 'bg-neo-white'
+          'rounded-sm border border-border px-4 py-5 shadow-sm',
+          isEmpty ? 'bg-gradient-to-br from-accent/5 to-amber/5' : 'bg-white'
         )}
       >
         {isEmpty && (
-          <div className="mb-5 flex items-start gap-3 border-b-3 border-dashed border-neo-black pb-4">
-            <span className="rounded-full border-3 border-neo-black bg-neo-yellow p-2 shadow-neo-xs">
-              <Plus className="h-4 w-4 text-neo-black" strokeWidth={3} aria-hidden="true" />
+          <div className="mb-5 flex items-start gap-3 border-b border-dashed border-border pb-4">
+            <span className="rounded-full border border-border bg-amber p-2 shadow-sm">
+              <Plus className="h-4 w-4 text-ink" strokeWidth={3} aria-hidden="true" />
             </span>
             <div className="space-y-1">
-              <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+              <p className="text-[0.72rem] font-extrabold   text-ink">
                 {strings.empty}
               </p>
-              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              <p className="text-[0.62rem] font-semibold   text-muted-foreground">
                 {strings.emptyHint ??
                   'Add recurring and one-time expenses like insurance, groceries, vacations, or home repairs'}
               </p>
@@ -383,7 +383,7 @@ export function ExpenseList({
             <div className="flex flex-col sm:col-span-2">
               <Label
                 htmlFor="expense-name"
-                className="mb-2 block min-h-[2rem] text-[0.68rem] font-semibold uppercase tracking-[0.14em] leading-tight"
+                className="mb-2 block min-h-[2rem] text-[0.68rem] font-semibold   leading-tight"
               >
                 {strings.nameLabel}
               </Label>
@@ -393,14 +393,14 @@ export function ExpenseList({
                 value={draftName}
                 placeholder={strings.namePlaceholder}
                 onChange={(event) => setDraftName(event.target.value)}
-                className="h-11 w-full border-2 border-neo-black px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+                className="rounded-sm h-11 w-full border-2 border-border px-3 py-2 text-[0.68rem] font-semibold  "
               />
             </div>
 
             <div className="flex flex-col">
               <Label
                 htmlFor="expense-amount"
-                className="mb-2 block min-h-[2rem] text-[0.68rem] font-semibold uppercase tracking-[0.14em] leading-tight"
+                className="mb-2 block min-h-[2rem] text-[0.68rem] font-semibold   leading-tight"
               >
                 {strings.amountLabel}
               </Label>
@@ -421,19 +421,19 @@ export function ExpenseList({
                     setDraftAmount(draftAmountField.format(clamped))
                   }
                 }}
-                className="h-11 w-full border-2 border-neo-black px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+                className="rounded-sm h-11 w-full border-2 border-border px-3 py-2 text-[0.68rem] font-semibold  "
               />
             </div>
 
             <div className="flex flex-col">
               <Label
                 htmlFor="expense-interval"
-                className="mb-2 block min-h-[2rem] text-[0.68rem] font-semibold uppercase tracking-[0.14em] leading-tight"
+                className="mb-2 block min-h-[2rem] text-[0.68rem] font-semibold   leading-tight"
               >
                 {strings.intervalLabel}
               </Label>
               <Select value={draftInterval} onValueChange={handleDraftIntervalChange}>
-                <SelectTrigger id="expense-interval" className="h-11 border-2 border-neo-black">
+                <SelectTrigger id="expense-interval" className="rounded-sm h-11 border-2 border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -449,7 +449,7 @@ export function ExpenseList({
               type="submit"
               variant="secondary"
               size="sm"
-              className="h-11 w-full px-6 disabled:border-neo-black/40 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
+              className="h-11 w-full px-6 disabled:border-ink/40 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
               disabled={!canAddDraft}
               aria-describedby={!canAddDraft && strings.addHint ? 'expense-add-hint' : undefined}
             >
@@ -458,14 +458,14 @@ export function ExpenseList({
             {!canAddDraft && strings.addHint && (
               <p
                 id="expense-add-hint"
-                className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
+                className="text-[0.62rem] font-semibold   text-muted-foreground"
               >
                 {strings.addHint}
               </p>
             )}
           </div>
         </form>
-        <div className="mt-4 space-y-2 border-t-3 border-dashed border-neo-black pt-4 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <div className="mt-4 space-y-2 border-t border-dashed border-border pt-4 text-[0.65rem] font-semibold   text-muted-foreground">
           <div className="flex justify-between">
             <span>{strings.intervalMonthly}:</span>
             <span>{formatCurrency(totalMonthly)}</span>
@@ -474,7 +474,7 @@ export function ExpenseList({
             <span>{strings.intervalAnnual}:</span>
             <span>{formatCurrency(totalAnnual)}</span>
           </div>
-          <div className="flex justify-between border-t-2 border-dashed border-neo-black pt-2 text-[0.7rem] font-bold text-neo-black">
+          <div className="flex justify-between border-t-2 border-dashed border-border pt-2 text-[0.7rem] font-bold text-ink">
             <span>{strings.summaryLabel}:</span>
             <span>{formatCurrency(totalCombined)}</span>
           </div>

@@ -59,44 +59,44 @@ export function SpendingSection({ results }: SpendingSectionProps) {
         formatCurrencyShort={formatCurrencyShort}
       />
 
-      <details className="border-3 border-neo-black bg-neo-white p-4 shadow-neo-sm">
-        <summary className="cursor-pointer text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-neo-blue">
+      <details className="rounded-sm border border-border bg-white p-4 shadow-sm">
+        <summary className="cursor-pointer text-[0.68rem] font-semibold   text-accent">
           {t('spendingTable.toggle')}
         </summary>
-        <div className="mt-4 overflow-x-auto border-t-3 border-neo-black pt-4">
-          <p className="mb-3 max-w-3xl text-[0.64rem] font-semibold uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
+        <div className="mt-4 overflow-x-auto border-t border-border pt-4">
+          <p className="mb-3 max-w-3xl text-[0.64rem] font-semibold  leading-relaxed  text-muted-foreground">
             {t(spendingTableNoteKey, {
               withdrawalRate: formatPercent(results.params.dsWithdrawalRate),
               ceiling: formatPercent(results.params.dsCeilingRate),
               floor: formatPercent(results.params.dsFloorRate),
             })}
           </p>
-          <table className="min-w-full border-3 border-neo-black bg-neo-white text-[0.68rem] uppercase tracking-[0.12em]">
+          <table className="rounded-sm min-w-full border border-border bg-white text-[0.68rem]  ">
             <caption className="sr-only">{t('spendingTable.caption')}</caption>
             <thead>
               <tr className="bg-muted">
-                <th className="border border-neo-black px-3 py-2 text-left">
+                <th className="rounded-sm border border-border px-3 py-2 text-left">
                   {t('spendingTable.headers.age')}
                 </th>
-                <th className="border border-neo-black px-3 py-2 text-right">
+                <th className="rounded-sm border border-border px-3 py-2 text-right">
                   {t('spendingTable.headers.p10')}
                 </th>
-                <th className="border border-neo-black px-3 py-2 text-right">
+                <th className="rounded-sm border border-border px-3 py-2 text-right">
                   {t('spendingTable.headers.p50')}
                 </th>
-                <th className="border border-neo-black px-3 py-2 text-right">
+                <th className="rounded-sm border border-border px-3 py-2 text-right">
                   {t('spendingTable.headers.p90')}
                 </th>
-                <th className="border border-neo-black px-3 py-2 text-right">
+                <th className="rounded-sm border border-border px-3 py-2 text-right">
                   {t('spendingTable.headers.withdrawalRate')}
                 </th>
-                <th className="border border-neo-black px-3 py-2 text-right">
+                <th className="rounded-sm border border-border px-3 py-2 text-right">
                   {t('spendingTable.headers.pension')}
                 </th>
-                <th className="border border-neo-black px-3 py-2 text-right">
+                <th className="rounded-sm border border-border px-3 py-2 text-right">
                   {t('spendingTable.headers.portfolioDraw')}
                 </th>
-                <th className="border border-neo-black px-3 py-2 text-right">
+                <th className="rounded-sm border border-border px-3 py-2 text-right">
                   {t('spendingTable.headers.availableCash')}
                 </th>
               </tr>
@@ -108,27 +108,27 @@ export function SpendingSection({ results }: SpendingSectionProps) {
                 const availableCash = pension + portfolioDraw
 
                 return (
-                  <tr key={index} className="border-b border-neo-black">
-                    <td className="border border-neo-black px-3 py-2 text-left">{data.age}</td>
-                    <td className="border border-neo-black px-3 py-2 text-right">
+                  <tr key={index} className="border-b border-border">
+                    <td className="rounded-sm border border-border px-3 py-2 text-left">{data.age}</td>
+                    <td className="rounded-sm border border-border px-3 py-2 text-right">
                       {formatCurrency(data.spending_p10)}
                     </td>
-                    <td className="border border-neo-black px-3 py-2 text-right">
+                    <td className="rounded-sm border border-border px-3 py-2 text-right">
                       {formatCurrency(data.spending_p50)}
                     </td>
-                    <td className="border border-neo-black px-3 py-2 text-right">
+                    <td className="rounded-sm border border-border px-3 py-2 text-right">
                       {formatCurrency(data.spending_p90)}
                     </td>
-                    <td className="border border-neo-black px-3 py-2 text-right">
+                    <td className="rounded-sm border border-border px-3 py-2 text-right">
                       {formatPercent(data.withdrawal_rate_p50)}
                     </td>
-                    <td className="border border-neo-black px-3 py-2 text-right">
+                    <td className="rounded-sm border border-border px-3 py-2 text-right">
                       {formatCurrency(pension)}
                     </td>
-                    <td className="border border-neo-black px-3 py-2 text-right">
+                    <td className="rounded-sm border border-border px-3 py-2 text-right">
                       {formatCurrency(portfolioDraw)}
                     </td>
-                    <td className="border border-neo-black px-3 py-2 text-right font-black text-neo-black">
+                    <td className="rounded-sm border border-border px-3 py-2 text-right font-black text-ink">
                       {formatCurrency(availableCash)}
                     </td>
                   </tr>

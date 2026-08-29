@@ -92,11 +92,11 @@ function StatStrip({ items, stale = false }: { items: StatItem[]; stale?: boolea
       aria-hidden={stale || undefined}
     >
       {items.map((item) => (
-        <div key={item.label} className="border-2 border-neo-black bg-background px-3 py-2">
-          <dt className="text-[0.55rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        <div key={item.label} className="rounded-sm border-2 border-border bg-background px-3 py-2">
+          <dt className="text-[0.55rem] font-bold   text-muted-foreground">
             {item.label}
           </dt>
-          <dd className="mt-0.5 text-sm font-black tabular-nums text-neo-black">{item.value}</dd>
+          <dd className="mt-0.5 text-sm font-black tabular-nums text-ink">{item.value}</dd>
           {item.hint && (
             <dd className="mt-0.5 text-[0.55rem] font-medium leading-tight text-muted-foreground">
               {item.hint}
@@ -132,13 +132,13 @@ function EditorCard({
       id={id}
       data-testid={id}
       className={cn(
-        'theme-panel-card flex scroll-mt-32 flex-col gap-5 border-3 border-neo-black bg-neo-white p-5 shadow-neo',
+        'rounded-sm theme-panel-card flex scroll-mt-32 flex-col gap-5 border border-border bg-white p-5 shadow-sm',
         className
       )}
     >
-      <header className="flex items-start justify-between gap-3 border-b-2 border-neo-black pb-3">
+      <header className="flex items-start justify-between gap-3 border-b-2 border-border pb-3">
         <div className="flex min-w-0 items-center gap-2">
-          <h3 className="text-[0.92rem] font-black uppercase tracking-[0.16em] text-neo-black">
+          <h3 className="text-[0.92rem] font-black   text-ink">
             {title}
           </h3>
           <InfoTip content={description} label={title} side="bottom" />
@@ -148,7 +148,7 @@ function EditorCard({
       {statsStale && statsStaleNote && (
         <p
           data-testid={`${id}-stats-stale`}
-          className="border-2 border-neo-orange/60 bg-neo-orange/10 px-3 py-2 text-[0.62rem] font-semibold leading-snug text-neo-black"
+          className="rounded-sm border-2 border-viz-orange/60 bg-viz-orange/10 px-3 py-2 text-[0.62rem] font-semibold leading-snug text-ink"
         >
           {statsStaleNote}
         </p>
@@ -179,7 +179,7 @@ function PresetRow({
       className={cn('space-y-2', disabled && 'opacity-55')}
       aria-disabled={disabled || undefined}
     >
-      <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+      <span className="text-[0.62rem] font-extrabold   text-ink">
         {label}
       </span>
       <div className="grid gap-2 sm:grid-cols-3">
@@ -193,13 +193,13 @@ function PresetRow({
               disabled={disabled}
               onClick={() => onSelect(option.key)}
               className={cn(
-                'flex flex-col items-start gap-0.5 border-2 border-neo-black px-3 py-2 text-left transition-neo',
+                'rounded-sm flex flex-col items-start gap-0.5 border-2 border-border px-3 py-2 text-left transition-colors',
                 isActive
-                  ? 'bg-neo-yellow text-neo-black shadow-neo-xs'
-                  : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
+                  ? 'bg-amber text-ink shadow-sm'
+                  : 'bg-white text-ink hover:bg-accent/10'
               )}
             >
-              <span className="text-[0.65rem] font-extrabold uppercase tracking-[0.1em]">
+              <span className="text-[0.65rem] font-extrabold  ">
                 {option.label}
               </span>
               <span className="text-[0.58rem] font-semibold tabular-nums text-muted-foreground">
@@ -425,9 +425,9 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
 
   return (
     <div className={cn('space-y-5', className)} data-testid="plan-editor">
-      <div className="flex flex-col gap-3 border-3 border-neo-black bg-neo-white px-5 py-4 shadow-neo sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-sm flex flex-col gap-3 border border-border bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
-          <h2 className="text-[1rem] font-black uppercase tracking-[0.2em] text-neo-black">
+          <h2 className="text-[1rem] font-black   text-ink">
             {t('title')}
           </h2>
           <InfoTip
@@ -451,7 +451,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
           <Button
             size="sm"
             variant="ghost"
-            className="h-9 text-neo-red"
+            className="h-9 text-danger"
             data-testid="plan-editor-reset"
             onClick={() => setResetOpen(true)}
           >
@@ -545,17 +545,17 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                 role="alert"
                 data-testid="editor-timeline-issues"
                 className={cn(
-                  'flex items-start gap-3 border-2 px-4 py-3',
+                  'rounded-sm flex items-start gap-3 border-2 px-4 py-3',
                   ageIssues.some((issue) => issue.severity === 'error')
-                    ? 'border-neo-red bg-neo-red/10'
-                    : 'border-neo-orange bg-neo-orange/10'
+                    ? 'border-danger bg-danger/10'
+                    : 'border-viz-orange bg-viz-orange/10'
                 )}
               >
                 <AlertTriangle
-                  className="mt-0.5 h-4 w-4 flex-shrink-0 text-neo-orange"
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 text-viz-orange"
                   aria-hidden="true"
                 />
-                <div className="space-y-1 text-xs font-medium leading-relaxed text-neo-black">
+                <div className="space-y-1 text-xs font-medium leading-relaxed text-ink">
                   {ageIssues.map((issue) => (
                     <p key={issue.id}>{tSetup(`validation.${issue.id}`)}</p>
                   ))}
@@ -648,7 +648,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
             {/* One-off income used to live here. It is a cash flow like any
               other now, so the card below owns it — two editors writing the
               same list is how they drift apart. */}
-            <p className="border-2 border-dashed border-neo-black/40 bg-background px-4 py-3 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            <p className="rounded-sm border-2 border-dashed border-ink/40 bg-background px-4 py-3 text-[0.62rem] font-semibold   text-muted-foreground">
               {t('groups.cashFlows.incomePointer', { count: onceIncomeCount })}
             </p>
           </EditorCard>
@@ -745,7 +745,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
             }
           >
             <div className="space-y-2" data-testid="market-model-switch">
-              <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+              <span className="text-[0.62rem] font-extrabold   text-ink">
                 {tControls('fields.marketModel.label')}
               </span>
               <div className="grid gap-2 sm:grid-cols-2" role="group">
@@ -759,13 +759,13 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                       data-testid={`market-model-${model}`}
                       onClick={() => updateParams({ marketModel: model })}
                       className={cn(
-                        'flex flex-col items-start gap-1 border-2 border-neo-black px-3 py-2.5 text-left transition-neo',
+                        'rounded-sm flex flex-col items-start gap-1 border-2 border-border px-3 py-2.5 text-left transition-colors',
                         isSelected
-                          ? 'bg-neo-blue text-neo-white shadow-neo-xs'
-                          : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
+                          ? 'bg-accent text-white shadow-sm'
+                          : 'bg-white text-ink hover:bg-accent/10'
                       )}
                     >
-                      <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.1em]">
+                      <span className="text-[0.68rem] font-extrabold  ">
                         {tControls(`fields.marketModel.options.${model}.label`)}
                       </span>
                       <span className="text-[0.58rem] font-medium leading-snug opacity-90">
@@ -777,7 +777,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               </div>
               {usesHistory && (
                 <p
-                  className="border-2 border-neo-black bg-neo-yellow px-3 py-2 text-[0.62rem] font-semibold leading-snug text-neo-black"
+                  className="rounded-sm border-2 border-border bg-amber px-3 py-2 text-[0.62rem] font-semibold leading-snug text-ink"
                   data-testid="market-model-historical-notice"
                 >
                   {tControls('fields.marketModel.historicalNotice', {
@@ -852,12 +852,12 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
             </div>
 
             <div
-              className="space-y-4 border-2 border-neo-black bg-background px-4 py-4"
+              className="rounded-sm space-y-4 border-2 border-border bg-background px-4 py-4"
               data-testid="glide-path-block"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <h4 className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                  <h4 className="text-[0.68rem] font-extrabold   text-ink">
                     {tControls('fields.glidePath.label')}
                   </h4>
                   <InfoTip
@@ -873,17 +873,17 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                   data-testid="glide-path-toggle"
                   onClick={() => updateParams({ glidePathEnabled: !glideOn })}
                   className={cn(
-                    'flex shrink-0 items-center gap-2 border-2 border-neo-black px-3 py-1.5 text-[0.62rem] font-extrabold uppercase tracking-[0.12em] transition-neo',
+                    'rounded-sm flex shrink-0 items-center gap-2 border-2 border-border px-3 py-1.5 text-[0.62rem] font-extrabold   transition-colors',
                     glideOn
-                      ? 'bg-neo-blue text-neo-white shadow-neo-xs'
-                      : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
+                      ? 'bg-accent text-white shadow-sm'
+                      : 'bg-white text-ink hover:bg-accent/10'
                   )}
                 >
                   <span
                     aria-hidden="true"
                     className={cn(
-                      'inline-block h-3 w-3 border-2 border-neo-black',
-                      glideOn ? 'bg-neo-yellow' : 'bg-transparent'
+                      'rounded-sm inline-block h-3 w-3 border-2 border-border',
+                      glideOn ? 'bg-amber' : 'bg-transparent'
                     )}
                   />
                   {glideOn ? tControls('toggle.on') : tControls('toggle.off')}
@@ -932,8 +932,8 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                     })}
                   />
 
-                  <details className="border-2 border-neo-black bg-neo-white px-3 py-2">
-                    <summary className="cursor-pointer text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+                  <details className="rounded-sm border-2 border-border bg-white px-3 py-2">
+                    <summary className="cursor-pointer text-[0.6rem] font-extrabold   text-ink">
                       {tControls('fields.glidePath.advanced')}
                     </summary>
                     <div className="mt-3 grid gap-x-5 gap-y-6 sm:grid-cols-2">
@@ -1040,11 +1040,11 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
             </div>
 
             <div
-              className="space-y-4 border-2 border-neo-black bg-background px-4 py-4"
+              className="rounded-sm space-y-4 border-2 border-border bg-background px-4 py-4"
               data-testid="tax-block"
             >
               <div className="flex min-w-0 items-center gap-2">
-                <h4 className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                <h4 className="text-[0.68rem] font-extrabold   text-ink">
                   {tTax('title')}
                 </h4>
                 <InfoTip content={tTax('description')} label={tTax('title')} side="bottom" />
@@ -1081,7 +1081,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               </div>
 
               <div className="space-y-2" data-testid="household-type-switch">
-                <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+                <span className="text-[0.62rem] font-extrabold   text-ink">
                   {tTax('household.label')}
                 </span>
                 <div className="grid gap-2 sm:grid-cols-2" role="group">
@@ -1095,13 +1095,13 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                         data-testid={`household-type-${type}`}
                         onClick={() => updateParams({ householdType: type })}
                         className={cn(
-                          'flex flex-col items-start gap-1 border-2 border-neo-black px-3 py-2 text-left transition-neo',
+                          'rounded-sm flex flex-col items-start gap-1 border-2 border-border px-3 py-2 text-left transition-colors',
                           isSelected
-                            ? 'bg-neo-blue text-neo-white shadow-neo-xs'
-                            : 'bg-neo-white text-neo-black hover:bg-neo-blue/10'
+                            ? 'bg-accent text-white shadow-sm'
+                            : 'bg-white text-ink hover:bg-accent/10'
                         )}
                       >
-                        <span className="text-[0.66rem] font-extrabold uppercase tracking-[0.1em]">
+                        <span className="text-[0.66rem] font-extrabold  ">
                           {tTax(`household.options.${type}.label`)}
                         </span>
                         <span className="text-[0.58rem] font-medium leading-snug opacity-90">
@@ -1111,7 +1111,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                     )
                   })}
                 </div>
-                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                <p className="text-[0.6rem] font-semibold   text-muted-foreground">
                   {tTax('allowance.effective', { amount: formatCurrency(effectiveAllowance) })}
                 </p>
               </div>
@@ -1130,8 +1130,8 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
                 helpText={tTax('exemption.help')}
               />
 
-              <details className="border-2 border-neo-black bg-neo-white px-3 py-2">
-                <summary className="cursor-pointer text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+              <details className="rounded-sm border-2 border-border bg-white px-3 py-2">
+                <summary className="cursor-pointer text-[0.6rem] font-extrabold   text-ink">
                   {tTax('pension.summary')}
                 </summary>
                 <div className="mt-3 grid gap-x-5 gap-y-6 sm:grid-cols-2">
@@ -1180,10 +1180,10 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               </details>
 
               <p
-                className="border-2 border-neo-black bg-neo-yellow px-3 py-2 text-[0.62rem] font-bold leading-snug text-neo-black"
+                className="rounded-sm border-2 border-border bg-amber px-3 py-2 text-[0.62rem] font-bold leading-snug text-ink"
                 data-testid="tax-drag-readout"
               >
-                <span className="uppercase tracking-[0.12em]">{tTax('drag.label')}: </span>
+                <span className=" ">{tTax('drag.label')}: </span>
                 {taxDrag === undefined
                   ? tTax('drag.empty')
                   : `${tTax('drag.value', { rate: formatPercent(taxDrag, 1) })} — ${tTax('drag.hint')}`}
@@ -1195,7 +1195,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
               the corridor, the readouts and the four-strategy comparison do not
               fit in half a column, and splitting the controls across two cards
               would be worse than moving all of them. */}
-            <p className="border-2 border-dashed border-neo-black/40 bg-background px-4 py-3 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            <p className="rounded-sm border-2 border-dashed border-ink/40 bg-background px-4 py-3 text-[0.62rem] font-semibold   text-muted-foreground">
               {t('groups.withdrawal.pointer', {
                 strategy: tControls(
                   `fields.withdrawalStrategy.options.${params.withdrawalStrategy}.label`
@@ -1243,7 +1243,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
       </Tabs>
 
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
-        <DialogContent className="bg-neo-white sm:max-w-[30rem]" data-testid="plan-reset-dialog">
+        <DialogContent className="bg-white sm:max-w-[30rem]" data-testid="plan-reset-dialog">
           <DialogHeader>
             <DialogTitle>{t('reset.title')}</DialogTitle>
             <DialogDescription>{t('reset.description', { name: planName })}</DialogDescription>

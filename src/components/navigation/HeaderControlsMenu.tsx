@@ -47,10 +47,10 @@ export function HeaderControlsMenu({ className, signInRedirectTo }: HeaderContro
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="w-full border-3 border-neo-black bg-neo-white p-0 shadow-neo sm:w-80"
+        className="rounded-sm w-full border border-border bg-white p-0 shadow-sm sm:w-80"
       >
-        <SheetHeader className="border-b-3 border-neo-black px-6 py-5">
-          <SheetTitle className="pr-10 text-base font-black tracking-[0.08em] text-neo-black">
+        <SheetHeader className="border-b border-border px-6 py-5">
+          <SheetTitle className="pr-10 text-base font-black  text-ink">
             {t('title')}
           </SheetTitle>
           <SheetDescription className="sr-only">{t('description')}</SheetDescription>
@@ -60,14 +60,14 @@ export function HeaderControlsMenu({ className, signInRedirectTo }: HeaderContro
           {/* A "sign-in not configured" row in a settings sheet is noise. */}
           {authEnabled && (
             <div className="space-y-2">
-              <h3 className="text-[0.68rem] font-bold tracking-[0.1em] text-muted-foreground">
+              <h3 className="text-[0.68rem] font-bold  text-muted-foreground">
                 {t('account')}
               </h3>
               <AuthMenu className="w-full" signInRedirectTo={signInRedirectTo} />
             </div>
           )}
           <div className="space-y-2">
-            <h3 className="text-[0.68rem] font-bold tracking-[0.1em] text-muted-foreground">
+            <h3 className="text-[0.68rem] font-bold  text-muted-foreground">
               {tLocale('label')}
             </h3>
             <LocaleSwitcher className="w-full" size="default" />
