@@ -54,7 +54,7 @@ export function InfoTip({
               type="button"
               data-slot="info-tip"
               className={cn(
-                'inline-flex shrink-0 cursor-help items-center rounded-full align-middle text-muted-foreground/70 transition-colors hover:text-neo-black focus:outline-none focus:ring-2 focus:ring-neo-blue focus:ring-offset-2',
+                'inline-flex shrink-0 cursor-help items-center rounded-full align-middle text-muted-foreground/70 transition-colors hover:text-ink focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2',
                 className
               )}
               aria-label={t('fieldHelp', { label })}
@@ -64,9 +64,9 @@ export function InfoTip({
           </TooltipTrigger>
           <TooltipContent
             side={side}
-            className="max-w-xs border-2 border-neo-black bg-neo-white px-3 py-2 text-neo-black shadow-neo-sm"
+            className="rounded-sm max-w-xs border-2 border-border bg-white px-3 py-2 text-ink shadow-sm"
           >
-            <div className="text-xs font-medium normal-case leading-relaxed tracking-normal">
+            <div className="text-xs font-medium normal-case leading-relaxed ">
               {content}
             </div>
           </TooltipContent>

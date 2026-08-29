@@ -104,40 +104,40 @@ export function WizardLiveResult({ className }: { className?: string }) {
       data-success-rate={preview?.successRate ?? ''}
       aria-live="polite"
       className={cn(
-        'flex flex-wrap items-center gap-x-5 gap-y-2 border-3 border-neo-black bg-neo-white px-4 py-2.5 shadow-neo-sm',
+        'rounded-sm flex flex-wrap items-center gap-x-5 gap-y-2 border border-border bg-white px-4 py-2.5 shadow-sm',
         className
       )}
     >
-      <span className="text-[0.58rem] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">
+      <span className="text-[0.58rem] font-extrabold   text-muted-foreground">
         {t('label')}
       </span>
 
       <span className="flex items-baseline gap-1.5">
-        <span className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+        <span className="text-[0.58rem] font-bold   text-muted-foreground">
           {t('successRate')}
         </span>
         <span
           data-testid="wizard-live-success"
-          className="text-sm font-black tabular-nums text-neo-black"
+          className="text-sm font-black tabular-nums text-ink"
         >
           {successLabel}
         </span>
       </span>
 
       <span className="flex items-baseline gap-1.5">
-        <span className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+        <span className="text-[0.58rem] font-bold   text-muted-foreground">
           {t('medianEnd', { age: params.endAge })}
         </span>
         <span
           data-testid="wizard-live-median"
-          className="text-sm font-black tabular-nums text-neo-black"
+          className="text-sm font-black tabular-nums text-ink"
         >
           {preview === null ? '—' : formatCurrency(preview.medianEndAssets)}
         </span>
       </span>
 
       {isComputing && (
-        <span className="flex items-center gap-1.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-[0.58rem] font-semibold   text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
           {t('computing')}
         </span>

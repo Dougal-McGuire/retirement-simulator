@@ -48,15 +48,15 @@ const COMPARISON_RUNS = 1200
 
 /** One hue per compared plan, all drawn from the active theme's tokens. */
 const planHues = [
-  { solid: 'var(--neo-blue)', rgb: '--neo-blue-rgb' },
-  { solid: 'var(--neo-purple)', rgb: '--neo-purple-rgb' },
-  { solid: 'var(--neo-green)', rgb: '--neo-green-rgb' },
+  { solid: 'var(--accent)', rgb: '--accent-rgb' },
+  { solid: 'var(--viz-purple)', rgb: '--viz-purple-rgb' },
+  { solid: 'var(--ok)', rgb: '--ok-rgb' },
 ] as const
 
 const healthClasses = {
   strong: 'border-success-600 bg-success-50 text-success-700',
   watch: 'border-warning-600 bg-warning-50 text-warning-700',
-  strained: 'border-neo-red bg-red-50 text-neo-red',
+  strained: 'border-danger bg-red-50 text-danger',
 } as const
 
 const hueFor = (index: number) => planHues[index % planHues.length]
@@ -268,12 +268,12 @@ export function PlanComparison() {
   const staleBadge = (snapshot: ComparisonSnapshot) =>
     staleIds.has(snapshot.planId) ? (
       <span
-        className="mt-1 inline-flex items-center gap-1 border-2 border-warning-600 bg-warning-50 px-1.5 py-0.5 text-[0.52rem] font-extrabold uppercase tracking-[0.1em] text-warning-700"
+        className="rounded-sm mt-1 inline-flex items-center gap-1 border-2 border-warning-600 bg-warning-50 px-1.5 py-0.5 text-[0.52rem] font-extrabold   text-warning-700"
         data-testid="plan-comparison-stale-badge"
         title={tc('staleRanAt', { time: formatRanAt(snapshot.ranAt) })}
       >
         {tc('staleBadge')}
-        <span className="font-semibold tracking-normal normal-case">
+        <span className="font-semibold  normal-case">
           {tc('staleRanAt', { time: formatRanAt(snapshot.ranAt) })}
         </span>
       </span>
@@ -357,13 +357,13 @@ export function PlanComparison() {
 
   const deltaTone = (value: number, higherIsBetter: boolean) => {
     if (Math.abs(value) < 1e-9) return 'text-muted-foreground'
-    return (higherIsBetter ? value > 0 : value < 0) ? 'text-success-700' : 'text-neo-red'
+    return (higherIsBetter ? value > 0 : value < 0) ? 'text-success-700' : 'text-danger'
   }
 
   /** Delta against the first (base) plan, or the "Base" tag on that plan itself. */
   const renderDelta = (index: number, value: string, tone: string) =>
     index === 0 ? (
-      <span className="block text-[0.56rem] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+      <span className="block text-[0.56rem] font-extrabold   text-muted-foreground">
         {tc('base')}
       </span>
     ) : (
@@ -433,15 +433,15 @@ export function PlanComparison() {
 
   return (
     <Card className="overflow-hidden" data-testid="plan-comparison">
-      <CardContent className="bg-neo-white p-5">
+      <CardContent className="bg-white p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             <GitCompareArrows
-              className="mt-0.5 h-5 w-5 shrink-0 text-neo-blue"
+              className="mt-0.5 h-5 w-5 shrink-0 text-accent"
               aria-hidden="true"
             />
             <div>
-              <h4 className="text-sm font-extrabold uppercase tracking-[0.16em]">{tc('title')}</h4>
+              <h4 className="text-sm font-extrabold  ">{tc('title')}</h4>
               <p className="mt-1 max-w-xl text-xs font-medium text-muted-foreground">
                 {tc('subtitle')}
               </p>
@@ -460,7 +460,7 @@ export function PlanComparison() {
         </div>
 
         <fieldset className="mt-5 border-0 p-0">
-          <legend className="mb-2 text-[0.62rem] font-extrabold uppercase tracking-[0.2em] text-muted-foreground">
+          <legend className="mb-2 text-[0.62rem] font-extrabold   text-muted-foreground">
             {tc('select')}
           </legend>
           <div className="flex flex-wrap gap-2">
@@ -480,20 +480,20 @@ export function PlanComparison() {
                   data-testid="plan-comparison-option"
                   data-selected={isSelected ? 'true' : 'false'}
                   className={cn(
-                    'flex items-center gap-2 border-2 py-2 pl-2 pr-3 text-[0.66rem] font-extrabold uppercase tracking-[0.12em] transition-neo',
+                    'rounded-sm flex items-center gap-2 border-2 py-2 pl-2 pr-3 text-[0.66rem] font-extrabold   transition-colors',
                     isSelected
-                      ? 'border-neo-black bg-neo-yellow text-neo-black shadow-neo-xs'
-                      : 'border-dashed border-neo-black/40 bg-neo-white text-muted-foreground hover:border-solid hover:border-neo-black hover:text-neo-black',
+                      ? 'border-border bg-amber text-ink shadow-sm'
+                      : 'border-dashed border-ink/40 bg-white text-muted-foreground hover:border-solid hover:border-border hover:text-ink',
                     atLimit && 'cursor-not-allowed opacity-40'
                   )}
                 >
                   <span
                     aria-hidden="true"
                     className={cn(
-                      'flex h-4 w-4 shrink-0 items-center justify-center border-2',
+                      'rounded-sm flex h-4 w-4 shrink-0 items-center justify-center border-2',
                       isSelected
-                        ? 'border-neo-black bg-neo-black text-neo-white'
-                        : 'border-neo-black/40 bg-neo-white'
+                        ? 'border-accent bg-accent text-white'
+                        : 'border-ink/40 bg-white'
                     )}
                   >
                     {isSelected && <Check className="h-3 w-3" strokeWidth={4} />}
@@ -501,7 +501,7 @@ export function PlanComparison() {
                   {isSelected && <LegendSwatch kind="line" color={hueFor(index).solid} />}
                   <span className="max-w-[12rem] truncate">{planDisplayName(plan, t)}</span>
                   {plan.id === activePlanId && (
-                    <span className="text-[0.56rem] font-semibold tracking-[0.1em] text-neo-blue">
+                    <span className="text-[0.56rem] font-semibold  text-accent">
                       {tc('active')}
                     </span>
                   )}
@@ -513,7 +513,7 @@ export function PlanComparison() {
             className={cn(
               'mt-2 text-[0.62rem]',
               hasEnoughPlans && !hasEnoughSelected
-                ? 'font-semibold text-neo-red'
+                ? 'font-semibold text-danger'
                 : 'font-medium text-muted-foreground'
             )}
             data-testid="plan-comparison-hint"
@@ -527,13 +527,13 @@ export function PlanComparison() {
         </fieldset>
 
         {status === 'error' && (
-          <p className="mt-4 border-2 border-neo-red bg-red-50 px-3 py-2 text-xs font-semibold text-neo-red">
+          <p className="rounded-sm mt-4 border-2 border-danger bg-red-50 px-3 py-2 text-xs font-semibold text-danger">
             {tc('error')}
           </p>
         )}
 
         {snapshots.length === 0 ? (
-          <p className="mt-5 border-2 border-dashed border-neo-black/30 px-4 py-6 text-center text-xs font-medium text-muted-foreground">
+          <p className="rounded-sm mt-5 border-2 border-dashed border-ink/30 px-4 py-6 text-center text-xs font-medium text-muted-foreground">
             {status === 'running'
               ? tc('running')
               : hasEnoughSelected
@@ -544,10 +544,10 @@ export function PlanComparison() {
           <>
             {(staleIds.size > 0 || selectionChanged) && (
               <div
-                className="mt-4 flex flex-col gap-2 border-2 border-warning-600 bg-warning-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                className="rounded-sm mt-4 flex flex-col gap-2 border-2 border-warning-600 bg-warning-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
                 data-testid="plan-comparison-stale"
               >
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-warning-700">
+                <p className="text-[0.66rem] font-semibold   text-warning-700">
                   {staleIds.size === 0
                     ? tc('selectionChanged')
                     : dirtyOnly
@@ -570,7 +570,7 @@ export function PlanComparison() {
             <div className="mt-5 hidden overflow-x-auto md:block">
               <table className="w-full min-w-[34rem] border-collapse text-left">
                 <thead>
-                  <tr className="border-b-2 border-neo-black text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
+                  <tr className="border-b-2 border-border text-[0.6rem] font-extrabold   text-muted-foreground">
                     <th scope="col" className="py-2 pr-3">
                       {tc('columns.plan')}
                     </th>
@@ -603,7 +603,7 @@ export function PlanComparison() {
                     return (
                       <tr
                         key={snapshot.planId}
-                        className="border-b border-neo-black/15 text-[0.72rem] font-semibold text-neo-black"
+                        className="border-b border-ink/15 text-[0.72rem] font-semibold text-ink"
                         data-testid="plan-comparison-row"
                         data-stale={staleIds.has(snapshot.planId) ? 'true' : 'false'}
                       >
@@ -617,13 +617,13 @@ export function PlanComparison() {
                         <td className={cn('py-3 pr-3 text-right tabular-nums', muted)}>
                           <span
                             className={cn(
-                              'inline-flex items-center gap-1 border-2 px-2 py-1 text-[0.66rem] font-extrabold',
+                              'rounded-sm inline-flex items-center gap-1 border-2 px-2 py-1 text-[0.66rem] font-extrabold',
                               healthClasses[health]
                             )}
                           >
                             {formatPercentValue(snapshot.successRate)}
                             {bestSuccess !== null && snapshot.successRate === bestSuccess && (
-                              <span className="text-[0.54rem] tracking-[0.1em]">{tc('best')}</span>
+                              <span className="text-[0.54rem] ">{tc('best')}</span>
                             )}
                           </span>
                           {renderDelta(
@@ -680,13 +680,13 @@ export function PlanComparison() {
                 return (
                   <li
                     key={snapshot.planId}
-                    className="border-2 border-neo-black bg-neo-white px-4 py-3"
+                    className="rounded-sm border-2 border-border bg-white px-4 py-3"
                     data-testid="plan-comparison-card"
                     data-stale={staleIds.has(snapshot.planId) ? 'true' : 'false'}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex min-w-0 flex-col">
-                        <span className="flex min-w-0 items-center gap-2 text-[0.74rem] font-extrabold text-neo-black">
+                        <span className="flex min-w-0 items-center gap-2 text-[0.74rem] font-extrabold text-ink">
                           <LegendSwatch kind="line" color={hueFor(index).solid} />
                           <span className="truncate">{snapshot.name}</span>
                         </span>
@@ -694,19 +694,19 @@ export function PlanComparison() {
                       </span>
                       <span
                         className={cn(
-                          'inline-flex shrink-0 items-center gap-1 border-2 px-2 py-1 text-[0.66rem] font-extrabold',
+                          'rounded-sm inline-flex shrink-0 items-center gap-1 border-2 px-2 py-1 text-[0.66rem] font-extrabold',
                           healthClasses[health],
                           muted
                         )}
                       >
                         {formatPercentValue(snapshot.successRate)}
                         {bestSuccess !== null && snapshot.successRate === bestSuccess && (
-                          <span className="text-[0.54rem] tracking-[0.1em]">{tc('best')}</span>
+                          <span className="text-[0.54rem] ">{tc('best')}</span>
                         )}
                       </span>
                     </div>
 
-                    <dl className={cn('mt-3 divide-y divide-neo-black/10 text-[0.68rem]', muted)}>
+                    <dl className={cn('mt-3 divide-y divide-ink/10 text-[0.68rem]', muted)}>
                       {[
                         {
                           key: 'success',
@@ -780,7 +780,7 @@ export function PlanComparison() {
                           key={row.key}
                           className="flex items-baseline justify-between gap-3 py-1.5"
                         >
-                          <dt className="font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                          <dt className="font-semibold   text-muted-foreground">
                             {row.label}
                           </dt>
                           <dd
@@ -804,8 +804,8 @@ export function PlanComparison() {
               })}
             </ul>
 
-            <div className="mt-6 border-3 border-neo-black bg-neo-white p-4 shadow-neo-sm">
-              <h5 className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-neo-black">
+            <div className="rounded-sm mt-6 border border-border bg-white p-4 shadow-sm">
+              <h5 className="text-[0.72rem] font-extrabold   text-ink">
                 {tc('chart.title')}
               </h5>
               <p className="mt-1 text-[0.66rem] font-medium text-muted-foreground">

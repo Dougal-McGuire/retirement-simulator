@@ -170,12 +170,12 @@ export function SpendingChart({
   }, [domainMax, formatCurrencyShort, isMobile])
 
   return (
-    <div className="w-full min-w-0 space-y-5 border-3 border-neo-black bg-neo-white p-4 shadow-neo sm:p-6">
+    <div className="rounded-sm w-full min-w-0 space-y-5 border border-border bg-white p-4 shadow-sm sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <h4
             id="spending-chart-title"
-            className="text-base font-extrabold uppercase tracking-[0.16em] text-neo-black sm:text-lg"
+            className="text-base font-extrabold   text-ink sm:text-lg"
           >
             {t('title')}
           </h4>
@@ -314,7 +314,7 @@ export function SpendingChart({
               strokeWidth={isMobile ? 2 : 2.5}
               name={t('legend.p50')}
               dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--neo-white)', fill: hue.solid }}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--white)', fill: hue.solid }}
               isAnimationActive={false}
               yAxisId="spending"
             />
@@ -329,7 +329,7 @@ export function SpendingChart({
             />
           </ComposedChart>
         ) : (
-          <div className="h-full w-full border border-dashed border-neo-black/30 bg-muted/30" />
+          <div className="rounded-sm h-full w-full border border-dashed border-ink/30 bg-muted/30" />
         )}
       </div>
       <div id="spending-chart-description" className="sr-only">
@@ -339,21 +339,21 @@ export function SpendingChart({
         {t('aria.controls')}
       </div>
 
-      <p className="text-right text-[0.62rem] font-medium tracking-[0.04em] text-muted-foreground">
+      <p className="text-right text-[0.62rem] font-medium  text-muted-foreground">
         {isZoomed ? t('hint.zoomed') : t('hint.dragToZoom')}
       </p>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <div className="border-2 border-neo-black/60 bg-neo-purple/5 p-3.5">
-          <div className="text-[0.6rem] font-extrabold uppercase tracking-[0.16em] text-neo-purple">
+        <div className="rounded-sm border-2 border-ink/60 bg-viz-purple/5 p-3.5">
+          <div className="text-[0.6rem] font-extrabold   text-viz-purple">
             {t('explanation.strategyLabel')}
           </div>
           <p className="mt-1.5 text-xs font-medium leading-relaxed text-foreground/80">
             {strategySummary}
           </p>
         </div>
-        <div className="border-2 border-neo-black/60 bg-background p-3.5">
-          <div className="text-[0.6rem] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">
+        <div className="rounded-sm border-2 border-ink/60 bg-background p-3.5">
+          <div className="text-[0.6rem] font-extrabold   text-muted-foreground">
             {t('explanation.readingLabel')}
           </div>
           <p className="mt-1.5 text-xs font-medium leading-relaxed text-foreground/80">
@@ -362,7 +362,7 @@ export function SpendingChart({
         </div>
       </div>
 
-      <p className="text-center text-[0.62rem] font-medium tracking-[0.04em] text-muted-foreground">
+      <p className="text-center text-[0.62rem] font-medium  text-muted-foreground">
         {t('legend.note')}
       </p>
     </div>

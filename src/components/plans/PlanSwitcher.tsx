@@ -153,33 +153,33 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
     <div
       data-testid="plan-switcher"
       className={cn(
-        'theme-plan-switcher flex flex-col gap-3 border-3 border-neo-black bg-neo-white px-4 py-3 shadow-neo-sm',
+        'rounded-sm theme-plan-switcher flex flex-col gap-3 border border-border bg-white px-4 py-3 shadow-sm',
         className
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-[0.62rem] font-extrabold uppercase tracking-[0.24em] text-muted-foreground">
-          <FolderOpen className="h-3.5 w-3.5 text-neo-blue" aria-hidden="true" />
+        <span className="flex items-center gap-2 text-[0.62rem] font-extrabold   text-muted-foreground">
+          <FolderOpen className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
           {t('label')}
         </span>
         <div className="flex items-center gap-2">
           <span
             data-testid="plan-dirty-badge"
             className={cn(
-              'inline-flex items-center gap-1.5 border-2 px-2 py-0.5 text-[0.58rem] font-extrabold uppercase tracking-[0.14em]',
+              'rounded-sm inline-flex items-center gap-1.5 border-2 px-2 py-0.5 text-[0.58rem] font-extrabold  ',
               isDirty
-                ? 'border-neo-black bg-neo-yellow text-neo-black'
-                : 'border-neo-black/30 bg-transparent text-muted-foreground'
+                ? 'border-border bg-amber text-ink'
+                : 'border-ink/30 bg-transparent text-muted-foreground'
             )}
           >
             {isDirty ? (
-              <span aria-hidden="true" className="h-2 w-2 bg-neo-black" />
+              <span aria-hidden="true" className="h-2 w-2 bg-ink" />
             ) : (
               <Check className="h-3 w-3" aria-hidden="true" />
             )}
             {isDirty ? t('dirty.badge') : t('dirty.clean')}
           </span>
-          <span className="text-[0.6rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <span className="text-[0.6rem] font-semibold   text-muted-foreground">
             {t('switcher.count', { count: plans.length, max: MAX_PLANS })}
           </span>
         </div>
@@ -203,10 +203,10 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
                 <SelectItem key={plan.id} value={plan.id}>
                   <span className="flex w-full min-w-[14rem] items-center justify-between gap-3">
                     <span className="flex flex-col text-left">
-                      <span className="text-[0.7rem] font-extrabold uppercase tracking-[0.12em]">
+                      <span className="text-[0.7rem] font-extrabold  ">
                         {planDisplayName(plan, t)}
                       </span>
-                      <span className="text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                      <span className="text-[0.58rem] font-semibold   text-muted-foreground">
                         {/* A cached rate describes the *stored* plan, so it is
                             not shown while unsaved edits are on top of it. */}
                         {isActive && isDirty
@@ -217,7 +217,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
                       </span>
                     </span>
                     {isActive && (
-                      <span className="border-2 border-neo-black bg-neo-blue/10 px-1.5 py-0.5 text-[0.55rem] font-extrabold uppercase tracking-[0.12em] text-neo-blue">
+                      <span className="rounded-sm border-2 border-border bg-accent/10 px-1.5 py-0.5 text-[0.55rem] font-extrabold   text-accent">
                         {isDirty ? t('switcher.modified') : t('switcher.active')}
                       </span>
                     )}
@@ -275,7 +275,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="h-10 w-full px-0 text-neo-red sm:w-10"
+            className="h-10 w-full px-0 text-danger sm:w-10"
             title={t('actions.delete')}
             disabled={plans.length <= 1}
             onClick={() => setDeleteOpen(true)}
@@ -289,9 +289,9 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
       {isDirty && (
         <div
           data-testid="plan-dirty-actions"
-          className="flex flex-col gap-2 border-2 border-neo-black bg-neo-yellow/20 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+          className="rounded-sm flex flex-col gap-2 border-2 border-border bg-amber/15 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
         >
-          <p className="text-[0.62rem] font-semibold leading-relaxed text-neo-black">
+          <p className="text-[0.62rem] font-semibold leading-relaxed text-ink">
             {t('dirty.hint')}
           </p>
           <div className="flex shrink-0 items-center gap-2">
@@ -321,7 +321,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
       )}
 
       {atLimit && (
-        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-neo-red">
+        <p className="text-[0.6rem] font-semibold   text-danger">
           {t('switcher.limit', { max: MAX_PLANS })}
         </p>
       )}
@@ -371,7 +371,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
       />
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="bg-neo-white sm:max-w-[28rem]">
+        <DialogContent className="bg-white sm:max-w-[28rem]">
           <DialogHeader>
             <DialogTitle>{t('dialogs.delete.title')}</DialogTitle>
             <DialogDescription>
@@ -400,7 +400,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
         open={pendingPlanId !== null}
         onOpenChange={(open) => !open && setPendingPlanId(null)}
       >
-        <DialogContent className="bg-neo-white sm:max-w-[30rem]" data-testid="plan-switch-guard">
+        <DialogContent className="bg-white sm:max-w-[30rem]" data-testid="plan-switch-guard">
           <DialogHeader>
             <DialogTitle>{t('switchGuard.title', { name: activeName })}</DialogTitle>
             <DialogDescription>

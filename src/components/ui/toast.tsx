@@ -32,33 +32,33 @@ export function ToastProvider() {
         duration: TOAST_DURATION,
         className: 'max-w-[calc(100vw-1.5rem)] sm:max-w-[24rem]',
         style: {
-          background: 'var(--neo-white)',
-          color: 'var(--neo-black)',
-          border: '3px solid var(--neo-black)',
+          background: 'var(--white)',
+          color: 'var(--ink)',
+          border: '3px solid var(--ink)',
           borderRadius: '0px',
           padding: '12px 16px',
           fontSize: '14px',
-          boxShadow: 'var(--shadow-neo)',
+          boxShadow: 'var(--shadow-sm)',
           maxWidth: 'none',
         },
         success: {
           duration: 4000,
           iconTheme: {
-            primary: 'var(--neo-green)',
-            secondary: 'var(--neo-white)',
+            primary: 'var(--ok)',
+            secondary: 'var(--white)',
           },
         },
         error: {
           iconTheme: {
-            primary: 'var(--neo-red)',
-            secondary: 'var(--neo-white)',
+            primary: 'var(--danger)',
+            secondary: 'var(--white)',
           },
           duration: 6000,
         },
         loading: {
           iconTheme: {
-            primary: 'var(--neo-blue)',
-            secondary: 'var(--neo-white)',
+            primary: 'var(--accent)',
+            secondary: 'var(--white)',
           },
         },
       }}

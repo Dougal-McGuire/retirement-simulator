@@ -51,25 +51,25 @@ export function AssetsSection({ results }: AssetsSectionProps) {
         }
       />
 
-      <details className="border-3 border-neo-black bg-neo-white p-4 shadow-neo-sm">
-        <summary className="cursor-pointer text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-neo-blue">
+      <details className="rounded-sm border border-border bg-white p-4 shadow-sm">
+        <summary className="cursor-pointer text-[0.68rem] font-semibold   text-accent">
           {t('assetTable.toggle')}
         </summary>
-        <div className="mt-4 overflow-x-auto border-t-3 border-neo-black pt-4">
-          <table className="min-w-full border-3 border-neo-black bg-neo-white text-[0.68rem] uppercase tracking-[0.12em]">
+        <div className="mt-4 overflow-x-auto border-t border-border pt-4">
+          <table className="rounded-sm min-w-full border border-border bg-white text-[0.68rem]  ">
             <caption className="sr-only">{t('assetTable.caption')}</caption>
             <thead>
               <tr className="bg-muted">
-                <th className="border border-neo-black px-3 py-2 text-left">
+                <th className="rounded-sm border border-border px-3 py-2 text-left">
                   {t('assetTable.headers.age')}
                 </th>
-                <th className="border border-neo-black px-3 py-2 text-right">
+                <th className="rounded-sm border border-border px-3 py-2 text-right">
                   {t('assetTable.headers.p10')}
                 </th>
-                <th className="border border-neo-black px-3 py-2 text-right">
+                <th className="rounded-sm border border-border px-3 py-2 text-right">
                   {t('assetTable.headers.p50')}
                 </th>
-                <th className="border border-neo-black px-3 py-2 text-right">
+                <th className="rounded-sm border border-border px-3 py-2 text-right">
                   {t('assetTable.headers.p90')}
                 </th>
               </tr>
@@ -81,27 +81,27 @@ export function AssetsSection({ results }: AssetsSectionProps) {
                   <tr
                     key={row.age}
                     className={cn(
-                      'border-b border-neo-black',
+                      'border-b border-border',
                       isRetirementAge
-                        ? 'bg-neo-blue/10 font-bold text-neo-blue'
-                        : 'bg-neo-white text-foreground'
+                        ? 'bg-accent/10 font-bold text-accent'
+                        : 'bg-white text-foreground'
                     )}
                   >
-                    <td className="border border-neo-black px-3 py-2">
+                    <td className="rounded-sm border border-border px-3 py-2">
                       {row.age}{' '}
                       {isRetirementAge && (
-                        <span className="ml-2 text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-neo-blue">
+                        <span className="ml-2 text-[0.58rem] font-semibold   text-accent">
                           {t('assetTable.retirementFlag')}
                         </span>
                       )}
                     </td>
-                    <td className="border border-neo-black px-3 py-2 text-right">
+                    <td className="rounded-sm border border-border px-3 py-2 text-right">
                       {formatCurrency(row.p10)}
                     </td>
-                    <td className="border border-neo-black px-3 py-2 text-right">
+                    <td className="rounded-sm border border-border px-3 py-2 text-right">
                       {formatCurrency(row.p50)}
                     </td>
-                    <td className="border border-neo-black px-3 py-2 text-right">
+                    <td className="rounded-sm border border-border px-3 py-2 text-right">
                       {formatCurrency(row.p90)}
                     </td>
                   </tr>

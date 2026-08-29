@@ -464,14 +464,14 @@ export function CashFlowList({
               })
             }
             className={cn(
-              'inline-flex items-center gap-1.5 border-2 border-neo-black px-3 py-1.5 text-[0.62rem] font-extrabold uppercase tracking-[0.12em] transition-neo',
+              'rounded-sm inline-flex items-center gap-1.5 border-2 border-border px-3 py-1.5 text-[0.62rem] font-extrabold   transition-colors',
               state.kind === kind
                 ? kind === 'pension'
-                  ? 'bg-neo-blue text-neo-white shadow-neo-xs'
+                  ? 'bg-accent text-muted-foreground shadow-sm'
                   : kind === 'income'
-                    ? 'bg-neo-green text-neo-black shadow-neo-xs'
-                    : 'bg-neo-orange text-neo-black shadow-neo-xs'
-                : 'bg-neo-white text-muted-foreground hover:bg-neo-blue/10'
+                    ? 'bg-ok text-ink shadow-sm'
+                    : 'bg-viz-orange text-ink shadow-sm'
+                : 'bg-white text-muted-foreground hover:bg-accent/10'
             )}
           >
             {kind === 'pension' ? (
@@ -490,7 +490,7 @@ export function CashFlowList({
         <div className="flex flex-col sm:col-span-2">
           <Label
             htmlFor={`cashflow-name-${id ?? 'new'}`}
-            className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.14em]"
+            className="mb-2 text-[0.68rem] font-semibold  "
           >
             {t('fields.name')}
           </Label>
@@ -500,14 +500,14 @@ export function CashFlowList({
             value={state.name}
             placeholder={t('fields.namePlaceholder')}
             onChange={(event) => setState({ ...state, name: event.target.value })}
-            className="h-11 border-2 border-neo-black px-3 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+            className="rounded-sm h-11 border-2 border-border px-3 text-[0.68rem] font-semibold  "
           />
         </div>
 
         <div className="flex flex-col">
           <Label
             htmlFor={`cashflow-amount-${id ?? 'new'}`}
-            className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.14em]"
+            className="mb-2 text-[0.68rem] font-semibold  "
           >
             {t('fields.amount')}
           </Label>
@@ -519,14 +519,14 @@ export function CashFlowList({
             autoComplete="off"
             value={state.amount}
             onChange={(event) => setState({ ...state, amount: field.handleChange(event).display })}
-            className="h-11 border-2 border-neo-black px-3 text-[0.68rem] font-semibold uppercase tracking-[0.12em]"
+            className="rounded-sm h-11 border-2 border-border px-3 text-[0.68rem] font-semibold  "
           />
         </div>
 
         <div className="flex flex-col">
           <Label
             htmlFor={`cashflow-frequency-${id ?? 'new'}`}
-            className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.14em]"
+            className="mb-2 text-[0.68rem] font-semibold  "
           >
             {t('fields.frequency')}
           </Label>
@@ -538,7 +538,7 @@ export function CashFlowList({
           >
             <SelectTrigger
               id={`cashflow-frequency-${id ?? 'new'}`}
-              className="h-11 border-2 border-neo-black"
+              className="rounded-sm h-11 border-2 border-border"
             >
               <SelectValue />
             </SelectTrigger>
@@ -557,7 +557,7 @@ export function CashFlowList({
         <div className="flex flex-col">
           <Label
             htmlFor={`cashflow-start-${id ?? 'new'}`}
-            className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.14em]"
+            className="mb-2 text-[0.68rem] font-semibold  "
           >
             {state.frequency === 'once' ? t('fields.atAge') : t('fields.startAge')}
           </Label>
@@ -570,7 +570,7 @@ export function CashFlowList({
             value={state.startAge}
             placeholder={String(state.kind === 'pension' ? legalRetirementAge : currentAge)}
             onChange={(event) => setState({ ...state, startAge: event.target.value })}
-            className="h-11 border-2 border-neo-black px-3 text-[0.68rem] font-semibold"
+            className="rounded-sm h-11 border-2 border-border px-3 text-[0.68rem] font-semibold"
           />
         </div>
 
@@ -578,7 +578,7 @@ export function CashFlowList({
           <div className="flex flex-col">
             <Label
               htmlFor={`cashflow-date-${id ?? 'new'}`}
-              className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.14em]"
+              className="mb-2 text-[0.68rem] font-semibold  "
             >
               {t('fields.startDate')}
             </Label>
@@ -596,7 +596,7 @@ export function CashFlowList({
                   : state.startAge
                 setState({ ...state, startDate: value, startAge: derived })
               }}
-              className="h-11 border-2 border-neo-black px-3 text-[0.68rem] font-semibold"
+              className="rounded-sm h-11 border-2 border-border px-3 text-[0.68rem] font-semibold"
             />
             <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
               {t('fields.startDateHint')}
@@ -608,7 +608,7 @@ export function CashFlowList({
           <div className="flex flex-col">
             <Label
               htmlFor={`cashflow-end-${id ?? 'new'}`}
-              className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.14em]"
+              className="mb-2 text-[0.68rem] font-semibold  "
             >
               {t('fields.endAge')}
             </Label>
@@ -621,29 +621,29 @@ export function CashFlowList({
               value={state.endAge}
               placeholder={String(endAge)}
               onChange={(event) => setState({ ...state, endAge: event.target.value })}
-              className="h-11 border-2 border-neo-black px-3 text-[0.68rem] font-semibold"
+              className="rounded-sm h-11 border-2 border-border px-3 text-[0.68rem] font-semibold"
             />
           </div>
         )}
       </div>
 
-      <div className="space-y-3 border-2 border-dashed border-neo-black/40 px-3 py-3">
+      <div className="rounded-sm space-y-3 border-2 border-dashed border-ink/40 px-3 py-3">
         <button
           type="button"
           onClick={() => setAdvancedOpen((open) => !open)}
           aria-expanded={advancedOpen}
-          className="text-[0.62rem] font-extrabold uppercase tracking-[0.14em] text-neo-blue"
+          className="text-[0.62rem] font-extrabold   text-accent"
         >
           {advancedOpen ? t('advanced.hide') : t('advanced.show')}
         </button>
         {advancedOpen && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="flex items-start gap-2 text-[0.62rem] font-semibold leading-snug text-neo-black">
+            <label className="flex items-start gap-2 text-[0.62rem] font-semibold leading-snug text-ink">
               <input
                 type="checkbox"
                 checked={state.inflationLinked}
                 onChange={(event) => setState({ ...state, inflationLinked: event.target.checked })}
-                className="mt-0.5 h-4 w-4 border-2 border-neo-black accent-neo-blue"
+                className="rounded-sm mt-0.5 h-4 w-4 border-2 border-border accent-accent"
               />
               <span>
                 {t('fields.inflationLinked')}
@@ -659,7 +659,7 @@ export function CashFlowList({
             <div className="flex flex-col">
               <Label
                 htmlFor={`cashflow-growth-${id ?? 'new'}`}
-                className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em]"
+                className="mb-2 text-[0.62rem] font-semibold  "
               >
                 {t('fields.growthRate')}
               </Label>
@@ -671,7 +671,7 @@ export function CashFlowList({
                 value={state.growthRate}
                 placeholder="0"
                 onChange={(event) => setState({ ...state, growthRate: event.target.value })}
-                className="h-10 border-2 border-neo-black px-3 text-[0.68rem] font-semibold"
+                className="rounded-sm h-10 border-2 border-border px-3 text-[0.68rem] font-semibold"
               />
               <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
                 {t('fields.growthRateHint')}
@@ -681,7 +681,7 @@ export function CashFlowList({
               <div className="flex flex-col sm:col-span-2">
                 <Label
                   htmlFor={`cashflow-pension-tax-${id ?? 'new'}`}
-                  className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em]"
+                  className="mb-2 text-[0.62rem] font-semibold  "
                 >
                   {t('fields.pensionTaxMode')}
                 </Label>
@@ -693,7 +693,7 @@ export function CashFlowList({
                 >
                   <SelectTrigger
                     id={`cashflow-pension-tax-${id ?? 'new'}`}
-                    className="h-11 border-2 border-neo-black text-[0.62rem] tracking-[0.08em]"
+                    className="rounded-sm h-11 border-2 border-border text-[0.62rem] "
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -720,7 +720,7 @@ export function CashFlowList({
               <div className="flex flex-col sm:col-span-2">
                 <Label
                   htmlFor={`cashflow-tax-${id ?? 'new'}`}
-                  className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em]"
+                  className="mb-2 text-[0.62rem] font-semibold  "
                 >
                   {t('fields.taxTreatment')}
                 </Label>
@@ -732,7 +732,7 @@ export function CashFlowList({
                 >
                   <SelectTrigger
                     id={`cashflow-tax-${id ?? 'new'}`}
-                    className="h-11 border-2 border-neo-black text-[0.62rem] tracking-[0.08em]"
+                    className="rounded-sm h-11 border-2 border-border text-[0.62rem] "
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -752,7 +752,7 @@ export function CashFlowList({
             <div className="flex flex-col sm:col-span-2">
               <Label
                 htmlFor={`cashflow-note-${id ?? 'new'}`}
-                className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em]"
+                className="mb-2 text-[0.62rem] font-semibold  "
               >
                 {t('fields.note')}
               </Label>
@@ -763,14 +763,14 @@ export function CashFlowList({
                 value={state.note}
                 placeholder={t('fields.notePlaceholder')}
                 onChange={(event) => setState({ ...state, note: event.target.value })}
-                className="h-10 border-2 border-neo-black px-3 text-[0.68rem] font-medium normal-case tracking-normal"
+                className="rounded-sm h-10 border-2 border-border px-3 text-[0.68rem] font-medium normal-case "
               />
             </div>
             {state.kind === 'pension' && state.pensionTaxMode === 'share' && (
               <div className="flex flex-col">
                 <Label
                   htmlFor={`cashflow-taxable-${id ?? 'new'}`}
-                  className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em]"
+                  className="mb-2 text-[0.62rem] font-semibold  "
                 >
                   {t('fields.taxablePortion')}
                 </Label>
@@ -784,7 +784,7 @@ export function CashFlowList({
                   value={state.taxablePortion}
                   placeholder={String(Math.round((tax.pensionTaxablePortion ?? 0) * 100))}
                   onChange={(event) => setState({ ...state, taxablePortion: event.target.value })}
-                  className="h-10 border-2 border-neo-black px-3 text-[0.68rem] font-semibold"
+                  className="rounded-sm h-10 border-2 border-border px-3 text-[0.68rem] font-semibold"
                 />
                 <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
                   {t('fields.taxablePortionHint', {
@@ -828,7 +828,7 @@ export function CashFlowList({
   return (
     <div className="space-y-4" data-testid="cashflow-list">
       {!compact && (
-        <div className="flex items-center gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <div className="flex items-center gap-2 text-[0.62rem] font-semibold   text-muted-foreground">
           <span>{t('listTitle')}</span>
           <InfoTip content={t('intro')} label={t('listTitle')} side="bottom" />
         </div>
@@ -838,10 +838,10 @@ export function CashFlowList({
         <>
           {/* Timeline: the only place a plan's windows are visible at a glance. */}
           <div
-            className="space-y-2 border-3 border-neo-black bg-neo-white p-3 shadow-neo-sm"
+            className="rounded-sm space-y-2 border border-border bg-white p-3 shadow-sm"
             data-testid="cashflow-timeline"
           >
-            <div className="flex items-center justify-between text-[0.55rem] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
+            <div className="flex items-center justify-between text-[0.55rem] font-extrabold   text-muted-foreground">
               <span>{t('timeline.title')}</span>
               <span className="tabular-nums">
                 {currentAge} – {endAge}
@@ -852,18 +852,18 @@ export function CashFlowList({
                 const geometry = barGeometry(flow)
                 return (
                   <div key={flow.id} className="flex items-center gap-2">
-                    <span className="w-24 shrink-0 truncate text-[0.55rem] font-bold uppercase tracking-[0.1em] text-neo-black sm:w-32">
+                    <span className="w-24 shrink-0 truncate text-[0.55rem] font-bold   text-ink sm:w-32">
                       {displayName(flow)}
                     </span>
-                    <span className="relative h-3 flex-1 border-2 border-neo-black/20 bg-muted/40">
+                    <span className="rounded-sm relative h-3 flex-1 border-2 border-ink/20 bg-muted/40">
                       <span
                         className={cn(
-                          'absolute inset-y-0 border-y-2 border-neo-black',
+                          'absolute inset-y-0 border-y-2 border-border',
                           flow.kind === 'pension'
-                            ? 'bg-neo-blue'
+                            ? 'bg-accent'
                             : flow.kind === 'income'
-                              ? 'bg-neo-green'
-                              : 'bg-neo-orange',
+                              ? 'bg-ok'
+                              : 'bg-viz-orange',
                           flow.frequency === 'once' && 'border-x-2'
                         )}
                         style={geometry}
@@ -877,7 +877,7 @@ export function CashFlowList({
             {/* Retirement marker, so a window reads against the plan's phases. */}
             <div className="relative ml-[6.5rem] h-3 sm:ml-[8.5rem]">
               <span
-                className="absolute top-0 -translate-x-1/2 text-[0.5rem] font-extrabold uppercase tracking-[0.1em] text-neo-blue"
+                className="absolute top-0 -translate-x-1/2 text-[0.5rem] font-extrabold   text-accent"
                 style={{
                   left: `${((Math.min(endAge, Math.max(currentAge, retirementAge)) - currentAge) / horizon) * 100}%`,
                 }}
@@ -887,20 +887,20 @@ export function CashFlowList({
             </div>
           </div>
 
-          <div className="overflow-x-auto border-3 border-neo-black bg-neo-white shadow-neo-sm">
+          <div className="rounded-sm overflow-x-auto border border-border bg-white shadow-sm">
             <table className="w-full min-w-[17rem]">
-              <thead className="border-b-3 border-neo-black bg-neo-black">
+              <thead className="border-b border-border bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-[0.6rem] font-bold uppercase tracking-[0.14em] text-neo-white">
+                  <th className="px-3 py-2 text-left text-[0.6rem] font-bold   text-muted-foreground">
                     {t('table.item')}
                   </th>
-                  <th className="hidden px-3 py-2 text-left text-[0.6rem] font-bold uppercase tracking-[0.14em] text-neo-white sm:table-cell">
+                  <th className="hidden px-3 py-2 text-left text-[0.6rem] font-bold   text-muted-foreground sm:table-cell">
                     {t('table.period')}
                   </th>
-                  <th className="px-3 py-2 text-right text-[0.6rem] font-bold uppercase tracking-[0.14em] text-neo-white">
+                  <th className="px-3 py-2 text-right text-[0.6rem] font-bold   text-muted-foreground">
                     {t('table.amount')}
                   </th>
-                  <th className="w-20 px-2 py-2 text-center text-[0.6rem] font-bold uppercase tracking-[0.14em] text-neo-white">
+                  <th className="w-20 px-2 py-2 text-center text-[0.6rem] font-bold   text-muted-foreground">
                     {t('table.actions')}
                   </th>
                 </tr>
@@ -908,19 +908,19 @@ export function CashFlowList({
               {groupedFlows.map((group) => (
                 <tbody
                   key={group.key}
-                  className="divide-y-3 divide-neo-black border-t-3 border-neo-black"
+                  className="divide-y divide-border border-t border-border"
                 >
                   <tr className="bg-muted/40" data-testid={`cashflow-group-${group.key}`}>
                     <td
                       colSpan={4}
-                      className="px-3 py-1.5 text-[0.58rem] font-extrabold uppercase tracking-[0.16em] text-muted-foreground"
+                      className="px-3 py-1.5 text-[0.58rem] font-extrabold   text-muted-foreground"
                     >
                       {t(`table.groups.${group.key}`, { count: group.flows.length })}
                     </td>
                   </tr>
                   {group.flows.map((flow) =>
                     editingId === flow.id ? (
-                      <tr key={flow.id} className="bg-neo-blue/5">
+                      <tr key={flow.id} className="bg-accent/5">
                         <td colSpan={4} className="px-3 py-3">
                           {renderDraftForm(editDraft, setEditDraft, editAmountField, flow.id)}
                         </td>
@@ -928,26 +928,26 @@ export function CashFlowList({
                     ) : (
                       <tr key={flow.id}>
                         <td className="px-3 py-2.5 text-left">
-                          <span className="flex items-center gap-1.5 text-[0.72rem] font-bold uppercase tracking-[0.1em]">
+                          <span className="flex items-center gap-1.5 text-[0.72rem] font-bold  ">
                             {flow.kind === 'pension' ? (
                               <Landmark
-                                className="h-3.5 w-3.5 text-neo-blue"
+                                className="h-3.5 w-3.5 text-accent"
                                 aria-label={t('kind.pension')}
                               />
                             ) : flow.kind === 'income' ? (
                               <ArrowUpRight
-                                className="h-3.5 w-3.5 text-neo-green"
+                                className="h-3.5 w-3.5 text-ok"
                                 aria-label={t('kind.income')}
                               />
                             ) : (
                               <ArrowDownRight
-                                className="h-3.5 w-3.5 text-neo-orange"
+                                className="h-3.5 w-3.5 text-viz-orange"
                                 aria-label={t('kind.expense')}
                               />
                             )}
                             {displayName(flow)}
                           </span>
-                          <span className="mt-0.5 block text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                          <span className="mt-0.5 block text-[0.58rem] font-semibold   text-muted-foreground">
                             {/* Narrow screens fold the period column into this line. */}
                             <span className="sm:hidden">{windowLabel(flow)} · </span>
                             {frequencyLabel(flow.frequency)}
@@ -967,20 +967,20 @@ export function CashFlowList({
                           </span>
                           {flow.note && (
                             <span
-                              className="mt-0.5 block text-[0.58rem] font-medium normal-case tracking-normal text-muted-foreground"
+                              className="mt-0.5 block text-[0.58rem] font-medium normal-case  text-muted-foreground"
                               data-testid={`cashflow-note-${flow.id}`}
                             >
                               {flow.note}
                             </span>
                           )}
                         </td>
-                        <td className="hidden px-3 py-2.5 text-left text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:table-cell">
+                        <td className="hidden px-3 py-2.5 text-left text-[0.62rem] font-semibold   text-muted-foreground sm:table-cell">
                           {windowLabel(flow)}
                         </td>
                         <td
                           className={cn(
                             'px-3 py-2.5 text-right text-[0.72rem] font-bold tabular-nums',
-                            flow.kind === 'expense' ? 'text-neo-black' : 'text-neo-green'
+                            flow.kind === 'expense' ? 'text-ink' : 'text-ok'
                           )}
                         >
                           {`${flow.kind === 'expense' ? '−' : '+'}${formatCurrency(flow.amount)}`}
@@ -991,7 +991,7 @@ export function CashFlowList({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-neo-black hover:bg-neo-blue hover:text-neo-white"
+                              className="h-8 w-8 text-ink hover:bg-accent hover:text-white"
                               aria-label={`${t('actions.edit')}: ${displayName(flow)}`}
                               onClick={() => {
                                 setEditDraft(
@@ -1011,7 +1011,7 @@ export function CashFlowList({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-neo-black hover:bg-neo-red hover:text-neo-white"
+                              className="h-8 w-8 text-ink hover:bg-danger hover:text-white"
                               aria-label={`${t('actions.remove')}: ${displayName(flow)}`}
                               onClick={() => handleRemove(flow.id)}
                             >
@@ -1031,7 +1031,7 @@ export function CashFlowList({
 
       {availableTemplates.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="text-[0.62rem] font-semibold   text-muted-foreground">
             {t('templates.label')}
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1040,15 +1040,15 @@ export function CashFlowList({
                 key={template.key}
                 type="button"
                 onClick={() => handleAddTemplate(template)}
-                className="border-2 border-dashed border-neo-black bg-neo-white/50 px-3 py-2 text-left text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-neo-black transition-neo hover:-translate-x-[1px] hover:-translate-y-[1px] hover:bg-neo-yellow/20 hover:shadow-neo-sm"
+                className="rounded-sm border-2 border-dashed border-border bg-white/50 px-3 py-2 text-left text-[0.66rem] font-semibold   text-ink transition-colors hover:-translate-x-[1px] hover:-translate-y-[1px] hover:bg-amber/15 hover:shadow-sm"
               >
                 <span className="flex items-center gap-1.5">
                   {template.kind === 'pension' ? (
-                    <Landmark className="h-3 w-3 text-neo-blue" aria-hidden="true" />
+                    <Landmark className="h-3 w-3 text-accent" aria-hidden="true" />
                   ) : template.kind === 'income' ? (
-                    <ArrowUpRight className="h-3 w-3 text-neo-green" aria-hidden="true" />
+                    <ArrowUpRight className="h-3 w-3 text-ok" aria-hidden="true" />
                   ) : (
-                    <ArrowDownRight className="h-3 w-3 text-neo-orange" aria-hidden="true" />
+                    <ArrowDownRight className="h-3 w-3 text-viz-orange" aria-hidden="true" />
                   )}
                   {template.name}
                 </span>
@@ -1063,22 +1063,22 @@ export function CashFlowList({
 
       <div
         className={cn(
-          'border-3 border-neo-black px-4 py-4 shadow-neo-sm',
+          'rounded-sm border border-border px-4 py-4 shadow-sm',
           safeFlows.length === 0
-            ? 'bg-gradient-to-br from-neo-blue/5 to-neo-yellow/5'
-            : 'bg-neo-white'
+            ? 'bg-gradient-to-br from-accent/5 to-amber/5'
+            : 'bg-white'
         )}
       >
         {safeFlows.length === 0 && (
-          <div className="mb-4 flex items-start gap-3 border-b-3 border-dashed border-neo-black pb-3">
-            <span className="border-3 border-neo-black bg-neo-yellow p-1.5 shadow-neo-xs">
-              <Plus className="h-4 w-4 text-neo-black" strokeWidth={3} aria-hidden="true" />
+          <div className="mb-4 flex items-start gap-3 border-b border-dashed border-border pb-3">
+            <span className="rounded-sm border border-border bg-amber p-1.5 shadow-sm">
+              <Plus className="h-4 w-4 text-ink" strokeWidth={3} aria-hidden="true" />
             </span>
             <div>
-              <p className="text-[0.7rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+              <p className="text-[0.7rem] font-extrabold   text-ink">
                 {t('empty.title')}
               </p>
-              <p className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              <p className="text-[0.6rem] font-semibold   text-muted-foreground">
                 {t('empty.hint')}
               </p>
             </div>
@@ -1086,23 +1086,23 @@ export function CashFlowList({
         )}
         {renderDraftForm(draft, setDraft, amountField)}
         {safeFlows.length > 0 && (
-          <dl className="mt-4 space-y-1.5 border-t-3 border-dashed border-neo-black pt-3 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+          <dl className="mt-4 space-y-1.5 border-t border-dashed border-border pt-3 text-[0.62rem] font-semibold   text-muted-foreground">
             {totals.pension > 0 && (
               <div className="flex justify-between">
                 <dt>{t('summary.pension')}</dt>
-                <dd className="tabular-nums text-neo-blue">+{formatCurrency(totals.pension)}</dd>
+                <dd className="tabular-nums text-accent">+{formatCurrency(totals.pension)}</dd>
               </div>
             )}
             <div className="flex justify-between">
               <dt>{t('summary.income')}</dt>
-              <dd className="tabular-nums text-neo-green">+{formatCurrency(totals.income)}</dd>
+              <dd className="tabular-nums text-ok">+{formatCurrency(totals.income)}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="flex items-center gap-1.5">
                 {t('summary.expense')}
                 <InfoTip content={t('summary.note')} label={t('summary.expense')} side="bottom" />
               </dt>
-              <dd className="tabular-nums text-neo-black">−{formatCurrency(totals.expense)}</dd>
+              <dd className="tabular-nums text-ink">−{formatCurrency(totals.expense)}</dd>
             </div>
           </dl>
         )}

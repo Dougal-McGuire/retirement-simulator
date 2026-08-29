@@ -1,118 +1,7 @@
 @import 'tailwindcss';
 @config '../../tailwind.config.ts';
 
-@layer base {:root {
-    color-scheme: light;
-    --background: 0 0% 100%;
-    --foreground: 223 31% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 223 31% 12%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 223 31% 12%;
-    --primary: 220 92% 54%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 43 97% 54%;
-    --secondary-foreground: 223 31% 12%;
-    --muted: 213 23% 92%;
-    --muted-foreground: 221 26% 36%;
-    --accent: 351 100% 64%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 82% 55%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 8%;
-    --input: 223 31% 12%;
-    /* Ground of editable controls — a step off the panel white so inputs
-       read as "type here" without a border change. */
-    --field: 216 100% 97%;
-    --ring: 220 92% 54%;
-    --chart-1: 222 94% 54%;
-    --chart-2: 43 97% 54%;
-    --chart-3: 351 100% 64%;
-    --chart-4: 152 95% 38%;
-    --chart-5: 282 88% 60%;
-    --radius: 0px;
-    --neo-black-rgb: 5 8 15;
-    --neo-white-rgb: 255 255 255;
-    --neo-yellow-rgb: 246 201 14;
-    --neo-blue-rgb: 14 103 246;
-    --neo-red-rgb: 255 59 92;
-    --neo-green-rgb: 42 213 118;
-    --neo-pink-rgb: 255 79 145;
-    --neo-purple-rgb: 122 91 255;
-    --neo-cyan-rgb: 20 194 201;
-    --neo-orange-rgb: 255 107 53;
-    --neo-black: rgb(var(--neo-black-rgb));
-    --neo-white: rgb(var(--neo-white-rgb));
-    --neo-yellow: rgb(var(--neo-yellow-rgb));
-    --neo-blue: rgb(var(--neo-blue-rgb));
-    --neo-red: rgb(var(--neo-red-rgb));
-    --neo-green: rgb(var(--neo-green-rgb));
-    --neo-pink: rgb(var(--neo-pink-rgb));
-    --neo-purple: rgb(var(--neo-purple-rgb));
-    --neo-cyan: rgb(var(--neo-cyan-rgb));
-    --neo-orange: rgb(var(--neo-orange-rgb));
-    --neo-border-strong: var(--neo-black);
-    --neo-surface: #ffffff;
-    --neo-surface-muted: #f2f4f7;
-    --neo-grid-line: rgba(5, 8, 15, 0.05);
-    --shadow-neo-xs: 1px 1px 0px var(--neo-black);
-    --shadow-neo-sm: 2px 2px 0px var(--neo-black);
-    --shadow-neo: 4px 4px 0px var(--neo-black);
-    --shadow-neo-md: 6px 6px 0px var(--neo-black);
-    --shadow-neo-lg: 8px 8px 0px var(--neo-black);
-    --shadow-neo-xl: 12px 12px 0px var(--neo-black);
-    --shadow-neo-mobile: 2px 2px 0px var(--neo-black);
-    --shadow-neo-mobile-md: 3px 3px 0px var(--neo-black);
-    --shadow-neo-mobile-lg: 4px 4px 0px var(--neo-black);
-    --shadow-neo-yellow: 6px 6px 0px var(--neo-yellow);
-    --shadow-neo-blue: 6px 6px 0px var(--neo-blue);
-    --shadow-neo-red: 6px 6px 0px var(--neo-red);
-    --shadow-neo-green: 6px 6px 0px var(--neo-green);
-    --shadow-neo-pink: 6px 6px 0px var(--neo-pink);
-    --shadow-neo-purple: 6px 6px 0px var(--neo-purple);
-    --theme-border-width: 3px;
-    --theme-border-thin: 2px;
-    --theme-radius-panel: 0px;
-    --theme-radius-control: 0px;
-    --theme-radius-chip: 0px;
-    --theme-panel-padding: 2rem;
-    --theme-card-header-padding: 1rem;
-    --theme-card-body-padding: 1.25rem;
-    --theme-page-gap: 2rem;
-    --theme-content-gap: 1.5rem;
-    --theme-panel-clip: none;
-    --theme-card-backdrop: none;
-    --theme-control-transform: uppercase;
-    --theme-ui-letter-spacing: 0.16em;
-    --theme-chip-spacing: 0.28em;
-    --theme-hover-x: -2px;
-    --theme-hover-y: -2px;
-    --theme-hero-transform: none;
-    --theme-panel-transform: none;
-    --theme-focus: var(--neo-blue);
-    --theme-bg-layer:
-      radial-gradient(circle at top left, rgba(6, 17, 38, 0.06), transparent 45%),
-      radial-gradient(circle at bottom right, rgba(6, 17, 38, 0.05), transparent 50%),
-      hsl(var(--background));
-    --theme-pattern-image:
-      linear-gradient(90deg, var(--neo-grid-line) 1px, transparent 1px),
-      linear-gradient(180deg, var(--neo-grid-line) 1px, transparent 1px);
-    --theme-pattern-size: 120px 120px;
-    --theme-pattern-opacity: 1;
-    --theme-pattern-blend: normal;
-    --theme-font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-    --theme-font-heading: ui-sans-serif, system-ui, -apple-system, sans-serif;
-    --theme-letter-spacing-body: 0.01em;
-    --theme-heading-spacing: 0.08em;
-    --theme-h1-spacing: 0.12em;
-    --theme-heading-transform: uppercase;
-    --chart-axis: var(--neo-black);
-    --chart-brush: #9ca3af;
-    --chart-retirement: #dc2626;
-    --chart-pension: #059669;
-    --scrollbar-thumb: rgba(5, 8, 15, 0.2);
-    --scrollbar-thumb-hover: rgba(5, 8, 15, 0.4);
-  }
+@layer base {
 /* ------------------------------------------------------------------ */
   /* KLAR — a light, data-first analyst workspace.                        */
   /* Near-white ground, a real neutral gray hierarchy, one decisive blue, */
@@ -120,6 +9,10 @@
   /* ------------------------------------------------------------------ */
   :root {
     color-scheme: light;
+    --radius: 0.25rem;
+    --ink: rgb(var(--ink-rgb));
+    --white: rgb(var(--white-rgb));
+    --theme-pattern-blend: normal;
     --background: 210 20% 98%;
     --foreground: 220 43% 11%;
     --card: 0 0% 100%;
@@ -145,35 +38,17 @@
     --chart-3: 357 100% 45%;
     --chart-4: 145 100% 25%;
     --chart-5: 32 100% 31%;
-    --neo-black-rgb: 16 24 40;
-    --neo-white-rgb: 255 255 255;
-    --neo-yellow-rgb: 255 210 48;
-    --neo-blue-rgb: 26 96 158;
-    --neo-red-rgb: 231 0 11;
-    --neo-green-rgb: 0 130 54;
-    --neo-pink-rgb: 155 70 122;
-    --neo-purple-rgb: 123 82 164;
-    --neo-cyan-rgb: 0 124 140;
-    --neo-orange-rgb: 157 83 0;
-    --neo-border-strong: #e5e7eb;
-    --neo-surface: #ffffff;
-    --neo-surface-muted: #f3f4f6;
-    --neo-grid-line: rgba(22, 28, 41, 0.045);
-    --shadow-neo-xs: 0 1px 2px rgba(22, 28, 41, 0.06);
-    --shadow-neo-sm: 0 1px 2px rgba(22, 28, 41, 0.05), 0 1px 3px rgba(22, 28, 41, 0.07);
-    --shadow-neo: 0 1px 2px rgba(22, 28, 41, 0.05), 0 4px 12px rgba(22, 28, 41, 0.06);
-    --shadow-neo-md: 0 1px 2px rgba(22, 28, 41, 0.05), 0 8px 22px rgba(22, 28, 41, 0.07);
-    --shadow-neo-lg: 0 2px 4px rgba(22, 28, 41, 0.05), 0 16px 36px rgba(22, 28, 41, 0.08);
-    --shadow-neo-xl: 0 4px 8px rgba(22, 28, 41, 0.05), 0 28px 60px rgba(22, 28, 41, 0.09);
-    --shadow-neo-mobile: var(--shadow-neo-xs);
-    --shadow-neo-mobile-md: var(--shadow-neo-sm);
-    --shadow-neo-mobile-lg: var(--shadow-neo);
-    --shadow-neo-yellow: 0 6px 18px rgba(244, 183, 64, 0.28);
-    --shadow-neo-blue: 0 6px 18px rgba(23, 71, 201, 0.18);
-    --shadow-neo-red: 0 6px 18px rgba(220, 38, 38, 0.16);
-    --shadow-neo-green: 0 6px 18px rgba(0, 128, 85, 0.16);
-    --shadow-neo-pink: 0 6px 18px rgba(190, 38, 130, 0.16);
-    --shadow-neo-purple: 0 6px 18px rgba(151, 77, 225, 0.16);
+    --ink-rgb: 16 24 40;
+    --white-rgb: 255 255 255;
+    --amber-rgb: 255 210 48;
+    --accent-rgb: 26 96 158;
+    --danger-rgb: 231 0 11;
+    --ok-rgb: 0 130 54;
+    --viz-pink-rgb: 155 70 122;
+    --viz-purple-rgb: 123 82 164;
+    --viz-teal-rgb: 0 124 140;
+    --viz-orange-rgb: 157 83 0;
+    --grid-line: rgba(22, 28, 41, 0.045);
     --theme-border-width: 1px;
     --theme-border-thin: 1px;
     --theme-radius-panel: 0.5rem;
@@ -193,11 +68,11 @@
     --theme-hover-y: -1px;
     --theme-hero-transform: none;
     --theme-panel-transform: none;
-    --theme-focus: var(--neo-black);
+    --theme-focus: var(--ink);
     --theme-bg-layer: hsl(var(--background));
     --theme-pattern-image:
-      linear-gradient(90deg, var(--neo-grid-line) 1px, transparent 1px),
-      linear-gradient(180deg, var(--neo-grid-line) 1px, transparent 1px);
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(180deg, var(--grid-line) 1px, transparent 1px);
     --theme-pattern-size: 64px 64px;
     --theme-pattern-opacity: 0;
     --theme-font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -206,10 +81,10 @@
     --theme-heading-transform: none;
     --theme-heading-spacing: -0.011em;
     --theme-h1-spacing: -0.022em;
-    --chart-axis: var(--neo-black);
+    --chart-axis: var(--ink);
     --chart-brush: #94a3b8;
-    --chart-retirement: var(--neo-red);
-    --chart-pension: var(--neo-green);
+    --chart-retirement: var(--danger);
+    --chart-pension: var(--ok);
     --scrollbar-thumb: rgba(22, 28, 41, 0.18);
     --scrollbar-thumb-hover: rgba(22, 28, 41, 0.34);
   }
@@ -245,10 +120,10 @@
     --chart-3: 351 100% 72%;
     --chart-4: 45 100% 60%;
     --chart-5: 282 88% 70%;
-    --neo-border-strong: #cbd5f5;
-    --neo-surface: #0c1220;
-    --neo-surface-muted: #101a2f;
-    --neo-grid-line: rgba(203, 213, 245, 0.09);
+    --line: #cbd5f5;
+    --surface: #0c1220;
+    --gray-100: #101a2f;
+    --grid-line: rgba(203, 213, 245, 0.09);
   }}
 
 @layer base {* {
@@ -316,24 +191,24 @@ strong {
     letter-spacing: 0.04em;
   }}
 
-@layer components {.neo-surface {
-    background-color: var(--neo-surface);
-    border: var(--theme-border-width) solid var(--neo-border-strong);
+@layer components {.app-surface {
+    background-color: var(--surface);
+    border: var(--theme-border-width) solid var(--line);
     border-radius: var(--theme-radius-panel);
-    box-shadow: var(--shadow-neo-md);
+    box-shadow: var(--shadow-sm);
   }
-.neo-surface-muted {
-    background-color: var(--neo-surface-muted);
-    border: var(--theme-border-width) solid var(--neo-border-strong);
+.app-surface-muted {
+    background-color: var(--gray-100);
+    border: var(--theme-border-width) solid var(--line);
     border-radius: var(--theme-radius-panel);
-    box-shadow: var(--shadow-neo-md);
+    box-shadow: var(--shadow-sm);
   }
-.neo-chip {
+.app-chip {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
     padding: 0.35rem 0.85rem;
-    border: var(--theme-border-width) solid var(--neo-border-strong);
+    border: var(--theme-border-width) solid var(--line);
     border-radius: var(--theme-radius-chip);
     background-color: hsl(var(--secondary));
     color: hsl(var(--secondary-foreground));
@@ -343,16 +218,9 @@ strong {
     letter-spacing: var(--theme-chip-spacing);
     box-shadow: none;
   }
-.neo-divider {
+.app-divider {
     width: 100%;
-    border-bottom: var(--theme-border-width) solid var(--neo-border-strong);
-  }
-/* Force active tab inversion in ParameterControls. The `--tab-active-*`
-     indirection lets a page-scoped design (the compact simulation page) paint
-     selection with its accent instead; everywhere else the ink slab stands. */
-  .grid button[data-state='active'], .grid [role='tab'][data-state='active'] {
-    background-color: var(--tab-active-bg, var(--neo-black)) !important;
-    color: var(--tab-active-fg, var(--neo-white)) !important;
+    border-bottom: var(--theme-border-width) solid var(--line);
   }}
 /* Animation classes */
 @layer utilities {
@@ -391,8 +259,8 @@ to {
     background-image: linear-gradient(
       120deg,
       transparent 0%,
-      rgb(var(--neo-blue-rgb) / 0.12) 40%,
-      rgb(var(--neo-blue-rgb) / 0.12) 60%,
+      rgb(var(--accent-rgb) / 0.12) 40%,
+      rgb(var(--accent-rgb) / 0.12) 60%,
       transparent 100%
     );
     animation: shimmer 2s linear infinite;
@@ -401,65 +269,20 @@ to {
     background-image: linear-gradient(
       115deg,
       transparent 0%,
-      rgb(var(--neo-blue-rgb) / 0.07) 45%,
-      rgb(var(--neo-blue-rgb) / 0.1) 55%,
+      rgb(var(--accent-rgb) / 0.07) 45%,
+      rgb(var(--accent-rgb) / 0.1) 55%,
       transparent 100%
     );
     animation-duration: 2.4s;
   }
-/* Fast, crisp transitions for neo-brutalism */
-  .transition-neo {
-    transition:
-      transform 100ms ease,
-      box-shadow 100ms ease,
-      background-color 100ms ease,
-      color 100ms ease,
-      border-color 100ms ease;
-  }
-/* Neo-brutalist button hover effect */
-  .hover-neo {
-    transition: all 0.1s ease;
-  }
-.hover-neo:hover {
-    transform: translate(2px, 2px);
-  }
-/* Neo-brutalist focus state */
-  .focus-neo:focus {
-    outline: 3px solid var(--neo-black);
-    outline-offset: 2px;
-  }
-/* Bold borders */
-  .border-neo {
-    border: 3px solid var(--neo-black);
-  }
-.border-neo-bold {
-    border: 4px solid var(--neo-black);
-  }
-.border-neo-thick {
-    border: 6px solid var(--neo-black);
-  }
 /* Mobile-adapted borders */
-  @media (max-width: 768px) {.border-neo {
-      border-width: 2px;
-    }
-.border-neo-bold {
-      border-width: 3px;
-    }
-.shadow-neo {
-      box-shadow: var(--shadow-neo-mobile) !important;
-    }
-.shadow-neo-md {
-      box-shadow: var(--shadow-neo-mobile-md) !important;
-    }
-.shadow-neo-lg {
-      box-shadow: var(--shadow-neo-mobile-lg) !important;
-    }}}
+  @media (max-width: 768px) {}}
 /* Range navigator (Recharts brush) — styled as a deliberate control rather
    than the default grey scrollbar. */
 .chart-range-navigator .recharts-brush-slide {
-  fill: rgb(var(--neo-blue-rgb) / 0.16);
+  fill: rgb(var(--accent-rgb) / 0.16);
   fill-opacity: 1;
-  stroke: rgb(var(--neo-blue-rgb) / 0.55);
+  stroke: rgb(var(--accent-rgb) / 0.55);
   stroke-width: 1;
   cursor: grab;
 }
@@ -467,7 +290,7 @@ to {
   cursor: grabbing;
 }
 .chart-range-navigator .recharts-brush-texts text, .chart-range-navigator text {
-  fill: var(--neo-blue);
+  fill: var(--accent);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -509,9 +332,6 @@ html .theme-panel-header {
 html .theme-panel-body {
   padding: var(--theme-card-body-padding) !important;
 }
-html .theme-panel-title, html .theme-panel-description, html .theme-step-copy p, html label, html [class*='tracking-'] {
-  letter-spacing: var(--theme-ui-letter-spacing) !important;
-}
 html .theme-control, html [data-slot='select-trigger'], html [data-slot='select-item'], html input, html textarea, html [role='tab'] {
   border-radius: var(--theme-radius-control) !important;
   text-transform: var(--theme-control-transform) !important;
@@ -520,14 +340,11 @@ html .theme-control, html [data-slot='select-trigger'], html [data-slot='select-
 html .theme-control:hover, html [data-slot='select-trigger']:hover {
   transform: translate(var(--theme-hover-x), var(--theme-hover-y)) !important;
 }
-html .neo-chip, html .theme-badge-row > span, html .theme-progress-block > div:first-child > span {
+html .app-chip, html .theme-badge-row > span, html .theme-progress-block > div:first-child > span {
   border-radius: var(--theme-radius-chip) !important;
   text-transform: var(--theme-control-transform) !important;
   letter-spacing: var(--theme-chip-spacing) !important;
-  box-shadow: var(--shadow-neo-sm) !important;
-}
-html .border-3 {
-  border-width: var(--theme-border-width) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 html .border-2 {
   border-width: var(--theme-border-thin) !important;
@@ -535,77 +352,6 @@ html .border-2 {
 html
   .border-3:not(.theme-hero):not(.theme-sidebar):not(.theme-panel-card), html .border-2 {
   border-radius: var(--theme-radius-control);
-}
-html .border-t-3 {
-  border-top-width: var(--theme-border-width) !important;
-}
-html .border-r-3 {
-  border-right-width: var(--theme-border-width) !important;
-}
-html .border-b-3 {
-  border-bottom-width: var(--theme-border-width) !important;
-}
-html .border-l-3 {
-  border-left-width: var(--theme-border-width) !important;
-}
-html .divide-y-3 > :not([hidden]) ~ :not([hidden]) {
-  border-top-width: var(--theme-border-width) !important;
-}
-html .divide-x-\[3px\] > :not([hidden]) ~ :not([hidden]) {
-  border-left-width: var(--theme-border-width) !important;
-}
-/* The three alternate themes all read in sentence case: the shouty all-caps
-   labels belong to the neo-brutalist original, not to a calm analyst tool, a
-   private-banking dark mode, or a friendly one. */
-html .uppercase, html [class*='uppercase'] {
-  text-transform: none !important;
-}
-/* Hairline chrome: `border-neo-black` is the app's structural border class and
-   paints the full ink colour. In these themes the border is a hairline, so the
-   plain (un-aliased) utility is re-pointed at a translucent ink. Explicit
-   opacity variants (`border-neo-black/30`) are deliberate and left alone. */
-html .border-neo-black {
-  border-color: var(--neo-border-strong);
-}
-html .divide-neo-black > :not([hidden]) ~ :not([hidden]) {
-  border-color: var(--neo-border-strong);
-}
-/* The `--theme-font-*` tokens are declared on <html>, but next/font publishes
-   its family variables (`--font-inter`, …) on the <body> class. A custom
-   property whose value contains an unresolvable var() is invalid at computed
-   value time, so those stacks silently evaporated and every theme inherited the
-   neo-brutalist Plex Mono. Each theme's body rule below re-declares them where
-   the family variables actually exist. Scoped to the themes that need it, so
-   the neo original keeps exactly the typography it has today. */
-
-/* Tailwind's `font-heading` / `font-sans` / `font-body` utilities name concrete
-   families in tailwind.config.ts, so they bypass the theme font tokens and pin
-   every screen to the neo-brutalist Space Grotesk + Plex Mono pairing. Re-point
-   them at the active theme's stacks; `font-mono` stays monospace on purpose
-   (it marks figures, not prose). */
-html .font-heading {
-  font-family: var(--theme-font-heading) !important;
-}
-html .font-sans, html .font-body {
-  font-family: var(--theme-font-body) !important;
-}
-/* The setup hero carries two rotated neo-brutalist confetti squares. They are
-   the loudest thing on an otherwise calm page in the analytical and the dark
-   theme, so they are dropped there and softened into a blob in the playful one. */
-html .theme-hero-accent, html .theme-hero-mark {
-  display: none !important;
-}
-/* Accent fills carry dark ink in the neo-brutalist original because every accent
-   there is a bright poster colour. These three themes use accent steps chosen to
-   pass 4.5:1 as small text on their own surface, which makes them too dark for
-   dark ink — so a filled accent takes the surface colour as its ink instead. */
-html .bg-neo-green.text-neo-black, html .bg-neo-red.text-neo-black, html .bg-neo-orange.text-neo-black, html .bg-neo-cyan.text-neo-black, html .bg-neo-pink.text-neo-black, html .bg-neo-purple.text-neo-black, html .bg-neo-blue.text-neo-black {
-  color: var(--neo-white) !important;
-}
-/* An accent-on-accent pair: the "active plan" tag paints blue ink inside a
-   yellow chip. On a gold or amber fill it has to be the ink colour instead. */
-html .bg-neo-yellow .text-neo-blue {
-  color: rgb(var(--neo-black-rgb)) !important;
 }
 /* The closing call-to-action is a dark slab in *every* theme — including the
    default one, which this rule used to skip. There the example-plan caption
@@ -631,34 +377,25 @@ html body {
   font-weight: 450;
 }
 html .theme-panel-header {
-  background-color: rgb(var(--neo-black-rgb) / 0.018);
-  border-bottom-color: var(--neo-border-strong) !important;
+  background-color: rgb(var(--ink-rgb) / 0.018);
+  border-bottom-color: var(--line) !important;
 }
 /* Data-first: the panels are quiet containers, the numbers are the subject. */
 html .theme-hero, html .theme-panel-card, html .theme-sidebar {
-  box-shadow: var(--shadow-neo-sm) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 html .theme-hero {
-  box-shadow: var(--shadow-neo) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 html .theme-progress-bar {
   height: 0.5rem !important;
 }
-html .neo-chip, html .theme-badge-row > span {
+html .app-chip, html .theme-badge-row > span {
   font-weight: 600;
   box-shadow: none !important;
 }
 html .theme-step-list > * + * {
   margin-top: 0.5rem !important;
-}
-/* Gold at 20–30% over a near-black ground turns olive. The washes that mark
-   "new here" strips {
-  background-color: rgb(var(--neo-yellow-rgb) / 0.1) !important;
-}
-/* The tip strip and hover washes are painted with the accent at 15–30%. On the
-   analytical theme that reads as a wide tan band; pull it back to a whisper. */
-html .bg-neo-yellow\/30, html .bg-neo-yellow\/25, html .bg-neo-yellow\/20 {
-  background-color: rgb(var(--neo-yellow-rgb) / 0.14) !important;
 }
 
 @media (min-width: 1024px) {/* Klar keeps the wizard rail: an analyst wants the whole structure visible. */
@@ -967,8 +704,8 @@ to {
 /* same product in every theme instead of inverting into a neon slab.  */
 /* ------------------------------------------------------------------ */
 .landing-cta {
-  --landing-cta-bg: var(--neo-black);
-  --landing-cta-fg: var(--neo-white);
+  --landing-cta-bg: var(--ink);
+  --landing-cta-fg: var(--white);
   background-color: var(--landing-cta-bg);
 }
 .landing-cta-title {

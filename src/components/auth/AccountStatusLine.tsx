@@ -55,12 +55,12 @@ export function AccountStatusLine() {
 
   const dotClass =
     phase === 'syncing'
-      ? 'bg-neo-blue animate-pulse'
+      ? 'bg-accent animate-pulse'
       : phase === 'offline'
-        ? 'bg-neo-orange'
+        ? 'bg-viz-orange'
         : isSynced
-          ? 'bg-neo-green'
-          : 'bg-neo-black/30'
+          ? 'bg-ok'
+          : 'bg-ink/30'
 
   return (
     <Tooltip>

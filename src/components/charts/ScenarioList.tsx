@@ -47,7 +47,7 @@ type ScenarioResult = {
 const healthClasses: Record<PlanHealth, string> = {
   strong: 'border-success-600 bg-success-50 text-success-700',
   watch: 'border-warning-600 bg-warning-50 text-warning-700',
-  strained: 'border-neo-red bg-red-50 text-neo-red',
+  strained: 'border-danger bg-red-50 text-danger',
 }
 
 /**
@@ -219,15 +219,15 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
 
   return (
     <Card className="overflow-hidden">
-      <CardContent className="bg-neo-white p-5">
+      <CardContent className="bg-white p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <Landmark className="h-5 w-5 text-neo-blue" aria-hidden="true" />
-            <h4 className="text-sm font-extrabold uppercase tracking-[0.16em]">
+            <Landmark className="h-5 w-5 text-accent" aria-hidden="true" />
+            <h4 className="text-sm font-extrabold  ">
               {t('scenarios.title')}
             </h4>
           </div>
-          <span className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <span className="text-[0.68rem] font-semibold   text-muted-foreground">
             {scenarioStatus === 'loading'
               ? t('scenarios.loading')
               : isSaturated && scenarioStatus === 'ready'
@@ -240,7 +240,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
             It is the hero's number verbatim, at the hero's run count. */}
         {context.hasResults && (
           <p
-            className="mt-3 border-2 border-neo-black bg-neo-white px-3 py-2 text-[0.66rem] font-semibold text-neo-black"
+            className="rounded-sm mt-3 border-2 border-border bg-white px-3 py-2 text-[0.66rem] font-semibold text-ink"
             data-testid="stress-lever-baseline"
             data-baseline={context.successRate}
             data-runs={context.effectiveRuns}
@@ -259,7 +259,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
 
         {isSaturated && scenarioStatus === 'ready' && results && (
           <p
-            className="mt-3 border-2 border-success-600 bg-success-50 px-3 py-2 text-[0.66rem] font-semibold text-success-700"
+            className="rounded-sm mt-3 border-2 border-success-600 bg-success-50 px-3 py-2 text-[0.66rem] font-semibold text-success-700"
             data-testid="stress-lever-saturated"
           >
             {t('scenarios.saturated', { rate: formatPercent(context.successRate) })}
@@ -276,10 +276,10 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
                 <div
                   key={scenario.id}
                   data-testid="stress-lever"
-                  className="flex flex-col gap-3 border-2 border-neo-black bg-neo-white px-4 py-3 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4"
+                  className="rounded-sm flex flex-col gap-3 border-2 border-border bg-white px-4 py-3 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-neo-black">
+                    <p className="text-sm font-extrabold   text-ink">
                       {t(`scenarios.items.${scenario.id}.name`)}
                     </p>
                     <p className="mt-1 text-xs font-medium text-muted-foreground">
@@ -291,9 +291,9 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
                       <>
                         <span
                           className={cn(
-                            'border-2 px-2 py-1 text-[0.68rem] font-extrabold uppercase tracking-[0.12em]',
+                            'rounded-sm border-2 px-2 py-1 text-[0.68rem] font-extrabold  ',
                             isSaturated
-                              ? 'border-neo-black bg-neo-white text-neo-black'
+                              ? 'border-border bg-white text-ink'
                               : healthClasses[health]
                           )}
                           data-testid="stress-lever-delta"
@@ -315,7 +315,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
                         </span>
                       </>
                     ) : (
-                      <span className="h-7 w-24 animate-pulse border-2 border-neo-black bg-muted" />
+                      <span className="rounded-sm h-7 w-24 animate-pulse border-2 border-border bg-muted" />
                     )}
                     <Button
                       variant="outline"

@@ -8,7 +8,7 @@ function Skeleton({ className, shimmer = true, ...props }: SkeletonProps) {
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-none border border-dashed border-neo-black/50 bg-neo-white/70 text-transparent',
+        'relative overflow-hidden rounded-none border border-dashed border-ink/50 bg-white/70 text-transparent',
         className
       )}
       {...props}
@@ -21,7 +21,7 @@ function Skeleton({ className, shimmer = true, ...props }: SkeletonProps) {
 // Chart skeleton loader shaped like the percentile fan chart it stands in for
 function ChartSkeleton({ className }: { className?: string }) {
   return (
-    <div className={cn('border-3 border-neo-black bg-neo-white shadow-neo p-6', className)}>
+    <div className={cn('rounded-sm border border-border bg-white shadow-sm p-6', className)}>
       <div className="space-y-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1 space-y-2.5">
@@ -38,7 +38,7 @@ function ChartSkeleton({ className }: { className?: string }) {
               <div
                 className="h-3 w-4 animate-pulse rounded-[2px]"
                 style={{
-                  backgroundColor: `rgb(var(--neo-blue-rgb) / ${0.4 - i * 0.12})`,
+                  backgroundColor: `rgb(var(--accent-rgb) / ${0.4 - i * 0.12})`,
                   animationDelay: `${i * 180}ms`,
                 }}
               />
@@ -48,7 +48,7 @@ function ChartSkeleton({ className }: { className?: string }) {
         </div>
 
         {/* Fan-shaped chart placeholder */}
-        <div className="relative h-72 overflow-hidden border border-neo-black/15 bg-neo-white">
+        <div className="rounded-sm relative h-72 overflow-hidden border border-ink/15 bg-white">
           <div className="skeleton-sweep skeleton-sweep-soft pointer-events-none absolute inset-[-150%]" />
           <svg
             viewBox="0 0 600 240"
@@ -59,18 +59,18 @@ function ChartSkeleton({ className }: { className?: string }) {
             {/* Outer band */}
             <path
               d="M0,208 C120,196 220,150 340,96 C430,58 530,36 600,28 L600,196 C530,192 430,192 340,196 C220,202 120,208 0,214 Z"
-              fill="rgb(var(--neo-blue-rgb) / 0.08)"
+              fill="rgb(var(--accent-rgb) / 0.08)"
             />
             {/* Inner band */}
             <path
               d="M0,208 C120,198 230,164 350,120 C440,88 540,70 600,64 L600,164 C540,166 440,172 350,180 C230,190 120,204 0,211 Z"
-              fill="rgb(var(--neo-blue-rgb) / 0.14)"
+              fill="rgb(var(--accent-rgb) / 0.14)"
             />
             {/* Median line */}
             <path
               d="M0,209 C120,201 240,178 360,150 C450,130 545,118 600,114"
               fill="none"
-              stroke="rgb(var(--neo-blue-rgb) / 0.45)"
+              stroke="rgb(var(--accent-rgb) / 0.45)"
               strokeWidth="3"
               strokeLinecap="round"
             />
@@ -108,16 +108,16 @@ function ProgressIndicatorSkeleton() {
 // Statistics card skeleton with enhanced styling
 function StatCardSkeleton() {
   return (
-    <div className="space-y-4 border-3 border-neo-black bg-neo-white p-5 shadow-neo">
+    <div className="rounded-sm space-y-4 border border-border bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <Skeleton className="h-5 w-32" />
-        <div className="h-8 w-8 border-3 border-neo-black bg-muted animate-pulse" />
+        <div className="rounded-sm h-8 w-8 border border-border bg-muted animate-pulse" />
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center space-x-3">
           <Skeleton className="h-10 w-20" />
-          <div className="h-6 w-6 border-3 border-neo-black bg-neo-blue/70 animate-pulse" />
+          <div className="rounded-sm h-6 w-6 border border-border bg-accent/70 animate-pulse" />
         </div>
         <Skeleton className="h-4 w-40" />
         <div className="flex space-x-2">

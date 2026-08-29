@@ -4,14 +4,14 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-none border-2 border-neo-black px-3 py-1 text-xs font-bold uppercase transition-neo',
+  'inline-flex items-center rounded-none border-2 border-border px-3 py-1 text-xs font-bold  transition-colors',
   {
     variants: {
       variant: {
-        default: 'bg-neo-blue text-neo-white shadow-neo-sm',
-        secondary: 'bg-neo-yellow text-neo-black shadow-neo-sm',
-        destructive: 'bg-neo-red text-neo-white shadow-neo-sm',
-        success: 'bg-neo-green text-neo-black shadow-neo-sm',
+        default: 'bg-accent text-white shadow-sm',
+        secondary: 'bg-amber text-ink shadow-sm',
+        destructive: 'bg-danger text-white shadow-sm',
+        success: 'bg-ok text-ink shadow-sm',
         outline: 'bg-background text-foreground',
       },
     },

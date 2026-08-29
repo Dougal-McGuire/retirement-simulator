@@ -67,7 +67,7 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
       <div
         data-sticky-chrome="true"
         data-retracted={retracted ? 'true' : 'false'}
-        className={`sticky top-0 z-30 -mx-2 mb-2 border-b-2 border-neo-black bg-background px-2 py-2 transition-transform duration-200 focus-within:translate-y-0 motion-reduce:transition-none sm:-mx-3 sm:px-3 lg:hidden ${
+        className={`sticky top-0 z-30 -mx-2 mb-2 border-b-2 border-border bg-background px-2 py-2 transition-transform duration-200 focus-within:translate-y-0 motion-reduce:transition-none sm:-mx-3 sm:px-3 lg:hidden ${
           retracted ? '-translate-y-full' : 'translate-y-0'
         } ${className}`}
       >
@@ -76,7 +76,7 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
             <Button
               variant="secondary"
               size="sm"
-              className="h-12 w-full justify-between shadow-neo"
+              className="h-12 w-full justify-between shadow-sm"
             >
               <span className="flex items-center">
                 <Settings className="mr-2 h-4 w-4" />
@@ -90,10 +90,10 @@ export function ParameterSidebar({ className = '' }: ParameterSidebarProps) {
               the panel sideways on a 390px screen. */}
           <SheetContent
             side="left"
-            className="flex w-full max-w-full flex-col overflow-x-hidden border-3 border-neo-black bg-neo-white p-0 shadow-neo sm:w-96"
+            className="rounded-sm flex w-full max-w-full flex-col overflow-x-hidden border border-border bg-white p-0 shadow-sm sm:w-96"
           >
-            <SheetHeader className="shrink-0 border-b-3 border-neo-black bg-neo-white px-4 py-4 pr-12 text-left sm:px-6 sm:py-5">
-              <SheetTitle className="flex items-center text-base font-bold uppercase tracking-[0.14em] text-neo-black sm:text-lg sm:tracking-[0.18em]">
+            <SheetHeader className="shrink-0 border-b border-border bg-white px-4 py-4 pr-12 text-left sm:px-6 sm:py-5">
+              <SheetTitle className="flex items-center text-base font-bold   text-ink sm:text-lg sm:">
                 <Settings className="mr-2 h-5 w-5 shrink-0" />
                 {t('title')}
               </SheetTitle>

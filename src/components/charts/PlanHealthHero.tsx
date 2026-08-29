@@ -33,21 +33,21 @@ const scoreLabelKeys: Record<PlanHealthLabel, 'strong' | 'moderate' | 'needsAtte
 }
 
 const scoreTones: Record<PlanHealthLabel, string> = {
-  Strong: 'text-neo-green',
+  Strong: 'text-ok',
   Moderate: 'text-warning-600',
-  'Needs Attention': 'text-neo-red',
+  'Needs Attention': 'text-danger',
 }
 
 function successToneClass(rate: number) {
-  if (rate >= 90) return 'text-neo-green'
+  if (rate >= 90) return 'text-ok'
   if (rate >= 75) return 'text-warning-600'
-  return 'text-neo-red'
+  return 'text-danger'
 }
 
 function successStroke(rate: number) {
-  if (rate >= 90) return 'var(--neo-green)'
+  if (rate >= 90) return 'var(--ok)'
   if (rate >= 75) return '#d97706'
-  return 'var(--neo-red)'
+  return 'var(--danger)'
 }
 
 function SuccessGauge({ rate }: { rate: number }) {
@@ -69,7 +69,7 @@ function SuccessGauge({ rate }: { rate: number }) {
           cy="60"
           r={radius}
           fill="none"
-          stroke="rgb(var(--neo-black-rgb) / 0.08)"
+          stroke="rgb(var(--ink-rgb) / 0.08)"
           strokeWidth="9"
         />
         <circle
@@ -223,12 +223,12 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
   ]
 
   return (
-    <Card className="overflow-hidden border-3 border-neo-black" data-testid="plan-health-hero">
-      <CardContent className={cn('bg-neo-white p-5', isLoading && 'animate-pulse opacity-70')}>
+    <Card className="rounded-sm overflow-hidden border border-border" data-testid="plan-health-hero">
+      <CardContent className={cn('bg-white p-5', isLoading && 'animate-pulse opacity-70')}>
         <h2 className="sr-only">{t('title')}</h2>
         <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
           {/* Success rate hero */}
-          <div className="flex flex-col gap-3 border-2 border-neo-black bg-background p-4 shadow-neo-sm lg:max-w-[21rem] lg:shrink-0">
+          <div className="rounded-sm flex flex-col gap-3 border-2 border-border bg-background p-4 shadow-sm lg:max-w-[21rem] lg:shrink-0">
             <div className="flex items-center gap-5">
               {results ? (
                 <SuccessGauge rate={context.successRate} />
@@ -240,7 +240,7 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
                 </div>
               )}
               <div className="min-w-0">
-                <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="text-[0.68rem] font-bold   text-muted-foreground">
                   {t('success.label')}
                 </span>
                 <p className="mt-1.5 text-xs font-medium leading-relaxed text-foreground/80">
@@ -271,7 +271,7 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
                   )}
                 {results && (
                   <p
-                    className="mt-2 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
+                    className="mt-2 text-[0.66rem] font-semibold   text-muted-foreground"
                     data-testid="hero-runs"
                     data-success-rate={context.successRate}
                     data-runs={context.effectiveRuns}
@@ -295,12 +295,12 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
               <p
                 data-testid="hero-success-qualifier"
                 data-definition={context.successDefinition}
-                className="border-2 border-neo-black bg-neo-yellow px-3 py-2 text-[0.66rem] font-bold leading-snug text-neo-black"
+                className="rounded-sm border-2 border-border bg-amber px-3 py-2 text-[0.66rem] font-bold leading-snug text-ink"
               >
                 {context.successDefinition === 'legacyConditioned' ? (
                   <>
                     {t('success.qualifierLegacy', { amount: formatCurrency(legacyTarget) })}
-                    <span className="mt-1 block font-semibold text-neo-black/70">
+                    <span className="mt-1 block font-semibold text-ink/70">
                       {t('success.qualifierSurvival', {
                         rate: format.number(context.depletionSuccessRate / 100, {
                           style: 'percent',
@@ -321,14 +321,14 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
             {tiles.map((tile) => (
               <div
                 key={tile.key}
-                className="relative border-2 border-neo-black bg-background p-4 shadow-neo-sm"
+                className="rounded-sm relative border-2 border-border bg-background p-4 shadow-sm"
               >
                 {/* The edit chip is absolutely positioned in the top-right
                     corner, so the label has to reserve that room or it is
                     clipped under the chip on a 390px screen ("ASSETS LAS…"). */}
                 <span
                   className={cn(
-                    'block text-[0.68rem] font-bold uppercase leading-tight tracking-[0.14em] text-muted-foreground',
+                    'block text-[0.68rem] font-bold  leading-tight  text-muted-foreground',
                     tile.edit && onEditField && 'pr-14'
                   )}
                 >
@@ -341,13 +341,13 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
                     onClick={() => onEditField(tile.edit!.fieldId)}
                     aria-label={tEditor('editAria', { field: tile.label })}
                     title={tEditor('editAria', { field: tile.label })}
-                    className="absolute right-2 top-2 inline-flex items-center gap-1 border-2 border-neo-black bg-neo-white px-1.5 py-0.5 text-[0.58rem] font-extrabold tabular-nums text-neo-black transition-neo hover:bg-neo-yellow"
+                    className="rounded-sm absolute right-2 top-2 inline-flex items-center gap-1 border-2 border-border bg-white px-1.5 py-0.5 text-[0.58rem] font-extrabold tabular-nums text-ink transition-colors hover:bg-amber"
                   >
                     {tile.edit.label}
                     <Pencil className="h-2.5 w-2.5" aria-hidden="true" />
                   </button>
                 )}
-                <div className="mt-2 text-xl font-black text-neo-black sm:text-2xl">
+                <div className="mt-2 text-xl font-black text-ink sm:text-2xl">
                   {tile.value}
                 </div>
                 {tile.detail && (
@@ -363,7 +363,7 @@ export function PlanHealthHero({ params, results, isLoading, onEditField }: Plan
             {warnings.map((warning) => (
               <li
                 key={warning.id}
-                className="flex items-start gap-3 border-2 border-neo-red/70 bg-neo-red/10 px-4 py-3 text-sm font-semibold text-neo-red"
+                className="rounded-sm flex items-start gap-3 border-2 border-danger/70 bg-danger/10 px-4 py-3 text-sm font-semibold text-danger"
               >
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 {warningText(warning)}

@@ -53,10 +53,10 @@ export function LegacyGoalCard({ params, results }: LegacyGoalCardProps) {
     gap === null || !active
       ? 'text-muted-foreground'
       : gap > 0
-        ? 'text-neo-green'
+        ? 'text-ok'
         : gap < 0
-          ? 'text-neo-red'
-          : 'text-neo-black'
+          ? 'text-danger'
+          : 'text-ink'
 
   const gapText =
     gap === null
@@ -75,7 +75,7 @@ export function LegacyGoalCard({ params, results }: LegacyGoalCardProps) {
       label: t('funded'),
       value: results ? formatPercent(results.successRate) : t('notAvailable'),
       hint: active ? t('fundedHint') : t('fundedHintNoGoal'),
-      tone: results && results.successRate >= 90 ? 'text-neo-green' : undefined,
+      tone: results && results.successRate >= 90 ? 'text-ok' : undefined,
     },
     {
       key: 'survives',
@@ -93,12 +93,12 @@ export function LegacyGoalCard({ params, results }: LegacyGoalCardProps) {
   ]
 
   return (
-    <Card className="overflow-hidden border-3 border-neo-black" data-testid="legacy-goal-card">
-      <CardContent className="bg-neo-white p-5">
+    <Card className="rounded-sm overflow-hidden border border-border" data-testid="legacy-goal-card">
+      <CardContent className="bg-white p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
           <div className="min-w-0 lg:max-w-[20rem] lg:shrink-0">
             <div className="flex items-center gap-2">
-              <h3 className="flex items-center gap-2 text-[0.82rem] font-black uppercase tracking-[0.16em] text-neo-black">
+              <h3 className="flex items-center gap-2 text-[0.82rem] font-black   text-ink">
                 <Target className="h-4 w-4" aria-hidden="true" />
                 {t('title')}
               </h3>
@@ -126,14 +126,14 @@ export function LegacyGoalCard({ params, results }: LegacyGoalCardProps) {
               <div
                 key={stat.key}
                 data-testid={`legacy-goal-${stat.key}`}
-                className="border-2 border-neo-black bg-background p-3 shadow-neo-sm"
+                className="rounded-sm border-2 border-border bg-background p-3 shadow-sm"
               >
-                <span className="text-[0.6rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="text-[0.6rem] font-bold   text-muted-foreground">
                   {stat.label}
                 </span>
                 <div
                   data-testid={`legacy-goal-${stat.key}-value`}
-                  className={cn('mt-1.5 text-xl font-black tabular-nums text-neo-black', stat.tone)}
+                  className={cn('mt-1.5 text-xl font-black tabular-nums text-ink', stat.tone)}
                 >
                   {stat.value}
                 </div>
@@ -147,7 +147,7 @@ export function LegacyGoalCard({ params, results }: LegacyGoalCardProps) {
 
         {!active && (
           <p
-            className="mt-4 border-2 border-dashed border-neo-black/40 px-3 py-2 text-[0.64rem] font-semibold text-muted-foreground"
+            className="rounded-sm mt-4 border-2 border-dashed border-ink/40 px-3 py-2 text-[0.64rem] font-semibold text-muted-foreground"
             data-testid="legacy-goal-disabled-hint"
           >
             {t('disabled')}

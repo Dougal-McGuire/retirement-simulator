@@ -86,8 +86,8 @@ export function SpendingCorridorChart({
   }, [])
 
   const hue = fanHue.spending
-  const floorColor = 'var(--neo-green)'
-  const ceilingColor = 'var(--neo-blue)'
+  const floorColor = 'var(--ok)'
+  const ceilingColor = 'var(--accent)'
 
   // The axis follows what the band and the floor need. The ceiling is clipped
   // on purpose — see the component doc.
@@ -287,7 +287,7 @@ export function SpendingCorridorChart({
               stroke={hue.solid}
               strokeWidth={isMobile ? 2 : 2.5}
               dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--neo-white)', fill: hue.solid }}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--white)', fill: hue.solid }}
               isAnimationActive={false}
             />
             {hasCeiling && (
@@ -321,7 +321,7 @@ export function SpendingCorridorChart({
             )}
           </ComposedChart>
         ) : (
-          <div className="flex h-full w-full items-center justify-center border-2 border-dashed border-neo-black/30 bg-muted/20 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <div className="rounded-sm flex h-full w-full items-center justify-center border-2 border-dashed border-ink/30 bg-muted/20 text-[0.68rem] font-semibold   text-muted-foreground">
             {t('empty')}
           </div>
         )}

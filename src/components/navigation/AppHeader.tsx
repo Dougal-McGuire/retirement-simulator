@@ -55,7 +55,7 @@ export function AppHeader({
       <div className="theme-container mx-auto max-w-[90rem] px-2 sm:px-3 lg:px-4">
         <div
           className={cn(
-            'theme-hero neo-surface relative px-4 py-5 transition-neo sm:px-8 sm:py-8',
+            'theme-hero app-surface relative px-4 py-5 transition-colors sm:px-8 sm:py-8',
             className
           )}
         >
@@ -64,7 +64,7 @@ export function AppHeader({
                 controls out of the title row is what lets a 20-character
                 compound like "Ruhestandssimulation" stay on one line. */}
             <div className="theme-hero-top flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-              <div className="theme-badge-row flex min-w-0 flex-wrap items-center gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-neo-black">
+              <div className="theme-badge-row flex min-w-0 flex-wrap items-center gap-2 text-[0.62rem] font-semibold   text-ink">
                 {eyebrow}
               </div>
 
@@ -93,9 +93,9 @@ export function AppHeader({
             </div>
 
             {/* Row 2 — the page itself. */}
-            <div className="flex min-w-0 flex-col gap-4 text-neo-black sm:gap-5">
+            <div className="flex min-w-0 flex-col gap-4 text-ink sm:gap-5">
               <div className="min-w-0">
-                <h1 className="text-2xl font-black tracking-[0.06em] [overflow-wrap:anywhere] sm:text-4xl sm:tracking-[0.12em]">
+                <h1 className="text-2xl font-black  [overflow-wrap:anywhere] sm:text-4xl sm:">
                   {title}
                 </h1>
                 {subtitle && (

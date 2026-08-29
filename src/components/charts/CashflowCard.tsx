@@ -42,10 +42,10 @@ export function CashflowCard({ params, results }: CashflowCardProps) {
 
   return (
     <Card className="overflow-hidden">
-      <CardContent className="bg-neo-white p-5">
+      <CardContent className="bg-white p-5">
         <div className="flex items-center gap-3">
-          <CircleDollarSign className="h-5 w-5 text-neo-blue" aria-hidden="true" />
-          <h4 className="text-sm font-extrabold uppercase tracking-[0.16em]">
+          <CircleDollarSign className="h-5 w-5 text-accent" aria-hidden="true" />
+          <h4 className="text-sm font-extrabold  ">
             {t('cashflow.title')}
           </h4>
         </div>
@@ -68,7 +68,7 @@ export function CashflowCard({ params, results }: CashflowCardProps) {
             </span>
             <strong className="text-right">{formatPercent(metrics.realReturn)}</strong>
           </div>
-          <div className="flex items-center justify-between gap-4 border-t-2 border-neo-black pt-4">
+          <div className="flex items-center justify-between gap-4 border-t-2 border-border pt-4">
             <span className="text-sm font-medium text-muted-foreground">
               {t('cashflow.horizonMedian')}
             </span>

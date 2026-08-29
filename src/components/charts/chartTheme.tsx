@@ -16,21 +16,21 @@ export const withAlpha = (rgbToken: string, alpha: number) => `rgb(var(${rgbToke
 
 /** Recessive ink values for grid, axes, cursors and brush chrome. */
 export const chartInk = {
-  grid: withAlpha('--neo-black-rgb', 0.07),
-  tick: withAlpha('--neo-black-rgb', 0.55),
-  axisLine: withAlpha('--neo-black-rgb', 0.14),
-  marker: withAlpha('--neo-black-rgb', 0.45),
-  cursor: withAlpha('--neo-black-rgb', 0.35),
-  brushStroke: withAlpha('--neo-black-rgb', 0.3),
-  brushFill: withAlpha('--neo-black-rgb', 0.04),
-  phase: withAlpha('--neo-black-rgb', 0.03),
+  grid: withAlpha('--ink-rgb', 0.07),
+  tick: withAlpha('--ink-rgb', 0.55),
+  axisLine: withAlpha('--ink-rgb', 0.14),
+  marker: withAlpha('--ink-rgb', 0.45),
+  cursor: withAlpha('--ink-rgb', 0.35),
+  brushStroke: withAlpha('--ink-rgb', 0.3),
+  brushFill: withAlpha('--ink-rgb', 0.04),
+  phase: withAlpha('--ink-rgb', 0.03),
 }
 
 /** One hue per chart: identity follows the measure, shade follows certainty. */
 export const fanHue = {
-  assets: { solid: 'var(--neo-blue)', rgb: '--neo-blue-rgb' },
-  spending: { solid: 'var(--neo-purple)', rgb: '--neo-purple-rgb' },
-  risk: { solid: 'var(--neo-red)', rgb: '--neo-red-rgb' },
+  assets: { solid: 'var(--accent)', rgb: '--accent-rgb' },
+  spending: { solid: 'var(--viz-purple)', rgb: '--viz-purple-rgb' },
+  risk: { solid: 'var(--danger)', rgb: '--danger-rgb' },
 } as const
 
 /** Recharts `tick` prop for quiet, legible axis labels. */
@@ -95,8 +95,8 @@ export function fanDomainMax(
 export const brushChrome = (isMobile: boolean) => ({
   height: isMobile ? 26 : 30,
   travellerWidth: isMobile ? 10 : 12,
-  stroke: withAlpha('--neo-black-rgb', 0.18),
-  fill: withAlpha('--neo-black-rgb', 0.02),
+  stroke: withAlpha('--ink-rgb', 0.18),
+  fill: withAlpha('--ink-rgb', 0.02),
   traveller: <BrushTraveller />,
   className: 'chart-range-navigator',
 })
@@ -121,8 +121,8 @@ export function BrushTraveller({ x = 0, y = 0, width = 12, height = 24 }: Travel
         width={width}
         height={height}
         rx={1}
-        fill="var(--neo-white)"
-        stroke="var(--neo-blue)"
+        fill="var(--white)"
+        stroke="var(--accent)"
         strokeWidth={1.5}
       />
       <line
@@ -130,7 +130,7 @@ export function BrushTraveller({ x = 0, y = 0, width = 12, height = 24 }: Travel
         x2={gripX - 1.5}
         y1={gripTop}
         y2={gripBottom}
-        stroke="var(--neo-blue)"
+        stroke="var(--accent)"
         strokeWidth={1}
         strokeLinecap="round"
       />
@@ -139,7 +139,7 @@ export function BrushTraveller({ x = 0, y = 0, width = 12, height = 24 }: Travel
         x2={gripX + 1.5}
         y1={gripTop}
         y2={gripBottom}
-        stroke="var(--neo-blue)"
+        stroke="var(--accent)"
         strokeWidth={1}
         strokeLinecap="round"
       />
@@ -190,7 +190,7 @@ export function ChartLegend({ items, className }: { items: LegendItem[]; classNa
       {items.map((item) => (
         <li key={item.key} className="flex items-center gap-2">
           <LegendSwatch kind={item.kind} color={item.color} />
-          <span className="text-[0.66rem] font-semibold tracking-[0.04em] text-muted-foreground">
+          <span className="text-[0.66rem] font-semibold  text-muted-foreground">
             {item.label}
           </span>
         </li>
@@ -219,8 +219,8 @@ export function ChartTooltipCard({
   footer?: ReactNode
 }) {
   return (
-    <div className="pointer-events-none min-w-[12.5rem] border-2 border-neo-black bg-neo-white/95 px-3.5 py-3 shadow-neo-sm backdrop-blur-sm">
-      <div className="mb-2 border-b border-neo-black/15 pb-1.5 text-[0.66rem] font-extrabold uppercase tracking-[0.14em] text-neo-black">
+    <div className="rounded-sm pointer-events-none min-w-[12.5rem] border-2 border-border bg-white/95 px-3.5 py-3 shadow-sm backdrop-blur-sm">
+      <div className="mb-2 border-b border-ink/15 pb-1.5 text-[0.66rem] font-extrabold   text-ink">
         {title}
       </div>
       <dl className="m-0 space-y-1">
@@ -229,7 +229,7 @@ export function ChartTooltipCard({
             key={row.key}
             className={cn(
               'flex items-center justify-between gap-6',
-              row.dividerAbove && 'mt-1.5 border-t border-neo-black/15 pt-1.5'
+              row.dividerAbove && 'mt-1.5 border-t border-ink/15 pt-1.5'
             )}
           >
             <dt className="flex items-center gap-2 text-[0.66rem] font-medium text-muted-foreground">
@@ -239,7 +239,7 @@ export function ChartTooltipCard({
             <dd
               className={cn(
                 'm-0 text-right text-[0.7rem] tabular-nums',
-                row.emphasis ? 'font-extrabold text-neo-black' : 'font-semibold text-foreground/80'
+                row.emphasis ? 'font-extrabold text-ink' : 'font-semibold text-foreground/80'
               )}
             >
               {row.value}
@@ -248,7 +248,7 @@ export function ChartTooltipCard({
         ))}
       </dl>
       {footer && (
-        <div className="mt-2 border-t border-neo-black/15 pt-1.5 text-[0.6rem] font-medium text-muted-foreground">
+        <div className="mt-2 border-t border-ink/15 pt-1.5 text-[0.6rem] font-medium text-muted-foreground">
           {footer}
         </div>
       )}

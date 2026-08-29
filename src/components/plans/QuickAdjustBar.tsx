@@ -87,12 +87,12 @@ export function QuickAdjustBar({ onOpenEditor, className }: QuickAdjustBarProps)
   return (
     <section
       data-testid="quick-adjust"
-      className={cn('border-3 border-neo-black bg-neo-white px-5 py-4 shadow-neo', className)}
+      className={cn('rounded-sm border border-border bg-white px-5 py-4 shadow-sm', className)}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <SlidersHorizontal className="h-4 w-4 text-neo-blue" aria-hidden="true" />
-          <h2 className="text-[0.78rem] font-black uppercase tracking-[0.2em] text-neo-black">
+          <SlidersHorizontal className="h-4 w-4 text-accent" aria-hidden="true" />
+          <h2 className="text-[0.78rem] font-black   text-ink">
             {t('title')}
           </h2>
           <InfoTip content={t('description')} label={t('title')} side="bottom" />

@@ -56,9 +56,9 @@ function ReturningUserForward() {
       role="status"
       aria-live="polite"
       data-testid="landing-forwarding"
-      className="fixed inset-x-0 top-0 z-[60] flex h-1 overflow-hidden bg-neo-black/10"
+      className="fixed inset-x-0 top-0 z-[60] flex h-1 overflow-hidden bg-ink/10"
     >
-      <span className="block h-full w-1/3 animate-route-progress bg-neo-blue" />
+      <span className="block h-full w-1/3 animate-route-progress bg-accent" />
       <span className="sr-only">{t('forwarding')}</span>
     </div>
   )
@@ -103,7 +103,7 @@ function SessionAwareActions() {
         signInRedirectTo={DASHBOARD_PATH}
         hideWhenUnavailable
       />
-      <LocaleSwitcher className="hidden w-auto px-3 tracking-[0.08em] lg:flex" />
+      <LocaleSwitcher className="hidden w-auto px-3  lg:flex" />
       <HeaderControlsMenu className="lg:hidden" signInRedirectTo={DASHBOARD_PATH} />
       <PrimaryCta signedIn={signedIn} />
     </>
@@ -122,7 +122,7 @@ export function LandingHeaderActions() {
   if (!enabled) {
     return (
       <>
-        <LocaleSwitcher className="hidden w-auto px-3 tracking-[0.08em] lg:flex" />
+        <LocaleSwitcher className="hidden w-auto px-3  lg:flex" />
         <HeaderControlsMenu className="lg:hidden" />
         <PrimaryCta signedIn={false} />
       </>

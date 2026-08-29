@@ -41,7 +41,7 @@ export function MobileMenu({
         <Button
           variant="outline"
           size="icon"
-          className="h-11 w-11 border-3 border-neo-black bg-neo-white shadow-neo-sm hover:-translate-y-[1px] hover:bg-neo-yellow/20"
+          className="rounded-sm h-11 w-11 border border-border bg-white shadow-sm hover:-translate-y-[1px] hover:bg-amber/15"
           aria-label={t('trigger')}
         >
           <Menu className="h-5 w-5" />
@@ -49,17 +49,17 @@ export function MobileMenu({
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="w-full border-3 border-neo-black bg-neo-white p-0 shadow-neo sm:w-96"
+        className="rounded-sm w-full border border-border bg-white p-0 shadow-sm sm:w-96"
       >
-        <SheetHeader className="border-b-3 border-neo-black bg-neo-white px-6 py-5">
-          <SheetTitle className="flex items-center justify-between text-lg font-bold uppercase tracking-[0.18em] text-neo-black">
+        <SheetHeader className="border-b border-border bg-white px-6 py-5">
+          <SheetTitle className="flex items-center justify-between text-lg font-bold   text-ink">
             <span className="flex items-center">
               <Menu className="mr-2 h-5 w-5" />
               {t('title')}
             </span>
             <button
               onClick={() => setIsOpen(false)}
-              className="rounded border-2 border-neo-black bg-neo-white p-1 transition-neo hover:-translate-y-[1px] hover:bg-neo-red hover:text-neo-white"
+              className="rounded border-2 border-border bg-white p-1 transition-colors hover:-translate-y-[1px] hover:bg-danger hover:text-white"
               aria-label={t('close')}
             >
               <X className="h-4 w-4" />
@@ -70,15 +70,15 @@ export function MobileMenu({
         <div className="space-y-4 px-6 py-6">
           {/* Locale Switcher */}
           <div className="space-y-2">
-            <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <h4 className="text-[0.68rem] font-semibold   text-muted-foreground">
               {t('sections.language')}
             </h4>
             <LocaleSwitcher className="w-full" />
           </div>
 
           {/* Primary Actions */}
-          <div className="space-y-3 border-t-3 border-neo-black pt-4">
-            <h4 className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <div className="space-y-3 border-t border-border pt-4">
+            <h4 className="text-[0.68rem] font-semibold   text-muted-foreground">
               {t('sections.actions')}
             </h4>
 
