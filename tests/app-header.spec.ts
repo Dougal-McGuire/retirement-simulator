@@ -33,7 +33,6 @@ test.describe('shared app header', () => {
     const strip = page.getByTestId('app-header-actions')
     await expect(strip).toBeVisible()
     await expectSingleRow(strip)
-    await expect(strip.getByRole('combobox', { name: 'Theme' })).toBeVisible()
     await expect(strip.getByRole('combobox', { name: 'Language' })).toBeVisible()
     await expect(strip.locator(':scope > *').last()).toHaveText('Go to Simulation')
   })

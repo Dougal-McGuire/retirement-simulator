@@ -97,10 +97,11 @@ export default {
         },
       },
       fontFamily: {
-        heading: ['Space Grotesk', 'sans-serif'],
-        body: ['IBM Plex Mono', 'Inter', 'system-ui', 'sans-serif'],
-        sans: ['IBM Plex Mono', 'Inter', 'system-ui', 'sans-serif'],
-        mono: ['IBM Plex Mono', 'monospace'],
+        // Design system: system stacks only — no webfonts.
+        heading: ['ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        body: ['ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
       },
       borderWidth: {
         '3': '3px',
@@ -108,11 +109,11 @@ export default {
         '6': '6px',
       },
       borderRadius: {
-        neo: '0px',
-        'neo-soft': '4px',
-        lg: '0px', // Changed for neo-brutalism
-        md: '0px',
-        sm: '0px',
+        neo: '0.25rem',
+        'neo-soft': '0.25rem',
+        lg: '0.5rem', // Design system: 8px cards/panels
+        md: '0.375rem',
+        sm: '0.25rem', // 4px controls
       },
       spacing: {
         '18': '4.5rem',

@@ -4,7 +4,6 @@ import type { ReactNode } from 'react'
 import { AuthMenu } from '@/components/auth/AuthMenu'
 import { HeaderControlsMenu } from '@/components/navigation/HeaderControlsMenu'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
-import { ThemeSwitcher } from '@/components/navigation/ThemeSwitcher'
 import { cn } from '@/lib/utils'
 
 interface AppHeaderProps {
@@ -75,7 +74,6 @@ export function AppHeader({
                 className="theme-action-strip hidden shrink-0 items-center gap-2 lg:flex"
               >
                 <AuthMenu className="w-auto max-w-[18rem] shrink-0" />
-                <ThemeSwitcher className="w-auto shrink-0" />
                 <LocaleSwitcher className="w-auto shrink-0" />
                 {actions}
               </div>

@@ -243,17 +243,28 @@ test.describe('market model and glide path', () => {
     await expect(page.locator('#editor-simulationRuns')).toBeDisabled()
 
     // Deterministic: the same plan replayed gives exactly the same number.
-    const readRate = () =>
+    const readState = () =>
       page.evaluate(() => {
         const raw = window.localStorage.getItem('retirement-simulator-store')
-        return raw ? (JSON.parse(raw).state?.results?.successRate ?? null) : null
+        const state = raw ? JSON.parse(raw).state : null
+        return state
+          ? {
+              rate: state.results?.successRate ?? null,
+              model: state.results?.params?.marketModel ?? null,
+            }
+          : null
       })
 
-    await expect.poll(readRate).not.toBeNull()
-    const first = await readRate()
+    // Anchor on the *historical* result, not merely the first non-null rate —
+    // the Monte Carlo run that started on page load can land in storage just
+    // after the click and would otherwise be captured as the baseline.
+    await expect
+      .poll(async () => (await readState())?.model, { timeout: 15000 })
+      .toBe('historical')
+    const first = (await readState())!.rate
     await page.reload()
     await expect(page.getByTestId('compact-command-bar')).toBeVisible()
-    await expect.poll(readRate).toBe(first)
+    await expect.poll(async () => (await readState())?.rate, { timeout: 15000 }).toBe(first)
   })
 
   test('narrows the outcome band when the glide path is switched on', async ({ page }) => {
