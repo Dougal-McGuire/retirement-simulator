@@ -8,8 +8,8 @@ import { formatAxisEuro } from './format'
 
 interface FanChartCardProps {
   results: SimulationResults
+  /** Which pre-computed series to draw; the switch lives in the command bar. */
   displayReal: boolean
-  onDisplayRealChange: (real: boolean) => void
   /** Chart height in px; 1b uses 250, the compare view 266. */
   height?: number
 }
@@ -20,12 +20,7 @@ interface FanChartCardProps {
  * Pure SVG stretched to the card — no chart library, exactly the mockup's
  * geometry.
  */
-export function FanChartCard({
-  results,
-  displayReal,
-  onDisplayRealChange,
-  height = 250,
-}: FanChartCardProps) {
+export function FanChartCard({ results, displayReal, height = 250 }: FanChartCardProps) {
   const t = useTranslations('simulationCompact.chart')
   const format = useFormatter()
   const locale = useLocale()
@@ -147,39 +142,16 @@ export function FanChartCard({
             <span style={{ width: 10, height: 2, background: 'var(--viz-seq-5)' }} />
             {t('median')}
           </span>
-          <button
-            type="button"
-            onClick={() => onDisplayRealChange(false)}
-            aria-pressed={!displayReal}
+          <span
             style={{
-              border: 0,
               borderLeft: '1px solid var(--line)',
               paddingLeft: 10,
-              background: 'none',
-              font: 'inherit',
-              cursor: 'pointer',
-              fontWeight: displayReal ? 400 : 600,
-              color: displayReal ? 'var(--text-label)' : 'var(--text)',
+              fontWeight: 600,
+              color: 'var(--text)',
             }}
           >
-            {t('nominal')}
-          </button>
-          <button
-            type="button"
-            onClick={() => onDisplayRealChange(true)}
-            aria-pressed={displayReal}
-            style={{
-              border: 0,
-              padding: 0,
-              background: 'none',
-              font: 'inherit',
-              cursor: 'pointer',
-              fontWeight: displayReal ? 600 : 400,
-              color: displayReal ? 'var(--text)' : 'var(--text-label)',
-            }}
-          >
-            {t('real')}
-          </button>
+            {displayReal ? t('real') : t('nominal')}
+          </span>
         </div>
       </div>
       <div style={{ position: 'relative', height: 14, marginTop: 2 }}>

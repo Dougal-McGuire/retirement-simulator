@@ -5,14 +5,12 @@ import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
 import { useTranslations } from 'next-intl'
 import type { SimulationResults } from '@/types'
 import { SpendingChart } from '@/components/charts/SpendingChart'
-import { RealToggle } from '@/components/charts/RealToggle'
 import {
-  hasRealSeries,
   useBrushRange,
   useChartData,
   useChartFormatters,
 } from '@/components/charts/useChartData'
-import { useDisplayReal, useSetDisplayReal } from '@/lib/stores/displayStore'
+import { useDisplayReal } from '@/lib/stores/displayStore'
 
 interface SpendingSectionProps {
   results: SimulationResults
@@ -21,8 +19,6 @@ interface SpendingSectionProps {
 export function SpendingSection({ results }: SpendingSectionProps) {
   const t = useTranslations('simulationChart')
   const displayReal = useDisplayReal()
-  const setDisplayReal = useSetDisplayReal()
-  const canShowReal = hasRealSeries(results)
   const { spendingData, deflatorForAge } = useChartData(results, displayReal)
   const { formatCurrency, formatCurrencyShort, formatPercent } = useChartFormatters()
   const ages = useMemo(() => spendingData.map((d) => d.age), [spendingData])
@@ -61,9 +57,6 @@ export function SpendingSection({ results }: SpendingSectionProps) {
         onResetZoom={resetZoom}
         formatCurrency={formatCurrency}
         formatCurrencyShort={formatCurrencyShort}
-        headerControls={
-          canShowReal ? <RealToggle value={displayReal} onChange={setDisplayReal} /> : null
-        }
       />
 
       <details className="border-3 border-neo-black bg-neo-white p-4 shadow-neo-sm">

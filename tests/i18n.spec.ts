@@ -48,7 +48,7 @@ test.describe('i18n routing', () => {
     await expect(list).toContainText('Wocheneinkauf')
 
     // Commit the working copy so the rename survives the reload.
-    await page.getByTestId('plan-editor-save').click()
+    await page.getByTestId('command-save').click()
 
     await page.goto('/de/simulation')
     await page.getByTestId('tab-plan').click()

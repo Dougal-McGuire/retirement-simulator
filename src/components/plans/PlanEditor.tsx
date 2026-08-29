@@ -439,16 +439,6 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Button
             size="sm"
-            className="h-9"
-            disabled={!isDirty}
-            data-testid="plan-editor-save"
-            onClick={handleSave}
-          >
-            <Save className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-            {tPlans('actions.saveToPlan')}
-          </Button>
-          <Button
-            size="sm"
             variant="outline"
             className="h-9"
             disabled={!isDirty}

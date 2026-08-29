@@ -10,11 +10,14 @@ import {
   useActivePlanId,
   usePlanIsDirty,
   usePlans,
+  useSavePlanDraft,
   useSetActivePlan,
   useSimulationParams,
   useUpdateParams,
 } from '@/lib/stores/simulationStore'
+import { useDisplayReal, useSetDisplayReal } from '@/lib/stores/displayStore'
 import { planDisplayName } from '@/lib/plans/planName'
+import { toast } from '@/components/ui/toast'
 import { InlineSlider } from './InlineSlider'
 
 interface CompactCommandBarProps {
@@ -40,6 +43,7 @@ export function CompactCommandBar({
 }: CompactCommandBarProps) {
   const t = useTranslations('simulationCompact.commandBar')
   const tPlans = useTranslations('plans')
+  const tDisplay = useTranslations('simulation.display')
   const format = useFormatter()
   const params = useSimulationParams()
   const updateParams = useUpdateParams()
@@ -48,6 +52,21 @@ export function CompactCommandBar({
   const setActivePlan = useSetActivePlan()
   const activePlan = useActivePlan()
   const isDirty = usePlanIsDirty()
+  const savePlanDraft = useSavePlanDraft()
+  const displayReal = useDisplayReal()
+  const setDisplayReal = useSetDisplayReal()
+
+  // The one save affordance of the whole dashboard: always visible in the
+  // sticky bar, armed the moment the working copy diverges from the plan.
+  const handleSave = () => {
+    if (!isDirty) return
+    savePlanDraft()
+    toast.success(
+      tPlans('dirty.savedToast', {
+        name: activePlan ? planDisplayName(activePlan, tPlans) : '',
+      })
+    )
+  }
 
   // `setActivePlan` adopts the target plan's params outright, so switching
   // away from unsaved edits would silently discard them — the one place this
@@ -121,7 +140,7 @@ export function CompactCommandBar({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 14,
+        gap: 10,
         height: 40,
         padding: '0 14px',
         background: 'var(--surface)',
@@ -228,6 +247,56 @@ export function CompactCommandBar({
         </span>
       </button>
       <div style={{ flex: 1 }} />
+      {/* The one nominal / today's-euros switch: a display-only setting that
+          affects every figure below, so it lives in the sticky bar and nowhere
+          else. */}
+      <div
+        role="radiogroup"
+        aria-label={tDisplay('label')}
+        title={tDisplay('realHint')}
+        data-testid="display-toggle"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          border: '1px solid var(--line-strong)',
+          borderRadius: 'var(--radius-full)',
+          overflow: 'hidden',
+          flex: 'none',
+        }}
+      >
+        {(
+          [
+            { key: 'nominal', label: tDisplay('nominal'), real: false },
+            { key: 'real', label: tDisplay('real'), real: true },
+          ] as const
+        ).map((option) => {
+          const selected = displayReal === option.real
+          return (
+            <button
+              key={option.key}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => setDisplayReal(option.real)}
+              style={{
+                border: 0,
+                font: 'inherit',
+                fontSize: 11,
+                fontWeight: 600,
+                lineHeight: 1,
+                padding: '4px 9px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                background: selected ? 'var(--accent)' : 'var(--surface)',
+                color: selected ? '#fff' : 'var(--text-label)',
+                transition: 'background-color .12s, color .12s',
+              }}
+            >
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
       <Link
         href="/setup"
         className="ds-btn ds-btn--ghost ds-btn--sm"
@@ -246,6 +315,16 @@ export function CompactCommandBar({
           })}
         </span>
       )}
+      <button
+        type="button"
+        className="ds-btn ds-btn--outline ds-btn--sm"
+        style={{ flex: 'none' }}
+        onClick={handleSave}
+        disabled={!isDirty}
+        data-testid="command-save"
+      >
+        {t('saveButton')}
+      </button>
       <button
         type="button"
         className="ds-btn ds-btn--default ds-btn--sm"

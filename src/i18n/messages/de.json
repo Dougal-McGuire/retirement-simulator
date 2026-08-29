@@ -589,7 +589,8 @@
       "setup": "Einrichtung",
       "run": "Rechnen",
       "successAria": "Erfolgsquote",
-      "unsavedSwitch": "Plan wechseln und ungespeicherte Änderungen verwerfen?"
+      "unsavedSwitch": "Plan wechseln und ungespeicherte Änderungen verwerfen?",
+      "saveButton": "Speichern"
     },
     "advanced": {
       "volatility": "Volatilität",

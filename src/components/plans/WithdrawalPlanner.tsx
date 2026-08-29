@@ -8,9 +8,8 @@ import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/info-tip'
 import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
-import { RealToggle } from '@/components/charts/RealToggle'
 import { SpendingCorridorChart } from '@/components/charts/SpendingCorridorChart'
-import { hasRealSeries, useChartFormatters } from '@/components/charts/useChartData'
+import { useChartFormatters } from '@/components/charts/useChartData'
 import {
   buildSpendingCorridor,
   corridorReferenceAge,
@@ -18,7 +17,7 @@ import {
   type StrategyOutcomeMetrics,
 } from '@/lib/simulation/spendingCorridor'
 import { comparisonFingerprint } from '@/lib/simulation/planDiff'
-import { useDisplayReal, useSetDisplayReal } from '@/lib/stores/displayStore'
+import { useDisplayReal } from '@/lib/stores/displayStore'
 import {
   useSimulationParams,
   useSimulationResults,
@@ -97,8 +96,6 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
   const updateParams = useUpdateParams()
 
   const displayReal = useDisplayReal()
-  const setDisplayReal = useSetDisplayReal()
-  const canShowReal = hasRealSeries(results)
 
   const { formatCurrency, formatCurrencyShort } = useChartFormatters()
 
@@ -296,9 +293,6 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
             </h3>
             <InfoTip content={t('description')} label={t('title')} side="bottom" />
           </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {canShowReal && <RealToggle value={displayReal} onChange={setDisplayReal} />}
         </div>
       </header>
 

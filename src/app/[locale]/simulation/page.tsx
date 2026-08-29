@@ -9,7 +9,7 @@ import {
   useSimulationResults,
   useSimulationStore,
 } from '@/lib/stores/simulationStore'
-import { useDisplayReal, useSetDisplayReal } from '@/lib/stores/displayStore'
+import { useDisplayReal } from '@/lib/stores/displayStore'
 import { effectiveRunCount } from '@/lib/simulation/context'
 import { MAX_PLANS } from '@/types'
 import { CompactCommandBar } from '@/components/simulation-compact/CompactCommandBar'
@@ -46,7 +46,6 @@ export default function SimulationPage() {
   const resultsComputedAt = useSimulationStore((state) => state.resultsComputedAt)
   const plans = usePlans()
   const displayReal = useDisplayReal()
-  const setDisplayReal = useSetDisplayReal()
 
   const [activeTab, setActiveTab] = useState<TabValue>('overview')
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -204,11 +203,7 @@ export default function SimulationPage() {
               <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {results && kpis ? (
                   <>
-                    <FanChartCard
-                      results={results}
-                      displayReal={displayReal}
-                      onDisplayRealChange={setDisplayReal}
-                    />
+                    <FanChartCard results={results} displayReal={displayReal} />
                     <BottomStrip
                       params={params}
                       results={results}

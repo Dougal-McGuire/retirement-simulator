@@ -122,20 +122,26 @@ test.describe('compact simulation dashboard', () => {
     }).toPass({ timeout: 10000 })
   })
 
-  test('switches the fan chart between nominal and real terms', async ({ page }) => {
+  test('switches every figure between nominal and real from the command bar', async ({ page }) => {
     await page.goto('/en/simulation')
 
     const chart = page.getByTestId('fan-chart')
     await expect(chart).toBeVisible({ timeout: 30000 })
 
-    const real = chart.getByRole('button', { name: 'Real' })
-    await expect(real).toHaveAttribute('aria-pressed', 'false')
+    // The one display switch lives in the sticky command bar.
+    const toggle = page.getByTestId('display-toggle')
+    const real = toggle.getByRole('radio', { name: "Today's €" })
+    const nominal = toggle.getByRole('radio', { name: 'Nominal' })
+    await expect(nominal).toHaveAttribute('aria-checked', 'true')
+
     await real.click()
-    await expect(real).toHaveAttribute('aria-pressed', 'true')
-    await expect(chart.getByRole('button', { name: 'Nominal' })).toHaveAttribute(
-      'aria-pressed',
-      'false'
-    )
+    await expect(real).toHaveAttribute('aria-checked', 'true')
+    await expect(nominal).toHaveAttribute('aria-checked', 'false')
+    // The chart legend follows the central setting.
+    await expect(chart).toContainText('Real')
+
+    await nominal.click()
+    await expect(chart).toContainText('Nominal')
   })
 
   test('enters compare, gains a challenger plan and shows delta KPIs', async ({ page }) => {
@@ -188,7 +194,7 @@ test.describe('working copy under the compact chrome', () => {
     // Saving writes the working copy into the plan.
     await assets.fill('700000')
     await assets.blur()
-    await page.getByTestId('plan-editor-save').click()
+    await page.getByTestId('command-save').click()
 
     await expect(async () => {
       const stored = await page.evaluate(() => {
