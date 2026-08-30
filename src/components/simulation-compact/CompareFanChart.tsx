@@ -58,10 +58,10 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
   const geometry = useMemo(() => {
     if (!visibleBase) return null
     const scaleSeries = scaleMode === 'focus'
-      ? visible.map((entry) => entry.p80)
-      : series.map((entry) => entry.p80)
+      ? visible.map((entry) => entry.p50)
+      : visible.map((entry) => entry.p80)
     return buildFanGeometry(visibleBase.ages, scaleSeries)
-  }, [visible, visibleBase, series, scaleMode])
+  }, [visible, visibleBase, scaleMode])
 
   if (!base || !visibleBase || !geometry) return null
 
