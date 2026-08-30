@@ -62,13 +62,17 @@ test.describe('quick access command bar', () => {
     await expect(reset).toBeVisible()
 
     const changed = await readPersistedState(page)
-    const baseline = changed?.storedPlan?.customExpenses
-    expect(Array.isArray(baseline)).toBe(true)
-    expect(changed?.working?.customExpenses).not.toEqual(baseline)
+    const baselineExpenses = changed?.storedPlan?.customExpenses
+    const baselineFlows = changed?.storedPlan?.cashFlows
+    expect(Array.isArray(baselineExpenses)).toBe(true)
+    expect(Array.isArray(baselineFlows)).toBe(true)
+    expect(changed?.working?.customExpenses).not.toEqual(baselineExpenses)
+    expect(changed?.working?.cashFlows).not.toEqual(baselineFlows)
 
     await reset.click()
 
-    await expect.poll(async () => (await readPersistedState(page))?.working?.customExpenses).toEqual(baseline)
+    await expect.poll(async () => (await readPersistedState(page))?.working?.customExpenses).toEqual(baselineExpenses)
+    await expect.poll(async () => (await readPersistedState(page))?.working?.cashFlows).toEqual(baselineFlows)
     await expect(reset).toHaveCount(0)
   })
 })
