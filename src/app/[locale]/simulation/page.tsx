@@ -90,6 +90,13 @@ export default function SimulationPage() {
     runSeconds != null ? t('meta.seconds', { seconds: format.number(runSeconds, { maximumFractionDigits: 1, minimumFractionDigits: 1 }) }) : null,
     t('meta.plans', { count: format.number(plans.length), max: format.number(MAX_PLANS) }),
   ].filter(Boolean).join(' · ')
+  const navigationLabel = [
+    t('tabs.overview'),
+    t('tabs.plan'),
+    t('tabs.cashflow'),
+    t('tabs.scenarios'),
+    t('compareButton'),
+  ].join(', ')
 
   return (
     <div className="app-page app-page-simulation" style={{ minHeight: '100vh', background: 'var(--canvas)' }}>
@@ -109,7 +116,7 @@ export default function SimulationPage() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', minHeight: 48, padding: '0 14px', background: 'var(--surface)', borderBottom: '1px solid var(--line)', gap: 14, overflowX: 'auto' }}>
-        <div className="ds-tabs" style={{ borderBottom: 0, gap: 6, minHeight: 48 }} role="tablist" aria-label={t('navigationLabel')}>
+        <div className="ds-tabs" style={{ borderBottom: 0, gap: 6, minHeight: 48 }} role="tablist" aria-label={navigationLabel}>
           {TABS.map((tab) => (
             <button
               key={tab}
