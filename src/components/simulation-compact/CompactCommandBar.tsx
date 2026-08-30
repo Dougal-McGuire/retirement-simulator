@@ -28,6 +28,9 @@ interface CompactCommandBarProps {
   onRun: () => void
 }
 
+const sameExpenses = (left: CustomExpense[], right: CustomExpense[]) =>
+  JSON.stringify(left) === JSON.stringify(right)
+
 export function CompactCommandBar({
   successRate,
   isLoading,
@@ -74,11 +77,10 @@ export function CompactCommandBar({
     scaleBaseRef.current = null
   }
 
+  const planParams = activePlan?.params
+  const planExpenses = planParams?.customExpenses ?? expenses
   const combined = useMemo(() => calculateCombinedExpenses(expenses), [expenses])
-  const planCombined = useMemo(
-    () => calculateCombinedExpenses(activePlan?.params.customExpenses ?? expenses),
-    [activePlan, expenses]
-  )
+  const planCombined = useMemo(() => calculateCombinedExpenses(planExpenses), [planExpenses])
 
   const scaleExpenses = (targetMonthly: number) => {
     const base = scaleBaseRef.current ?? { source: expenses, monthly: combined.combinedMonthly }
@@ -94,6 +96,13 @@ export function CompactCommandBar({
     updateParams({ customExpenses: next })
   }
 
+  const resetExpenses = () => {
+    scaleBaseRef.current = null
+    const restored = planExpenses.map((expense) => ({ ...expense }))
+    emittedRef.current = restored
+    updateParams({ customExpenses: restored })
+  }
+
   const formatCurrency = (value: number) =>
     format.number(value, {
       style: 'currency',
@@ -106,7 +115,7 @@ export function CompactCommandBar({
   const retirementMax = Math.min(69, params.endAge - 1)
   const savingsMax = Math.max(
     100000,
-    Math.ceil(((activePlan?.params.annualSavings ?? 0) * 2) / 1000) * 1000
+    Math.ceil(((planParams?.annualSavings ?? 0) * 2) / 1000) * 1000
   )
   const monthlyAnchor = Math.max(1000, Math.round(planCombined.combinedMonthly * 2))
   const monthlyNow = Math.round(combined.combinedMonthly)
@@ -120,215 +129,239 @@ export function CompactCommandBar({
         ? 'ds-pill ds-pill--warn'
         : 'ds-pill ds-pill--danger'
 
+  const ageDirty = planParams != null && params.retirementAge !== planParams.retirementAge
+  const savingsDirty = planParams != null && params.annualSavings !== planParams.annualSavings
+  const spendingDirty = planParams != null && !sameExpenses(expenses, planExpenses)
+  const roiDirty = planParams != null && params.averageROI !== planParams.averageROI
+
   return (
     <header
       data-testid="compact-command-bar"
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        minHeight: 52,
-        padding: '4px 14px',
         background: 'var(--surface)',
         borderBottom: '1px solid var(--line)',
-        overflowX: 'auto',
       }}
     >
-      <span
-        aria-hidden="true"
-        style={{
-          width: 20,
-          height: 20,
-          borderRadius: 4,
-          background: 'var(--accent)',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff',
-          font: '600 10px var(--font-mono)',
-          flex: 'none',
-        }}
-      >
-        R
-      </span>
-      <select
-        className="ds-select"
-        style={{ width: 136, minHeight: 36, flex: 'none', fontSize: 13 }}
-        aria-label={t('planAria')}
-        value={activePlanId}
-        onChange={(event) => {
-          const next = event.target.value
-          if (next !== activePlanId) {
-            switchPlan(next)
-            event.target.value = activePlanId
-          }
-        }}
-      >
-        {plans.map((plan) => (
-          <option key={plan.id} value={plan.id}>
-            {planDisplayName(plan, tPlans)}
-          </option>
-        ))}
-      </select>
-      <div style={{ width: 1, height: 28, background: 'var(--line)', flex: 'none' }} />
-      <InlineSlider
-        width={158}
-        label={t('age')}
-        ariaLabel={t('ageAria')}
-        value={params.retirementAge}
-        min={retirementMin}
-        max={Math.max(retirementMin, retirementMax)}
-        step={1}
-        formattedValue={format.number(params.retirementAge)}
-        onChange={(value) => updateParams({ retirementAge: value })}
-      />
-      <InlineSlider
-        width={184}
-        label={t('save')}
-        ariaLabel={t('saveAria')}
-        value={params.annualSavings}
-        min={0}
-        max={savingsMax}
-        step={1000}
-        formattedValue={formatCurrency(params.annualSavings)}
-        onChange={(value) => updateParams({ annualSavings: value })}
-      />
-      <InlineSlider
-        width={178}
-        label={t('spend')}
-        ariaLabel={t('spendAria')}
-        value={monthlyNow}
-        min={Math.min(1000, monthlyAnchor)}
-        max={monthlyAnchor}
-        step={50}
-        formattedValue={formatCurrency(monthlyNow)}
-        valueText={t('spendValue', { amount: formatCurrency(monthlyNow) })}
-        onChange={scaleExpenses}
-      />
-      <InlineSlider
-        width={138}
-        label={t('roi')}
-        ariaLabel={t('roiAria')}
-        value={params.averageROI}
-        min={0}
-        max={0.12}
-        step={0.001}
-        formattedValue={format.number(params.averageROI, {
-          style: 'percent',
-          maximumFractionDigits: 1,
-        })}
-        onChange={(value) => updateParams({ averageROI: value })}
-      />
-      <button
-        type="button"
-        className="ds-btn ds-btn--ghost ds-btn--sm"
-        style={{ whiteSpace: 'nowrap', flex: 'none', minHeight: 36, fontSize: 13 }}
-        aria-expanded={advancedOpen}
-        onClick={onToggleAdvanced}
-      >
-        {t('advanced')}{' '}
-        <span aria-hidden="true" style={{ color: 'var(--text-hint)' }}>
-          {advancedOpen ? '▾' : '▸'}
-        </span>
-      </button>
-      <div style={{ flex: 1 }} />
       <div
-        role="radiogroup"
-        aria-label={tDisplay('label')}
-        title={tDisplay('realHint')}
-        data-testid="display-toggle"
+        data-testid="command-primary-row"
         style={{
-          display: 'inline-flex',
+          display: 'flex',
           alignItems: 'center',
-          border: '1px solid var(--line-strong)',
-          borderRadius: 'var(--radius-full)',
-          overflow: 'hidden',
-          flex: 'none',
-          minHeight: 36,
+          gap: 12,
+          minHeight: 52,
+          padding: '4px 14px',
+          overflowX: 'auto',
         }}
       >
-        {(
-          [
-            { key: 'nominal', label: tDisplay('nominal'), real: false },
-            { key: 'real', label: tDisplay('real'), real: true },
-          ] as const
-        ).map((option) => {
-          const selected = displayReal === option.real
-          return (
-            <button
-              key={option.key}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              onClick={() => setDisplayReal(option.real)}
-              style={{
-                border: 0,
-                font: 'inherit',
-                fontSize: 12,
-                fontWeight: 600,
-                lineHeight: 1,
-                padding: '8px 10px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                background: selected ? 'var(--accent)' : 'var(--surface)',
-                color: selected ? '#fff' : 'var(--text-label)',
-                transition: 'background-color .12s, color .12s',
-              }}
-            >
-              {option.label}
-            </button>
-          )
-        })}
-      </div>
-      <Link
-        href="/setup"
-        className="ds-btn ds-btn--ghost ds-btn--sm"
-        style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
-        data-testid="setup-link"
-      >
-        {t('setup')}
-      </Link>
-      {successRate != null && (
-        <span className={pillClass} aria-label={t('successAria')} data-testid="success-pill">
-          <span className="ds-pill-dot" />
-          {format.number(successRate / 100, {
-            style: 'percent',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: successRate % 1 === 0 ? 0 : 1,
-          })}
-        </span>
-      )}
-      <button
-        type="button"
-        className="ds-btn ds-btn--outline ds-btn--sm"
-        style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
-        onClick={handleSave}
-        disabled={!isDirty}
-        data-testid="command-save"
-      >
-        {t('saveButton')}
-      </button>
-      <button
-        type="button"
-        className="ds-btn ds-btn--default ds-btn--sm"
-        style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
-        onClick={onRun}
-        disabled={isLoading}
-        data-testid="run-button"
-      >
-        {t('run')}{' '}
         <span
-          className="ds-kbd"
-          style={{
-            background: 'rgba(255,255,255,.2)',
-            borderColor: 'rgba(255,255,255,.4)',
-            color: '#fff',
-          }}
           aria-hidden="true"
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 4,
+            background: 'var(--accent)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            font: '600 10px var(--font-mono)',
+            flex: 'none',
+          }}
         >
           R
         </span>
-      </button>
+        <select
+          className="ds-select"
+          style={{ width: 150, minHeight: 36, flex: 'none', fontSize: 13 }}
+          aria-label={t('planAria')}
+          value={activePlanId}
+          onChange={(event) => {
+            const next = event.target.value
+            if (next !== activePlanId) {
+              switchPlan(next)
+              event.target.value = activePlanId
+            }
+          }}
+        >
+          {plans.map((plan) => (
+            <option key={plan.id} value={plan.id}>
+              {planDisplayName(plan, tPlans)}
+            </option>
+          ))}
+        </select>
+        <div style={{ flex: 1 }} />
+        <div
+          role="radiogroup"
+          aria-label={tDisplay('label')}
+          title={tDisplay('realHint')}
+          data-testid="display-toggle"
+          style={{
+            display: 'inline-flex',
+            border: '1px solid var(--line-strong)',
+            borderRadius: 'var(--radius-full)',
+            overflow: 'hidden',
+            flex: 'none',
+          }}
+        >
+          {(
+            [
+              { key: 'nominal', label: tDisplay('nominal'), real: false },
+              { key: 'real', label: tDisplay('real'), real: true },
+            ] as const
+          ).map((option) => {
+            const selected = displayReal === option.real
+            return (
+              <button
+                key={option.key}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                data-selected={selected ? 'true' : 'false'}
+                className="ds-btn ds-btn--sm"
+                onClick={() => setDisplayReal(option.real)}
+                style={{
+                  border: 0,
+                  borderRadius: 0,
+                  minHeight: 36,
+                  padding: '0 12px',
+                  whiteSpace: 'nowrap',
+                  background: selected ? 'var(--accent)' : 'var(--surface)',
+                  color: selected ? '#fff' : 'var(--text-label)',
+                }}
+              >
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
+        <Link
+          href="/setup"
+          className="ds-btn ds-btn--ghost ds-btn--sm"
+          style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
+          data-testid="setup-link"
+        >
+          {t('setup')}
+        </Link>
+        {successRate != null && (
+          <span className={pillClass} aria-label={t('successAria')} data-testid="success-pill">
+            <span className="ds-pill-dot" />
+            {format.number(successRate / 100, {
+              style: 'percent',
+              minimumFractionDigits: 0,
+              maximumFractionDigits: successRate % 1 === 0 ? 0 : 1,
+            })}
+          </span>
+        )}
+        <button
+          type="button"
+          className="ds-btn ds-btn--outline ds-btn--sm"
+          style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
+          onClick={handleSave}
+          disabled={!isDirty}
+          data-testid="command-save"
+        >
+          {t('saveButton')}
+        </button>
+        <button
+          type="button"
+          className="ds-btn ds-btn--default ds-btn--sm"
+          style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
+          onClick={onRun}
+          disabled={isLoading}
+          data-testid="run-button"
+        >
+          {t('run')}{' '}
+          <span
+            className="ds-kbd"
+            style={{
+              background: 'rgba(255,255,255,.2)',
+              borderColor: 'rgba(255,255,255,.4)',
+              color: '#fff',
+            }}
+            aria-hidden="true"
+          >
+            R
+          </span>
+        </button>
+      </div>
+
+      <div
+        data-testid="command-quick-row"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 20,
+          minHeight: 52,
+          padding: '5px 14px',
+          borderTop: '1px solid var(--line)',
+          overflowX: 'auto',
+        }}
+      >
+        <InlineSlider
+          width={250}
+          label={t('age')}
+          ariaLabel={t('ageAria')}
+          value={params.retirementAge}
+          min={retirementMin}
+          max={Math.max(retirementMin, retirementMax)}
+          step={1}
+          formattedValue={format.number(params.retirementAge)}
+          onChange={(value) => updateParams({ retirementAge: value })}
+          onReset={ageDirty ? () => updateParams({ retirementAge: planParams!.retirementAge }) : undefined}
+        />
+        <InlineSlider
+          width={290}
+          label={t('save')}
+          ariaLabel={t('saveAria')}
+          value={params.annualSavings}
+          min={0}
+          max={savingsMax}
+          step={1000}
+          formattedValue={formatCurrency(params.annualSavings)}
+          onChange={(value) => updateParams({ annualSavings: value })}
+          onReset={savingsDirty ? () => updateParams({ annualSavings: planParams!.annualSavings }) : undefined}
+        />
+        <InlineSlider
+          width={290}
+          label={t('spend')}
+          ariaLabel={t('spendAria')}
+          value={monthlyNow}
+          min={Math.min(1000, monthlyAnchor)}
+          max={monthlyAnchor}
+          step={50}
+          formattedValue={formatCurrency(monthlyNow)}
+          valueText={t('spendValue', { amount: formatCurrency(monthlyNow) })}
+          onChange={scaleExpenses}
+          onReset={spendingDirty ? resetExpenses : undefined}
+        />
+        <InlineSlider
+          width={240}
+          label={t('roi')}
+          ariaLabel={t('roiAria')}
+          value={params.averageROI}
+          min={0}
+          max={0.12}
+          step={0.001}
+          formattedValue={format.number(params.averageROI, {
+            style: 'percent',
+            maximumFractionDigits: 1,
+          })}
+          onChange={(value) => updateParams({ averageROI: value })}
+          onReset={roiDirty ? () => updateParams({ averageROI: planParams!.averageROI }) : undefined}
+        />
+        <button
+          type="button"
+          className="ds-btn ds-btn--ghost ds-btn--sm"
+          style={{ whiteSpace: 'nowrap', flex: 'none', minHeight: 36, fontSize: 13 }}
+          aria-expanded={advancedOpen}
+          onClick={onToggleAdvanced}
+        >
+          {t('advanced')}{' '}
+          <span aria-hidden="true" style={{ color: 'var(--text-hint)' }}>
+            {advancedOpen ? '▾' : '▸'}
+          </span>
+        </button>
+      </div>
     </header>
   )
 }
