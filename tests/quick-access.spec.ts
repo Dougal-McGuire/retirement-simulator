@@ -1,11 +1,15 @@
 import { expect, test, type Page } from '@playwright/test'
 
-const readWorkingState = (page: Page) =>
+const readPersistedState = (page: Page) =>
   page.evaluate(() => {
     const raw = window.localStorage.getItem('retirement-simulator-store')
     if (!raw) return null
     const state = JSON.parse(raw).state
-    return state.draftParams ?? state.params
+    const plan = state.plans?.find((candidate: { id: string }) => candidate.id === state.activePlanId)
+    return {
+      working: state.draftParams ?? state.params,
+      storedPlan: plan?.params,
+    }
   })
 
 test.describe('quick access command bar', () => {
@@ -30,21 +34,20 @@ test.describe('quick access command bar', () => {
     await page.goto('/en/simulation')
     const slider = page.getByRole('slider', { name: 'Annual savings' })
 
-    // A freshly loaded simulation renders the stored active plan. Capture that
-    // clean working value as the baseline rather than reaching through the
-    // persistence/migration representation of the plan list.
-    const before = await readWorkingState(page)
-    const baseline = before?.annualSavings
-    expect(typeof baseline).toBe('number')
-
     await slider.focus()
     await slider.press('ArrowRight')
 
     const reset = page.getByRole('button', { name: 'Reset Annual savings' })
     await expect(reset).toBeVisible()
+
+    const changed = await readPersistedState(page)
+    const baseline = changed?.storedPlan?.annualSavings
+    expect(typeof baseline).toBe('number')
+    expect(changed?.working?.annualSavings).not.toBe(baseline)
+
     await reset.click()
 
-    await expect.poll(async () => (await readWorkingState(page))?.annualSavings).toBe(baseline)
+    await expect.poll(async () => (await readPersistedState(page))?.working?.annualSavings).toBe(baseline)
     await expect(reset).toHaveCount(0)
   })
 
@@ -52,21 +55,20 @@ test.describe('quick access command bar', () => {
     await page.goto('/en/simulation')
     const slider = page.getByRole('slider', { name: 'Monthly spending' })
 
-    // The expense streams themselves are the source of truth. Capture the
-    // clean plan's streams, perturb them through the quick scaler, then require
-    // reset to restore the exact original structures and amounts.
-    const before = await readWorkingState(page)
-    const baseline = before?.customExpenses
-    expect(Array.isArray(baseline)).toBe(true)
-
     await slider.focus()
     await slider.press('ArrowLeft')
 
     const reset = page.getByRole('button', { name: 'Reset Monthly spending' })
     await expect(reset).toBeVisible()
+
+    const changed = await readPersistedState(page)
+    const baseline = changed?.storedPlan?.customExpenses
+    expect(Array.isArray(baseline)).toBe(true)
+    expect(changed?.working?.customExpenses).not.toEqual(baseline)
+
     await reset.click()
 
-    await expect.poll(async () => (await readWorkingState(page))?.customExpenses).toEqual(baseline)
+    await expect.poll(async () => (await readPersistedState(page))?.working?.customExpenses).toEqual(baseline)
     await expect(reset).toHaveCount(0)
   })
 })
