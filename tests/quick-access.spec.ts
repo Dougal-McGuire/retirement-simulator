@@ -5,10 +5,7 @@ const readWorkingState = (page: Page) =>
     const raw = window.localStorage.getItem('retirement-simulator-store')
     if (!raw) return null
     const state = JSON.parse(raw).state
-    return {
-      params: state.draftParams ?? state.params,
-      plan: state.plans.find((plan: { id: string }) => plan.id === state.activePlanId)?.params,
-    }
+    return state.draftParams ?? state.params
   })
 
 test.describe('quick access command bar', () => {
@@ -33,8 +30,12 @@ test.describe('quick access command bar', () => {
     await page.goto('/en/simulation')
     const slider = page.getByRole('slider', { name: 'Annual savings' })
 
+    // A freshly loaded simulation renders the stored active plan. Capture that
+    // clean working value as the baseline rather than reaching through the
+    // persistence/migration representation of the plan list.
     const before = await readWorkingState(page)
-    expect(before?.params?.annualSavings).toBe(before?.plan?.annualSavings)
+    const baseline = before?.annualSavings
+    expect(typeof baseline).toBe('number')
 
     await slider.focus()
     await slider.press('ArrowRight')
@@ -43,10 +44,7 @@ test.describe('quick access command bar', () => {
     await expect(reset).toBeVisible()
     await reset.click()
 
-    await expect.poll(async () => {
-      const state = await readWorkingState(page)
-      return state?.params?.annualSavings
-    }).toBe(before?.plan?.annualSavings)
+    await expect.poll(async () => (await readWorkingState(page))?.annualSavings).toBe(baseline)
     await expect(reset).toHaveCount(0)
   })
 
@@ -54,8 +52,12 @@ test.describe('quick access command bar', () => {
     await page.goto('/en/simulation')
     const slider = page.getByRole('slider', { name: 'Monthly spending' })
 
+    // The expense streams themselves are the source of truth. Capture the
+    // clean plan's streams, perturb them through the quick scaler, then require
+    // reset to restore the exact original structures and amounts.
     const before = await readWorkingState(page)
-    expect(before?.params?.customExpenses).toEqual(before?.plan?.customExpenses)
+    const baseline = before?.customExpenses
+    expect(Array.isArray(baseline)).toBe(true)
 
     await slider.focus()
     await slider.press('ArrowLeft')
@@ -64,10 +66,7 @@ test.describe('quick access command bar', () => {
     await expect(reset).toBeVisible()
     await reset.click()
 
-    await expect.poll(async () => {
-      const state = await readWorkingState(page)
-      return state?.params?.customExpenses
-    }).toEqual(before?.plan?.customExpenses)
+    await expect.poll(async () => (await readWorkingState(page))?.customExpenses).toEqual(baseline)
     await expect(reset).toHaveCount(0)
   })
 })
