@@ -3,24 +3,19 @@
 import * as SliderPrimitive from '@radix-ui/react-slider'
 
 /**
- * The command bar's inline what-if lever (design 1b): 11px label, 3px track,
- * 9px round thumb, live value on the right. Fires on every drag step — the
- * simulation store debounces the recompute, so scrubbing is the live what-if
- * the design asks for.
+ * The command bar's inline what-if lever. It fires on every drag step — the
+ * simulation store debounces the recompute, so scrubbing stays live while the
+ * larger typography and thumb make it comfortable on touch screens as well.
  */
 interface InlineSliderProps {
   label: string
-  /** Accessible name; the visible label is abbreviated ("Save"). */
   ariaLabel: string
   value: number
   min: number
   max: number
   step: number
-  /** Rendered to the right of the track, tabular-nums. */
   formattedValue: string
-  /** Read out by screen readers instead of the raw number. */
   valueText?: string
-  /** Fixed total width in px, straight from the mockup. */
   width: number
   onChange: (value: number) => void
 }
@@ -38,13 +33,11 @@ export function InlineSlider({
   onChange,
 }: InlineSliderProps) {
   return (
-    // The design width is the target; on narrower viewports the track gives up
-    // to 45px before anything else in the bar has to wrap.
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 7,
+        gap: 8,
         flex: '1 1 auto',
         maxWidth: width,
         minWidth: width - 45,
@@ -52,7 +45,7 @@ export function InlineSlider({
     >
       <span
         style={{
-          fontSize: 11,
+          fontSize: 13,
           color: 'var(--text-label)',
           fontWeight: 600,
           whiteSpace: 'nowrap',
@@ -68,6 +61,7 @@ export function InlineSlider({
         max={max}
         step={step}
         onValueChange={([next]) => onChange(next)}
+        style={{ minHeight: 28 }}
       >
         <SliderPrimitive.Track className="ds-slider-track">
           <SliderPrimitive.Range className="ds-slider-range" />
@@ -76,11 +70,12 @@ export function InlineSlider({
           className="ds-slider-thumb"
           aria-label={ariaLabel}
           aria-valuetext={valueText ?? formattedValue}
+          style={{ width: 14, height: 14 }}
         />
       </SliderPrimitive.Root>
       <span
         style={{
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: 600,
           fontVariantNumeric: 'tabular-nums',
           whiteSpace: 'nowrap',
