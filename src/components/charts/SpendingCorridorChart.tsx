@@ -96,13 +96,18 @@ export function SpendingCorridorChart({
   const isZoomed = safeRange.startIndex > 0 || safeRange.endIndex < points.length - 1
 
   const domainMax = useMemo(() => {
-    const source = scaleMode === 'focus' ? visiblePoints : points
-    const max = source.reduce(
-      (acc, point) => Math.max(acc, point.spending_p90, point.floor ?? 0),
+    const max = visiblePoints.reduce(
+      (acc, point) =>
+        Math.max(
+          acc,
+          point.spending_p90,
+          point.floor ?? 0,
+          scaleMode === 'full' ? point.ceiling ?? 0 : 0
+        ),
       0
     )
     return max > 0 ? niceCeil(max * 1.08) : undefined
-  }, [points, visiblePoints, scaleMode])
+  }, [visiblePoints, scaleMode])
 
   const axisWidth = useMemo(() => {
     const top = domainMax ?? 0
