@@ -18,6 +18,8 @@ interface InlineSliderProps {
   valueText?: string
   width: number
   onChange: (value: number) => void
+  onReset?: () => void
+  resetLabel?: string
 }
 
 export function InlineSlider({
@@ -31,16 +33,18 @@ export function InlineSlider({
   valueText,
   width,
   onChange,
+  onReset,
+  resetLabel,
 }: InlineSliderProps) {
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
+        gap: 9,
         flex: '1 1 auto',
         maxWidth: width,
-        minWidth: width - 45,
+        minWidth: Math.max(190, width - 70),
       }}
     >
       <span
@@ -61,7 +65,7 @@ export function InlineSlider({
         max={max}
         step={step}
         onValueChange={([next]) => onChange(next)}
-        style={{ minHeight: 28 }}
+        style={{ minHeight: 34, flex: '1 1 90px' }}
       >
         <SliderPrimitive.Track className="ds-slider-track">
           <SliderPrimitive.Range className="ds-slider-range" />
@@ -70,7 +74,7 @@ export function InlineSlider({
           className="ds-slider-thumb"
           aria-label={ariaLabel}
           aria-valuetext={valueText ?? formattedValue}
-          style={{ width: 14, height: 14 }}
+          style={{ width: 16, height: 16 }}
         />
       </SliderPrimitive.Root>
       <span
@@ -83,6 +87,26 @@ export function InlineSlider({
       >
         {formattedValue}
       </span>
+      {onReset && (
+        <button
+          type="button"
+          className="ds-btn ds-btn--ghost ds-btn--sm"
+          aria-label={resetLabel ?? `Reset ${ariaLabel}`}
+          title={resetLabel ?? `Reset ${ariaLabel}`}
+          onClick={onReset}
+          style={{
+            flex: 'none',
+            width: 32,
+            minWidth: 32,
+            minHeight: 32,
+            padding: 0,
+            fontSize: 17,
+            lineHeight: 1,
+          }}
+        >
+          ↺
+        </button>
+      )}
     </div>
   )
 }
