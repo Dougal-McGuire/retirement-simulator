@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Area,
+  Brush,
   CartesianGrid,
   ComposedChart,
   Line,
@@ -17,6 +18,7 @@ import { useIsMobile } from '@/lib/hooks/useMediaQuery'
 import { InfoTip } from '@/components/ui/info-tip'
 import {
   axisTick,
+  brushChrome,
   chartInk,
   ChartLegend,
   ChartTooltipCard,
@@ -27,6 +29,7 @@ import {
   type LegendItem,
   type TooltipRow,
 } from '@/components/charts/chartTheme'
+import { clampChartRange, sliceChartRange, type ChartIndexRange } from './chartRange'
 
 interface SpendingCorridorChartProps {
   points: SpendingCorridorPoint[]
@@ -38,23 +41,8 @@ interface SpendingCorridorChartProps {
   formatCurrencyShort: (value: number) => string
 }
 
-/**
- * The spending corridor: a sampled outcome band with the strategy's *promised*
- * bounds drawn over it.
- *
- * The two kinds of line are deliberately given different visual weight. The
- * median and its band are solid and filled — they are what the Monte Carlo
- * produced. The floor and ceiling are dashed, because they are not outcomes at
- * all: they are properties of the rule, true in every future. A user who reads
- * the dashed floor as "my worst case" is reading it correctly; a user who reads
- * P10 that way is not.
- *
- * The ceiling is allowed to leave the top of the plot (`allowDataOverflow`).
- * Vanguard's +5%/year and Guyton-Klinger's +10%/year compound into something
- * four to seventeen times the starting budget over a 30-year retirement, and
- * scaling the axis to fit that would squash the part anybody cares about into
- * the bottom eighth of the frame.
- */
+type ScaleMode = 'focus' | 'full'
+
 export function SpendingCorridorChart({
   points,
   retirementAge,
@@ -65,9 +53,21 @@ export function SpendingCorridorChart({
   formatCurrencyShort,
 }: SpendingCorridorChartProps) {
   const t = useTranslations('withdrawalPlanner.corridor')
+  const tAssets = useTranslations('assetsChart')
+  const tTable = useTranslations('simulationChart.spendingTable')
+  const tUi = useTranslations('ui')
   const isMobile = useIsMobile()
   const frameRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
+  const [scaleMode, setScaleMode] = useState<ScaleMode>('focus')
+  const [indexRange, setIndexRange] = useState<ChartIndexRange>({
+    startIndex: 0,
+    endIndex: Math.max(0, points.length - 1),
+  })
+
+  useEffect(() => {
+    setIndexRange({ startIndex: 0, endIndex: Math.max(0, points.length - 1) })
+  }, [points.length])
 
   useEffect(() => {
     const frame = frameRef.current
@@ -88,16 +88,26 @@ export function SpendingCorridorChart({
   const hue = fanHue.spending
   const floorColor = 'var(--ok)'
   const ceilingColor = 'var(--accent)'
+  const safeRange = clampChartRange(indexRange, points.length)
+  const visiblePoints = useMemo(
+    () => sliceChartRange(points, safeRange),
+    [points, safeRange.startIndex, safeRange.endIndex]
+  )
+  const isZoomed = safeRange.startIndex > 0 || safeRange.endIndex < points.length - 1
 
-  // The axis follows what the band and the floor need. The ceiling is clipped
-  // on purpose — see the component doc.
   const domainMax = useMemo(() => {
-    const max = points.reduce(
-      (acc, point) => Math.max(acc, point.spending_p90, point.floor ?? 0),
+    const max = visiblePoints.reduce(
+      (acc, point) =>
+        Math.max(
+          acc,
+          point.spending_p90,
+          point.floor ?? 0,
+          scaleMode === 'full' ? point.ceiling ?? 0 : 0
+        ),
       0
     )
     return max > 0 ? niceCeil(max * 1.08) : undefined
-  }, [points])
+  }, [visiblePoints, scaleMode])
 
   const axisWidth = useMemo(() => {
     const top = domainMax ?? 0
@@ -183,11 +193,45 @@ export function SpendingCorridorChart({
   const showPensionMarker =
     legalRetirementAge > retirementAge && points.some((point) => point.age >= legalRetirementAge)
 
+  const resetZoom = () =>
+    setIndexRange({ startIndex: 0, endIndex: Math.max(0, points.length - 1) })
+
   return (
     <div className="space-y-3" data-testid="spending-corridor-chart">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <ChartLegend items={legendItems} />
         {hasFloor && <InfoTip content={t('caveat')} label={t('legend.floor')} side="bottom" />}
+        <div className="ml-auto flex items-center gap-2">
+          <div
+            role="group"
+            aria-label={tAssets('scale.label')}
+            className="rounded-sm flex items-center border-2 border-border bg-white"
+          >
+            {(['focus', 'full'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setScaleMode(mode)}
+                aria-pressed={scaleMode === mode}
+                className={`px-2.5 py-1 text-[0.62rem] font-bold transition-colors ${
+                  scaleMode === mode
+                    ? 'bg-accent text-white'
+                    : 'bg-white text-muted-foreground hover:text-ink'
+                }`}
+              >
+                {tAssets(`scale.${mode}`)}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="ds-btn ds-btn--outline ds-btn--sm"
+            onClick={resetZoom}
+            disabled={!isZoomed}
+          >
+            {tAssets('reset')}
+          </button>
+        </div>
       </div>
       <div
         ref={frameRef}
@@ -296,9 +340,6 @@ export function SpendingCorridorChart({
                 dataKey="ceiling"
                 stroke={ceilingColor}
                 strokeWidth={1.75}
-                // A different dash from the floor: in the dark theme the two
-                // token colours land close enough that shape has to carry the
-                // distinction as well as hue.
                 strokeDasharray="2 5"
                 dot={false}
                 activeDot={false}
@@ -319,9 +360,31 @@ export function SpendingCorridorChart({
                 isAnimationActive={false}
               />
             )}
+            <Brush
+              dataKey="age"
+              {...brushChrome(isMobile)}
+              startIndex={safeRange.startIndex}
+              endIndex={safeRange.endIndex}
+              onChange={(range) =>
+                setIndexRange(
+                  clampChartRange(
+                    {
+                      startIndex: range.startIndex ?? safeRange.startIndex,
+                      endIndex: range.endIndex ?? safeRange.endIndex,
+                    },
+                    points.length
+                  )
+                )
+              }
+              tickFormatter={(value) => String(value)}
+              ariaLabel={tAssets('aria.brush', {
+                startAge: points[safeRange.startIndex]?.age ?? '',
+                endAge: points[safeRange.endIndex]?.age ?? '',
+              })}
+            />
           </ComposedChart>
         ) : (
-          <div className="rounded-sm flex h-full w-full items-center justify-center border-2 border-dashed border-ink/30 bg-muted/20 text-[0.68rem] font-semibold   text-muted-foreground">
+          <div className="rounded-sm flex h-full w-full items-center justify-center border-2 border-dashed border-ink/30 bg-muted/20 text-[0.68rem] font-semibold text-muted-foreground">
             {t('empty')}
           </div>
         )}
@@ -331,6 +394,37 @@ export function SpendingCorridorChart({
           {t('noFloor')}
         </p>
       )}
+      <details className="border-t border-border pt-2">
+        <summary className="cursor-pointer text-xs font-bold text-accent">
+          {tTable('toggle')}
+        </summary>
+        <div className="mt-2 overflow-x-auto">
+          <table className="ds-table w-full">
+            <thead>
+              <tr>
+                <th>{tUi('age')}</th>
+                <th className="ds-num">P10</th>
+                <th className="ds-num">P50</th>
+                <th className="ds-num">P90</th>
+                {hasFloor && <th className="ds-num">{t('legend.floor')}</th>}
+                {hasCeiling && <th className="ds-num">{t('legend.ceiling')}</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {visiblePoints.map((point) => (
+                <tr key={point.age}>
+                  <td>{point.age}</td>
+                  <td className="ds-num">{formatCurrency(point.spending_p10)}</td>
+                  <td className="ds-num" style={{ fontWeight: 700 }}>{formatCurrency(point.spending_p50)}</td>
+                  <td className="ds-num">{formatCurrency(point.spending_p90)}</td>
+                  {hasFloor && <td className="ds-num">{point.floor == null ? '—' : formatCurrency(point.floor)}</td>}
+                  {hasCeiling && <td className="ds-num">{point.ceiling == null ? '—' : formatCurrency(point.ceiling)}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
     </div>
   )
 }
