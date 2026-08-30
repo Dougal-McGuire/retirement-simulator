@@ -28,12 +28,6 @@ interface CompactCommandBarProps {
   onRun: () => void
 }
 
-/**
- * Design 1b's merged nav + command bar: logo, plan switcher, the four levers
- * people actually scrub (retirement age, savings, spending, ROI) as inline
- * sliders, then the live success pill and the Run button. Sticky, so the
- * levers and the verdict stay on screen wherever the reader scrolls.
- */
 export function CompactCommandBar({
   successRate,
   isLoading,
@@ -56,8 +50,6 @@ export function CompactCommandBar({
   const displayReal = useDisplayReal()
   const setDisplayReal = useSetDisplayReal()
 
-  // The one save affordance of the whole dashboard: always visible in the
-  // sticky bar, armed the moment the working copy diverges from the plan.
   const handleSave = () => {
     if (!isDirty) return
     savePlanDraft()
@@ -68,18 +60,12 @@ export function CompactCommandBar({
     )
   }
 
-  // `setActivePlan` adopts the target plan's params outright, so switching
-  // away from unsaved edits would silently discard them — the one place this
-  // compact chrome still has to ask first.
   const switchPlan = (id: string) => {
     if (id === activePlanId) return
     if (isDirty && !window.confirm(t('unsavedSwitch'))) return
     setActivePlan(id)
   }
 
-  // Scaling expenses needs a stable starting point, otherwise every drag step
-  // compounds its own rounding (same trick as the old quick-adjust bar). The
-  // snapshot resets when the expense list changes from anywhere else.
   const scaleBaseRef = useRef<{ source: CustomExpense[]; monthly: number } | null>(null)
   const emittedRef = useRef<CustomExpense[] | null>(null)
 
@@ -140,25 +126,26 @@ export function CompactCommandBar({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
-        height: 40,
-        padding: '0 14px',
+        gap: 12,
+        minHeight: 52,
+        padding: '4px 14px',
         background: 'var(--surface)',
         borderBottom: '1px solid var(--line)',
+        overflowX: 'auto',
       }}
     >
       <span
         aria-hidden="true"
         style={{
-          width: 16,
-          height: 16,
-          borderRadius: 3,
+          width: 20,
+          height: 20,
+          borderRadius: 4,
           background: 'var(--accent)',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           color: '#fff',
-          font: '600 9px var(--font-mono)',
+          font: '600 10px var(--font-mono)',
           flex: 'none',
         }}
       >
@@ -166,15 +153,13 @@ export function CompactCommandBar({
       </span>
       <select
         className="ds-select"
-        style={{ width: 118, flex: 'none' }}
+        style={{ width: 136, minHeight: 36, flex: 'none', fontSize: 13 }}
         aria-label={t('planAria')}
         value={activePlanId}
         onChange={(event) => {
           const next = event.target.value
           if (next !== activePlanId) {
             switchPlan(next)
-            // A declined confirm leaves the store put; the DOM select follows
-            // React state on the next render either way.
             event.target.value = activePlanId
           }
         }}
@@ -185,9 +170,9 @@ export function CompactCommandBar({
           </option>
         ))}
       </select>
-      <div style={{ width: 1, height: 22, background: 'var(--line)', flex: 'none' }} />
+      <div style={{ width: 1, height: 28, background: 'var(--line)', flex: 'none' }} />
       <InlineSlider
-        width={148}
+        width={158}
         label={t('age')}
         ariaLabel={t('ageAria')}
         value={params.retirementAge}
@@ -198,7 +183,7 @@ export function CompactCommandBar({
         onChange={(value) => updateParams({ retirementAge: value })}
       />
       <InlineSlider
-        width={172}
+        width={184}
         label={t('save')}
         ariaLabel={t('saveAria')}
         value={params.annualSavings}
@@ -209,7 +194,7 @@ export function CompactCommandBar({
         onChange={(value) => updateParams({ annualSavings: value })}
       />
       <InlineSlider
-        width={166}
+        width={178}
         label={t('spend')}
         ariaLabel={t('spendAria')}
         value={monthlyNow}
@@ -221,7 +206,7 @@ export function CompactCommandBar({
         onChange={scaleExpenses}
       />
       <InlineSlider
-        width={126}
+        width={138}
         label={t('roi')}
         ariaLabel={t('roiAria')}
         value={params.averageROI}
@@ -237,7 +222,7 @@ export function CompactCommandBar({
       <button
         type="button"
         className="ds-btn ds-btn--ghost ds-btn--sm"
-        style={{ whiteSpace: 'nowrap', flex: 'none' }}
+        style={{ whiteSpace: 'nowrap', flex: 'none', minHeight: 36, fontSize: 13 }}
         aria-expanded={advancedOpen}
         onClick={onToggleAdvanced}
       >
@@ -247,9 +232,6 @@ export function CompactCommandBar({
         </span>
       </button>
       <div style={{ flex: 1 }} />
-      {/* The one nominal / today's-euros switch: a display-only setting that
-          affects every figure below, so it lives in the sticky bar and nowhere
-          else. */}
       <div
         role="radiogroup"
         aria-label={tDisplay('label')}
@@ -262,6 +244,7 @@ export function CompactCommandBar({
           borderRadius: 'var(--radius-full)',
           overflow: 'hidden',
           flex: 'none',
+          minHeight: 36,
         }}
       >
         {(
@@ -281,10 +264,10 @@ export function CompactCommandBar({
               style={{
                 border: 0,
                 font: 'inherit',
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 600,
                 lineHeight: 1,
-                padding: '4px 9px',
+                padding: '8px 10px',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
                 background: selected ? 'var(--accent)' : 'var(--surface)',
@@ -300,7 +283,7 @@ export function CompactCommandBar({
       <Link
         href="/setup"
         className="ds-btn ds-btn--ghost ds-btn--sm"
-        style={{ flex: 'none' }}
+        style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
         data-testid="setup-link"
       >
         {t('setup')}
@@ -318,7 +301,7 @@ export function CompactCommandBar({
       <button
         type="button"
         className="ds-btn ds-btn--outline ds-btn--sm"
-        style={{ flex: 'none' }}
+        style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
         onClick={handleSave}
         disabled={!isDirty}
         data-testid="command-save"
@@ -328,7 +311,7 @@ export function CompactCommandBar({
       <button
         type="button"
         className="ds-btn ds-btn--default ds-btn--sm"
-        style={{ flex: 'none' }}
+        style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
         onClick={onRun}
         disabled={isLoading}
         data-testid="run-button"
