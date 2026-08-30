@@ -1,5 +1,5 @@
-import en from '../../../../../../messages/en.json'
-import de from '../../../../../../messages/de.json'
+import en from '../../../../i18n/messages/en.json'
+import de from '../../../../i18n/messages/de.json'
 
 describe('simulation navigation messages', () => {
   test.each([
