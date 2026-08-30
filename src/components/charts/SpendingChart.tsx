@@ -16,10 +16,10 @@ import {
   ChartTooltipCard,
   fanHue,
   measureAxisWidth,
-  niceCeil,
   withAlpha,
   type TooltipRow,
 } from '@/components/charts/chartTheme'
+import { spendingDomainMax, type SpendingScaleMode } from './spendingScale'
 
 interface SpendingChartProps {
   data: BandPoint[]
@@ -33,7 +33,6 @@ interface SpendingChartProps {
   formatCurrency: (value: number) => string
   formatCurrencyShort: (value: number) => string
   onResetZoom: () => void
-  /** Extra controls rendered in the section header, left of the zoom reset. */
   headerControls?: React.ReactNode
 }
 
@@ -52,9 +51,11 @@ export function SpendingChart({
   headerControls,
 }: SpendingChartProps) {
   const t = useTranslations('spendingChart')
+  const tAssets = useTranslations('assetsChart')
   const isMobile = useIsMobile()
   const chartFrameRef = useRef<HTMLDivElement>(null)
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 })
+  const [scaleMode, setScaleMode] = useState<SpendingScaleMode>('focus')
 
   const percentageFormatter = useMemo(
     () =>
@@ -69,8 +70,6 @@ export function SpendingChart({
   const formatPercentage = (value: number | null): string =>
     value == null ? '—' : percentageFormatter.format(value)
 
-  // One paragraph per strategy: the values are handed to every one of them and
-  // each message uses only the ones its own rule actually reads.
   const strategySummary = t(`explanation.strategies.${withdrawalStrategy}`, {
     withdrawalRate: formatPercentage(dsWithdrawalRate),
     ceiling: formatPercentage(dsCeilingRate),
@@ -149,19 +148,15 @@ export function SpendingChart({
   const isZoomed = indexRange.startIndex > 0 || indexRange.endIndex < data.length - 1
   const canRenderChart = chartSize.width > 0 && chartSize.height > 0
 
-  // See AssetsChart: Recharts' own traveller name reads "Min value: undefined"
-  // for rows without a `name` field.
   const brushAriaLabel = t('aria.brush', {
     startAge: data[Math.max(0, Math.min(indexRange.startIndex, data.length - 1))]?.age ?? '',
     endAge: data[Math.max(0, Math.min(indexRange.endIndex, data.length - 1))]?.age ?? '',
   })
 
-  // Round the axis to a readable bound and size it to its widest tick label so
-  // long compact-currency labels ("4,5 Mio. €") are never clipped.
-  const domainMax = useMemo(() => {
-    const max = data.reduce((acc, point) => Math.max(acc, point.spending_p90), 0)
-    return max > 0 ? niceCeil(max * 1.05) : undefined
-  }, [data])
+  const domainMax = useMemo(
+    () => spendingDomainMax(data, indexRange, scaleMode),
+    [data, indexRange, scaleMode]
+  )
 
   const axisWidth = useMemo(() => {
     const top = domainMax ?? 0
@@ -183,6 +178,27 @@ export function SpendingChart({
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {headerControls}
+          <div
+            role="group"
+            aria-label={tAssets('scale.label')}
+            className="rounded-sm flex items-center border-2 border-border bg-white"
+          >
+            {(['focus', 'full'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setScaleMode(mode)}
+                aria-pressed={scaleMode === mode}
+                className={`px-2.5 py-1 text-[0.62rem] font-bold transition-colors ${
+                  scaleMode === mode
+                    ? 'bg-accent text-white'
+                    : 'bg-white text-muted-foreground hover:text-ink'
+                }`}
+              >
+                {tAssets(`scale.${mode}`)}
+              </button>
+            ))}
+          </div>
           <Button
             type="button"
             variant="outline"
@@ -253,7 +269,6 @@ export function SpendingChart({
               domain={[0, domainMax ?? 'auto']}
               allowDataOverflow={domainMax != null}
             />
-            {/* P10–P90 spending band */}
             <Area
               type="monotone"
               dataKey="spending_band_lower"
@@ -281,7 +296,6 @@ export function SpendingChart({
               content={renderTooltip}
               cursor={{ stroke: chartInk.cursor, strokeWidth: 1, strokeDasharray: '3 3' }}
             />
-            {/* Band edges */}
             <Line
               type="monotone"
               dataKey="spending_p10"
@@ -306,7 +320,6 @@ export function SpendingChart({
               yAxisId="spending"
               legendType="none"
             />
-            {/* Median spending */}
             <Line
               type="monotone"
               dataKey="spending_p50"
