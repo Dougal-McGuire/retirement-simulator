@@ -106,6 +106,9 @@ export default function SimulationPage() {
             </Tabs.Trigger>
           ))}
         </Tabs.List>
+        <div className="workspace-display-settings">
+          <EuroDisplay />
+        </div>
       </aside>
       <div className="workspace-body">
         <WorkspaceHeader results={stale ? null : results} loading={loading} onRun={() => run()} />
@@ -117,7 +120,6 @@ export default function SimulationPage() {
               </h1>
               <p>{t(`views.${view}.description`)}</p>
             </div>
-            {view !== 'plan' && <EuroDisplay />}
           </div>
           <div className="workspace-run-status" role="status" aria-live="polite">
             {loading ? t('computing') : stale ? tc('stale') : results ? t('current') : t('empty')}
