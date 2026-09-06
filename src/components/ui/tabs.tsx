@@ -31,14 +31,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      // Padding and size step up with the *container* width so labels always
-      // fit: cramped-but-legible in a narrow drawer, roomy on desktop.
-      // Selection is painted with the accent, per the design system.
-      'inline-flex h-auto min-h-12 w-full min-w-0 items-center justify-center whitespace-normal break-words px-1.5 py-2 text-center text-[0.6rem] font-extrabold leading-tight transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-white text-ink data-[state=inactive]:hover:bg-amber/15',
-      '@sm:min-h-14 @sm:px-2 @sm:text-[0.66rem]',
-      '@lg:min-h-16 @lg:px-4 @lg:text-[0.72rem]',
-      '@2xl:px-6 @2xl:text-[0.78rem]',
-      'data-[state=active]:bg-accent data-[state=active]:text-white data-[state=active]:shadow-sm',
+      'inline-flex min-h-10 min-w-0 items-center justify-center whitespace-normal px-3 py-2 text-sm font-medium leading-normal transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-transparent text-muted-foreground data-[state=inactive]:hover:bg-muted data-[state=active]:bg-muted data-[state=active]:text-ink',
       className
     )}
     {...props}

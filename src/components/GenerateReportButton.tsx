@@ -90,7 +90,8 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
         const errorData = await response.json()
         console.error('PDF generation error response:', errorData)
         throw new Error(
-          errorData.details || errorData.error ||
+          errorData.details ||
+            errorData.error ||
             t('errors.requestFailed', { status: response.statusText })
         )
       }
@@ -188,9 +189,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
       </Button>
 
       {error && (
-        <div className="max-w-xs text-center text-[0.65rem] font-semibold   text-danger">
-          {error}
-        </div>
+        <div className="max-w-xs text-center text-xs font-semibold   text-danger">{error}</div>
       )}
     </div>
   )

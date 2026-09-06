@@ -1,0 +1,276 @@
+/* Shared interface tokens. Components and workspace layouts use these values. */
+:root {
+  color-scheme: light;
+  --radius: var(--ui-radius);
+  --ink: rgb(var(--ink-rgb));
+  --white: rgb(var(--white-rgb));
+  --theme-pattern-blend: normal;
+  --background: 240 6% 97%;
+  --foreground: 214 9% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: var(--foreground);
+  --popover: 0 0% 100%;
+  --popover-foreground: var(--foreground);
+  --primary: 209 47% 36%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 12% 95%;
+  --secondary-foreground: 214 9% 15%;
+  --muted: 220 12% 95%;
+  --muted-foreground: 215 6% 41%;
+  --accent: var(--ui-accent);
+  --accent-foreground: 0 0% 100%;
+  --destructive: 357 100% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 216 8% 88%;
+  --input: 216 8% 78%;
+  --field: 0 0% 100%;
+  --ring: 208 72% 36%;
+  --chart-1: 187 100% 27%;
+  --chart-2: 270 33% 48%;
+  --chart-3: 357 100% 45%;
+  --chart-4: 145 100% 25%;
+  --chart-5: 32 100% 31%;
+  --ink-rgb: 36 39 43;
+  --white-rgb: 255 255 255;
+  --amber-rgb: 232 234 237;
+  --accent-rgb: 49 95 136;
+  --danger-rgb: 166 52 45;
+  --ok-rgb: 53 111 80;
+  --viz-pink-rgb: 115 129 145;
+  --viz-purple-rgb: 106 86 119;
+  --viz-purple: rgb(var(--viz-purple-rgb));
+  --viz-teal-rgb: 49 95 136;
+  --viz-orange-rgb: 98 103 110;
+  --grid-line: rgba(22, 28, 41, 0.045);
+  --theme-border-width: 1px;
+  --theme-border-thin: 1px;
+  --theme-radius-panel: var(--ui-radius);
+  --theme-radius-control: var(--ui-radius);
+  --theme-radius-chip: var(--ui-radius);
+  --theme-panel-padding: var(--ui-space-6);
+  --theme-card-header-padding: var(--ui-space-4) var(--ui-space-6);
+  --theme-card-body-padding: var(--ui-space-6);
+  --theme-page-gap: var(--ui-space-6);
+  --theme-content-gap: var(--ui-space-6);
+  --theme-panel-clip: none;
+  --theme-card-backdrop: none;
+  --theme-control-transform: none;
+  --theme-ui-letter-spacing: 0;
+  --theme-chip-spacing: 0;
+  --theme-hover-x: 0px;
+  --theme-hover-y: 0px;
+  --theme-hero-transform: none;
+  --theme-panel-transform: none;
+  --theme-focus: var(--ui-accent);
+  --theme-bg-layer: hsl(var(--background));
+  --theme-pattern-image:
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(180deg, var(--grid-line) 1px, transparent 1px);
+  --theme-pattern-size: 64px 64px;
+  --theme-pattern-opacity: 0;
+  --theme-font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --theme-font-heading: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --theme-letter-spacing-body: 0;
+  --theme-heading-transform: none;
+  --theme-heading-spacing: 0;
+  --theme-h1-spacing: 0;
+  --chart-axis: var(--ink);
+  --chart-brush: #94a3b8;
+  --chart-retirement: var(--danger);
+  --chart-pension: var(--ok);
+  --scrollbar-thumb: rgba(22, 28, 41, 0.18);
+  --scrollbar-thumb-hover: rgba(22, 28, 41, 0.34);
+  --gray-50: oklch(98.5% 0.002 247.839);
+  --gray-100: oklch(96.7% 0.003 264.542);
+  --gray-200: oklch(92.8% 0.006 264.531);
+  --gray-300: oklch(87.2% 0.01 258.338);
+  --gray-400: oklch(70.7% 0.022 261.325);
+  --gray-500: oklch(55.1% 0.027 264.364);
+  --gray-600: oklch(44.6% 0.03 256.802);
+  --gray-700: oklch(37.3% 0.034 259.733);
+  --gray-800: oklch(27.8% 0.033 256.848);
+  --gray-900: oklch(21% 0.034 264.665);
+  --red-50: oklch(97.1% 0.013 17.38);
+  --red-300: oklch(80.8% 0.114 19.571);
+  --red-500: oklch(63.7% 0.237 25.331);
+  --red-600: oklch(57.7% 0.245 27.325);
+  --red-700: oklch(50.5% 0.213 27.518);
+  --amber-50: oklch(98.7% 0.022 95.277);
+  --amber-300: oklch(87.9% 0.169 91.605);
+  --amber-700: oklch(55.5% 0.163 48.998);
+  --green-50: oklch(98.2% 0.018 155.826);
+  --green-300: oklch(87.1% 0.15 154.449);
+  --green-700: oklch(52.7% 0.154 150.069);
+  --accent-hover: #274d6e;
+  --canvas: var(--ui-bg);
+  --surface: var(--ui-surface);
+  --line: var(--ui-border);
+  --line-strong: #b9bdc3;
+  --text: var(--ui-text);
+  --text-muted: var(--ui-muted);
+  --text-label: var(--ui-muted);
+  --text-hint: var(--ui-muted);
+  --action: var(--accent);
+  --action-hover: var(--accent-hover);
+  --danger: rgb(var(--danger-rgb));
+  --warn: var(--amber-700);
+  --ok: rgb(var(--ok-rgb));
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
+  --viz-1: #315f88;
+  --viz-2: #65717d;
+  --viz-3: #456e73;
+  --viz-4: #454d55;
+  --viz-5: #795945;
+  --viz-6: #456e73;
+  --viz-seq-1: #edf2f7;
+  --viz-seq-2: #d6e2ed;
+  --viz-seq-3: #afc5da;
+  --viz-seq-4: #7296b8;
+  --viz-seq-5: #315f88;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --fs-xs: var(--ui-font-small);
+  --lh-xs: 1rem;
+  --fs-sm: var(--ui-font-body);
+  --lh-sm: 1.25rem;
+  --fs-lg: var(--ui-font-section);
+  --fs-micro-label: var(--ui-font-small);
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-6: 1.5rem;
+  --radius-lg: var(--ui-radius);
+  --radius-full: var(--ui-radius);
+  --ctl-py-sm: 8px;
+  --ctl-px-sm: var(--sp-2);
+  --ctl-py-md: 8px;
+  --ctl-px-md: var(--sp-3);
+  --cell-py: 8px;
+  --cell-px: var(--sp-3);
+  --head-py: 8px;
+  --page-px: 24px;
+  --bar-h: 48px;
+  --stack-gap: 24px;
+  --shadow-sm: none;
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --focus-ring: 2px solid var(--gray-900);
+  --focus-offset: 2px;
+  --transition-fast: 0.12s;
+  --ui-bg: #f7f7f8;
+  --ui-surface: #ffffff;
+  --ui-text: #24272b;
+  --ui-muted: #62676e;
+  --ui-border: #dfe1e4;
+  --ui-subtle: #f1f2f4;
+  --ui-accent: #315f88;
+  --ui-radius: 4px;
+  --ui-control-height: 40px;
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-6: 24px;
+  --ui-space-8: 32px;
+  --ui-font-small: 12px;
+  --ui-font-body: 14px;
+  --ui-font-section: 18px;
+  --ui-font-title: 24px;
+}
+
+html body {
+  font-size: var(--ui-font-body);
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ui-text);
+  background: var(--ui-bg);
+}
+html :is(h1, h2, h3, h4, h5, h6, strong) {
+  letter-spacing: 0;
+  font-weight: 600;
+}
+html h1 {
+  font-size: var(--ui-font-title);
+}
+html :is(h2, h3, h4) {
+  font-size: var(--ui-font-section);
+}
+html :is(.theme-control, .ds-btn, .workspace-button, [data-slot='select-trigger']) {
+  min-height: var(--ui-control-height);
+  font-size: var(--ui-font-body);
+  font-weight: 500;
+  line-height: 1.4;
+  border-radius: var(--ui-radius);
+  box-shadow: none;
+  letter-spacing: 0;
+}
+html :is(.theme-control, .ds-btn, .workspace-button, [data-slot='select-trigger']):hover {
+  transform: none !important;
+}
+html :is(.ds-chip, .ds-pill, .app-chip, [data-slot='badge']) {
+  border-radius: var(--ui-radius);
+  box-shadow: none;
+  font-size: var(--ui-font-small);
+  font-weight: 500;
+}
+html :is([data-slot='dialog-content'], [data-slot='select-content']) {
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font-size: var(--ui-font-body);
+}
+html [data-slot='dialog-content'] {
+  padding: var(--ui-space-6);
+  gap: var(--ui-space-4);
+  box-shadow: 0 8px 32px #0000001a;
+}
+html [data-slot='dialog-title'] {
+  font-size: var(--ui-font-section);
+}
+html :is([data-slot='select-item'], [data-slot='dialog-description']) {
+  font-size: var(--ui-font-body);
+  line-height: 1.5;
+}
+html :is(input:not([type='checkbox']):not([type='radio']):not([type='range']), textarea) {
+  font-size: var(--ui-font-body);
+  font-weight: 400;
+  background: var(--ui-surface);
+  box-shadow: none;
+}
+html :is(.theme-panel-card, .theme-panel-header, .theme-panel-body) {
+  box-shadow: none;
+}
+html :is(.theme-panel-header, .theme-panel-body) {
+  background: var(--ui-surface);
+}
+html [role='tab'] {
+  font-size: var(--ui-font-body);
+  font-weight: 500;
+  line-height: 1.4;
+  box-shadow: none;
+  min-height: var(--ui-control-height);
+}
+html .ds-segment {
+  border-radius: var(--ui-radius);
+}
+html :is(.ds-table, table) {
+  font-size: var(--ui-font-small);
+  font-variant-numeric: tabular-nums;
+}
+html :is(.ds-table, table) :is(th, td) {
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border-color: var(--ui-border);
+}
+html :is(.ds-table, table) th {
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+html :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+/* Round shapes are reserved for sliders, radio buttons and status dots. */
+html :is(.theme-badge-row > span, .app-chip) {
+  border-radius: var(--ui-radius) !important;
+}

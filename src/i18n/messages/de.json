@@ -2337,7 +2337,7 @@
       "cashFlows": {
         "title": "Zahlungsströme",
         "description": "Alles, was dieser Plan zahlt oder einnimmt — und wie lange.",
-        "incomePointer": "{count, plural, =0 {Einmalige Einnahmen stehen in der Karte „Zahlungsströme“ unten} =1 {# einmalige Einnahme, Bearbeitung in der Karte „Zahlungsströme“} other {# einmalige Einnahmen, Bearbeitung in der Karte „Zahlungsströme“}}"
+        "incomePointer": "{count, plural, =0 {Einmalige Einnahmen stehen im Bereich „Zahlungsströme“} =1 {# einmalige Einnahme, Bearbeitung im Bereich „Zahlungsströme“} other {# einmalige Einnahmen, Bearbeitung im Bereich „Zahlungsströme“}}"
       },
       "withdrawal": {
         "title": "Entnahme",
@@ -2521,23 +2521,16 @@
     "oneOffTiming": "Zur Kompatibilität mit bestehenden Plänen wird eine Einmaleinnahme beim nächsten Lebensalter nach dem eingetragenen Buchungsalter ins Depot eingezahlt. Die Tabelle zeigt das Jahr der tatsächlichen Gutschrift einschließlich des zugehörigen Steuerabzugs."
   },
   "workspace": {
-    "brand": "Ruhestand",
-    "brandSub": "Dein Planungsstudio",
-    "navigationCaption": "Deine Planung",
+    "brand": "Ruhestandsplanung",
     "navigation": "Bereiche der Ruhestandsplanung",
-    "sidebarNote": "Mit Weitblick planen",
-    "sidebarExplain": "Deine Ziele. Deine Annahmen. Ein nachvollziehbarer Plan.",
     "activePlan": "Aktueller Plan",
     "saved": "Plan gespeichert",
     "unsaved": "Ungespeicherte Änderungen",
     "calculate": "Neu berechnen",
-    "computing": "Dein Plan wird berechnet …",
+    "computing": "Berechnung läuft …",
     "current": "Ergebnisse der letzten Berechnung",
     "empty": "Noch keine Ergebnisse",
-    "outcome": "Dein Plan im Stresstest",
-    "strong": "Eine solide Basis für deinen Ruhestand.",
-    "mixed": "Dein Plan hat noch Spielraum für Verbesserungen.",
-    "fragile": "Dein Plan braucht mehr Sicherheit.",
+    "outcome": "Zielerreichung",
     "outcomeExplain": "Anteil der simulierten Verläufe, die dein Ausgabenbudget und Vermögensziel bis zum Alter {end} erfüllen. Eine Modellrechnung, keine Garantie.",
     "successfulPaths": "der Verläufe erfüllen dein Ziel",
     "lastsTo": "Vermögen reicht im Median bis Alter",
@@ -2546,13 +2539,12 @@
     "grossMean": "Durchschnitt, brutto einschließlich Kapitalertragsteuer",
     "endAssets": "Vermögen am Ende · Median",
     "lowAssets": "Schwächere 10 %: {amount}",
-    "overTime": "Die langfristige Perspektive",
-    "assetTitle": "Wie sich dein Vermögen entwickeln kann",
+    "assetTitle": "Vermögensentwicklung",
     "assetDescription": "Die Linie zeigt den Median, das Band die Bandbreite der simulierten Verläufe. Einzelne Jahre lassen sich im Diagramm untersuchen.",
-    "planSnapshot": "Darauf baut dein Plan auf",
-    "snapshotHint": "Die Ausgangswerte deines Plans. Wähle einen Bereich, um ihn zu bearbeiten.",
+    "planSnapshot": "Planannahmen",
+    "snapshotHint": "Ausgangswerte ansehen und bearbeiten.",
     "followMoney": "Zahlungsströme ansehen",
-    "retirement": "Dein Ruhestart",
+    "retirement": "Ruhestart",
     "ageValue": "Mit {age} Jahren",
     "timelineHint": "Planung von Alter {current} bis {end}",
     "startingAssets": "Vermögen heute",
@@ -2570,23 +2562,23 @@
     "views": {
       "overview": {
         "label": "Überblick",
-        "title": "Dein Ruhestand im Blick",
-        "description": "Die wichtigsten Ergebnisse, verständlich zusammengefasst. Von hier aus gehst du ins Detail."
+        "title": "Überblick",
+        "description": "Zielerreichung, Vermögen und zentrale Planannahmen."
       },
       "plan": {
         "label": "Mein Plan",
-        "title": "Ein Plan, der zu dir passt",
-        "description": "Arbeite dich durch die Bereiche oder springe direkt zu dem, was du ändern möchtest."
+        "title": "Mein Plan",
+        "description": "Persönliche Daten, Einnahmen, Ausgaben und Berechnungsannahmen bearbeiten."
       },
       "cashflow": {
         "label": "Zahlungsströme",
-        "title": "Wohin dein Geld fließt",
-        "description": "Einnahmen, Steuern und Ausgaben je Jahr. So wird sichtbar, was dir tatsächlich zur Verfügung steht."
+        "title": "Zahlungsströme",
+        "description": "Einnahmen, Steuern und Ausgaben je Jahr."
       },
       "scenarios": {
         "label": "Varianten",
-        "title": "Finde deinen besten Weg",
-        "description": "Entdecke die Wirkung einzelner Änderungen oder vergleiche deine gespeicherten Pläne."
+        "title": "Varianten",
+        "description": "Änderungen berechnen und gespeicherte Pläne vergleichen."
       }
     },
     "applyChanges": "Änderungen direkt ausprobieren",

@@ -103,11 +103,11 @@ export default {
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
       },
       borderRadius: {
-        neo: '0.25rem',
-        'neo-soft': '0.25rem',
-        lg: '0.5rem', // Design system: 8px cards/panels
-        md: '0.375rem',
-        sm: '0.25rem', // 4px controls
+        neo: 'var(--ui-radius)',
+        'neo-soft': 'var(--ui-radius)',
+        lg: 'var(--ui-radius)',
+        md: 'var(--ui-radius)',
+        sm: 'var(--ui-radius)',
       },
       spacing: {
         '18': '4.5rem',

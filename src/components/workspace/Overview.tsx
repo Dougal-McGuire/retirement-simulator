@@ -1,7 +1,7 @@
 'use client'
 
 import { useFormatter, useTranslations } from 'next-intl'
-import { ArrowRight, CalendarDays, Coins, Wallet } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import type { SimulationResults } from '@/types'
 import type { CompactKpis } from '@/components/simulation-compact/metrics'
 import type { PlanSectionGroup } from '@/components/plans/planSections'
@@ -43,36 +43,23 @@ export function Overview({
   ]
   return (
     <div className="workspace-stack">
-      <section
-        className="workspace-verdict"
-        data-tone={
-          results.successRate >= 90 ? 'strong' : results.successRate >= 70 ? 'mixed' : 'fragile'
-        }
-        data-testid="kpi-strip"
-      >
-        <div>
-          <p className="workspace-eyebrow">{t('outcome')}</p>
-          <h2>
-            {t(
-              results.successRate >= 90 ? 'strong' : results.successRate >= 70 ? 'mixed' : 'fragile'
-            )}
-          </h2>
-          <p>{t('outcomeExplain', { end: p.endAge })}</p>
-        </div>
-        <div className="workspace-probability">
-          <strong data-testid="success-pill">{rate}</strong>
-          <span>{t('successfulPaths')}</span>
-        </div>
-      </section>
-      <dl className="workspace-result-grid">
-        {stats.map((stat) => (
-          <div key={stat.label}>
-            <dt>{stat.label}</dt>
-            <dd>{stat.value}</dd>
-            <p>{stat.hint}</p>
+      <section aria-label={t('outcome')} data-testid="kpi-strip">
+        <dl className="workspace-result-grid">
+          <div>
+            <dt>{t('outcome')}</dt>
+            <dd data-testid="success-pill">{rate}</dd>
+            <p>{t('successfulPaths')}</p>
           </div>
-        ))}
-      </dl>
+          {stats.map((stat) => (
+            <div key={stat.label}>
+              <dt>{stat.label}</dt>
+              <dd>{stat.value}</dd>
+              <p>{stat.hint}</p>
+            </div>
+          ))}
+        </dl>
+        <p className="workspace-result-note">{t('outcomeExplain', { end: p.endAge })}</p>
+      </section>
       <section className="workspace-life-stages">
         <div>
           <span>{t('today')}</span>
@@ -98,7 +85,6 @@ export function Overview({
       <section className="workspace-panel">
         <div className="workspace-section-heading">
           <div>
-            <p className="workspace-eyebrow">{t('overTime')}</p>
             <h2>{t('assetTitle')}</h2>
             <p>{t('assetDescription')}</p>
           </div>
@@ -119,21 +105,18 @@ export function Overview({
         <div className="workspace-assumptions">
           {[
             {
-              icon: CalendarDays,
               label: t('retirement'),
               value: t('ageValue', { age: p.retirementAge }),
               hint: t('timelineHint', { current: p.currentAge, end: p.endAge }),
               section: 'personal',
             },
             {
-              icon: Wallet,
               label: t('startingAssets'),
               value: euro(p.currentAssets),
               hint: t('savingsHint', { amount: euro(p.annualSavings) }),
               section: 'income',
             },
             {
-              icon: Coins,
               label: t('plannedBudget'),
               value: euro(budget),
               hint: t('budgetHint'),
@@ -141,7 +124,6 @@ export function Overview({
             },
           ].map((item) => (
             <button key={item.section} onClick={() => onEdit(item.section as PlanSectionGroup)}>
-              <item.icon size={22} aria-hidden="true" />
               <span>{item.label}</span>
               <strong>{item.value}</strong>
               <small>{item.hint}</small>

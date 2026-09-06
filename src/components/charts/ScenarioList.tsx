@@ -223,11 +223,9 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Landmark className="h-5 w-5 text-accent" aria-hidden="true" />
-            <h4 className="text-sm font-extrabold  ">
-              {t('scenarios.title')}
-            </h4>
+            <h4 className="text-sm font-semibold  ">{t('scenarios.title')}</h4>
           </div>
-          <span className="text-[0.68rem] font-semibold   text-muted-foreground">
+          <span className="text-xs font-semibold   text-muted-foreground">
             {scenarioStatus === 'loading'
               ? t('scenarios.loading')
               : isSaturated && scenarioStatus === 'ready'
@@ -240,7 +238,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
             It is the hero's number verbatim, at the hero's run count. */}
         {context.hasResults && (
           <p
-            className="rounded-sm mt-3 border-2 border-border bg-white px-3 py-2 text-[0.66rem] font-semibold text-ink"
+            className="rounded-sm mt-3 border-2 border-border bg-white px-3 py-2 text-xs font-semibold text-ink"
             data-testid="stress-lever-baseline"
             data-baseline={context.successRate}
             data-runs={context.effectiveRuns}
@@ -259,7 +257,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
 
         {isSaturated && scenarioStatus === 'ready' && results && (
           <p
-            className="rounded-sm mt-3 border-2 border-success-600 bg-success-50 px-3 py-2 text-[0.66rem] font-semibold text-success-700"
+            className="rounded-sm mt-3 border-2 border-success-600 bg-success-50 px-3 py-2 text-xs font-semibold text-success-700"
             data-testid="stress-lever-saturated"
           >
             {t('scenarios.saturated', { rate: formatPercent(context.successRate) })}
@@ -279,7 +277,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
                   className="rounded-sm flex flex-col gap-3 border-2 border-border bg-white px-4 py-3 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-extrabold   text-ink">
+                    <p className="text-sm font-semibold   text-ink">
                       {t(`scenarios.items.${scenario.id}.name`)}
                     </p>
                     <p className="mt-1 text-xs font-medium text-muted-foreground">
@@ -291,10 +289,8 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
                       <>
                         <span
                           className={cn(
-                            'rounded-sm border-2 px-2 py-1 text-[0.68rem] font-extrabold  ',
-                            isSaturated
-                              ? 'border-border bg-white text-ink'
-                              : healthClasses[health]
+                            'rounded-sm border-2 px-2 py-1 text-xs font-semibold  ',
+                            isSaturated ? 'border-border bg-white text-ink' : healthClasses[health]
                           )}
                           data-testid="stress-lever-delta"
                         >
@@ -305,7 +301,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
                         <ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                         <span
                           className={cn(
-                            'text-[0.72rem] font-black tabular-nums',
+                            'text-xs font-semibold tabular-nums',
                             isSaturated ? 'min-w-[4.5rem]' : 'w-14'
                           )}
                         >
@@ -320,7 +316,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 px-3 text-[0.6rem]"
+                      className="h-9 px-3 text-xs"
                       disabled={atPlanLimit}
                       title={t('scenarios.savedHint')}
                       onClick={() => setPendingScenarioId(scenario.id)}

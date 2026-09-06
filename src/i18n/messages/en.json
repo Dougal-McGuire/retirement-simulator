@@ -2337,7 +2337,7 @@
       "cashFlows": {
         "title": "Cash flows",
         "description": "Everything this plan pays out or takes in, and for how long.",
-        "incomePointer": "{count, plural, =0 {One-off income lives in the cash-flow card below} =1 {# one-off income, edited in the cash-flow card below} other {# one-off incomes, edited in the cash-flow card below}}"
+        "incomePointer": "{count, plural, =0 {One-off income lives in the Cash flows section} =1 {# one-off income, edited in the Cash flows section} other {# one-off incomes, edited in the Cash flows section}}"
       },
       "withdrawal": {
         "title": "Withdrawal",
@@ -2521,23 +2521,16 @@
     "oneOffTiming": "For compatibility with existing plans, one-off income is credited to the portfolio at the next age after its entered booking age. The table shows the year of the actual credit, including the associated tax."
   },
   "workspace": {
-    "brand": "Retirement",
-    "brandSub": "Your planning studio",
-    "navigationCaption": "Your planning",
+    "brand": "Retirement planner",
     "navigation": "Retirement planning areas",
-    "sidebarNote": "Plan with perspective",
-    "sidebarExplain": "Your goals. Your assumptions. A plan you can follow.",
     "activePlan": "Current plan",
     "saved": "Plan saved",
     "unsaved": "Unsaved changes",
     "calculate": "Recalculate",
-    "computing": "Calculating your plan …",
+    "computing": "Calculating …",
     "current": "Results from your latest calculation",
     "empty": "No results yet",
-    "outcome": "Your plan under pressure",
-    "strong": "A solid foundation for retirement.",
-    "mixed": "There is room to strengthen your plan.",
-    "fragile": "Your plan needs a stronger safety margin.",
+    "outcome": "Goal completion",
     "outcomeExplain": "Share of simulated paths that fund your spending and meet your legacy goal through age {end}. A model, not a guarantee.",
     "successfulPaths": "of paths meet your goal",
     "lastsTo": "Median assets last until age",
@@ -2546,13 +2539,12 @@
     "grossMean": "Mean gross withdrawal, including capital gains tax",
     "endAssets": "Assets at the end · median",
     "lowAssets": "Weaker 10%: {amount}",
-    "overTime": "The long-term perspective",
-    "assetTitle": "How your assets could develop",
+    "assetTitle": "Asset projection",
     "assetDescription": "The line shows the median; the band shows the range of simulated outcomes. Inspect individual years in the chart.",
-    "planSnapshot": "The foundations of your plan",
-    "snapshotHint": "Your plan’s starting assumptions. Choose an area to edit it.",
-    "followMoney": "Explore cash flows",
-    "retirement": "Your retirement",
+    "planSnapshot": "Plan assumptions",
+    "snapshotHint": "Review and edit starting assumptions.",
+    "followMoney": "View cash flows",
+    "retirement": "Retirement",
     "ageValue": "At age {age}",
     "timelineHint": "Planning from age {current} to {end}",
     "startingAssets": "Assets today",
@@ -2570,23 +2562,23 @@
     "views": {
       "overview": {
         "label": "Overview",
-        "title": "Your retirement, in perspective",
-        "description": "Your key results, clearly explained. Start here, then explore the detail."
+        "title": "Overview",
+        "description": "Goal completion, assets and key plan assumptions."
       },
       "plan": {
         "label": "My plan",
-        "title": "A plan that fits your life",
-        "description": "Work through each section or jump straight to what you want to change."
+        "title": "My plan",
+        "description": "Edit personal details, income, spending and calculation assumptions."
       },
       "cashflow": {
         "label": "Cash flows",
-        "title": "Follow your money",
-        "description": "Yearly income, taxes and spending. See what is actually available to you."
+        "title": "Cash flows",
+        "description": "Income, taxes and spending by year."
       },
       "scenarios": {
         "label": "Alternatives",
-        "title": "Find your best way forward",
-        "description": "Explore the impact of individual changes or compare your saved plans."
+        "title": "Alternatives",
+        "description": "Calculate changes and compare saved plans."
       }
     },
     "applyChanges": "Try a change in your current plan",

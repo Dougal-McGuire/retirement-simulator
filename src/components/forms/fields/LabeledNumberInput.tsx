@@ -252,10 +252,7 @@ export function LabeledNumberInput({
       aria-disabled={disabled || undefined}
     >
       <div className="flex items-center gap-1.5">
-        <Label
-          htmlFor={id}
-          className="text-[0.68rem] font-semibold   text-ink"
-        >
+        <Label htmlFor={id} className="text-xs font-semibold   text-ink">
           {label}
         </Label>
         {(tooltip || foldedHelp) && (
@@ -326,7 +323,7 @@ export function LabeledNumberInput({
           aria-describedby={describedBy}
           aria-invalid={showValidation && validationState === 'error' ? true : undefined}
           className={cn(
-            'rounded-sm h-11 border-2 text-sm font-semibold tabular-nums',
+            'rounded-sm h-10 border text-sm font-normal tabular-nums',
             unit && 'pr-12',
             showValidation && validationState === 'error' && 'border-danger',
             showValidation && validationState === 'warning' && 'border-viz-orange',
