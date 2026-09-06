@@ -57,6 +57,16 @@
 .workspace-navigation button:hover {
   background: var(--ui-subtle);
 }
+.workspace-display-settings {
+  margin-top: var(--ui-space-6);
+  padding-top: var(--ui-space-6);
+  border-top: 1px solid var(--ui-border);
+}
+.workspace-display-settings .workspace-euro button {
+  flex: 1;
+  min-width: 0;
+  padding-inline: var(--ui-space-2);
+}
 .workspace-body {
   min-width: 0;
 }
@@ -596,6 +606,10 @@
   }
   .workspace-navigation button[data-state='active'] {
     border-bottom-color: var(--ui-accent);
+  }
+  .workspace-display-settings {
+    margin-top: var(--ui-space-4);
+    padding-top: var(--ui-space-4);
   }
   .workspace-toolbar {
     padding: var(--ui-space-4);
