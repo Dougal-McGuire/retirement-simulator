@@ -433,7 +433,7 @@
           "ordinary": "Normales Einkommen (§ 32a EStG)",
           "oneFifth": "Fünftelregelung (§ 34 EStG)"
         },
-        "taxTreatmentHint": "Wird im Zuflussjahr zusätzlich zu den Renten und anderen besteuerten Einkünften des Jahres nach Tarif 2025 besteuert (Splitting bei Paaren). Solidaritätszuschlag und Kirchensteuer sind nicht abgebildet.",
+        "taxTreatmentHint": "Wird im Zuflussjahr zusätzlich zu den Renten und anderen besteuerten Einkünften des Jahres nach Tarif 2026 besteuert (Splitting bei Paaren). Solidaritätszuschlag und Kirchensteuer sind nicht abgebildet.",
         "pensionTaxMode": "Besteuerung",
         "pensionTaxModeOptions": {
           "share": "Besteuerungsanteil (statisch)",
@@ -561,8 +561,8 @@
   "simulationCompact": {
     "tabs": {
       "overview": "Überblick",
-      "plan": "Plan",
-      "cashflow": "Cashflows",
+      "plan": "Plan bearbeiten",
+      "cashflow": "Zahlungsströme",
       "scenarios": "Szenarien"
     },
     "compareButton": "Vergleichen",
@@ -613,7 +613,9 @@
       "medianEnd": "Median Ende",
       "p10Age": "P10: {age}",
       "perMonth": "{amount}/Mon.",
-      "p10End": "P10: {value}"
+      "p10End": "P10: {value}",
+      "grossMean": "Ø brutto · {amount}/Mon.",
+      "successHint": "Budget und Vermögensziel erreicht"
     },
     "chart": {
       "bandOuter": "P10–90",
@@ -668,6 +670,16 @@
         "guytonKlinger": "Guyton-Klinger {rate}",
         "percentOfPortfolio": "% vom Portfolio {rate}"
       }
+    },
+    "pageTitle": "Ruhestandsplanung",
+    "error": "Die Simulation konnte nicht berechnet werden. Bitte erneut versuchen.",
+    "retry": "Erneut berechnen",
+    "stale": "Die angezeigten Ergebnisse gehören noch zur vorherigen Berechnung.",
+    "tools": {
+      "button": "Menü",
+      "title": "Pläne und Werkzeuge",
+      "description": "Pläne verwalten, Bericht exportieren und Konto oder Sprache ändern.",
+      "setup": "Einrichtungsassistent"
     }
   },
   "parameterSidebar": {
@@ -1207,7 +1219,7 @@
       "toggle": "Tabelle der Ausgaben anzeigen",
       "caption": "Monatliche Ausgabenprojektion nach Strategieregeln während des Ruhestands nach Alter und Perzentil",
       "note": {
-        "fixedReal": "Die Zeilen zeigen jedes Ruhestandsjahr bei fester Kaufkraft: Die konfigurierten Ausgaben steigen mit der simulierten Inflation und werden nicht an die Depotentwicklung angepasst. Die Rente verringert, wie viel des Medianbetrags aus dem Depot kommen muss.",
+        "fixedReal": "Die Zeilen zeigen jedes Ruhestandsjahr bei fester Kaufkraft: Die konfigurierten Ausgaben steigen mit der simulierten Inflation und werden nicht an die Depotentwicklung angepasst. Die Finanzierung einschließlich Steuern steht in der Jahresübersicht darüber.",
         "vanguardDynamic": "Die Zeilen zeigen jedes Ruhestandsjahr mit den Vanguard-Leitplanken: Das erste Jahr startet mit dem Plan, danach sind {withdrawalRate} des Depotwerts zum Vorjahresende das Ziel, begrenzt durch die Leitplanken {ceiling} / {floor} gegenüber den inflationsbereinigten Vorjahresausgaben. Die Rente legt den Betrag nicht fest; sie verringert, wie viel davon aus dem Depot kommen muss.",
         "guytonKlinger": "Die Zeilen zeigen jedes Ruhestandsjahr mit Guyton-Klinger: Die Ausgaben sind inflationsgebunden, werden um 10% gekürzt, sobald die Entnahmequote mehr als 20% über {withdrawalRate} liegt, und um 10% erhöht, sobald sie mehr als 20% darunter liegt. Die Rente verringert, wie viel des Betrags aus dem Depot kommen muss.",
         "percentOfPortfolio": "Die Zeilen zeigen jedes Ruhestandsjahr bei Prozent vom Depot: Die Ausgaben betragen {withdrawalRate} des Depotwerts zum Vorjahresende, ohne Bezug auf das Vorjahr. Die Rente verringert, wie viel des Betrags aus dem Depot kommen muss."
@@ -1294,7 +1306,7 @@
     "explanation": {
       "strategyLabel": "Ausgabenregel",
       "readingLabel": "Lesart",
-      "reading": "Die durchgezogene Linie ist der mediane monatliche Ausgabenrahmen nach Strategieregeln; das schattierte Band umfasst das 10. bis 90. Perzentil der Ergebnisse. Beim Überfahren eines Alters erscheint zusätzlich die mediane portfoliofinanzierte Entnahmerate nach Rentenverrechnung.",
+      "reading": "Die durchgezogene Linie ist der mediane monatliche Ausgabenrahmen nach Strategieregeln; das schattierte Band umfasst das 10. bis 90. Perzentil der Ergebnisse. Beim Überfahren eines Alters erscheint zusätzlich die mittlere Bruttoentnahme geteilt durch den mittleren Depotwert zu Jahresbeginn, einschließlich Kapitalertragsteuer.",
       "strategies": {
         "fixedReal": "Feste Kaufkraft hält das geplante Budget auf einem Inflationspfad. Die Marktrenditen entscheiden, ob die Entnahmen durchhalten, ändern aber nie die Höhe der Ausgaben.",
         "vanguardDynamic": "Die Vanguard-Leitplanken starten mit dem geplanten Budget des ersten Ruhestandsjahres. Danach werden {withdrawalRate} des Depotwerts zum Vorjahresende angestrebt, begrenzt auf {ceiling} über und {floor} unter den inflationsbereinigten Vorjahresausgaben.",
@@ -1321,7 +1333,8 @@
       "p50": "50. Perzentil",
       "p90": "90. Perzentil",
       "withdrawalRate": "Portfoliofinanzierte Entnahmerate",
-      "note": "Ausgaben werden vor Rentenverrechnung gezeigt; die Entnahmerate im Tooltip nutzt nur den portfoliofinanzierten Medianbetrag."
+      "note": "Ausgaben zeigen den Bedarf. Die Entnahmerate im Tooltip stammt aus den tatsächlichen Bruttoentnahmen der Simulation; sie ist ein Verhältnis von Mittelwerten.",
+      "meanWithdrawalRate": "Ø Bruttoentnahme / Ø Anfangsdepot"
     },
     "markers": {
       "retirement": "Ruhestand"
@@ -2472,5 +2485,39 @@
       "whatIf": "Was-wäre-wenn testen → Regler und „Schnelles Was-wäre-wenn“ oben",
       "compare": "Zukünfte vergleichen → Tab „Szenarien“"
     }
+  },
+  "cashflowResults": {
+    "title": "Wohin das Geld fließt",
+    "age": "Alter",
+    "nominal": "Jahresbeträge · nominale Euro",
+    "real": "Jahresbeträge · heutige Kaufkraft",
+    "method": "Durchschnitt der tatsächlichen Geldbewegungen über alle simulierten Verläufe. Diese Beträge lassen sich addieren; sie sind nicht der Median (P50) aus den Diagrammen. Durch Rundung können einzelne Euro abweichen.",
+    "missing": "Bitte die Simulation neu berechnen, um die jährlichen Geldbewegungen zu sehen.",
+    "incomeTitle": "Einnahmen nach Steuern",
+    "withdrawalTitle": "Aus dem Depot",
+    "budgetTitle": "Ausgaben und Finanzierung",
+    "incomeGross": "Renten und weitere Einnahmen brutto",
+    "incomeTax": "Steuern auf Renten und Einnahmen",
+    "incomeNet": "Einnahmen netto",
+    "savings": "Sparbeitrag aus Erwerbseinkommen",
+    "portfolioWithdrawal": "Depotentnahme brutto",
+    "capitalGainsTax": "Kapitalertragsteuer",
+    "withdrawalNet": "Depotentnahme netto",
+    "expenses": "Ausgabenbedarf",
+    "funded": "Finanzierte Ausgaben",
+    "shortfall": "Nicht gedeckter Betrag",
+    "portfolioContribution": "Einzahlung ins Depot",
+    "totalTax": "In diesem Jahr abgezogene Steuern insgesamt: {amount}. Sie sind bereits in der Berechnung berücksichtigt.",
+    "shortfallNote": "In einem Teil der simulierten Verläufe reicht das Geld nicht für den gesamten Bedarf. Der nicht gedeckte Betrag steht nicht zum Ausgeben zur Verfügung.",
+    "workingYears": "Vor dem Ruhestand deckt das Gehalt im Modell die gewöhnlichen Lebenshaltungskosten. Nur der Sparbeitrag und zusätzliche geplante Geldbewegungen verändern das Depot.",
+    "assetReconciliation": "So verändert sich das Depot",
+    "openingAssets": "Depot zu Jahresbeginn",
+    "investmentReturn": "Wertentwicklung / Verlust",
+    "closingAssets": "Depot zum Jahresende",
+    "allYears": "Alle Jahre anzeigen",
+    "tableNote": "Jahresdurchschnitte; die Steuern sind bereits von Einnahmen bzw. Bruttoentnahmen abgezogen. Nicht nochmals abziehen.",
+    "assumptionsTitle": "Steuerannahmen und Zahlungszeitpunkt",
+    "assumptions": "Die Besteuerung folgt der Einstellung des jeweiligen Zahlungsstroms (Tarif 2026 für gewöhnliche Einkünfte und Fünftelregelung). Für Renten gilt der eingestellte effektive Steuersatz auf den steuerpflichtigen Anteil. Kapitalertragsteuer fällt auf realisierte Gewinne nach gewähltem Freibetrag und Teilfreistellung an. Es bleibt eine Planungsnäherung: Gehalt über den Sparbeitrag hinaus, individuelle Abzüge, Kirchensteuer und Solidaritätszuschlag auf Einkommensteuer sind nicht abgebildet.",
+    "oneOffTiming": "Zur Kompatibilität mit bestehenden Plänen wird eine Einmaleinnahme beim nächsten Lebensalter nach dem eingetragenen Buchungsalter ins Depot eingezahlt. Die Tabelle zeigt das Jahr der tatsächlichen Gutschrift einschließlich des zugehörigen Steuerabzugs."
   }
 }

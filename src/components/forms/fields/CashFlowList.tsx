@@ -188,7 +188,10 @@ export function CashFlowList({
   const safeFlows = Array.isArray(flows) ? flows : []
   const horizon = Math.max(1, endAge - currentAge)
   const baseYear = tax.baseYear ?? currentBaseYear()
-  const taxContext = useMemo<PensionContext>(() => ({ ...tax, legalRetirementAge }), [tax, legalRetirementAge])
+  const taxContext = useMemo<PensionContext>(
+    () => ({ ...tax, legalRetirementAge }),
+    [tax, legalRetirementAge]
+  )
 
   // What each taxed flow pays in its first year — the same arithmetic the
   // engine runs, so the row shows the number the projection uses.
@@ -271,9 +274,10 @@ export function CashFlowList({
     const once = state.frequency === 'once' && !pension
     // A calendar month pins a one-off to a plan year: the year sets the age,
     // the month is kept for display.
-    const startDate = once && /^\d{4}-(0[1-9]|1[0-2])$/.test(state.startDate.trim())
-      ? state.startDate.trim()
-      : undefined
+    const startDate =
+      once && /^\d{4}-(0[1-9]|1[0-2])$/.test(state.startDate.trim())
+        ? state.startDate.trim()
+        : undefined
     const startAge =
       startDate !== undefined
         ? Math.min(
@@ -302,10 +306,15 @@ export function CashFlowList({
       ...(state.growthRate.trim() !== '' && Number.isFinite(growth) && growth !== 0
         ? { growthRate: growth / 100 }
         : {}),
-      ...(pension && state.pensionTaxMode === 'share' && state.taxablePortion.trim() !== '' && Number.isFinite(taxable)
+      ...(pension &&
+      state.pensionTaxMode === 'share' &&
+      state.taxablePortion.trim() !== '' &&
+      Number.isFinite(taxable)
         ? { taxablePortion: Math.min(1, Math.max(0, taxable / 100)) }
         : {}),
-      ...(pension && state.pensionTaxMode !== 'share' ? { pensionTaxMode: state.pensionTaxMode } : {}),
+      ...(pension && state.pensionTaxMode !== 'share'
+        ? { pensionTaxMode: state.pensionTaxMode }
+        : {}),
       ...(state.kind === 'income' && state.taxTreatment !== 'none'
         ? { taxTreatment: state.taxTreatment }
         : {}),
@@ -464,7 +473,7 @@ export function CashFlowList({
               })
             }
             className={cn(
-              'rounded-sm inline-flex items-center gap-1.5 border-2 border-border px-3 py-1.5 text-[0.62rem] font-extrabold   transition-colors',
+              'rounded-sm inline-flex items-center gap-1.5 border-2 border-border px-3 py-1.5 text-xs font-extrabold   transition-colors',
               state.kind === kind
                 ? kind === 'pension'
                   ? 'bg-accent text-muted-foreground shadow-sm'
@@ -488,10 +497,7 @@ export function CashFlowList({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col sm:col-span-2">
-          <Label
-            htmlFor={`cashflow-name-${id ?? 'new'}`}
-            className="mb-2 text-[0.68rem] font-semibold  "
-          >
+          <Label htmlFor={`cashflow-name-${id ?? 'new'}`} className="mb-2 text-xs font-semibold  ">
             {t('fields.name')}
           </Label>
           <Input
@@ -500,14 +506,14 @@ export function CashFlowList({
             value={state.name}
             placeholder={t('fields.namePlaceholder')}
             onChange={(event) => setState({ ...state, name: event.target.value })}
-            className="rounded-sm h-11 border-2 border-border px-3 text-[0.68rem] font-semibold  "
+            className="rounded-sm h-11 border-2 border-border px-3 text-xs font-semibold  "
           />
         </div>
 
         <div className="flex flex-col">
           <Label
             htmlFor={`cashflow-amount-${id ?? 'new'}`}
-            className="mb-2 text-[0.68rem] font-semibold  "
+            className="mb-2 text-xs font-semibold  "
           >
             {t('fields.amount')}
           </Label>
@@ -519,14 +525,14 @@ export function CashFlowList({
             autoComplete="off"
             value={state.amount}
             onChange={(event) => setState({ ...state, amount: field.handleChange(event).display })}
-            className="rounded-sm h-11 border-2 border-border px-3 text-[0.68rem] font-semibold  "
+            className="rounded-sm h-11 border-2 border-border px-3 text-xs font-semibold  "
           />
         </div>
 
         <div className="flex flex-col">
           <Label
             htmlFor={`cashflow-frequency-${id ?? 'new'}`}
-            className="mb-2 text-[0.68rem] font-semibold  "
+            className="mb-2 text-xs font-semibold  "
           >
             {t('fields.frequency')}
           </Label>
@@ -555,10 +561,7 @@ export function CashFlowList({
         </div>
 
         <div className="flex flex-col">
-          <Label
-            htmlFor={`cashflow-start-${id ?? 'new'}`}
-            className="mb-2 text-[0.68rem] font-semibold  "
-          >
+          <Label htmlFor={`cashflow-start-${id ?? 'new'}`} className="mb-2 text-xs font-semibold  ">
             {state.frequency === 'once' ? t('fields.atAge') : t('fields.startAge')}
           </Label>
           <Input
@@ -570,7 +573,7 @@ export function CashFlowList({
             value={state.startAge}
             placeholder={String(state.kind === 'pension' ? legalRetirementAge : currentAge)}
             onChange={(event) => setState({ ...state, startAge: event.target.value })}
-            className="rounded-sm h-11 border-2 border-border px-3 text-[0.68rem] font-semibold"
+            className="rounded-sm h-11 border-2 border-border px-3 text-xs font-semibold"
           />
         </div>
 
@@ -578,7 +581,7 @@ export function CashFlowList({
           <div className="flex flex-col">
             <Label
               htmlFor={`cashflow-date-${id ?? 'new'}`}
-              className="mb-2 text-[0.68rem] font-semibold  "
+              className="mb-2 text-xs font-semibold  "
             >
               {t('fields.startDate')}
             </Label>
@@ -591,14 +594,15 @@ export function CashFlowList({
                 // The age follows the year immediately, so the two fields never
                 // disagree while the form is open.
                 const year = Number(value.slice(0, 4))
-                const derived = Number.isFinite(year) && value.length >= 4
-                  ? String(Math.min(endAge, Math.max(currentAge, currentAge + year - baseYear)))
-                  : state.startAge
+                const derived =
+                  Number.isFinite(year) && value.length >= 4
+                    ? String(Math.min(endAge, Math.max(currentAge, currentAge + year - baseYear)))
+                    : state.startAge
                 setState({ ...state, startDate: value, startAge: derived })
               }}
-              className="rounded-sm h-11 border-2 border-border px-3 text-[0.68rem] font-semibold"
+              className="rounded-sm h-11 border-2 border-border px-3 text-xs font-semibold"
             />
-            <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
+            <span className="mt-1 text-xs font-medium text-muted-foreground">
               {t('fields.startDateHint')}
             </span>
           </div>
@@ -606,10 +610,7 @@ export function CashFlowList({
 
         {state.frequency !== 'once' && (
           <div className="flex flex-col">
-            <Label
-              htmlFor={`cashflow-end-${id ?? 'new'}`}
-              className="mb-2 text-[0.68rem] font-semibold  "
-            >
+            <Label htmlFor={`cashflow-end-${id ?? 'new'}`} className="mb-2 text-xs font-semibold  ">
               {t('fields.endAge')}
             </Label>
             <Input
@@ -621,7 +622,7 @@ export function CashFlowList({
               value={state.endAge}
               placeholder={String(endAge)}
               onChange={(event) => setState({ ...state, endAge: event.target.value })}
-              className="rounded-sm h-11 border-2 border-border px-3 text-[0.68rem] font-semibold"
+              className="rounded-sm h-11 border-2 border-border px-3 text-xs font-semibold"
             />
           </div>
         )}
@@ -632,13 +633,13 @@ export function CashFlowList({
           type="button"
           onClick={() => setAdvancedOpen((open) => !open)}
           aria-expanded={advancedOpen}
-          className="text-[0.62rem] font-extrabold   text-accent"
+          className="text-xs font-extrabold   text-accent"
         >
           {advancedOpen ? t('advanced.hide') : t('advanced.show')}
         </button>
         {advancedOpen && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="flex items-start gap-2 text-[0.62rem] font-semibold leading-snug text-ink">
+            <label className="flex items-start gap-2 text-xs font-semibold leading-snug text-ink">
               <input
                 type="checkbox"
                 checked={state.inflationLinked}
@@ -659,7 +660,7 @@ export function CashFlowList({
             <div className="flex flex-col">
               <Label
                 htmlFor={`cashflow-growth-${id ?? 'new'}`}
-                className="mb-2 text-[0.62rem] font-semibold  "
+                className="mb-2 text-xs font-semibold  "
               >
                 {t('fields.growthRate')}
               </Label>
@@ -671,9 +672,9 @@ export function CashFlowList({
                 value={state.growthRate}
                 placeholder="0"
                 onChange={(event) => setState({ ...state, growthRate: event.target.value })}
-                className="rounded-sm h-10 border-2 border-border px-3 text-[0.68rem] font-semibold"
+                className="rounded-sm h-10 border-2 border-border px-3 text-xs font-semibold"
               />
-              <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
+              <span className="mt-1 text-xs font-medium text-muted-foreground">
                 {t('fields.growthRateHint')}
               </span>
             </div>
@@ -681,7 +682,7 @@ export function CashFlowList({
               <div className="flex flex-col sm:col-span-2">
                 <Label
                   htmlFor={`cashflow-pension-tax-${id ?? 'new'}`}
-                  className="mb-2 text-[0.62rem] font-semibold  "
+                  className="mb-2 text-xs font-semibold  "
                 >
                   {t('fields.pensionTaxMode')}
                 </Label>
@@ -693,7 +694,7 @@ export function CashFlowList({
                 >
                   <SelectTrigger
                     id={`cashflow-pension-tax-${id ?? 'new'}`}
-                    className="rounded-sm h-11 border-2 border-border text-[0.62rem] "
+                    className="rounded-sm h-11 border-2 border-border text-xs "
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -705,7 +706,7 @@ export function CashFlowList({
                     ))}
                   </SelectContent>
                 </Select>
-                <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
+                <span className="mt-1 text-xs font-medium text-muted-foreground">
                   {t('fields.pensionTaxModeHint', {
                     year: yearForAge(
                       parseAge(state.startAge) ?? legalRetirementAge,
@@ -720,7 +721,7 @@ export function CashFlowList({
               <div className="flex flex-col sm:col-span-2">
                 <Label
                   htmlFor={`cashflow-tax-${id ?? 'new'}`}
-                  className="mb-2 text-[0.62rem] font-semibold  "
+                  className="mb-2 text-xs font-semibold  "
                 >
                   {t('fields.taxTreatment')}
                 </Label>
@@ -732,7 +733,7 @@ export function CashFlowList({
                 >
                   <SelectTrigger
                     id={`cashflow-tax-${id ?? 'new'}`}
-                    className="rounded-sm h-11 border-2 border-border text-[0.62rem] "
+                    className="rounded-sm h-11 border-2 border-border text-xs "
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -744,7 +745,7 @@ export function CashFlowList({
                     ))}
                   </SelectContent>
                 </Select>
-                <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
+                <span className="mt-1 text-xs font-medium text-muted-foreground">
                   {t('fields.taxTreatmentHint')}
                 </span>
               </div>
@@ -752,7 +753,7 @@ export function CashFlowList({
             <div className="flex flex-col sm:col-span-2">
               <Label
                 htmlFor={`cashflow-note-${id ?? 'new'}`}
-                className="mb-2 text-[0.62rem] font-semibold  "
+                className="mb-2 text-xs font-semibold  "
               >
                 {t('fields.note')}
               </Label>
@@ -763,14 +764,14 @@ export function CashFlowList({
                 value={state.note}
                 placeholder={t('fields.notePlaceholder')}
                 onChange={(event) => setState({ ...state, note: event.target.value })}
-                className="rounded-sm h-10 border-2 border-border px-3 text-[0.68rem] font-medium normal-case "
+                className="rounded-sm h-10 border-2 border-border px-3 text-xs font-medium normal-case "
               />
             </div>
             {state.kind === 'pension' && state.pensionTaxMode === 'share' && (
               <div className="flex flex-col">
                 <Label
                   htmlFor={`cashflow-taxable-${id ?? 'new'}`}
-                  className="mb-2 text-[0.62rem] font-semibold  "
+                  className="mb-2 text-xs font-semibold  "
                 >
                   {t('fields.taxablePortion')}
                 </Label>
@@ -784,9 +785,9 @@ export function CashFlowList({
                   value={state.taxablePortion}
                   placeholder={String(Math.round((tax.pensionTaxablePortion ?? 0) * 100))}
                   onChange={(event) => setState({ ...state, taxablePortion: event.target.value })}
-                  className="rounded-sm h-10 border-2 border-border px-3 text-[0.68rem] font-semibold"
+                  className="rounded-sm h-10 border-2 border-border px-3 text-xs font-semibold"
                 />
-                <span className="mt-1 text-[0.58rem] font-medium text-muted-foreground">
+                <span className="mt-1 text-xs font-medium text-muted-foreground">
                   {t('fields.taxablePortionHint', {
                     portion: format.number(tax.pensionTaxablePortion ?? 0, {
                       style: 'percent',
@@ -828,7 +829,7 @@ export function CashFlowList({
   return (
     <div className="space-y-4" data-testid="cashflow-list">
       {!compact && (
-        <div className="flex items-center gap-2 text-[0.62rem] font-semibold   text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs font-semibold   text-muted-foreground">
           <span>{t('listTitle')}</span>
           <InfoTip content={t('intro')} label={t('listTitle')} side="bottom" />
         </div>
@@ -841,7 +842,7 @@ export function CashFlowList({
             className="rounded-sm space-y-2 border border-border bg-white p-3 shadow-sm"
             data-testid="cashflow-timeline"
           >
-            <div className="flex items-center justify-between text-[0.55rem] font-extrabold   text-muted-foreground">
+            <div className="flex items-center justify-between text-xs font-extrabold   text-muted-foreground">
               <span>{t('timeline.title')}</span>
               <span className="tabular-nums">
                 {currentAge} – {endAge}
@@ -852,7 +853,7 @@ export function CashFlowList({
                 const geometry = barGeometry(flow)
                 return (
                   <div key={flow.id} className="flex items-center gap-2">
-                    <span className="w-24 shrink-0 truncate text-[0.55rem] font-bold   text-ink sm:w-32">
+                    <span className="w-24 shrink-0 truncate text-xs font-bold   text-ink sm:w-32">
                       {displayName(flow)}
                     </span>
                     <span className="rounded-sm relative h-3 flex-1 border-2 border-ink/20 bg-muted/40">
@@ -906,14 +907,11 @@ export function CashFlowList({
                 </tr>
               </thead>
               {groupedFlows.map((group) => (
-                <tbody
-                  key={group.key}
-                  className="divide-y divide-border border-t border-border"
-                >
+                <tbody key={group.key} className="divide-y divide-border border-t border-border">
                   <tr className="bg-muted/40" data-testid={`cashflow-group-${group.key}`}>
                     <td
                       colSpan={4}
-                      className="px-3 py-1.5 text-[0.58rem] font-extrabold   text-muted-foreground"
+                      className="px-3 py-1.5 text-xs font-extrabold   text-muted-foreground"
                     >
                       {t(`table.groups.${group.key}`, { count: group.flows.length })}
                     </td>
@@ -928,7 +926,7 @@ export function CashFlowList({
                     ) : (
                       <tr key={flow.id}>
                         <td className="px-3 py-2.5 text-left">
-                          <span className="flex items-center gap-1.5 text-[0.72rem] font-bold  ">
+                          <span className="flex items-center gap-1.5 text-xs font-bold  ">
                             {flow.kind === 'pension' ? (
                               <Landmark
                                 className="h-3.5 w-3.5 text-accent"
@@ -947,7 +945,7 @@ export function CashFlowList({
                             )}
                             {displayName(flow)}
                           </span>
-                          <span className="mt-0.5 block text-[0.58rem] font-semibold   text-muted-foreground">
+                          <span className="mt-0.5 block text-xs font-semibold   text-muted-foreground">
                             {/* Narrow screens fold the period column into this line. */}
                             <span className="sm:hidden">{windowLabel(flow)} · </span>
                             {frequencyLabel(flow.frequency)}
@@ -967,19 +965,19 @@ export function CashFlowList({
                           </span>
                           {flow.note && (
                             <span
-                              className="mt-0.5 block text-[0.58rem] font-medium normal-case  text-muted-foreground"
+                              className="mt-0.5 block text-xs font-medium normal-case  text-muted-foreground"
                               data-testid={`cashflow-note-${flow.id}`}
                             >
                               {flow.note}
                             </span>
                           )}
                         </td>
-                        <td className="hidden px-3 py-2.5 text-left text-[0.62rem] font-semibold   text-muted-foreground sm:table-cell">
+                        <td className="hidden px-3 py-2.5 text-left text-xs font-semibold   text-muted-foreground sm:table-cell">
                           {windowLabel(flow)}
                         </td>
                         <td
                           className={cn(
-                            'px-3 py-2.5 text-right text-[0.72rem] font-bold tabular-nums',
+                            'px-3 py-2.5 text-right text-xs font-bold tabular-nums',
                             flow.kind === 'expense' ? 'text-ink' : 'text-ok'
                           )}
                         >
@@ -1031,16 +1029,14 @@ export function CashFlowList({
 
       {availableTemplates.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[0.62rem] font-semibold   text-muted-foreground">
-            {t('templates.label')}
-          </p>
+          <p className="text-xs font-semibold   text-muted-foreground">{t('templates.label')}</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {availableTemplates.map((template) => (
               <button
                 key={template.key}
                 type="button"
                 onClick={() => handleAddTemplate(template)}
-                className="rounded-sm border-2 border-dashed border-border bg-white/50 px-3 py-2 text-left text-[0.66rem] font-semibold   text-ink transition-colors hover:-translate-x-[1px] hover:-translate-y-[1px] hover:bg-amber/15 hover:shadow-sm"
+                className="rounded-sm border-2 border-dashed border-border bg-white/50 px-3 py-2 text-left text-xs font-semibold   text-ink transition-colors hover:-translate-x-[1px] hover:-translate-y-[1px] hover:bg-amber/15 hover:shadow-sm"
               >
                 <span className="flex items-center gap-1.5">
                   {template.kind === 'pension' ? (
@@ -1052,7 +1048,7 @@ export function CashFlowList({
                   )}
                   {template.name}
                 </span>
-                <span className="mt-1 block text-[0.58rem] font-medium normal-case text-muted-foreground">
+                <span className="mt-1 block text-xs font-medium normal-case text-muted-foreground">
                   {formatCurrency(template.amount)} · {frequencyLabel(template.frequency)}
                 </span>
               </button>
@@ -1064,9 +1060,7 @@ export function CashFlowList({
       <div
         className={cn(
           'rounded-sm border border-border px-4 py-4 shadow-sm',
-          safeFlows.length === 0
-            ? 'bg-gradient-to-br from-accent/5 to-amber/5'
-            : 'bg-white'
+          safeFlows.length === 0 ? 'bg-gradient-to-br from-accent/5 to-amber/5' : 'bg-white'
         )}
       >
         {safeFlows.length === 0 && (
@@ -1075,9 +1069,7 @@ export function CashFlowList({
               <Plus className="h-4 w-4 text-ink" strokeWidth={3} aria-hidden="true" />
             </span>
             <div>
-              <p className="text-[0.7rem] font-extrabold   text-ink">
-                {t('empty.title')}
-              </p>
+              <p className="text-[0.7rem] font-extrabold   text-ink">{t('empty.title')}</p>
               <p className="text-[0.6rem] font-semibold   text-muted-foreground">
                 {t('empty.hint')}
               </p>
@@ -1086,7 +1078,7 @@ export function CashFlowList({
         )}
         {renderDraftForm(draft, setDraft, amountField)}
         {safeFlows.length > 0 && (
-          <dl className="mt-4 space-y-1.5 border-t border-dashed border-border pt-3 text-[0.62rem] font-semibold   text-muted-foreground">
+          <dl className="mt-4 space-y-1.5 border-t border-dashed border-border pt-3 text-xs font-semibold   text-muted-foreground">
             {totals.pension > 0 && (
               <div className="flex justify-between">
                 <dt>{t('summary.pension')}</dt>

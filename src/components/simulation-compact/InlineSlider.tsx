@@ -19,6 +19,7 @@ interface InlineSliderProps {
   width: number
   onChange: (value: number) => void
   onReset?: () => void
+  disabled?: boolean
   resetLabel?: string
 }
 
@@ -35,6 +36,7 @@ export function InlineSlider({
   onChange,
   onReset,
   resetLabel,
+  disabled = false,
 }: InlineSliderProps) {
   return (
     <div
@@ -45,6 +47,7 @@ export function InlineSlider({
         flex: '1 1 auto',
         maxWidth: width,
         minWidth: Math.max(190, width - 70),
+        opacity: disabled ? 0.5 : 1,
       }}
     >
       <span
@@ -60,6 +63,7 @@ export function InlineSlider({
       </span>
       <SliderPrimitive.Root
         className="ds-slider"
+        disabled={disabled}
         value={[value]}
         min={min}
         max={max}

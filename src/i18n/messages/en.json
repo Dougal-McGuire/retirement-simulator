@@ -433,7 +433,7 @@
           "ordinary": "Ordinary income (§ 32a EStG)",
           "oneFifth": "One-fifth rule (§ 34 EStG)"
         },
-        "taxTreatmentHint": "Taxed in the year it arrives on top of that year’s pensions and other taxed income, with the 2025 tariff (splitting for couples). Solidaritätszuschlag and church tax are not modelled.",
+        "taxTreatmentHint": "Taxed in the year it arrives on top of that year’s pensions and other taxed income, with the 2026 tariff (splitting for couples). Solidaritätszuschlag and church tax are not modelled.",
         "pensionTaxMode": "Taxation",
         "pensionTaxModeOptions": {
           "share": "Taxable share (static)",
@@ -561,7 +561,7 @@
   "simulationCompact": {
     "tabs": {
       "overview": "Overview",
-      "plan": "Plan",
+      "plan": "Edit plan",
       "cashflow": "Cash flows",
       "scenarios": "Scenarios"
     },
@@ -613,7 +613,9 @@
       "medianEnd": "Median end",
       "p10Age": "P10: {age}",
       "perMonth": "{amount}/mo",
-      "p10End": "P10: {value}"
+      "p10End": "P10: {value}",
+      "grossMean": "Mean gross · {amount}/mo",
+      "successHint": "Budget and legacy goal met"
     },
     "chart": {
       "bandOuter": "P10–90",
@@ -668,6 +670,16 @@
         "guytonKlinger": "Guyton-Klinger {rate}",
         "percentOfPortfolio": "% of portfolio {rate}"
       }
+    },
+    "pageTitle": "Retirement planning",
+    "error": "The simulation could not be calculated. Please try again.",
+    "retry": "Try again",
+    "stale": "The displayed results still belong to the previous calculation.",
+    "tools": {
+      "button": "Menu",
+      "title": "Plans and tools",
+      "description": "Manage plans, export a report, and change account or language.",
+      "setup": "Setup wizard"
     }
   },
   "parameterSidebar": {
@@ -1294,7 +1306,7 @@
     "explanation": {
       "strategyLabel": "Spending rule",
       "readingLabel": "How to read it",
-      "reading": "The solid line is the median monthly allowance after strategy rules; the shaded band spans the 10th to 90th percentile of outcomes. Hover any age to also see the median portfolio-funded withdrawal rate after pension offsets.",
+      "reading": "The solid line is the median monthly allowance after strategy rules; the shaded band spans the 10th to 90th percentile of outcomes. Hover any age to see mean gross withdrawals divided by mean opening assets, including capital gains tax.",
       "strategies": {
         "fixedReal": "Fixed real spending keeps the planned budget on an inflation path. Portfolio returns decide whether the withdrawals succeed, but they never change what is spent.",
         "vanguardDynamic": "The Vanguard guardrails start from the planned first retirement-year budget. Later years target {withdrawalRate} of the prior year-end portfolio, capped at {ceiling} above and {floor} below last year’s inflation-adjusted spending.",
@@ -1321,7 +1333,8 @@
       "p50": "50th Percentile",
       "p90": "90th Percentile",
       "withdrawalRate": "Portfolio-funded withdrawal rate",
-      "note": "Spending is shown before pension offsets; the withdrawal rate in the tooltip uses only the portfolio-funded median amount."
+      "note": "Spending shows the budget. The tooltip withdrawal rate uses actual gross sales from the simulation and is a ratio of means.",
+      "meanWithdrawalRate": "Mean gross draw / mean opening portfolio"
     },
     "markers": {
       "retirement": "Retirement"
@@ -2472,5 +2485,39 @@
       "whatIf": "Try what-ifs → the levers and Quick what-if above",
       "compare": "Compare futures → Scenarios tab"
     }
+  },
+  "cashflowResults": {
+    "title": "Where the money goes",
+    "age": "Age",
+    "nominal": "Annual amounts · nominal euros",
+    "real": "Annual amounts · today’s purchasing power",
+    "method": "Averages of the actual cash flows across all simulated paths. These figures add up; they are not the median (P50) used in the charts. Rounded amounts may differ by a euro.",
+    "missing": "Recalculate the simulation to see the annual cash-flow breakdown.",
+    "incomeTitle": "Income after tax",
+    "withdrawalTitle": "From the portfolio",
+    "budgetTitle": "Spending and funding",
+    "incomeGross": "Gross pensions and other income",
+    "incomeTax": "Tax on pensions and other income",
+    "incomeNet": "Net income",
+    "savings": "Savings from employment",
+    "portfolioWithdrawal": "Gross portfolio withdrawal",
+    "capitalGainsTax": "Capital gains tax",
+    "withdrawalNet": "Net portfolio withdrawal",
+    "expenses": "Spending budget",
+    "funded": "Funded spending",
+    "shortfall": "Unfunded amount",
+    "portfolioContribution": "Paid into the portfolio",
+    "totalTax": "Total taxes deducted in this year: {amount}. These are already included in the calculation.",
+    "shortfallNote": "Some simulated paths cannot fund the full budget. The unfunded amount is not available to spend.",
+    "workingYears": "Before retirement, salary is assumed to cover ordinary living costs. Only the savings contribution and additional scheduled cash flows move the portfolio.",
+    "assetReconciliation": "How the portfolio balance changes",
+    "openingAssets": "Opening portfolio balance",
+    "investmentReturn": "Investment gain / loss",
+    "closingAssets": "Closing portfolio balance",
+    "allYears": "Show every year",
+    "tableNote": "Annual averages; taxes are already deducted from income and gross withdrawals. Do not subtract them again.",
+    "assumptionsTitle": "Tax assumptions and payment timing",
+    "assumptions": "Income-tax treatment follows each flow’s settings (2026 tariff for ordinary and one-fifth-rule income). Pension tax uses the configured effective rate on its taxable portion. Capital gains tax applies to realised gains after the selected allowance and fund exemption. This is a planning approximation: wages beyond the savings contribution, deductions, church tax and the income-tax solidarity surcharge are not modelled.",
+    "oneOffTiming": "For compatibility with existing plans, one-off income is credited to the portfolio at the next age after its entered booking age. The table shows the year of the actual credit, including the associated tax."
   }
 }

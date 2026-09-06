@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
 import { useFormatter } from 'next-intl'
 import type { ChartDataPoint, SimulationResults } from '@/types'
 import type { BandPoint } from '@/components/charts/AssetsChart'
@@ -41,18 +40,7 @@ export function useChartData(results: SimulationResults, displayReal = false) {
       const deflator = real ? (results.inflationIndexP50?.[index] ?? 1) : 1
       const monthlySavings =
         nominalMonthlySavings === null ? null : nominalMonthlySavings / deflator
-      // Nominal pensions lose ground in real mode; indexed ones hold their
-      // value and grow in nominal mode instead.
-      const pension = pensionMonthlyAtAge(
-        results.params.cashFlows ?? [],
-        age,
-        results.params.legalRetirementAge
-      )
-      const priceLevel = results.inflationIndexP50?.[index] ?? 1
-      const monthlyPensionAtAge = real
-        ? pension.fixed / deflator + pension.linked
-        : pension.fixed + pension.linked * priceLevel
-      const medianPortfolioDraw = Math.max(0, spending.p50[index] - monthlyPensionAtAge)
+      const cashFlow = (real ? results.cashFlowMeansReal : results.cashFlowMeans)?.[index]
 
       return {
         age,
@@ -64,10 +52,12 @@ export function useChartData(results: SimulationResults, displayReal = false) {
         spending_p10: Math.round(spending.p10[index]),
         spending_p50: Math.round(spending.p50[index]),
         spending_p90: Math.round(spending.p90[index]),
-        // A ratio of two like-for-like series: identical in both modes, as it
-        // should be — deflating cannot change a withdrawal *rate*.
-        withdrawal_rate_p50:
-          assets.p50[index] > 0 ? (medianPortfolioDraw * 12) / assets.p50[index] : null,
+        // Ratio of booked means in the selected euro basis, not a median rate.
+        // Path-wise deflation can change the weighting across paths.
+        withdrawal_rate_mean:
+          cashFlow && cashFlow.openingAssets > 0
+            ? cashFlow.portfolioWithdrawal / cashFlow.openingAssets
+            : null,
         monthly_savings_p50: monthlySavings,
       }
     })

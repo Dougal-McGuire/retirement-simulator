@@ -287,4 +287,38 @@ describe('/api/generate-pdf', () => {
       })
     )
   })
+  it('preserves per-flow tax assumptions through export validation', async () => {
+    renderToBuffer.mockResolvedValue(Buffer.from('%PDF-1.4'))
+    const params: SimulationParams = {
+      ...DEFAULT_PARAMS,
+      cashFlows: [
+        {
+          id: 'company',
+          name: 'Company pension',
+          kind: 'pension',
+          amount: 1000,
+          frequency: 'monthly',
+          taxablePortion: 0.75,
+          pensionTaxMode: 'versorgungsbezuege',
+        },
+      ],
+    }
+    const response = await POST(
+      createJsonRequest({ params, results: createSimulationResults(params), locale: 'en' })
+    )
+    expect(response.status).toBe(200)
+    expect(mapReportDataToContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spending: expect.objectContaining({
+          cashFlows: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'company',
+              taxablePortion: 0.75,
+              pensionTaxMode: 'versorgungsbezuege',
+            }),
+          ]),
+        }),
+      })
+    )
+  })
 })

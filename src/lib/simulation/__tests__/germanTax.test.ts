@@ -7,10 +7,10 @@ import {
   versorgungsfreibetrag,
 } from '@/lib/simulation/germanTax'
 
-describe('§ 32a income tax tariff (2025)', () => {
+describe('§ 32a income tax tariff (2026)', () => {
   it('charges nothing up to the Grundfreibetrag and is monotonic beyond it', () => {
-    expect(incomeTaxSingle(12_096)).toBe(0)
-    expect(incomeTaxSingle(12_097)).toBeGreaterThanOrEqual(0)
+    expect(incomeTaxSingle(12_348)).toBe(0)
+    expect(incomeTaxSingle(12_349)).toBeGreaterThanOrEqual(0)
     let previous = 0
     for (let taxable = 0; taxable <= 400_000; taxable += 1_000) {
       const tax = incomeTaxSingle(taxable)
@@ -20,12 +20,12 @@ describe('§ 32a income tax tariff (2025)', () => {
   })
 
   it('matches the published zone formulas at their boundaries', () => {
-    // Top of zone 2: y = 0.5347 → (932.3·y + 1400)·y = 1015.13… floored.
-    expect(incomeTaxSingle(17_443)).toBe(1_015)
+    // Top of zone 2: y = 0.5451 → (914.51·y + 1400)·y = 1034.87… floored.
+    expect(incomeTaxSingle(17_799)).toBe(1_034)
     // Top of the 42 % zone.
-    expect(incomeTaxSingle(277_825)).toBe(Math.floor(0.42 * 277_825 - 10_911.92))
+    expect(incomeTaxSingle(277_825)).toBe(Math.floor(0.42 * 277_825 - 11_135.63))
     // Rich-tax zone.
-    expect(incomeTaxSingle(300_000)).toBe(Math.floor(0.45 * 300_000 - 19_246.67))
+    expect(incomeTaxSingle(300_000)).toBe(Math.floor(0.45 * 300_000 - 19_470.38))
   })
 
   it('applies splitting as twice the tax on half the income', () => {

@@ -80,6 +80,8 @@ export function isPensionFlow(flow: CashFlow): boolean {
 
 /** Tax and timing defaults the flows inherit from the plan. */
 export interface PensionContext {
+  /** Age in baseYear, needed when previewing a future pension. */
+  currentAge?: number
   legalRetirementAge: number
   pensionTaxablePortion?: number
   pensionTaxRate?: number
@@ -195,7 +197,7 @@ export function netPensionAnnualAtAge(
     const growth = flow.growthRate ?? 0
     const grossAt = (index: number) => pensionMonthlyAmount(flow) * 12 * Math.pow(1 + growth, index)
     const yearIndex = age - start
-    const startYear = yearForAge(start, age - yearIndex, context)
+    const startYear = yearForAge(start, context.currentAge ?? age, context)
     const taxable = pensionTaxableAnnual(flow, yearIndex, grossAt, startYear, context)
     net += grossAt(yearIndex) - taxable * rate
   }
@@ -581,6 +583,8 @@ export interface CashFlowSeries {
   incomeLinked: number[]
   /** Extra income per year offset, fixed in nominal euros. */
   incomeFixed: number[]
+  incomeTaxLinked: number[]
+  incomeTaxFixed: number[]
   expenseLinked: number[]
   expenseFixed: number[]
   /**
@@ -614,6 +618,8 @@ export function buildCashFlowSeries(
   const years = Math.max(0, endAge - currentAge + 1)
   const incomeLinked = new Array<number>(years).fill(0)
   const incomeFixed = new Array<number>(years).fill(0)
+  const incomeTaxLinked = new Array<number>(years).fill(0)
+  const incomeTaxFixed = new Array<number>(years).fill(0)
   const expenseLinked = new Array<number>(years).fill(0)
   const expenseFixed = new Array<number>(years).fill(0)
   const oneTimeIncomeLinkedByAge = new Map<number, number>()
@@ -673,10 +679,11 @@ export function buildCashFlowSeries(
     const perYear = flow.frequency === 'monthly' ? amount * 12 : amount
     const linked = isPension ? flow.inflationLinked === true : flow.inflationLinked !== false
     const growth = flow.growthRate ?? 0
-    const start = Math.max(
-      currentAge,
-      isPension ? pensionStartAge(flow, pension.legalRetirementAge) : (flow.startAge ?? currentAge)
-    )
+    const originalStart = isPension
+      ? pensionStartAge(flow, pension.legalRetirementAge)
+      : (flow.startAge ?? currentAge)
+    const start = Math.max(currentAge, originalStart)
+    const growthStart = isPension ? originalStart : start
     const last = flow.frequency === 'once' ? start : Math.min(endAge, flow.endAge ?? endAge)
     if (start > endAge || last < start) continue
 
@@ -685,16 +692,16 @@ export function buildCashFlowSeries(
     // top of inflation.
     const grossAt = (index: number) =>
       growth === 0 ? perYear : perYear * Math.pow(1 + growth, index)
-    for (let age = start; age <= last; age++) gross[age - currentAge] = grossAt(age - start)
+    for (let age = start; age <= last; age++) gross[age - currentAge] = grossAt(age - growthStart)
 
     let taxable: number[] | undefined
     if (isPension) {
       taxable = new Array<number>(years).fill(0)
-      const startYear = yearForAge(start, currentAge, pension)
+      const startYear = yearForAge(originalStart, currentAge, pension)
       for (let age = start; age <= last; age++) {
         taxable[age - currentAge] = pensionTaxableAnnual(
           flow,
-          age - start,
+          age - originalStart,
           grossAt,
           startYear,
           pension
@@ -758,9 +765,15 @@ export function buildCashFlowSeries(
         tax = oneFifthRuleTax(amount, rest, splitting)
       }
 
+      if (income) (linked ? incomeTaxLinked : incomeTaxFixed)[offset] += tax
       const net = Math.max(0, amount - tax)
       if (tax > 0 && !taxByFlow.has(flow.id)) {
-        taxByFlow.set(flow.id, { age: currentAge + offset - (once ? 1 : 0), gross: amount, tax, net })
+        taxByFlow.set(flow.id, {
+          age: currentAge + offset - (once ? 1 : 0),
+          gross: amount,
+          tax,
+          net,
+        })
       }
 
       if (once) {
@@ -779,6 +792,8 @@ export function buildCashFlowSeries(
     oneTimeIncomeFixedByAge,
     incomeLinked,
     incomeFixed,
+    incomeTaxLinked,
+    incomeTaxFixed,
     expenseLinked,
     expenseFixed,
     taxByFlow,

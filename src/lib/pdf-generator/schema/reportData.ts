@@ -64,6 +64,9 @@ export const SpendingSchema = z.object({
         endAge: z.number().min(0).max(120).optional(),
         inflationLinked: z.boolean().optional(),
         growthRate: z.number().min(-1).max(1).optional(),
+        taxablePortion: z.number().min(0).max(1).optional(),
+        taxTreatment: z.enum(['none', 'ordinary', 'oneFifth']).optional(),
+        pensionTaxMode: z.enum(['share', 'statutory', 'versorgungsbezuege']).optional(),
       })
     )
     .default([]),
