@@ -11,8 +11,9 @@ test.describe('i18n routing', () => {
 
   test('renders German translations on simulation page', async ({ page }) => {
     await page.goto('/de/simulation')
+    await page.getByText('Was wäre, wenn …?', { exact: true }).click()
     // The compact chrome, in German: the run button, a lever label and a tab.
-    await expect(page.getByTestId('run-button')).toContainText('Rechnen')
+    await expect(page.getByTestId('run-button')).toContainText('Neu berechnen')
     await expect(page.getByTestId('tab-overview')).toContainText('Überblick')
     await expect(
       page.getByTestId('compact-command-bar').getByRole('slider', { name: 'Jährliche Sparrate' })
@@ -21,6 +22,7 @@ test.describe('i18n routing', () => {
 
   test('localises the seeded cash-flow names in German', async ({ page }) => {
     await page.goto('/de/simulation')
+    await page.getByText('Was wäre, wenn …?', { exact: true }).click()
     await page.getByTestId('tab-plan').click()
     await page.getByTestId('plan-section-pill-cashFlows').click()
 
@@ -51,6 +53,7 @@ test.describe('i18n routing', () => {
     await page.getByTestId('command-save').click()
 
     await page.goto('/de/simulation')
+    await page.getByText('Was wäre, wenn …?', { exact: true }).click()
     await page.getByTestId('tab-plan').click()
     await page.getByTestId('plan-section-pill-cashFlows').click()
     // The user's own text wins over the seeded translation.

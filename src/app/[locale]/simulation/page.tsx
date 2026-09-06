@@ -1,23 +1,27 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import * as Tabs from '@radix-ui/react-tabs'
+import {
+  ArrowLeftRight,
+  ChartNoAxesCombined,
+  Landmark,
+  SlidersHorizontal,
+  WalletCards,
+} from 'lucide-react'
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 import { areSimulationParamsEqual } from '@/lib/simulation/planInsights'
 import {
-  usePlans,
   useSimulationLoading,
   useSimulationParams,
   useSimulationResults,
   useSimulationStore,
 } from '@/lib/stores/simulationStore'
-import { useDisplayReal } from '@/lib/stores/displayStore'
-import { effectiveRunCount } from '@/lib/simulation/context'
-import { MAX_PLANS } from '@/types'
+import { useDisplayReal, useSetPlanSection } from '@/lib/stores/displayStore'
+import type { PlanSectionGroup } from '@/components/plans/planSections'
 import { CompactCommandBar } from '@/components/simulation-compact/CompactCommandBar'
 import { AdvancedParamsPanel } from '@/components/simulation-compact/AdvancedParamsPanel'
-import { KpiStrip } from '@/components/simulation-compact/KpiStrip'
-import { FanChartCard } from '@/components/simulation-compact/FanChartCard'
 import { BottomStrip } from '@/components/simulation-compact/BottomStrip'
 import { CompareView } from '@/components/simulation-compact/CompareView'
 import { buildCompactKpis } from '@/components/simulation-compact/metrics'
@@ -26,260 +30,232 @@ import { SpendingSection } from '@/components/charts/SpendingSection'
 import { CashflowCard } from '@/components/charts/CashflowCard'
 import { ScenarioList } from '@/components/charts/ScenarioList'
 import { RecommendationList } from '@/components/charts/RecommendationList'
+import { WorkspaceHeader, EuroDisplay } from '@/components/workspace/WorkspaceHeader'
+import { Overview } from '@/components/workspace/Overview'
+import './workspace.css'
 
-type TabValue = 'overview' | 'plan' | 'cashflow' | 'scenarios' | 'compare'
-const TABS: TabValue[] = ['overview', 'plan', 'cashflow', 'scenarios', 'compare']
+type View = 'overview' | 'plan' | 'cashflow' | 'scenarios'
+const destinations = [
+  { value: 'overview', icon: ChartNoAxesCombined },
+  { value: 'plan', icon: SlidersHorizontal },
+  { value: 'cashflow', icon: WalletCards },
+  { value: 'scenarios', icon: ArrowLeftRight },
+] as const
 
 export default function SimulationPage() {
-  const t = useTranslations('simulationCompact')
-  const format = useFormatter()
+  const t = useTranslations('workspace')
+  const tc = useTranslations('simulationCompact')
   const params = useSimulationParams()
   const results = useSimulationResults()
-  const isLoading = useSimulationLoading()
-  const runSimulation = useSimulationStore((state) => state.runSimulation)
+  const loading = useSimulationLoading()
+  const run = useSimulationStore((state) => state.runSimulation)
   const error = useSimulationStore((state) => state.error)
-  const stale = results ? !areSimulationParamsEqual(params, results.params) : false
-  const resultParams = results?.params ?? params
-  const resultsComputedAt = useSimulationStore((state) => state.resultsComputedAt)
-  const plans = usePlans()
   const displayReal = useDisplayReal()
-  const [activeTab, setActiveTab] = useState<TabValue>('overview')
-  const [advancedOpen, setAdvancedOpen] = useState(false)
-
-  useEffect(() => {
-    const runIfEmpty = () => {
-      const {
-        results: current,
-        isLoading: loading,
-        runSimulation: run,
-      } = useSimulationStore.getState()
-      if (!current && !loading) run()
-    }
-    if (useSimulationStore.persist.hasHydrated()) {
-      runIfEmpty()
-      return
-    }
-    return useSimulationStore.persist.onFinishHydration(runIfEmpty)
-  }, [])
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'r' && event.key !== 'R') return
-      if (event.metaKey || event.ctrlKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      if (target && /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName)) return
-      if (target?.isContentEditable) return
-      runSimulation()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [runSimulation])
-
-  const runStartRef = useRef<number | null>(null)
-  const [runSeconds, setRunSeconds] = useState<number | null>(null)
-  useEffect(() => {
-    if (isLoading) runStartRef.current = performance.now()
-    else if (runStartRef.current != null) {
-      setRunSeconds((performance.now() - runStartRef.current) / 1000)
-      runStartRef.current = null
-    }
-  }, [isLoading])
-
+  const setPlanSection = useSetPlanSection()
+  const sidebarVertical = useMediaQuery('(min-width: 761px)')
+  const editorVertical = useMediaQuery('(min-width: 1101px)')
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const [view, setView] = useState<View>('overview')
+  const [compare, setCompare] = useState(false)
+  const [advanced, setAdvanced] = useState(false)
+  const stale = results ? !areSimulationParamsEqual(params, results.params) : false
   const kpis = useMemo(
     () => (results ? buildCompactKpis(results.params, results, { displayReal }) : null),
     [results, displayReal]
   )
-  const successRate = results?.successRate ?? null
-  const formattedSuccessRate =
-    successRate == null
-      ? null
-      : format.number(successRate / 100, {
-          style: 'percent',
-          minimumFractionDigits: 0,
-          maximumFractionDigits: successRate % 1 === 0 ? 0 : 1,
-        })
-  const metaLine = [
-    t(isLoading ? 'computing' : stale ? 'stale' : 'meta.live'),
-    t('meta.runs', { count: format.number(effectiveRunCount(params)) }),
-    runSeconds != null
-      ? t('meta.seconds', {
-          seconds: format.number(runSeconds, {
-            maximumFractionDigits: 1,
-            minimumFractionDigits: 1,
-          }),
-        })
-      : null,
-    t('meta.plans', { count: format.number(plans.length), max: format.number(MAX_PLANS) }),
-  ]
-    .filter(Boolean)
-    .join(' · ')
-  const navigationLabel = [
-    t('tabs.overview'),
-    t('tabs.plan'),
-    t('tabs.cashflow'),
-    t('tabs.scenarios'),
-    t('compareButton'),
-  ].join(', ')
+  const navigate = (next: View) => {
+    setView(next)
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
+  const edit = (section: PlanSectionGroup) => {
+    setPlanSection(section)
+    navigate('plan')
+    headingRef.current?.focus({ preventScroll: true })
+  }
+
+  useEffect(() => {
+    const initialize = () => {
+      const state = useSimulationStore.getState()
+      if ((!state.results || !state.results.cashFlowMeans) && !state.isLoading)
+        state.runSimulation()
+    }
+    if (useSimulationStore.persist.hasHydrated()) initialize()
+    else return useSimulationStore.persist.onFinishHydration(initialize)
+  }, [])
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!['r', 'R'].includes(event.key) || event.metaKey || event.ctrlKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      if (target?.closest('input, select, textarea, [role="dialog"]') || target?.isContentEditable)
+        return
+      run()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [run])
 
   return (
-    <div
-      className="app-page app-page-simulation"
-      style={{ minHeight: '100vh', background: 'var(--canvas)' }}
+    <Tabs.Root
+      value={view}
+      onValueChange={(value) => navigate(value as View)}
+      orientation={sidebarVertical ? 'vertical' : 'horizontal'}
+      activationMode="manual"
+      className="retirement-workspace"
     >
-      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-        {successRate != null && t('srComplete', { rate: formattedSuccessRate ?? '' })}
-      </div>
-
-      <div>
-        <CompactCommandBar
-          successRate={successRate}
-          isLoading={isLoading}
-          advancedOpen={advancedOpen}
-          onToggleAdvanced={() => setAdvancedOpen((open) => !open)}
-          onRun={() => runSimulation()}
-          results={stale ? null : results}
-          showQuick={activeTab !== 'plan' && activeTab !== 'compare'}
-        />
-        {advancedOpen && activeTab !== 'plan' && activeTab !== 'compare' && (
-          <AdvancedParamsPanel
-            onOpenFullEditor={() => {
-              setAdvancedOpen(false)
-              setActiveTab('plan')
-            }}
-          />
-        )}
-      </div>
-
-      <Tabs.Root
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value as TabValue)}
-        activationMode="manual"
-      >
-        <div
-          className="simulation-navigation"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            minHeight: 48,
-            padding: '0 14px',
-            background: 'var(--surface)',
-            borderBottom: '1px solid var(--line)',
-            gap: 14,
-            overflowX: 'auto',
-          }}
-        >
-          <Tabs.List
-            className="ds-tabs"
-            style={{ borderBottom: 0, gap: 6, minHeight: 48 }}
-            aria-label={navigationLabel}
-          >
-            {TABS.map((tab) => (
-              <Tabs.Trigger
-                value={tab}
-                key={tab}
-                type="button"
-                className="ds-tab"
-                data-testid={tab === 'compare' ? 'enter-compare' : `tab-${tab}`}
-                style={{
-                  minHeight: 44,
-                  padding: '0 14px',
-                  fontSize: 13,
-                  fontWeight: 650,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {tab === 'compare' ? t('compareButton') : t(`tabs.${tab}`)}
-              </Tabs.Trigger>
-            ))}
-          </Tabs.List>
-          <div style={{ flex: 1 }} />
-          <span className="ds-meta" style={{ whiteSpace: 'nowrap' }}>
-            {metaLine}
+      <aside className="workspace-sidebar" id="navigation">
+        <div className="workspace-brand">
+          <span>
+            <Landmark size={24} aria-hidden="true" />
           </span>
+          <div>
+            <strong>{t('brand')}</strong>
+            <small>{t('brandSub')}</small>
+          </div>
         </div>
-
-        {(activeTab === 'overview' || activeTab === 'cashflow') && results && kpis && (
-          <KpiStrip
-            kpis={kpis}
-            endAge={resultParams.endAge}
-            resultsComputedAt={resultsComputedAt}
-          />
-        )}
-
-        <main id="main-content" className="mx-auto max-w-[1440px]" aria-busy={isLoading}>
-          <h1 className="sr-only">{t('pageTitle')}</h1>
+        <p className="workspace-nav-caption">{t('navigationCaption')}</p>
+        <Tabs.List className="workspace-navigation" aria-label={t('navigation')}>
+          {destinations.map(({ value, icon: Icon }) => (
+            <Tabs.Trigger key={value} value={value} data-testid={`tab-${value}`}>
+              <Icon size={21} aria-hidden="true" />
+              <span>{t(`views.${value}.label`)}</span>
+            </Tabs.Trigger>
+          ))}
+        </Tabs.List>
+        <div className="workspace-sidebar-note">
+          <span className="workspace-dot" />
+          {t('sidebarNote')}
+          <p>{t('sidebarExplain')}</p>
+        </div>
+      </aside>
+      <div className="workspace-body">
+        <WorkspaceHeader results={stale ? null : results} loading={loading} onRun={() => run()} />
+        <main id="main-content" className="workspace-main" aria-busy={loading}>
+          <div className="workspace-page-heading">
+            <div>
+              <p className="workspace-eyebrow">{t('brandSub')}</p>
+              <h1 ref={headingRef} tabIndex={-1}>
+                {t(`views.${view}.title`)}
+              </h1>
+              <p>{t(`views.${view}.description`)}</p>
+            </div>
+            {view !== 'plan' && <EuroDisplay />}
+          </div>
+          <div className="workspace-run-status" role="status" aria-live="polite">
+            {loading ? t('computing') : stale ? tc('stale') : results ? t('current') : t('empty')}
+          </div>
           {error && (
-            <div role="alert" className="m-4 rounded-lg border border-destructive p-4 text-sm">
-              <p>{t('error')}</p>
-              <button
-                type="button"
-                onClick={() => runSimulation()}
-                className="ds-btn ds-btn--outline mt-3"
-              >
-                {t('retry')}
+            <div role="alert" className="workspace-error">
+              {tc('error')}{' '}
+              <button className="workspace-button" onClick={() => run()}>
+                {tc('retry')}
               </button>
             </div>
           )}
-          {stale && (
-            <p role="status" className="mx-4 mt-4 rounded-lg bg-amber/15 p-3 text-sm">
-              {t('stale')}
-            </p>
-          )}
-          <Tabs.Content value={activeTab} className="outline-offset-4">
-            {activeTab === 'overview' && (
-              <div
-                style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}
-              >
+          <Tabs.Content value={view} className="workspace-content">
+            {view === 'overview' && (
+              <>
+                <details className="workspace-experiment">
+                  <summary>
+                    <SlidersHorizontal size={20} aria-hidden="true" />
+                    <div>
+                      <strong>{t('experiment')}</strong>
+                      <span>{t('experimentHint')}</span>
+                    </div>
+                  </summary>
+                  <CompactCommandBar
+                    quickOnly
+                    results={results}
+                    successRate={results?.successRate ?? null}
+                    isLoading={loading}
+                    advancedOpen={advanced}
+                    onToggleAdvanced={() => setAdvanced((v) => !v)}
+                    onRun={() => run()}
+                  />
+                  {advanced && <AdvancedParamsPanel onOpenFullEditor={() => edit('market')} />}
+                </details>
                 {results && kpis ? (
-                  <>
-                    <FanChartCard results={results} displayReal={displayReal} />
-                    <BottomStrip
-                      params={resultParams}
-                      results={results}
-                      kpis={kpis}
-                      onOpenFullEditor={() => setActiveTab('plan')}
-                    />
-                  </>
+                  <Overview
+                    results={results}
+                    kpis={kpis}
+                    displayReal={displayReal}
+                    onEdit={edit}
+                    onCashflow={() => navigate('cashflow')}
+                  />
                 ) : (
-                  <div
-                    className="ds-card"
-                    style={{ height: 250, display: 'grid', placeItems: 'center' }}
+                  <div className="workspace-panel workspace-empty">{t('computing')}</div>
+                )}
+              </>
+            )}
+            {view === 'plan' && (
+              <PlanEditor
+                className="workspace-editor"
+                navigationOrientation={editorVertical ? 'vertical' : 'horizontal'}
+              />
+            )}
+            {view === 'cashflow' &&
+              (results ? (
+                <div className="workspace-stack">
+                  <CashflowCard params={results.params} results={results} />
+                  <details className="workspace-experiment">
+                    <summary>{t('spendingAnalysis')}</summary>
+                    <SpendingSection results={results} />
+                  </details>
+                </div>
+              ) : (
+                <div className="workspace-panel workspace-empty">{t('computing')}</div>
+              ))}
+            {view === 'scenarios' && (
+              <div className="workspace-stack">
+                <div
+                  className="workspace-variant-switch"
+                  role="group"
+                  aria-label={t('variantMode')}
+                >
+                  <button
+                    className="workspace-button"
+                    aria-pressed={!compare}
+                    onClick={() => setCompare(false)}
                   >
-                    <span className="ds-meta">{t('computing')}</span>
-                  </div>
+                    {t('exploreVariants')}
+                  </button>
+                  <button
+                    className="workspace-button"
+                    data-testid="enter-compare"
+                    aria-pressed={compare}
+                    onClick={() => setCompare(true)}
+                  >
+                    {t('comparePlans')}
+                  </button>
+                </div>
+                {compare ? (
+                  <CompareView
+                    onExit={() => setCompare(false)}
+                    onOpenPlanEditor={() => edit('personal')}
+                  />
+                ) : (
+                  <>
+                    {results && kpis && (
+                      <section className="workspace-panel workspace-recommendations">
+                        <h2>{t('applyChanges')}</h2>
+                        <BottomStrip
+                          recommendationsOnly
+                          params={results.params}
+                          results={results}
+                          kpis={kpis}
+                          onOpenFullEditor={() => edit('personal')}
+                        />
+                      </section>
+                    )}
+                    <ScenarioList params={params} results={results} isLoading={loading} />
+                    <RecommendationList params={params} results={results} />
+                  </>
                 )}
               </div>
             )}
-            {activeTab === 'plan' && (
-              <div style={{ padding: '12px 14px' }}>
-                <PlanEditor />
-              </div>
-            )}
-            {activeTab === 'cashflow' && results && (
-              <div
-                style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}
-              >
-                <CashflowCard params={resultParams} results={results} />
-                <SpendingSection results={results} />
-              </div>
-            )}
-            {activeTab === 'scenarios' && (
-              <div
-                style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}
-              >
-                <ScenarioList params={params} results={results} isLoading={isLoading} />
-                <RecommendationList params={params} results={results} />
-              </div>
-            )}
-            {activeTab === 'compare' && (
-              <CompareView
-                onExit={() => setActiveTab('overview')}
-                onOpenPlanEditor={() => setActiveTab('plan')}
-              />
-            )}
           </Tabs.Content>
+          <footer className="workspace-footer">{t('footer')}</footer>
         </main>
-      </Tabs.Root>
-    </div>
+      </div>
+    </Tabs.Root>
   )
 }

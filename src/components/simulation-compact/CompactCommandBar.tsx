@@ -28,6 +28,7 @@ interface CompactCommandBarProps {
   onRun: () => void
   results: SimulationResults | null
   showQuick?: boolean
+  quickOnly?: boolean
 }
 
 const sameExpenses = (left: CustomExpense[], right: CustomExpense[]) =>
@@ -41,6 +42,7 @@ export function CompactCommandBar({
   onRun,
   results,
   showQuick = true,
+  quickOnly = false,
 }: CompactCommandBarProps) {
   const t = useTranslations('simulationCompact.commandBar')
   const tPlans = useTranslations('plans')
@@ -147,148 +149,150 @@ export function CompactCommandBar({
 
   return (
     <header
-      id="navigation"
+      id={quickOnly ? undefined : 'navigation'}
       data-testid="compact-command-bar"
       style={{
         background: 'var(--surface)',
         borderBottom: '1px solid var(--line)',
       }}
     >
-      <div
-        data-testid="command-primary-row"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          minHeight: 52,
-          padding: '4px 14px',
-          flexWrap: 'wrap',
-        }}
-      >
-        <span
-          aria-hidden="true"
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: 4,
-            background: 'var(--accent)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            font: '600 10px var(--font-mono)',
-            flex: 'none',
-          }}
-        >
-          R
-        </span>
-        <select
-          className="ds-select"
-          style={{ width: 150, minHeight: 36, flex: 'none', fontSize: 13 }}
-          aria-label={t('planAria')}
-          value={activePlanId}
-          onChange={(event) => {
-            const next = event.target.value
-            if (next !== activePlanId) {
-              switchPlan(next)
-              event.target.value = activePlanId
-            }
-          }}
-        >
-          {plans.map((plan) => (
-            <option key={plan.id} value={plan.id}>
-              {planDisplayName(plan, tPlans)}
-            </option>
-          ))}
-        </select>
-        <div style={{ flex: 1 }} />
+      {!quickOnly && (
         <div
-          role="radiogroup"
-          aria-label={tDisplay('label')}
-          title={tDisplay('realHint')}
-          data-testid="display-toggle"
+          data-testid="command-primary-row"
           style={{
-            display: 'inline-flex',
-            border: '1px solid var(--line-strong)',
-            borderRadius: 'var(--radius-full)',
-            overflow: 'hidden',
-            flex: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            minHeight: 52,
+            padding: '4px 14px',
+            flexWrap: 'wrap',
           }}
         >
-          {(
-            [
-              { key: 'nominal', label: tDisplay('nominal'), real: false },
-              { key: 'real', label: tDisplay('real'), real: true },
-            ] as const
-          ).map((option) => {
-            const selected = displayReal === option.real
-            return (
-              <button
-                key={option.key}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                data-selected={selected ? 'true' : 'false'}
-                className="ds-btn ds-btn--sm"
-                onClick={() => setDisplayReal(option.real)}
-                style={{
-                  border: 0,
-                  borderRadius: 0,
-                  minHeight: 36,
-                  padding: '0 12px',
-                  whiteSpace: 'nowrap',
-                  background: selected ? 'var(--accent)' : 'var(--surface)',
-                  color: selected ? '#fff' : 'var(--text-label)',
-                }}
-              >
-                {option.label}
-              </button>
-            )
-          })}
-        </div>
-        {successRate != null && (
-          <span className={pillClass} aria-label={t('successAria')} data-testid="success-pill">
-            <span className="ds-pill-dot" />
-            {format.number(successRate / 100, {
-              style: 'percent',
-              minimumFractionDigits: 0,
-              maximumFractionDigits: successRate % 1 === 0 ? 0 : 1,
-            })}
-          </span>
-        )}
-        <button
-          type="button"
-          className="ds-btn ds-btn--outline ds-btn--sm"
-          style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
-          onClick={handleSave}
-          disabled={!isDirty}
-          data-testid="command-save"
-        >
-          {t('saveButton')}
-        </button>
-        <button
-          type="button"
-          className="ds-btn ds-btn--default ds-btn--sm"
-          style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
-          onClick={onRun}
-          disabled={isLoading}
-          data-testid="run-button"
-        >
-          {t('run')}{' '}
           <span
-            className="ds-kbd"
-            style={{
-              background: 'rgba(255,255,255,.2)',
-              borderColor: 'rgba(255,255,255,.4)',
-              color: '#fff',
-            }}
             aria-hidden="true"
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: 4,
+              background: 'var(--accent)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+              font: '600 10px var(--font-mono)',
+              flex: 'none',
+            }}
           >
             R
           </span>
-        </button>
-        <DashboardTools results={results} isLoading={isLoading} />
-      </div>
+          <select
+            className="ds-select"
+            style={{ width: 150, minHeight: 36, flex: 'none', fontSize: 13 }}
+            aria-label={t('planAria')}
+            value={activePlanId}
+            onChange={(event) => {
+              const next = event.target.value
+              if (next !== activePlanId) {
+                switchPlan(next)
+                event.target.value = activePlanId
+              }
+            }}
+          >
+            {plans.map((plan) => (
+              <option key={plan.id} value={plan.id}>
+                {planDisplayName(plan, tPlans)}
+              </option>
+            ))}
+          </select>
+          <div style={{ flex: 1 }} />
+          <div
+            role="radiogroup"
+            aria-label={tDisplay('label')}
+            title={tDisplay('realHint')}
+            data-testid="display-toggle"
+            style={{
+              display: 'inline-flex',
+              border: '1px solid var(--line-strong)',
+              borderRadius: 'var(--radius-full)',
+              overflow: 'hidden',
+              flex: 'none',
+            }}
+          >
+            {(
+              [
+                { key: 'nominal', label: tDisplay('nominal'), real: false },
+                { key: 'real', label: tDisplay('real'), real: true },
+              ] as const
+            ).map((option) => {
+              const selected = displayReal === option.real
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  data-selected={selected ? 'true' : 'false'}
+                  className="ds-btn ds-btn--sm"
+                  onClick={() => setDisplayReal(option.real)}
+                  style={{
+                    border: 0,
+                    borderRadius: 0,
+                    minHeight: 36,
+                    padding: '0 12px',
+                    whiteSpace: 'nowrap',
+                    background: selected ? 'var(--accent)' : 'var(--surface)',
+                    color: selected ? '#fff' : 'var(--text-label)',
+                  }}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+          {successRate != null && (
+            <span className={pillClass} aria-label={t('successAria')} data-testid="success-pill">
+              <span className="ds-pill-dot" />
+              {format.number(successRate / 100, {
+                style: 'percent',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: successRate % 1 === 0 ? 0 : 1,
+              })}
+            </span>
+          )}
+          <button
+            type="button"
+            className="ds-btn ds-btn--outline ds-btn--sm"
+            style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
+            onClick={handleSave}
+            disabled={!isDirty}
+            data-testid="command-save"
+          >
+            {t('saveButton')}
+          </button>
+          <button
+            type="button"
+            className="ds-btn ds-btn--default ds-btn--sm"
+            style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
+            onClick={onRun}
+            disabled={isLoading}
+            data-testid="run-button"
+          >
+            {t('run')}{' '}
+            <span
+              className="ds-kbd"
+              style={{
+                background: 'rgba(255,255,255,.2)',
+                borderColor: 'rgba(255,255,255,.4)',
+                color: '#fff',
+              }}
+              aria-hidden="true"
+            >
+              R
+            </span>
+          </button>
+          <DashboardTools results={results} isLoading={isLoading} />
+        </div>
+      )}
 
       {showQuick && (
         <div

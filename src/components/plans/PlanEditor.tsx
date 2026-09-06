@@ -206,6 +206,7 @@ function PresetRow({
 interface PlanEditorProps {
   /** `drawer` stacks every card in one column for the mobile sheet. */
   variant?: 'page' | 'drawer'
+  navigationOrientation?: 'horizontal' | 'vertical'
   className?: string
 }
 
@@ -215,7 +216,11 @@ interface PlanEditorProps {
  * edit goes to the working copy, so nothing here mutates a stored plan until the
  * user saves.
  */
-export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
+export function PlanEditor({
+  variant = 'page',
+  className,
+  navigationOrientation = 'horizontal',
+}: PlanEditorProps) {
   const t = useTranslations('planEditor')
   const tSetup = useTranslations('setup')
   const tControls = useTranslations('parameterControls')
@@ -453,6 +458,7 @@ export function PlanEditor({ variant = 'page', className }: PlanEditorProps) {
           built like the dashboard's own tabs, so the two levels read alike. */}
       <Tabs
         id="plan-editor-sections"
+        orientation={navigationOrientation}
         value={section}
         onValueChange={(value) => isPlanSectionGroup(value) && setSection(value)}
         className="scroll-mt-32 space-y-5"

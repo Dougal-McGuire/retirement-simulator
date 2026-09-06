@@ -5,7 +5,9 @@ const readPersistedState = (page: Page) =>
     const raw = window.localStorage.getItem('retirement-simulator-store')
     if (!raw) return null
     const state = JSON.parse(raw).state
-    const plan = state.plans?.find((candidate: { id: string }) => candidate.id === state.activePlanId)
+    const plan = state.plans?.find(
+      (candidate: { id: string }) => candidate.id === state.activePlanId
+    )
     return {
       working: state.draftParams ?? state.params,
       storedPlan: plan?.params,
@@ -15,23 +17,33 @@ const readPersistedState = (page: Page) =>
 test.describe('quick access command bar', () => {
   test('keeps commands and quick levers in separate accessible rows', async ({ page }) => {
     await page.goto('/en/simulation')
+    await page.getByText('What if …?', { exact: true }).click()
 
-    const primary = page.getByTestId('command-primary-row')
+    const primary = page.locator('.workspace-toolbar')
     const quick = page.getByTestId('command-quick-row')
     await expect(primary).toBeVisible()
     await expect(quick).toBeVisible()
 
-    for (const name of ['Retirement age', 'Annual savings', 'Monthly spending', 'Expected return']) {
+    for (const name of [
+      'Retirement age',
+      'Annual savings',
+      'Monthly spending',
+      'Expected return',
+    ]) {
       await expect(quick.getByRole('slider', { name })).toBeVisible()
     }
 
-    const display = primary.getByTestId('display-toggle')
+    const display = page.getByTestId('display-toggle')
     await display.getByRole('radio', { name: "Today's €" }).click()
-    await expect(display.getByRole('radio', { name: "Today's €" })).toHaveAttribute('data-selected', 'true')
+    await expect(display.getByRole('radio', { name: "Today's €" })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
   })
 
   test('resets a quick annual-savings what-if to the stored plan value', async ({ page }) => {
     await page.goto('/en/simulation')
+    await page.getByText('What if …?', { exact: true }).click()
     const slider = page.getByRole('slider', { name: 'Annual savings' })
 
     await slider.focus()
@@ -47,12 +59,15 @@ test.describe('quick access command bar', () => {
 
     await reset.click()
 
-    await expect.poll(async () => (await readPersistedState(page))?.working?.annualSavings).toBe(baseline)
+    await expect
+      .poll(async () => (await readPersistedState(page))?.working?.annualSavings)
+      .toBe(baseline)
     await expect(reset).toHaveCount(0)
   })
 
   test('resets spending by restoring the plan expense streams exactly', async ({ page }) => {
     await page.goto('/en/simulation')
+    await page.getByText('What if …?', { exact: true }).click()
     const slider = page.getByRole('slider', { name: 'Monthly spending' })
 
     await slider.focus()
@@ -71,8 +86,12 @@ test.describe('quick access command bar', () => {
 
     await reset.click()
 
-    await expect.poll(async () => (await readPersistedState(page))?.working?.customExpenses).toEqual(baselineExpenses)
-    await expect.poll(async () => (await readPersistedState(page))?.working?.cashFlows).toEqual(baselineFlows)
+    await expect
+      .poll(async () => (await readPersistedState(page))?.working?.customExpenses)
+      .toEqual(baselineExpenses)
+    await expect
+      .poll(async () => (await readPersistedState(page))?.working?.cashFlows)
+      .toEqual(baselineFlows)
     await expect(reset).toHaveCount(0)
   })
 })

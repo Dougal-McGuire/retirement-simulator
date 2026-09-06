@@ -7,10 +7,10 @@ test('tabs support keyboard navigation and the editor has one set of controls', 
   const first = page.getByTestId('tab-overview')
   await expect(first).toHaveAttribute('aria-selected', 'true')
   await first.focus()
-  await first.press('ArrowRight')
+  await first.press('ArrowDown')
   await expect(page.getByTestId('tab-plan')).toBeFocused()
   await page.getByTestId('tab-plan').press('Enter')
-  await expect(page.getByRole('tabpanel', { name: 'Plan bearbeiten', exact: true })).toBeVisible()
+  await expect(page.getByRole('tabpanel', { name: 'Mein Plan', exact: true })).toBeVisible()
   await expect(page.getByTestId('command-quick-row')).toHaveCount(0)
   await expect(page.getByTestId('kpi-strip')).toHaveCount(0)
 })
@@ -43,6 +43,7 @@ test('menu restores report, account, language and plan management', async ({ pag
 
 test('spending can increase again after the quick slider reaches zero', async ({ page }) => {
   await page.goto('/en/simulation')
+  await page.getByText('What if …?', { exact: true }).click()
   const slider = page.getByRole('slider', { name: 'Monthly spending' })
   await expect(slider).toBeVisible()
   await slider.focus()
@@ -59,6 +60,7 @@ test('historical mode disables the assumptions it ignores', async ({ page }) => 
   await page.getByTestId('plan-section-pill-market').click()
   await page.getByTestId('market-model-historical').click()
   await page.getByTestId('tab-overview').click()
+  await page.getByText('What if …?', { exact: true }).click()
   await expect(page.getByRole('slider', { name: 'Expected return' })).toHaveAttribute(
     'data-disabled',
     ''
