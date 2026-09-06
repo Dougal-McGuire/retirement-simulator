@@ -2,8 +2,8 @@
 
 import { useMemo, useRef } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
-import type { CustomExpense } from '@/types'
-import { Link } from '@/navigation'
+import type { CustomExpense, SimulationResults } from '@/types'
+import { DashboardTools } from './DashboardTools'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import {
   useActivePlan,
@@ -26,6 +26,8 @@ interface CompactCommandBarProps {
   advancedOpen: boolean
   onToggleAdvanced: () => void
   onRun: () => void
+  results: SimulationResults | null
+  showQuick?: boolean
 }
 
 const sameExpenses = (left: CustomExpense[], right: CustomExpense[]) =>
@@ -37,6 +39,8 @@ export function CompactCommandBar({
   advancedOpen,
   onToggleAdvanced,
   onRun,
+  results,
+  showQuick = true,
 }: CompactCommandBarProps) {
   const t = useTranslations('simulationCompact.commandBar')
   const tPlans = useTranslations('plans')
@@ -73,7 +77,10 @@ export function CompactCommandBar({
   const emittedRef = useRef<CustomExpense[] | null>(null)
 
   const expenses = params.customExpenses ?? []
-  if (scaleBaseRef.current && emittedRef.current !== expenses) {
+  if (
+    scaleBaseRef.current &&
+    (!emittedRef.current || !sameExpenses(emittedRef.current, expenses))
+  ) {
     scaleBaseRef.current = null
   }
 
@@ -83,7 +90,11 @@ export function CompactCommandBar({
   const planCombined = useMemo(() => calculateCombinedExpenses(planExpenses), [planExpenses])
 
   const scaleExpenses = (targetMonthly: number) => {
-    const base = scaleBaseRef.current ?? { source: expenses, monthly: combined.combinedMonthly }
+    const base =
+      scaleBaseRef.current ??
+      (combined.combinedMonthly > 0
+        ? { source: expenses, monthly: combined.combinedMonthly }
+        : { source: planExpenses, monthly: planCombined.combinedMonthly })
     scaleBaseRef.current = base
     if (base.monthly <= 0) return
 
@@ -111,8 +122,8 @@ export function CompactCommandBar({
       maximumFractionDigits: 0,
     })
 
-  const retirementMin = Math.max(50, Math.min(params.currentAge + 1, 69))
-  const retirementMax = Math.min(69, params.endAge - 1)
+  const retirementMin = Math.min(params.retirementAge, params.currentAge)
+  const retirementMax = Math.max(params.retirementAge, params.endAge - 1)
   const savingsMax = Math.max(
     100000,
     Math.ceil(((planParams?.annualSavings ?? 0) * 2) / 1000) * 1000
@@ -136,6 +147,7 @@ export function CompactCommandBar({
 
   return (
     <header
+      id="navigation"
       data-testid="compact-command-bar"
       style={{
         background: 'var(--surface)',
@@ -150,7 +162,7 @@ export function CompactCommandBar({
           gap: 12,
           minHeight: 52,
           padding: '4px 14px',
-          overflowX: 'auto',
+          flexWrap: 'wrap',
         }}
       >
         <span
@@ -234,14 +246,6 @@ export function CompactCommandBar({
             )
           })}
         </div>
-        <Link
-          href="/setup"
-          className="ds-btn ds-btn--ghost ds-btn--sm"
-          style={{ flex: 'none', minHeight: 36, fontSize: 13 }}
-          data-testid="setup-link"
-        >
-          {t('setup')}
-        </Link>
         {successRate != null && (
           <span className={pillClass} aria-label={t('successAria')} data-testid="success-pill">
             <span className="ds-pill-dot" />
@@ -283,85 +287,104 @@ export function CompactCommandBar({
             R
           </span>
         </button>
+        <DashboardTools results={results} isLoading={isLoading} />
       </div>
 
-      <div
-        data-testid="command-quick-row"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 20,
-          minHeight: 52,
-          padding: '5px 14px',
-          borderTop: '1px solid var(--line)',
-          overflowX: 'auto',
-        }}
-      >
-        <InlineSlider
-          width={250}
-          label={t('age')}
-          ariaLabel={t('ageAria')}
-          value={params.retirementAge}
-          min={retirementMin}
-          max={Math.max(retirementMin, retirementMax)}
-          step={1}
-          formattedValue={format.number(params.retirementAge)}
-          onChange={(value) => updateParams({ retirementAge: value })}
-          onReset={ageDirty ? () => updateParams({ retirementAge: planParams!.retirementAge }) : undefined}
-        />
-        <InlineSlider
-          width={290}
-          label={t('save')}
-          ariaLabel={t('saveAria')}
-          value={params.annualSavings}
-          min={0}
-          max={savingsMax}
-          step={1000}
-          formattedValue={formatCurrency(params.annualSavings)}
-          onChange={(value) => updateParams({ annualSavings: value })}
-          onReset={savingsDirty ? () => updateParams({ annualSavings: planParams!.annualSavings }) : undefined}
-        />
-        <InlineSlider
-          width={290}
-          label={t('spend')}
-          ariaLabel={t('spendAria')}
-          value={monthlyNow}
-          min={Math.min(1000, monthlyAnchor)}
-          max={monthlyAnchor}
-          step={50}
-          formattedValue={formatCurrency(monthlyNow)}
-          valueText={t('spendValue', { amount: formatCurrency(monthlyNow) })}
-          onChange={scaleExpenses}
-          onReset={spendingDirty ? resetExpenses : undefined}
-        />
-        <InlineSlider
-          width={240}
-          label={t('roi')}
-          ariaLabel={t('roiAria')}
-          value={params.averageROI}
-          min={0}
-          max={0.12}
-          step={0.001}
-          formattedValue={format.number(params.averageROI, {
-            style: 'percent',
-            maximumFractionDigits: 1,
-          })}
-          onChange={(value) => updateParams({ averageROI: value })}
-          onReset={roiDirty ? () => updateParams({ averageROI: planParams!.averageROI }) : undefined}
-        />
-        <button
-          type="button"
-          className="ds-btn ds-btn--ghost ds-btn--sm"
-          style={{ whiteSpace: 'nowrap', flex: 'none', minHeight: 36, fontSize: 13 }}
-          aria-expanded={advancedOpen}
-          onClick={onToggleAdvanced}
+      {showQuick && (
+        <div
+          data-testid="command-quick-row"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 20,
+            minHeight: 52,
+            padding: '5px 14px',
+            borderTop: '1px solid var(--line)',
+            flexWrap: 'wrap',
+          }}
         >
-          {t('advanced')}{' '}
-          <span aria-hidden="true" style={{ color: 'var(--text-hint)' }}>
-            {advancedOpen ? '▾' : '▸'}
-          </span>
-        </button>
-      </div>
+          <InlineSlider
+            width={250}
+            label={t('age')}
+            ariaLabel={t('ageAria')}
+            value={params.retirementAge}
+            min={retirementMin}
+            max={Math.max(retirementMin, retirementMax)}
+            step={1}
+            formattedValue={format.number(params.retirementAge)}
+            onChange={(value) => updateParams({ retirementAge: value })}
+            onReset={
+              ageDirty
+                ? () => updateParams({ retirementAge: planParams!.retirementAge })
+                : undefined
+            }
+          />
+          <InlineSlider
+            width={290}
+            label={t('save')}
+            ariaLabel={t('saveAria')}
+            value={params.annualSavings}
+            min={0}
+            max={savingsMax}
+            step={1000}
+            formattedValue={formatCurrency(params.annualSavings)}
+            onChange={(value) => updateParams({ annualSavings: value })}
+            onReset={
+              savingsDirty
+                ? () => updateParams({ annualSavings: planParams!.annualSavings })
+                : undefined
+            }
+          />
+          <InlineSlider
+            width={290}
+            label={t('spend')}
+            ariaLabel={t('spendAria')}
+            value={monthlyNow}
+            min={0}
+            max={monthlyAnchor}
+            step={50}
+            formattedValue={formatCurrency(monthlyNow)}
+            valueText={t('spendValue', { amount: formatCurrency(monthlyNow) })}
+            disabled={
+              combined.combinedMonthly <= 0 &&
+              planCombined.combinedMonthly <= 0 &&
+              !scaleBaseRef.current?.monthly
+            }
+            onChange={scaleExpenses}
+            onReset={spendingDirty ? resetExpenses : undefined}
+          />
+          <InlineSlider
+            width={240}
+            disabled={params.marketModel === 'historical'}
+            label={t('roi')}
+            ariaLabel={t('roiAria')}
+            value={params.averageROI}
+            min={0}
+            max={0.12}
+            step={0.001}
+            formattedValue={format.number(params.averageROI, {
+              style: 'percent',
+              maximumFractionDigits: 1,
+            })}
+            onChange={(value) => updateParams({ averageROI: value })}
+            onReset={
+              roiDirty ? () => updateParams({ averageROI: planParams!.averageROI }) : undefined
+            }
+          />
+          <button
+            type="button"
+            className="ds-btn ds-btn--ghost ds-btn--sm"
+            style={{ whiteSpace: 'nowrap', flex: 'none', minHeight: 36, fontSize: 13 }}
+            aria-expanded={advancedOpen}
+            onClick={onToggleAdvanced}
+          >
+            {t('advanced')}{' '}
+            <span aria-hidden="true" style={{ color: 'var(--text-hint)' }}>
+              {advancedOpen ? '▾' : '▸'}
+            </span>
+          </button>
+        </div>
+      )}
     </header>
   )
 }

@@ -117,8 +117,8 @@ export function SpendingChart({
       },
       {
         key: 'rate',
-        label: t('legend.withdrawalRate'),
-        value: formatPercentage(point.withdrawal_rate_p50),
+        label: t('legend.meanWithdrawalRate'),
+        value: formatPercentage(point.withdrawal_rate_mean),
         dividerAbove: true,
       },
     ]
@@ -168,10 +168,7 @@ export function SpendingChart({
     <div className="rounded-sm w-full min-w-0 space-y-5 border border-border bg-white p-4 shadow-sm sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
-          <h4
-            id="spending-chart-title"
-            className="text-base font-extrabold   text-ink sm:text-lg"
-          >
+          <h4 id="spending-chart-title" className="text-base font-extrabold   text-ink sm:text-lg">
             {t('title')}
           </h4>
           <InfoTip content={t('description')} label={t('title')} side="bottom" />

@@ -6,20 +6,21 @@
  * are implicitly assumed to move with inflation.
  */
 
-/** § 32a EStG, tariff 2025, for a single assessment. Rounded down to the euro. */
+/** Source: https://www.gesetze-im-internet.de/estg/__32a.html (checked 2026-09-06).
+ * § 32a EStG, tariff 2026, for a single assessment. Rounded down to the euro. */
 export function incomeTaxSingle(taxable: number): number {
   const x = Math.floor(Math.max(0, taxable))
-  if (x <= 12_096) return 0
-  if (x <= 17_443) {
-    const y = (x - 12_096) / 10_000
-    return Math.floor((932.3 * y + 1_400) * y)
+  if (x <= 12_348) return 0
+  if (x <= 17_799) {
+    const y = (x - 12_348) / 10_000
+    return Math.floor((914.51 * y + 1_400) * y)
   }
-  if (x <= 68_480) {
-    const z = (x - 17_443) / 10_000
-    return Math.floor((176.64 * z + 2_397) * z + 1_015.13)
+  if (x <= 69_878) {
+    const z = (x - 17_799) / 10_000
+    return Math.floor((173.1 * z + 2_397) * z + 1_034.87)
   }
-  if (x <= 277_825) return Math.floor(0.42 * x - 10_911.92)
-  return Math.floor(0.45 * x - 19_246.67)
+  if (x <= 277_825) return Math.floor(0.42 * x - 11_135.63)
+  return Math.floor(0.45 * x - 19_470.38)
 }
 
 /** The annual income tax on `taxable`, with splitting for a jointly assessed couple. */

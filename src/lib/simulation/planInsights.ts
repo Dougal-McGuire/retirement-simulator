@@ -151,6 +151,7 @@ export function buildPlanInsightMetrics(
     (options.displayReal ? results?.assetPercentilesReal : undefined) ?? results?.assetPercentiles
   const combinedExpenses = calculateCombinedExpenses(params.customExpenses)
   const pensionContext = {
+    currentAge: params.currentAge,
     legalRetirementAge: params.legalRetirementAge,
     pensionTaxablePortion: params.pensionTaxablePortion,
     pensionTaxRate: params.pensionTaxRate,

@@ -33,6 +33,7 @@ export function AdvancedParamsPanel({ onOpenFullEditor }: AdvancedParamsPanelPro
 
   return (
     <div
+      id="advanced-params"
       data-testid="advanced-params"
       style={{
         display: 'flex',
@@ -47,6 +48,7 @@ export function AdvancedParamsPanel({ onOpenFullEditor }: AdvancedParamsPanelPro
     >
       <InlineSlider
         width={190}
+        disabled={params.marketModel === 'historical'}
         label={t('volatility')}
         ariaLabel={t('volatilityAria')}
         value={params.roiVolatility}
@@ -58,6 +60,7 @@ export function AdvancedParamsPanel({ onOpenFullEditor }: AdvancedParamsPanelPro
       />
       <InlineSlider
         width={190}
+        disabled={params.marketModel === 'historical'}
         label={t('inflation')}
         ariaLabel={t('inflationAria')}
         value={params.averageInflation}
@@ -91,6 +94,7 @@ export function AdvancedParamsPanel({ onOpenFullEditor }: AdvancedParamsPanelPro
       />
       <InlineSlider
         width={160}
+        disabled={params.marketModel === 'historical'}
         label={t('runs')}
         ariaLabel={t('runsAria')}
         value={params.simulationRuns}

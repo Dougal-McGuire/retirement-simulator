@@ -189,6 +189,23 @@ export interface PercentileData {
   p90: number[]
 }
 
+/** Annual booked amounts. Means across paths are additive; percentiles are not. */
+export interface AnnualCashFlow {
+  openingAssets: number
+  investmentReturn: number
+  savings: number
+  /** All pension/other income including one-off deposits, before income tax. */
+  incomeGross: number
+  incomeTax: number
+  capitalGainsTax: number
+  /** Requested spending; shortfall is the part that could not be funded. */
+  expenses: number
+  portfolioWithdrawal: number
+  portfolioContribution: number
+  shortfall: number
+  closingAssets: number
+}
+
 export interface SimulationResults {
   ages: number[]
   assetPercentiles: PercentileData
@@ -243,6 +260,10 @@ export interface SimulationResults {
   sampleAssetPaths?: number[][]
   /** The same sample paths deflated by their own realised inflation. */
   sampleAssetPathsReal?: number[][]
+  /** Per-age arithmetic means of actual booked annual money movements. */
+  cashFlowMeans?: AnnualCashFlow[]
+  /** Deflated per path before averaging (not divided by median inflation). */
+  cashFlowMeansReal?: AnnualCashFlow[]
   params: SimulationParams
 }
 
@@ -503,7 +524,7 @@ export interface ChartDataPoint {
   spending_p10: number
   spending_p50: number
   spending_p90: number
-  withdrawal_rate_p50: number | null
+  withdrawal_rate_mean: number | null
   monthly_savings_p50: number | null
 }
 

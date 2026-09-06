@@ -143,6 +143,9 @@ export function transformToReportData(
           ...(flow.endAge !== undefined ? { endAge: flow.endAge } : {}),
           ...(flow.inflationLinked !== undefined ? { inflationLinked: flow.inflationLinked } : {}),
           ...(flow.growthRate !== undefined ? { growthRate: flow.growthRate } : {}),
+          ...(flow.taxablePortion !== undefined ? { taxablePortion: flow.taxablePortion } : {}),
+          ...(flow.taxTreatment !== undefined ? { taxTreatment: flow.taxTreatment } : {}),
+          ...(flow.pensionTaxMode !== undefined ? { pensionTaxMode: flow.pensionTaxMode } : {}),
         })),
     },
     assumptions: {

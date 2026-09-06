@@ -51,6 +51,9 @@ const CashFlowSchema = z.object({
   endAge: z.number().optional(),
   inflationLinked: z.boolean().optional(),
   growthRate: z.number().optional(),
+  taxablePortion: z.number().min(0).max(1).optional(),
+  taxTreatment: z.enum(['none', 'ordinary', 'oneFifth']).optional(),
+  pensionTaxMode: z.enum(['share', 'statutory', 'versorgungsbezuege']).optional(),
 })
 
 const OneTimeIncomeSchema = z.object({

@@ -2,8 +2,7 @@ import type { SimulationParams, SimulationResults } from '@/types'
 import { buildPlanInsightMetrics } from '@/lib/simulation/planInsights'
 
 /**
- * The four KPI-strip numbers of design 1b, derived once per result set so the
- * strip, the compare view and the sparkline history all read the same values.
+ * Summary metrics derived from a single simulation result set.
  */
 export interface CompactKpis {
   successRate: number
@@ -14,7 +13,7 @@ export interface CompactKpis {
   lastsToMedian: number | null
   /** Age by which the worst decile of runs has depleted; `null` = never. */
   lastsToP10: number | null
-  /** First-year portfolio withdrawal, annual (net of pensions already paying). */
+  /** Mean gross portfolio withdrawal in the first retirement year, annual. */
   firstYearWithdrawal: number
   firstYearWithdrawalMonthly: number
   medianEndWealth: number
@@ -46,13 +45,17 @@ export function buildCompactKpis(
   const percentiles =
     (options.displayReal ? results.assetPercentilesReal : undefined) ?? results.assetPercentiles
   const horizon = results.ages.length - 1
+  const retirementIndex = results.ages.findIndex((age) => age >= results.params.retirementAge)
+  const flows = options.displayReal ? results.cashFlowMeansReal : results.cashFlowMeans
+  const withdrawal =
+    flows?.[Math.max(0, retirementIndex)]?.portfolioWithdrawal ?? insight.firstYearPortfolioNeed
 
   return {
     successRate: results.successRate,
     lastsToMedian: depletionAgeAt(results, 0.5),
     lastsToP10: depletionAgeAt(results, 0.1),
-    firstYearWithdrawal: insight.firstYearPortfolioNeed,
-    firstYearWithdrawalMonthly: insight.firstYearPortfolioNeed / 12,
+    firstYearWithdrawal: withdrawal,
+    firstYearWithdrawalMonthly: withdrawal / 12,
     medianEndWealth: percentiles.p50[horizon] ?? 0,
     p10EndWealth: percentiles.p10[horizon] ?? 0,
     bridgeYears: insight.bridgeYears,

@@ -1,4 +1,5 @@
 import {
+  AnnualCashFlow,
   SimulationParams,
   SimulationResults,
   PercentileData,
@@ -835,6 +836,7 @@ function runSingleSimulation(
   run: number,
   random: RandomSource
 ): {
+  cashFlowHistory: AnnualCashFlow[]
   assetHistory: number[]
   spendingHistory: number[]
   /** Cumulative inflation from the start of the plan up to each age. */
@@ -846,6 +848,7 @@ function runSingleSimulation(
   /** Capital gains tax paid on those sales. */
   taxPaid: number
 } {
+  const cashFlowHistory: AnnualCashFlow[] = []
   const assetHistory: number[] = []
   const spendingHistory: number[] = []
   const inflationIndexHistory: number[] = []
@@ -881,6 +884,7 @@ function runSingleSimulation(
   let allowanceRemaining = annualAllowance
   let grossWithdrawn = 0
   let taxPaid = 0
+  let yearShortfall = 0
 
   /**
    * Sells enough of the portfolio to raise `netNeeded` after capital gains tax,
@@ -890,7 +894,10 @@ function runSingleSimulation(
    */
   const withdrawNet = (netNeeded: number): number => {
     if (netNeeded <= 0) return 0
-    if (currentAssets <= 0) return netNeeded
+    if (currentAssets <= 0) {
+      yearShortfall += netNeeded
+      return netNeeded
+    }
     const shelter = { exemption, allowance: allowanceRemaining }
     const totalWithdrawal = computeGrossWithdrawal(
       currentAssets,
@@ -907,15 +914,25 @@ function runSingleSimulation(
       withdrawal * (1 - clamp(costBasis / currentAssets, 0, 1)) * (1 - exemption)
     const allowanceUsed = Math.min(allowanceRemaining, realizedTaxableGain)
     allowanceRemaining = Math.max(0, allowanceRemaining - allowanceUsed)
-    taxPaid += Math.max(0, realizedTaxableGain - allowanceUsed) * taxRate
+    const saleTax = Math.max(0, realizedTaxableGain - allowanceUsed) * taxRate
+    taxPaid += saleTax
     grossWithdrawn += withdrawal
     costBasis = Math.max(0, costBasis * (1 - withdrawalRatio))
     currentAssets = Math.max(0, currentAssets - withdrawal)
-    return Math.max(0, totalWithdrawal - withdrawal)
+    const shortfall = Math.max(0, netNeeded - (withdrawal - saleTax))
+    yearShortfall += shortfall
+    return shortfall
   }
 
   for (let age = params.currentAge; age <= params.endAge; age++) {
     const yearIndex = age - params.currentAge
+    const openingAssets = currentAssets
+    const withdrawalsBefore = grossWithdrawn
+    const taxesBefore = taxPaid
+    let investmentReturn = 0
+    let portfolioContribution = 0
+    const savings = age < effectiveRetirementAge ? currentAnnualSavings : 0
+    yearShortfall = 0
     inflationIndexHistory.push(inflationIndex)
     // A new tax year: the allowance is use-it-or-lose-it.
     allowanceRemaining = annualAllowance
@@ -933,6 +950,7 @@ function runSingleSimulation(
       (flows.oneTimeIncomeLinkedByAge.get(age) ?? 0) * inflationIndex +
       (flows.oneTimeIncomeFixedByAge.get(age) ?? 0)
     if (scheduledIncome > 0) {
+      portfolioContribution += scheduledIncome
       currentAssets += scheduledIncome
       costBasis += scheduledIncome
     }
@@ -942,11 +960,13 @@ function runSingleSimulation(
       const roiFactor = sampler.nextGrowthFactor(yearIndex, run, random)
 
       // During accumulation, assume reinvestment without realizing gains
+      investmentReturn = currentAssets * (roiFactor - 1)
       currentAssets = currentAssets * roiFactor
       // Salary covers ordinary living costs while working, so only scheduled
       // flows move money here: they net off against the year's savings.
       const netContribution = currentAnnualSavings + extraIncome - extraExpense
       if (netContribution >= 0) {
+        portfolioContribution += netContribution
         currentAssets += netContribution
         costBasis += netContribution // Track additional investments
       } else if (withdrawNet(-netContribution) > 0 || currentAssets <= 0) {
@@ -1002,11 +1022,13 @@ function runSingleSimulation(
 
       // Apply investment growth first
       const roiFactor = sampler.nextGrowthFactor(yearIndex, run, random)
+      investmentReturn = currentAssets * (roiFactor - 1)
       currentAssets = Math.max(0, currentAssets * roiFactor)
 
       if (netNeeded > 0) {
         // We need to sell investments to cover expenses, with tax gross-up on gains portion
         if (currentAssets <= 0) {
+          yearShortfall += netNeeded
           runFailed = true
           currentAssets = 0
         } else {
@@ -1019,6 +1041,7 @@ function runSingleSimulation(
       } else {
         // Surplus income: reinvest surplus and increase cost basis accordingly
         const surplus = -netNeeded
+        portfolioContribution += surplus
         currentAssets = currentAssets + surplus
         costBasis += surplus
       }
@@ -1046,6 +1069,22 @@ function runSingleSimulation(
       }
     }
 
+    const incomeTax =
+      flows.incomeTaxLinked[yearIndex] * inflationIndexHistory[yearIndex] +
+      flows.incomeTaxFixed[yearIndex]
+    cashFlowHistory.push({
+      openingAssets,
+      investmentReturn,
+      savings,
+      incomeGross: extraIncome + scheduledIncome + incomeTax,
+      incomeTax,
+      capitalGainsTax: taxPaid - taxesBefore,
+      expenses: spendingHistory[yearIndex] * 12,
+      portfolioWithdrawal: grossWithdrawn - withdrawalsBefore,
+      portfolioContribution,
+      shortfall: yearShortfall,
+      closingAssets: currentAssets,
+    })
     assetHistory.push(currentAssets)
 
     if (runFailed && depletionIndex === null) {
@@ -1054,6 +1093,7 @@ function runSingleSimulation(
   }
 
   return {
+    cashFlowHistory,
     assetHistory,
     spendingHistory,
     inflationIndexHistory,
@@ -1113,6 +1153,8 @@ export function runMonteCarloSimulation(
 
   const schedule = buildSimulationSchedule(normalizedParams)
 
+  const cashFlowMeans: AnnualCashFlow[] = []
+  const cashFlowMeansReal: AnnualCashFlow[] = []
   const assetRuns: number[][] = []
   const spendingRuns: number[][] = []
   const assetRunsReal: number[][] = []
@@ -1137,6 +1179,18 @@ export function runMonteCarloSimulation(
     const random = sharedRandom ?? mulberry32(mixSeed(baseSeed, run))
     const result = runSingleSimulation(normalizedParams, schedule, sampler, run, random)
 
+    result.cashFlowHistory.forEach((row, index) => {
+      const nominal = (cashFlowMeans[index] ??= { ...row })
+      const real = (cashFlowMeansReal[index] ??= { ...row })
+      for (const key of Object.keys(row) as (keyof AnnualCashFlow)[]) {
+        if (run === 0) {
+          nominal[key] = 0
+          real[key] = 0
+        }
+        nominal[key] += row[key] / effectiveRuns
+        real[key] += row[key] / result.inflationIndexHistory[index] / effectiveRuns
+      }
+    })
     assetRuns.push(result.assetHistory)
     spendingRuns.push(result.spendingHistory)
     // Deflate each path by *its own* realised inflation before percentiles are
@@ -1203,6 +1257,8 @@ export function runMonteCarloSimulation(
     depletionByAge,
     sampleAssetPaths,
     sampleAssetPathsReal,
+    cashFlowMeans,
+    cashFlowMeansReal,
     params: normalizedParams,
   }
 }
@@ -1332,12 +1388,17 @@ export function netPensionFactor(params: SimulationParams): number {
  * every pension paying out by then, in the euros each is quoted in.
  */
 export function netAnnualPension(params: SimulationParams): number {
-  return netPensionAnnualAtAge(params.cashFlows ?? [], params.legalRetirementAge, taxContext(params))
+  return netPensionAnnualAtAge(
+    params.cashFlows ?? [],
+    params.legalRetirementAge,
+    taxContext(params)
+  )
 }
 
 /** The plan-level tax and timing defaults every cash flow is read against. */
 export function taxContext(params: SimulationParams): PensionContext {
   return {
+    currentAge: params.currentAge,
     legalRetirementAge: params.legalRetirementAge,
     pensionTaxablePortion: params.pensionTaxablePortion,
     pensionTaxRate: params.pensionTaxRate,

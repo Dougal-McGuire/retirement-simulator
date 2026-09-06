@@ -6,7 +6,7 @@ import type {
   Summary,
 } from '@/lib/pdf-generator/schema/reportData'
 
-import type { WithdrawalStrategy } from '@/types'
+import type { WithdrawalStrategy, IncomeTaxTreatment, PensionTaxMode } from '@/types'
 import { localizeCashFlowName } from '@/lib/plans/cashFlowName'
 
 export type { ReportLocale } from '@/lib/pdf-generator/schema/reportData'
@@ -249,6 +249,9 @@ export interface ReportCashFlow {
   endAge?: number
   inflationLinked?: boolean
   growthRate?: number
+  taxablePortion?: number
+  taxTreatment?: IncomeTaxTreatment
+  pensionTaxMode?: PensionTaxMode
 }
 
 export interface ReportExpenses {
