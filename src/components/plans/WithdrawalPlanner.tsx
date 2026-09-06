@@ -55,11 +55,9 @@ function StatStrip({ items }: { items: StatItem[] }) {
           className="rounded-sm border-2 border-border bg-background px-3 py-2"
           data-testid={`withdrawal-stat-${item.key}`}
         >
-          <dt className="text-[0.55rem] font-bold   text-muted-foreground">
-            {item.label}
-          </dt>
-          <dd className="mt-0.5 text-sm font-black tabular-nums text-ink">{item.value}</dd>
-          <dd className="mt-0.5 text-[0.55rem] font-medium leading-tight text-muted-foreground">
+          <dt className="text-xs font-bold   text-muted-foreground">{item.label}</dt>
+          <dd className="mt-0.5 text-sm font-semibold tabular-nums text-ink">{item.value}</dd>
+          <dd className="mt-0.5 text-xs font-medium leading-tight text-muted-foreground">
             {item.hint}
           </dd>
         </div>
@@ -240,7 +238,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
 
   const renderBest = (show: boolean) =>
     show ? (
-      <span className="rounded-sm ml-1.5 border border-border bg-amber px-1 py-px text-[0.5rem] font-extrabold   text-ink">
+      <span className="rounded-sm ml-1.5 border border-border bg-amber px-1 py-px text-xs font-semibold   text-ink">
         {t('compare.best')}
       </span>
     ) : null
@@ -288,9 +286,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
         <div className="flex min-w-0 items-start gap-3">
           <Wallet className="mt-0.5 h-5 w-5 shrink-0 text-viz-purple" aria-hidden="true" />
           <div className="flex min-w-0 items-center gap-2">
-            <h3 className="text-[0.92rem] font-black   text-ink">
-              {t('title')}
-            </h3>
+            <h3 className="text-sm font-semibold   text-ink">{t('title')}</h3>
             <InfoTip content={t('description')} label={t('title')} side="bottom" />
           </div>
         </div>
@@ -300,9 +296,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
 
       <div id="plan-editor-withdrawal-body" className="flex flex-col gap-5">
         <div className="space-y-3" data-testid="withdrawal-strategy-picker">
-          <span className="text-[0.62rem] font-extrabold   text-ink">
-            {t('strategyLabel')}
-          </span>
+          <span className="text-xs font-semibold   text-ink">{t('strategyLabel')}</span>
           <div className="grid gap-2 sm:grid-cols-2" role="group">
             {WITHDRAWAL_STRATEGIES.map((strategy) => {
               const isSelected = params.withdrawalStrategy === strategy
@@ -320,10 +314,8 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
                       : 'bg-white text-ink hover:bg-accent/10'
                   )}
                 >
-                  <span className="text-[0.68rem] font-extrabold  ">
-                    {strategyLabel(strategy)}
-                  </span>
-                  <span className="text-[0.58rem] font-medium leading-snug opacity-90">
+                  <span className="text-xs font-semibold  ">{strategyLabel(strategy)}</span>
+                  <span className="text-xs font-medium leading-snug opacity-90">
                     {tControls(`fields.withdrawalStrategy.options.${strategy}.description`)}
                   </span>
                 </button>
@@ -353,9 +345,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
 
         <div className="rounded-sm space-y-4 border-2 border-border bg-background px-4 py-4">
           <div className="flex items-center gap-2">
-            <span className="text-[0.62rem] font-extrabold   text-ink">
-              {t('paramsLabel')}
-            </span>
+            <span className="text-xs font-semibold   text-ink">{t('paramsLabel')}</span>
             <InfoTip
               label={t('paramsLabel')}
               side="bottom"
@@ -369,7 +359,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
           </div>
 
           {!showRateSlider && (
-            <p className="text-[0.62rem] font-medium leading-snug text-muted-foreground">
+            <p className="text-xs font-medium leading-snug text-muted-foreground">
               {t('noParams')}
             </p>
           )}
@@ -451,9 +441,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
         <div className="rounded-sm space-y-4 border border-border bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-center gap-2">
-              <h4 className="text-[0.78rem] font-extrabold   text-ink">
-                {t('compare.title')}
-              </h4>
+              <h4 className="text-sm font-semibold   text-ink">{t('compare.title')}</h4>
               <InfoTip content={t('compare.subtitle')} label={t('compare.title')} side="bottom" />
             </div>
             <Button
@@ -485,7 +473,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
             <>
               {isStale && (
                 <p
-                  className="rounded-sm border-2 border-warning-600 bg-warning-50 px-3 py-2 text-[0.66rem] font-semibold   text-warning-700"
+                  className="rounded-sm border-2 border-warning-600 bg-warning-50 px-3 py-2 text-xs font-semibold   text-warning-700"
                   data-testid="strategy-compare-stale"
                 >
                   {t('compare.stale')}
@@ -499,7 +487,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
                   data-testid="strategy-compare-table"
                 >
                   <thead>
-                    <tr className="border-b-2 border-border text-[0.6rem] font-extrabold   text-muted-foreground">
+                    <tr className="border-b-2 border-border text-xs font-semibold   text-muted-foreground">
                       <th scope="col" className="py-2 pr-3">
                         {t('compare.columns.strategy')}
                       </th>
@@ -521,15 +509,15 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
                           data-testid="strategy-compare-row"
                           data-strategy={snapshot.strategy}
                           className={cn(
-                            'border-b border-ink/15 text-[0.72rem] font-semibold text-ink',
+                            'border-b border-ink/15 text-xs font-semibold text-ink',
                             active && 'bg-amber/15'
                           )}
                         >
-                          <th scope="row" className="py-3 pr-3 font-extrabold">
+                          <th scope="row" className="py-3 pr-3 font-semibold">
                             <span className="flex flex-wrap items-center gap-2">
                               {strategyLabel(snapshot.strategy)}
                               {active && (
-                                <span className="text-[0.54rem] font-semibold   text-accent">
+                                <span className="text-xs font-semibold   text-accent">
                                   {t('compare.active')}
                                 </span>
                               )}
@@ -540,7 +528,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
                                     updateParams({ withdrawalStrategy: snapshot.strategy })
                                   }
                                   data-testid={`strategy-compare-apply-${snapshot.strategy}`}
-                                  className="rounded-sm border border-border px-1.5 py-px text-[0.52rem] font-extrabold   text-muted-foreground transition-colors hover:bg-accent hover:text-white"
+                                  className="rounded-sm border border-border px-1.5 py-px text-xs font-semibold   text-muted-foreground transition-colors hover:bg-accent hover:text-white"
                                 >
                                   {t('compare.apply')}
                                 </button>
@@ -579,24 +567,24 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[0.72rem] font-extrabold text-ink">
+                        <span className="text-xs font-semibold text-ink">
                           {strategyLabel(snapshot.strategy)}
                         </span>
                         {active ? (
-                          <span className="shrink-0 text-[0.54rem] font-semibold   text-accent">
+                          <span className="shrink-0 text-xs font-semibold   text-accent">
                             {t('compare.active')}
                           </span>
                         ) : (
                           <button
                             type="button"
                             onClick={() => updateParams({ withdrawalStrategy: snapshot.strategy })}
-                            className="rounded-sm shrink-0 border border-border px-1.5 py-px text-[0.52rem] font-extrabold   text-muted-foreground"
+                            className="rounded-sm shrink-0 border border-border px-1.5 py-px text-xs font-semibold   text-muted-foreground"
                           >
                             {t('compare.apply')}
                           </button>
                         )}
                       </div>
-                      <dl className="mt-2 divide-y divide-ink/10 text-[0.68rem]">
+                      <dl className="mt-2 divide-y divide-ink/10 text-xs">
                         {compareCells(snapshot).map((cell) => (
                           <div
                             key={cell.key}
@@ -605,7 +593,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
                             <dt className="font-semibold   text-muted-foreground">
                               {t(`compare.columns.${cell.key}`)}
                             </dt>
-                            <dd className="shrink-0 text-right font-extrabold tabular-nums">
+                            <dd className="shrink-0 text-right font-semibold tabular-nums">
                               {cell.value}
                               {renderBest(cell.best)}
                             </dd>
@@ -617,7 +605,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
                 })}
               </ul>
 
-              <p className="text-[0.6rem] font-medium leading-snug text-muted-foreground">
+              <p className="text-xs font-medium leading-snug text-muted-foreground">
                 {t('compare.runsNote', {
                   runs: format.number(Math.min(params.simulationRuns, STRATEGY_COMPARE_RUNS)),
                   age: referenceAge,

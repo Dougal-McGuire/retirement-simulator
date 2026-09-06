@@ -473,14 +473,10 @@ export function CashFlowList({
               })
             }
             className={cn(
-              'rounded-sm inline-flex items-center gap-1.5 border-2 border-border px-3 py-1.5 text-xs font-extrabold   transition-colors',
+              'rounded-sm inline-flex items-center gap-1.5 border-2 border-border px-3 py-1.5 text-xs font-semibold   transition-colors',
               state.kind === kind
-                ? kind === 'pension'
-                  ? 'bg-accent text-muted-foreground shadow-sm'
-                  : kind === 'income'
-                    ? 'bg-ok text-ink shadow-sm'
-                    : 'bg-viz-orange text-ink shadow-sm'
-                : 'bg-white text-muted-foreground hover:bg-accent/10'
+                ? 'bg-muted text-ink border-accent'
+                : 'bg-white text-muted-foreground hover:bg-muted'
             )}
           >
             {kind === 'pension' ? (
@@ -633,7 +629,7 @@ export function CashFlowList({
           type="button"
           onClick={() => setAdvancedOpen((open) => !open)}
           aria-expanded={advancedOpen}
-          className="text-xs font-extrabold   text-accent"
+          className="text-xs font-semibold   text-accent"
         >
           {advancedOpen ? t('advanced.hide') : t('advanced.show')}
         </button>
@@ -842,7 +838,7 @@ export function CashFlowList({
             className="rounded-sm space-y-2 border border-border bg-white p-3 shadow-sm"
             data-testid="cashflow-timeline"
           >
-            <div className="flex items-center justify-between text-xs font-extrabold   text-muted-foreground">
+            <div className="flex items-center justify-between text-xs font-semibold   text-muted-foreground">
               <span>{t('timeline.title')}</span>
               <span className="tabular-nums">
                 {currentAge} – {endAge}
@@ -878,7 +874,7 @@ export function CashFlowList({
             {/* Retirement marker, so a window reads against the plan's phases. */}
             <div className="relative ml-[6.5rem] h-3 sm:ml-[8.5rem]">
               <span
-                className="absolute top-0 -translate-x-1/2 text-[0.5rem] font-extrabold   text-accent"
+                className="absolute top-0 -translate-x-1/2 text-xs font-semibold   text-accent"
                 style={{
                   left: `${((Math.min(endAge, Math.max(currentAge, retirementAge)) - currentAge) / horizon) * 100}%`,
                 }}
@@ -892,16 +888,16 @@ export function CashFlowList({
             <table className="w-full min-w-[17rem]">
               <thead className="border-b border-border bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-[0.6rem] font-bold   text-muted-foreground">
+                  <th className="px-3 py-2 text-left text-xs font-bold   text-muted-foreground">
                     {t('table.item')}
                   </th>
-                  <th className="hidden px-3 py-2 text-left text-[0.6rem] font-bold   text-muted-foreground sm:table-cell">
+                  <th className="hidden px-3 py-2 text-left text-xs font-bold   text-muted-foreground sm:table-cell">
                     {t('table.period')}
                   </th>
-                  <th className="px-3 py-2 text-right text-[0.6rem] font-bold   text-muted-foreground">
+                  <th className="px-3 py-2 text-right text-xs font-bold   text-muted-foreground">
                     {t('table.amount')}
                   </th>
-                  <th className="w-20 px-2 py-2 text-center text-[0.6rem] font-bold   text-muted-foreground">
+                  <th className="w-20 px-2 py-2 text-center text-xs font-bold   text-muted-foreground">
                     {t('table.actions')}
                   </th>
                 </tr>
@@ -911,7 +907,7 @@ export function CashFlowList({
                   <tr className="bg-muted/40" data-testid={`cashflow-group-${group.key}`}>
                     <td
                       colSpan={4}
-                      className="px-3 py-1.5 text-xs font-extrabold   text-muted-foreground"
+                      className="px-3 py-1.5 text-xs font-semibold   text-muted-foreground"
                     >
                       {t(`table.groups.${group.key}`, { count: group.flows.length })}
                     </td>
@@ -1069,10 +1065,8 @@ export function CashFlowList({
               <Plus className="h-4 w-4 text-ink" strokeWidth={3} aria-hidden="true" />
             </span>
             <div>
-              <p className="text-[0.7rem] font-extrabold   text-ink">{t('empty.title')}</p>
-              <p className="text-[0.6rem] font-semibold   text-muted-foreground">
-                {t('empty.hint')}
-              </p>
+              <p className="text-xs font-semibold   text-ink">{t('empty.title')}</p>
+              <p className="text-xs font-semibold   text-muted-foreground">{t('empty.hint')}</p>
             </div>
           </div>
         )}

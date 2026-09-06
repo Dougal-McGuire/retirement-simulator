@@ -3,13 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import * as Tabs from '@radix-ui/react-tabs'
-import {
-  ArrowLeftRight,
-  ChartNoAxesCombined,
-  Landmark,
-  SlidersHorizontal,
-  WalletCards,
-} from 'lucide-react'
+import { ArrowLeftRight, ChartNoAxesCombined, SlidersHorizontal, WalletCards } from 'lucide-react'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 import { areSimulationParamsEqual } from '@/lib/simulation/planInsights'
 import {
@@ -103,16 +97,7 @@ export default function SimulationPage() {
       className="retirement-workspace"
     >
       <aside className="workspace-sidebar" id="navigation">
-        <div className="workspace-brand">
-          <span>
-            <Landmark size={24} aria-hidden="true" />
-          </span>
-          <div>
-            <strong>{t('brand')}</strong>
-            <small>{t('brandSub')}</small>
-          </div>
-        </div>
-        <p className="workspace-nav-caption">{t('navigationCaption')}</p>
+        <div className="workspace-brand">{t('brand')}</div>
         <Tabs.List className="workspace-navigation" aria-label={t('navigation')}>
           {destinations.map(({ value, icon: Icon }) => (
             <Tabs.Trigger key={value} value={value} data-testid={`tab-${value}`}>
@@ -121,18 +106,12 @@ export default function SimulationPage() {
             </Tabs.Trigger>
           ))}
         </Tabs.List>
-        <div className="workspace-sidebar-note">
-          <span className="workspace-dot" />
-          {t('sidebarNote')}
-          <p>{t('sidebarExplain')}</p>
-        </div>
       </aside>
       <div className="workspace-body">
         <WorkspaceHeader results={stale ? null : results} loading={loading} onRun={() => run()} />
         <main id="main-content" className="workspace-main" aria-busy={loading}>
           <div className="workspace-page-heading">
             <div>
-              <p className="workspace-eyebrow">{t('brandSub')}</p>
               <h1 ref={headingRef} tabIndex={-1}>
                 {t(`views.${view}.title`)}
               </h1>

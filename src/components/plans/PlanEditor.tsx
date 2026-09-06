@@ -94,7 +94,7 @@ function StatStrip({ items, stale = false }: { items: StatItem[]; stale?: boolea
       {items.map((item) => (
         <div key={item.label} className="rounded-sm border-2 border-border bg-background px-3 py-2">
           <dt className="text-xs font-bold   text-muted-foreground">{item.label}</dt>
-          <dd className="mt-0.5 text-sm font-black tabular-nums text-ink">{item.value}</dd>
+          <dd className="mt-0.5 text-sm font-semibold tabular-nums text-ink">{item.value}</dd>
           {item.hint && (
             <dd className="mt-0.5 text-xs font-medium leading-tight text-muted-foreground">
               {item.hint}
@@ -130,13 +130,13 @@ function EditorCard({
       id={id}
       data-testid={id}
       className={cn(
-        'rounded-sm theme-panel-card flex scroll-mt-32 flex-col gap-5 border border-border bg-white p-5 shadow-sm',
+        'rounded-sm theme-panel-card flex scroll-mt-32 flex-col gap-6 border border-border bg-white p-6',
         className
       )}
     >
-      <header className="flex items-start justify-between gap-3 border-b-2 border-border pb-3">
+      <header className="flex items-start justify-between gap-3 border-b border-border pb-4">
         <div className="flex min-w-0 items-center gap-2">
-          <h3 className="text-[0.92rem] font-black   text-ink">{title}</h3>
+          <h3 className="text-sm font-semibold   text-ink">{title}</h3>
           <InfoTip content={description} label={title} side="bottom" />
         </div>
       </header>
@@ -175,7 +175,7 @@ function PresetRow({
       className={cn('space-y-2', disabled && 'opacity-55')}
       aria-disabled={disabled || undefined}
     >
-      <span className="text-xs font-extrabold   text-ink">{label}</span>
+      <span className="text-xs font-semibold   text-ink">{label}</span>
       <div className="grid gap-2 sm:grid-cols-3">
         {options.map((option) => {
           const isActive = option.key === activeKey
@@ -191,7 +191,7 @@ function PresetRow({
                 isActive ? 'bg-amber text-ink shadow-sm' : 'bg-white text-ink hover:bg-accent/10'
               )}
             >
-              <span className="text-xs font-extrabold  ">{option.label}</span>
+              <span className="text-xs font-semibold  ">{option.label}</span>
               <span className="text-xs font-semibold tabular-nums text-muted-foreground">
                 {option.detail}
               </span>
@@ -420,9 +420,9 @@ export function PlanEditor({
 
   return (
     <div className={cn('space-y-5', className)} data-testid="plan-editor">
-      <div className="rounded-sm flex flex-col gap-3 border border-border bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-sm flex flex-col gap-4 border border-border bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
-          <h2 className="text-[1rem] font-black   text-ink">{t('title')}</h2>
+          <h2 className="text-[1rem] font-semibold   text-ink">{t('title')}</h2>
           <InfoTip
             content={planName ? t('description', { name: planName }) : t('descriptionGeneric')}
             label={t('title')}
@@ -739,7 +739,7 @@ export function PlanEditor({
             }
           >
             <div className="space-y-2" data-testid="market-model-switch">
-              <span className="text-xs font-extrabold   text-ink">
+              <span className="text-xs font-semibold   text-ink">
                 {tControls('fields.marketModel.label')}
               </span>
               <div className="grid gap-2 sm:grid-cols-2" role="group">
@@ -759,7 +759,7 @@ export function PlanEditor({
                           : 'bg-white text-ink hover:bg-accent/10'
                       )}
                     >
-                      <span className="text-xs font-extrabold  ">
+                      <span className="text-xs font-semibold  ">
                         {tControls(`fields.marketModel.options.${model}.label`)}
                       </span>
                       <span className="text-xs font-medium leading-snug opacity-90">
@@ -851,7 +851,7 @@ export function PlanEditor({
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <h4 className="text-xs font-extrabold   text-ink">
+                  <h4 className="text-xs font-semibold   text-ink">
                     {tControls('fields.glidePath.label')}
                   </h4>
                   <InfoTip
@@ -867,7 +867,7 @@ export function PlanEditor({
                   data-testid="glide-path-toggle"
                   onClick={() => updateParams({ glidePathEnabled: !glideOn })}
                   className={cn(
-                    'rounded-sm flex shrink-0 items-center gap-2 border-2 border-border px-3 py-1.5 text-xs font-extrabold   transition-colors',
+                    'rounded-sm flex shrink-0 items-center gap-2 border-2 border-border px-3 py-1.5 text-xs font-semibold   transition-colors',
                     glideOn
                       ? 'bg-accent text-white shadow-sm'
                       : 'bg-white text-ink hover:bg-accent/10'
@@ -927,7 +927,7 @@ export function PlanEditor({
                   />
 
                   <details className="rounded-sm border-2 border-border bg-white px-3 py-2">
-                    <summary className="cursor-pointer text-[0.6rem] font-extrabold   text-ink">
+                    <summary className="cursor-pointer text-xs font-semibold   text-ink">
                       {tControls('fields.glidePath.advanced')}
                     </summary>
                     <div className="mt-3 grid gap-x-5 gap-y-6 sm:grid-cols-2">
@@ -958,7 +958,7 @@ export function PlanEditor({
                         invalidMessage={notANumber}
                       />
                     </div>
-                    <p className="mt-3 text-[0.6rem] font-medium leading-snug text-muted-foreground">
+                    <p className="mt-3 text-xs font-medium leading-snug text-muted-foreground">
                       {usesHistory
                         ? tControls('fields.glidePath.historicalNote')
                         : tControls('fields.glidePath.correlationNote')}
@@ -1038,7 +1038,7 @@ export function PlanEditor({
               data-testid="tax-block"
             >
               <div className="flex min-w-0 items-center gap-2">
-                <h4 className="text-xs font-extrabold   text-ink">{tTax('title')}</h4>
+                <h4 className="text-xs font-semibold   text-ink">{tTax('title')}</h4>
                 <InfoTip content={tTax('description')} label={tTax('title')} side="bottom" />
               </div>
 
@@ -1073,7 +1073,7 @@ export function PlanEditor({
               </div>
 
               <div className="space-y-2" data-testid="household-type-switch">
-                <span className="text-xs font-extrabold   text-ink">{tTax('household.label')}</span>
+                <span className="text-xs font-semibold   text-ink">{tTax('household.label')}</span>
                 <div className="grid gap-2 sm:grid-cols-2" role="group">
                   {HOUSEHOLD_TYPES.map((type) => {
                     const isSelected = params.householdType === type
@@ -1091,7 +1091,7 @@ export function PlanEditor({
                             : 'bg-white text-ink hover:bg-accent/10'
                         )}
                       >
-                        <span className="text-xs font-extrabold  ">
+                        <span className="text-xs font-semibold  ">
                           {tTax(`household.options.${type}.label`)}
                         </span>
                         <span className="text-xs font-medium leading-snug opacity-90">
@@ -1101,7 +1101,7 @@ export function PlanEditor({
                     )
                   })}
                 </div>
-                <p className="text-[0.6rem] font-semibold   text-muted-foreground">
+                <p className="text-xs font-semibold   text-muted-foreground">
                   {tTax('allowance.effective', { amount: formatCurrency(effectiveAllowance) })}
                 </p>
               </div>
@@ -1121,7 +1121,7 @@ export function PlanEditor({
               />
 
               <details className="rounded-sm border-2 border-border bg-white px-3 py-2">
-                <summary className="cursor-pointer text-[0.6rem] font-extrabold   text-ink">
+                <summary className="cursor-pointer text-xs font-semibold   text-ink">
                   {tTax('pension.summary')}
                 </summary>
                 <div className="mt-3 grid gap-x-5 gap-y-6 sm:grid-cols-2">
@@ -1153,7 +1153,7 @@ export function PlanEditor({
                   />
                 </div>
                 <p
-                  className="mt-3 text-[0.6rem] font-semibold leading-snug text-muted-foreground"
+                  className="mt-3 text-xs font-semibold leading-snug text-muted-foreground"
                   data-testid="pension-net-readout"
                 >
                   {tTax('pension.net', {

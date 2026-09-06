@@ -50,7 +50,7 @@ function GoogleIcon({ className }: { className?: string }) {
 // "Sign in with Google" / "Mit Google anmelden" are long strings for an
 // , wide-tracked button. Tightening tracking and padding keeps them on
 // one line inside the 12rem action strips instead of ellipsising.
-const SIGN_IN_BUTTON_CLASS = 'w-full justify-center gap-2 px-3 text-[0.6rem] '
+const SIGN_IN_BUTTON_CLASS = 'w-full justify-center gap-2 px-3 text-xs '
 
 /** Rendered when the deployment has no Google OAuth credentials. */
 function AuthUnavailable({ className, compact }: AuthMenuProps) {
@@ -207,7 +207,7 @@ function AuthSession({ className, compact, signInRedirectTo }: AuthMenuProps) {
     >
       {avatar}
       <span
-        className="min-w-0 flex-1 truncate text-[0.7rem] font-bold leading-tight text-ink"
+        className="min-w-0 flex-1 truncate text-xs font-bold leading-tight text-ink"
         title={displayName}
       >
         {displayName}
@@ -253,7 +253,5 @@ export function AuthMenu({
     return <AuthUnavailable className={className} compact={compact} />
   }
 
-  return (
-    <AuthSession className={className} compact={compact} signInRedirectTo={signInRedirectTo} />
-  )
+  return <AuthSession className={className} compact={compact} signInRedirectTo={signInRedirectTo} />
 }

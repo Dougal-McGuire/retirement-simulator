@@ -153,12 +153,12 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
     <div
       data-testid="plan-switcher"
       className={cn(
-        'rounded-sm theme-plan-switcher flex flex-col gap-3 border border-border bg-white px-4 py-3 shadow-sm',
+        'rounded-sm theme-plan-switcher flex flex-col gap-4 border border-border bg-white p-4',
         className
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-[0.62rem] font-extrabold   text-muted-foreground">
+        <span className="flex items-center gap-2 text-xs font-semibold   text-muted-foreground">
           <FolderOpen className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
           {t('label')}
         </span>
@@ -166,7 +166,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
           <span
             data-testid="plan-dirty-badge"
             className={cn(
-              'rounded-sm inline-flex items-center gap-1.5 border-2 px-2 py-0.5 text-[0.58rem] font-extrabold  ',
+              'rounded-sm inline-flex items-center gap-1.5 border-2 px-2 py-0.5 text-xs font-semibold  ',
               isDirty
                 ? 'border-border bg-amber text-ink'
                 : 'border-ink/30 bg-transparent text-muted-foreground'
@@ -179,7 +179,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
             )}
             {isDirty ? t('dirty.badge') : t('dirty.clean')}
           </span>
-          <span className="text-[0.6rem] font-semibold   text-muted-foreground">
+          <span className="text-xs font-semibold   text-muted-foreground">
             {t('switcher.count', { count: plans.length, max: MAX_PLANS })}
           </span>
         </div>
@@ -191,7 +191,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
             size="sm"
             aria-label={t('switcher.ariaLabel')}
             data-testid="plan-switcher-select"
-            className="h-10 w-full min-w-0 flex-1 text-[0.72rem]"
+            className="h-10 w-full min-w-0 flex-1 text-xs"
           >
             <SelectValue placeholder={activeName}>{activeName}</SelectValue>
           </SelectTrigger>
@@ -203,10 +203,8 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
                 <SelectItem key={plan.id} value={plan.id}>
                   <span className="flex w-full min-w-[14rem] items-center justify-between gap-3">
                     <span className="flex flex-col text-left">
-                      <span className="text-[0.7rem] font-extrabold  ">
-                        {planDisplayName(plan, t)}
-                      </span>
-                      <span className="text-[0.58rem] font-semibold   text-muted-foreground">
+                      <span className="text-xs font-semibold  ">{planDisplayName(plan, t)}</span>
+                      <span className="text-xs font-semibold   text-muted-foreground">
                         {/* A cached rate describes the *stored* plan, so it is
                             not shown while unsaved edits are on top of it. */}
                         {isActive && isDirty
@@ -217,7 +215,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
                       </span>
                     </span>
                     {isActive && (
-                      <span className="rounded-sm border-2 border-border bg-accent/10 px-1.5 py-0.5 text-[0.55rem] font-extrabold   text-accent">
+                      <span className="rounded-sm border-2 border-border bg-accent/10 px-1.5 py-0.5 text-xs font-semibold   text-accent">
                         {isDirty ? t('switcher.modified') : t('switcher.active')}
                       </span>
                     )}
@@ -291,9 +289,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
           data-testid="plan-dirty-actions"
           className="rounded-sm flex flex-col gap-2 border-2 border-border bg-amber/15 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
         >
-          <p className="text-[0.62rem] font-semibold leading-relaxed text-ink">
-            {t('dirty.hint')}
-          </p>
+          <p className="text-xs font-semibold leading-relaxed text-ink">{t('dirty.hint')}</p>
           <div className="flex shrink-0 items-center gap-2">
             <Button
               size="sm"
@@ -321,7 +317,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
       )}
 
       {atLimit && (
-        <p className="text-[0.6rem] font-semibold   text-danger">
+        <p className="text-xs font-semibold   text-danger">
           {t('switcher.limit', { max: MAX_PLANS })}
         </p>
       )}

@@ -65,7 +65,14 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
         ? [visiblePercentiles.p80, visiblePercentiles.p50]
         : [visiblePercentiles.p90, ...visibleSamples]
     return buildFanGeometry(visibleAges, scaleSeries)
-  }, [visibleAges, visiblePercentiles.p50, visiblePercentiles.p80, visiblePercentiles.p90, visibleSamples, scaleMode])
+  }, [
+    visibleAges,
+    visiblePercentiles.p50,
+    visiblePercentiles.p80,
+    visiblePercentiles.p90,
+    visibleSamples,
+    scaleMode,
+  ])
 
   const { retirementAge, legalRetirementAge } = results.params
   const firstAge = visibleAges[0] ?? 0
@@ -88,14 +95,17 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
     setInspectIndex(Math.round(ratio * (visibleAges.length - 1)))
   }
 
-  const inspected = inspectIndex == null ? null : {
-    age: visibleAges[inspectIndex],
-    p10: visiblePercentiles.p10[inspectIndex],
-    p20: visiblePercentiles.p20[inspectIndex],
-    p50: visiblePercentiles.p50[inspectIndex],
-    p80: visiblePercentiles.p80[inspectIndex],
-    p90: visiblePercentiles.p90[inspectIndex],
-  }
+  const inspected =
+    inspectIndex == null
+      ? null
+      : {
+          age: visibleAges[inspectIndex],
+          p10: visiblePercentiles.p10[inspectIndex],
+          p20: visiblePercentiles.p20[inspectIndex],
+          p50: visiblePercentiles.p50[inspectIndex],
+          p80: visiblePercentiles.p80[inspectIndex],
+          p90: visiblePercentiles.p90[inspectIndex],
+        }
 
   const formatCurrency = (value: number) =>
     format.number(value, {
@@ -135,9 +145,9 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
               style={{
                 border: 0,
                 borderRadius: 0,
-                minHeight: 30,
-                background: scaleMode === mode ? 'var(--accent)' : 'var(--surface)',
-                color: scaleMode === mode ? '#fff' : 'var(--text-label)',
+                minHeight: 'var(--ui-control-height)',
+                background: scaleMode === mode ? 'var(--ui-subtle)' : 'var(--surface)',
+                color: scaleMode === mode ? 'var(--text)' : 'var(--text-label)',
               }}
             >
               {tAssets(`scale.${mode}`)}
@@ -149,7 +159,7 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
           className="ds-btn ds-btn--outline ds-btn--sm"
           onClick={resetZoom}
           disabled={!isZoomed}
-          style={{ minHeight: 30 }}
+          style={{ minHeight: 'var(--ui-control-height)' }}
         >
           {tAssets('reset')}
         </button>
@@ -171,37 +181,156 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
           aria-hidden="true"
         >
           {geometry.gridLines.map((grid) => (
-            <line key={grid.value} x1={0} x2={FAN_W} y1={grid.y} y2={grid.y} stroke="var(--gray-200)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+            <line
+              key={grid.value}
+              x1={0}
+              x2={FAN_W}
+              y1={grid.y}
+              y2={grid.y}
+              stroke="var(--gray-200)"
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
           ))}
           {markerAges.map((age) => (
-            <line key={age} x1={geometry.ageX(age)} x2={geometry.ageX(age)} y1={0} y2={FAN_H} stroke="var(--gray-300)" strokeWidth={1} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+            <line
+              key={age}
+              x1={geometry.ageX(age)}
+              x2={geometry.ageX(age)}
+              y1={0}
+              y2={FAN_H}
+              stroke="var(--gray-300)"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+              vectorEffect="non-scaling-stroke"
+            />
           ))}
-          <path d={geometry.band(visiblePercentiles.p10, visiblePercentiles.p90)} fill="var(--viz-seq-1)" />
-          <path d={geometry.band(visiblePercentiles.p20, visiblePercentiles.p80)} fill="var(--viz-seq-2)" />
+          <path
+            d={geometry.band(visiblePercentiles.p10, visiblePercentiles.p90)}
+            fill="var(--viz-seq-1)"
+          />
+          <path
+            d={geometry.band(visiblePercentiles.p20, visiblePercentiles.p80)}
+            fill="var(--viz-seq-2)"
+          />
           {visibleSamples.map((sample, index) => (
-            <path key={index} d={geometry.line(sample)} fill="none" stroke="var(--gray-500)" strokeWidth={0.8} opacity={0.35} vectorEffect="non-scaling-stroke" />
+            <path
+              key={index}
+              d={geometry.line(sample)}
+              fill="none"
+              stroke="var(--gray-500)"
+              strokeWidth={0.8}
+              opacity={0.35}
+              vectorEffect="non-scaling-stroke"
+            />
           ))}
-          <path d={geometry.line(visiblePercentiles.p50)} fill="none" stroke="var(--viz-seq-5)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+          <path
+            d={geometry.line(visiblePercentiles.p50)}
+            fill="none"
+            stroke="var(--viz-seq-5)"
+            strokeWidth={2}
+            vectorEffect="non-scaling-stroke"
+          />
           {inspectIndex != null && (
-            <line x1={geometry.x(inspectIndex)} x2={geometry.x(inspectIndex)} y1={0} y2={FAN_H} stroke="var(--text-label)" strokeWidth={1} strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
+            <line
+              x1={geometry.x(inspectIndex)}
+              x2={geometry.x(inspectIndex)}
+              y1={0}
+              y2={FAN_H}
+              stroke="var(--text-label)"
+              strokeWidth={1}
+              strokeDasharray="2 3"
+              vectorEffect="non-scaling-stroke"
+            />
           )}
         </svg>
         {geometry.gridLines.map((grid) => (
-          <span key={grid.value} className="ds-meta" style={{ position: 'absolute', left: 4, top: grid.topPct, transform: 'translateY(-110%)', background: 'rgba(255,255,255,.78)', padding: '0 3px', borderRadius: 2 }}>
+          <span
+            key={grid.value}
+            className="ds-meta"
+            style={{
+              position: 'absolute',
+              left: 4,
+              top: grid.topPct,
+              transform: 'translateY(-110%)',
+              background: 'rgba(255,255,255,.78)',
+              padding: '0 3px',
+              borderRadius: 2,
+            }}
+          >
             {formatAxisEuro(grid.value, locale)}
           </span>
         ))}
-        <div style={{ position: 'absolute', top: 4, right: 6, display: 'flex', gap: 10, alignItems: 'center', fontSize: 11, color: 'var(--text-label)', background: 'rgba(255,255,255,.86)', padding: '2px 6px', borderRadius: 'var(--radius)' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 7, background: 'var(--viz-seq-1)' }} />{t('bandOuter')}</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 7, background: 'var(--viz-seq-2)' }} />{t('bandInner')}</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 2, background: 'var(--viz-seq-5)' }} />{t('median')}</span>
-          <span style={{ borderLeft: '1px solid var(--line)', paddingLeft: 10, fontWeight: 600, color: 'var(--text)' }}>{displayReal ? t('real') : t('nominal')}</span>
+        <div
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 6,
+            display: 'flex',
+            gap: 10,
+            alignItems: 'center',
+            fontSize: 11,
+            color: 'var(--text-label)',
+            background: 'rgba(255,255,255,.86)',
+            padding: '2px 6px',
+            borderRadius: 'var(--radius)',
+          }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 7, background: 'var(--viz-seq-1)' }} />
+            {t('bandOuter')}
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 7, background: 'var(--viz-seq-2)' }} />
+            {t('bandInner')}
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 2, background: 'var(--viz-seq-5)' }} />
+            {t('median')}
+          </span>
+          <span
+            style={{
+              borderLeft: '1px solid var(--line)',
+              paddingLeft: 10,
+              fontWeight: 600,
+              color: 'var(--text)',
+            }}
+          >
+            {displayReal ? t('real') : t('nominal')}
+          </span>
         </div>
         {inspected && (
-          <div style={{ position: 'absolute', left: geometry.x(inspectIndex ?? 0) / FAN_W < 0.68 ? `calc(${(geometry.x(inspectIndex ?? 0) / FAN_W) * 100}% + 10px)` : 'auto', right: geometry.x(inspectIndex ?? 0) / FAN_W >= 0.68 ? `calc(${100 - (geometry.x(inspectIndex ?? 0) / FAN_W) * 100}% + 10px)` : 'auto', bottom: 8, minWidth: 170, padding: '7px 9px', background: 'rgba(255,255,255,.96)', border: '1px solid var(--line-strong)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', pointerEvents: 'none', zIndex: 2 }}>
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>{tAssets('tooltip.label', { age: inspected.age })}</div>
+          <div
+            style={{
+              position: 'absolute',
+              left:
+                geometry.x(inspectIndex ?? 0) / FAN_W < 0.68
+                  ? `calc(${(geometry.x(inspectIndex ?? 0) / FAN_W) * 100}% + 10px)`
+                  : 'auto',
+              right:
+                geometry.x(inspectIndex ?? 0) / FAN_W >= 0.68
+                  ? `calc(${100 - (geometry.x(inspectIndex ?? 0) / FAN_W) * 100}% + 10px)`
+                  : 'auto',
+              bottom: 8,
+              minWidth: 170,
+              padding: '7px 9px',
+              background: 'rgba(255,255,255,.96)',
+              border: '1px solid var(--line-strong)',
+              borderRadius: 'var(--radius)',
+              boxShadow: 'var(--shadow-sm)',
+              pointerEvents: 'none',
+              zIndex: 2,
+            }}
+          >
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>
+              {tAssets('tooltip.label', { age: inspected.age })}
+            </div>
             {(['p90', 'p80', 'p50', 'p20', 'p10'] as const).map((key) => (
-              <div key={key} className="ds-meta" style={{ display: 'flex', justifyContent: 'space-between', gap: 14 }}>
+              <div
+                key={key}
+                className="ds-meta"
+                style={{ display: 'flex', justifyContent: 'space-between', gap: 14 }}
+              >
                 <span>{key === 'p50' ? tAssets('tooltip.median') : tAssets(`tooltip.${key}`)}</span>
                 <strong style={{ color: 'var(--text)' }}>{formatCurrency(inspected[key])}</strong>
               </div>
@@ -212,7 +341,13 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
 
       <div style={{ position: 'relative', height: 14, marginTop: 2 }}>
         {geometry.axisTicks.map((tick) => (
-          <span key={tick.age} className="ds-meta" style={{ position: 'absolute', left: tick.leftPct, transform: 'translateX(-50%)' }}>{format.number(tick.age)}</span>
+          <span
+            key={tick.age}
+            className="ds-meta"
+            style={{ position: 'absolute', left: tick.leftPct, transform: 'translateX(-50%)' }}
+          >
+            {format.number(tick.age)}
+          </span>
         ))}
       </div>
 
@@ -240,17 +375,37 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
       )}
 
       <details style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 8 }}>
-        <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 650, color: 'var(--accent)' }}>
+        <summary
+          style={{ cursor: 'pointer', fontSize: 12, fontWeight: 650, color: 'var(--accent)' }}
+        >
           {tSimulation('assetTable.toggle')}
         </summary>
         <div style={{ overflowX: 'auto', marginTop: 8 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+          <table
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontSize: 12,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
             <caption className="sr-only">{tSimulation('assetTable.caption')}</caption>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--line-strong)' }}>
                 {['age', 'p10', 'p20', 'p50', 'p80', 'p90'].map((key) => (
-                  <th key={key} style={{ padding: '6px 8px', textAlign: key === 'age' ? 'left' : 'right', whiteSpace: 'nowrap' }}>
-                    {key === 'age' ? tSimulation('assetTable.headers.age') : key === 'p50' ? tSimulation('assetTable.headers.p50') : key.toUpperCase()}
+                  <th
+                    key={key}
+                    style={{
+                      padding: '6px 8px',
+                      textAlign: key === 'age' ? 'left' : 'right',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {key === 'age'
+                      ? tSimulation('assetTable.headers.age')
+                      : key === 'p50'
+                        ? tSimulation('assetTable.headers.p50')
+                        : key.toUpperCase()}
                   </th>
                 ))}
               </tr>
@@ -259,11 +414,21 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
               {visibleAges.map((age, index) => (
                 <tr key={age} style={{ borderBottom: '1px solid var(--line)' }}>
                   <td style={{ padding: '6px 8px' }}>{format.number(age)}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>{formatCurrency(visiblePercentiles.p10[index])}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>{formatCurrency(visiblePercentiles.p20[index])}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700 }}>{formatCurrency(visiblePercentiles.p50[index])}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>{formatCurrency(visiblePercentiles.p80[index])}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>{formatCurrency(visiblePercentiles.p90[index])}</td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>
+                    {formatCurrency(visiblePercentiles.p10[index])}
+                  </td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>
+                    {formatCurrency(visiblePercentiles.p20[index])}
+                  </td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700 }}>
+                    {formatCurrency(visiblePercentiles.p50[index])}
+                  </td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>
+                    {formatCurrency(visiblePercentiles.p80[index])}
+                  </td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>
+                    {formatCurrency(visiblePercentiles.p90[index])}
+                  </td>
                 </tr>
               ))}
             </tbody>

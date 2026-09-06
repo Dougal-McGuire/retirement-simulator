@@ -2,134 +2,10 @@
 @config '../../tailwind.config.ts';
 
 @layer base {
-/* ------------------------------------------------------------------ */
-  /* KLAR — a light, data-first analyst workspace.                        */
-  /* Near-white ground, a real neutral gray hierarchy, one decisive blue, */
-  /* hairline borders instead of hard shadows. Maximum data-ink.         */
-  /* ------------------------------------------------------------------ */
-  :root {
-    color-scheme: light;
-    --radius: 0.25rem;
-    --ink: rgb(var(--ink-rgb));
-    --white: rgb(var(--white-rgb));
-    --theme-pattern-blend: normal;
-    --background: 210 20% 98%;
-    --foreground: 220 43% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 43% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 43% 11%;
-    --primary: 208 72% 36%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 208 72% 30%;
-    --muted: 220 14% 96%;
-    --muted-foreground: 216 15% 34%;
-    --accent: 208 72% 36%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 357 100% 45%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91%;
-    --input: 218 14% 84%;
-    --field: 210 20% 98%;
-    --ring: 208 72% 36%;
-    --chart-1: 187 100% 27%;
-    --chart-2: 270 33% 48%;
-    --chart-3: 357 100% 45%;
-    --chart-4: 145 100% 25%;
-    --chart-5: 32 100% 31%;
-    --ink-rgb: 16 24 40;
-    --white-rgb: 255 255 255;
-    --amber-rgb: 255 210 48;
-    --accent-rgb: 26 96 158;
-    --danger-rgb: 231 0 11;
-    --ok-rgb: 0 130 54;
-    --viz-pink-rgb: 155 70 122;
-    --viz-purple-rgb: 123 82 164;
-    --viz-teal-rgb: 0 124 140;
-    --viz-orange-rgb: 157 83 0;
-    --grid-line: rgba(22, 28, 41, 0.045);
-    --theme-border-width: 1px;
-    --theme-border-thin: 1px;
-    --theme-radius-panel: 0.5rem;
-    --theme-radius-control: 0.25rem;
-    --theme-radius-chip: 9999px;
-    --theme-panel-padding: 1.5rem;
-    --theme-card-header-padding: 1rem 1.25rem;
-    --theme-card-body-padding: 1.25rem;
-    --theme-page-gap: 1.25rem;
-    --theme-content-gap: 1rem;
-    --theme-panel-clip: none;
-    --theme-card-backdrop: none;
-    --theme-control-transform: none;
-    --theme-ui-letter-spacing: 0;
-    --theme-chip-spacing: 0.01em;
-    --theme-hover-x: 0px;
-    --theme-hover-y: -1px;
-    --theme-hero-transform: none;
-    --theme-panel-transform: none;
-    --theme-focus: var(--ink);
-    --theme-bg-layer: hsl(var(--background));
-    --theme-pattern-image:
-      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
-      linear-gradient(180deg, var(--grid-line) 1px, transparent 1px);
-    --theme-pattern-size: 64px 64px;
-    --theme-pattern-opacity: 0;
-    --theme-font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-    --theme-font-heading: ui-sans-serif, system-ui, -apple-system, sans-serif;
-    --theme-letter-spacing-body: 0;
-    --theme-heading-transform: none;
-    --theme-heading-spacing: -0.011em;
-    --theme-h1-spacing: -0.022em;
-    --chart-axis: var(--ink);
-    --chart-brush: #94a3b8;
-    --chart-retirement: var(--danger);
-    --chart-pension: var(--ok);
-    --scrollbar-thumb: rgba(22, 28, 41, 0.18);
-    --scrollbar-thumb-hover: rgba(22, 28, 41, 0.34);
-  }
-/* ------------------------------------------------------------------ */
-  /* ELEGANT — the app's dark option. Deep ink-navy ground, soft raised   */
-
-/* ------------------------------------------------------------------ */
-  /* SPIEL — friendly, soft and warm. Cream ground, generous radii, */
-
-.dark {
-    --background: 225 67% 6%;
-    --foreground: 210 40% 96%;
-    --card: 225 61% 10%;
-    --card-foreground: 210 40% 96%;
-    --popover: 225 61% 10%;
-    --popover-foreground: 210 40% 96%;
-    --primary: 213 87% 72%;
-    --primary-foreground: 225 67% 6%;
-    --secondary: 43 97% 54%;
-    --secondary-foreground: 225 67% 6%;
-    --muted: 225 20% 20%;
-    --muted-foreground: 212 32% 82%;
-    --accent: 351 100% 64%;
-    --accent-foreground: 225 67% 6%;
-    --destructive: 0 80% 55%;
-    --destructive-foreground: 225 67% 6%;
-    --border: 210 40% 96%;
-    --input: 210 40% 96%;
-    --field: 225 50% 14%;
-    --ring: 213 87% 72%;
-    --chart-1: 213 87% 72%;
-    --chart-2: 198 100% 68%;
-    --chart-3: 351 100% 72%;
-    --chart-4: 45 100% 60%;
-    --chart-5: 282 88% 70%;
-    --line: #cbd5f5;
-    --surface: #0c1220;
-    --gray-100: #101a2f;
-    --grid-line: rgba(203, 213, 245, 0.09);
-  }}
-
-@layer base {* {
+  * {
     border-color: hsl(var(--border));
   }
-body {
+  body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: var(--theme-font-body);
@@ -139,18 +15,25 @@ body {
     letter-spacing: var(--theme-letter-spacing-body);
     line-height: 1.7;
   }
-/* Enhanced focus indicators for accessibility - WCAG 2.1 Level AA */
+  /* Enhanced focus indicators for accessibility - WCAG 2.1 Level AA */
   *:focus-visible {
     outline: 2px solid var(--theme-focus);
     outline-offset: 2px;
     transition: outline 0.15s ease;
   }
-/* Ensure interactive elements have visible focus */
-  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [role='button']:focus-visible, [role='tab']:focus-visible, [tabindex='0']:focus-visible {
+  /* Ensure interactive elements have visible focus */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [role='button']:focus-visible,
+  [role='tab']:focus-visible,
+  [tabindex='0']:focus-visible {
     outline: 2px solid var(--theme-focus);
     outline-offset: 2px;
   }
-/* Neo-brutalist geometric background */
+  /* Page background */
   body::before {
     content: '';
     position: fixed;
@@ -159,7 +42,7 @@ body {
     pointer-events: none;
     background: var(--theme-bg-layer);
   }
-/* Bold geometric shapes */
+  /* Background pattern (disabled in the shared interface tokens). */
   body::after {
     content: '';
     position: fixed;
@@ -171,39 +54,46 @@ body {
     mix-blend-mode: var(--theme-pattern-blend);
     opacity: var(--theme-pattern-opacity);
   }
-h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--theme-font-heading);
     letter-spacing: var(--theme-heading-spacing);
     text-transform: var(--theme-heading-transform);
     font-weight: 700;
     line-height: 1.2;
   }
-h1 {
+  h1 {
     font-weight: 900;
     letter-spacing: var(--theme-h1-spacing);
   }
-p {
+  p {
     color: hsl(var(--foreground) / 0.85);
     max-width: 68ch;
   }
-strong {
+  strong {
     font-weight: 700;
     letter-spacing: 0.04em;
-  }}
+  }
+}
 
-@layer components {.app-surface {
+@layer components {
+  .app-surface {
     background-color: var(--surface);
     border: var(--theme-border-width) solid var(--line);
     border-radius: var(--theme-radius-panel);
     box-shadow: var(--shadow-sm);
   }
-.app-surface-muted {
+  .app-surface-muted {
     background-color: var(--gray-100);
     border: var(--theme-border-width) solid var(--line);
     border-radius: var(--theme-radius-panel);
     box-shadow: var(--shadow-sm);
   }
-.app-chip {
+  .app-chip {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -218,42 +108,47 @@ strong {
     letter-spacing: var(--theme-chip-spacing);
     box-shadow: none;
   }
-.app-divider {
+  .app-divider {
     width: 100%;
     border-bottom: var(--theme-border-width) solid var(--line);
-  }}
+  }
+}
 /* Animation classes */
 @layer utilities {
-  @keyframes fadeInUp {from {
+  @keyframes fadeInUp {
+    from {
       opacity: 0;
       transform: translate3d(0, 20px, 0);
     }
-to {
+    to {
       opacity: 1;
       transform: translate3d(0, 0, 0);
-    }}
+    }
+  }
 
-  @keyframes shimmer {0% {
+  @keyframes shimmer {
+    0% {
       transform: translateX(-100%);
     }
-100% {
+    100% {
       transform: translateX(100%);
-    }}
-.animate-fade-in {
+    }
+  }
+  .animate-fade-in {
     animation: fadeInUp 0.2s ease-out forwards;
   }
-.animate-fade-in-delayed {
+  .animate-fade-in-delayed {
     animation: fadeInUp 0.2s ease-out forwards 0.1s;
     opacity: 0;
   }
-.animate-fade-in-more-delayed {
+  .animate-fade-in-more-delayed {
     animation: fadeInUp 0.2s ease-out forwards 0.2s;
     opacity: 0;
   }
-.animate-shimmer {
+  .animate-shimmer {
     animation: shimmer 2s infinite;
   }
-/* Loading sweep used by skeletons (kept out of arbitrary Tailwind values so the
+  /* Loading sweep used by skeletons (kept out of arbitrary Tailwind values so the
      generated stylesheet stays small and parseable). */
   .skeleton-sweep {
     background-image: linear-gradient(
@@ -265,7 +160,7 @@ to {
     );
     animation: shimmer 2s linear infinite;
   }
-.skeleton-sweep-soft {
+  .skeleton-sweep-soft {
     background-image: linear-gradient(
       115deg,
       transparent 0%,
@@ -275,8 +170,10 @@ to {
     );
     animation-duration: 2.4s;
   }
-/* Mobile-adapted borders */
-  @media (max-width: 768px) {}}
+  /* Mobile-adapted borders */
+  @media (max-width: 768px) {
+  }
+}
 /* Range navigator (Recharts brush) — styled as a deliberate control rather
    than the default grey scrollbar. */
 .chart-range-navigator .recharts-brush-slide {
@@ -289,13 +186,14 @@ to {
 .chart-range-navigator:active .recharts-brush-slide {
   cursor: grabbing;
 }
-.chart-range-navigator .recharts-brush-texts text, .chart-range-navigator text {
+.chart-range-navigator .recharts-brush-texts text,
+.chart-range-navigator text {
   fill: var(--accent);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
 }
-/* Theme morphology: structural differences beyond color tokens. */
+/* Shared page and panel layout. */
 html .app-page {
   padding-bottom: clamp(3rem, 6vw, 5rem);
 }
@@ -307,10 +205,16 @@ html .theme-page-header {
   padding-bottom: clamp(1rem, 3vw, 2rem);
 }
 /* Portalled dialogs and selects keep the positioning of their UI primitives. */
-html .theme-hero, html .theme-sidebar, html .theme-panel-card {
+html .theme-hero,
+html .theme-sidebar,
+html .theme-panel-card {
   position: relative;
 }
-html .theme-hero, html .theme-sidebar, html .theme-panel-card, html [data-slot='select-content'], html [data-slot='dialog-content'] {
+html .theme-hero,
+html .theme-sidebar,
+html .theme-panel-card,
+html [data-slot='select-content'],
+html [data-slot='dialog-content'] {
   border-radius: var(--theme-radius-panel) !important;
   clip-path: var(--theme-panel-clip);
   backdrop-filter: var(--theme-card-backdrop);
@@ -335,15 +239,23 @@ html .theme-panel-header {
 html .theme-panel-body {
   padding: var(--theme-card-body-padding) !important;
 }
-html .theme-control, html [data-slot='select-trigger'], html [data-slot='select-item'], html input, html textarea, html [role='tab'] {
+html .theme-control,
+html [data-slot='select-trigger'],
+html [data-slot='select-item'],
+html input,
+html textarea,
+html [role='tab'] {
   border-radius: var(--theme-radius-control) !important;
   text-transform: var(--theme-control-transform) !important;
   letter-spacing: var(--theme-ui-letter-spacing) !important;
 }
-html .theme-control:hover, html [data-slot='select-trigger']:hover {
+html .theme-control:hover,
+html [data-slot='select-trigger']:hover {
   transform: translate(var(--theme-hover-x), var(--theme-hover-y)) !important;
 }
-html .app-chip, html .theme-badge-row > span, html .theme-progress-block > div:first-child > span {
+html .app-chip,
+html .theme-badge-row > span,
+html .theme-progress-block > div:first-child > span {
   border-radius: var(--theme-radius-chip) !important;
   text-transform: var(--theme-control-transform) !important;
   letter-spacing: var(--theme-chip-spacing) !important;
@@ -352,8 +264,8 @@ html .app-chip, html .theme-badge-row > span, html .theme-progress-block > div:f
 html .border-2 {
   border-width: var(--theme-border-thin) !important;
 }
-html
-  .border-3:not(.theme-hero):not(.theme-sidebar):not(.theme-panel-card), html .border-2 {
+html .border-3:not(.theme-hero):not(.theme-sidebar):not(.theme-panel-card),
+html .border-2 {
   border-radius: var(--theme-radius-control);
 }
 /* The closing call-to-action is a dark slab in *every* theme — including the
@@ -361,7 +273,8 @@ html
    inherited the page's muted grey and landed at ~2.6:1 on black. Tie the muted
    ink inside the slab to the slab's own foreground token instead, and keep it
    opaque enough (90%) to clear AA at the caption's small size. */
-.landing-cta .text-muted-foreground, html .landing-cta .text-muted-foreground {
+.landing-cta .text-muted-foreground,
+html .landing-cta .text-muted-foreground {
   color: color-mix(in srgb, var(--landing-cta-fg) 90%, transparent) !important;
 }
 /* Chart milestone labels ("RETIREMENT", "PENSION STARTS") are uppercased by an
@@ -371,20 +284,14 @@ html text.recharts-label {
   text-transform: none !important;
   letter-spacing: 0.03em !important;
 }
-/* ---------------------------- KLAR --------------------------------- */
-
-html body {
-  --theme-font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --theme-font-heading: ui-sans-serif, system-ui, -apple-system, sans-serif;
-  line-height: 1.6;
-  font-weight: 450;
-}
 html .theme-panel-header {
   background-color: rgb(var(--ink-rgb) / 0.018);
   border-bottom-color: var(--line) !important;
 }
 /* Data-first: the panels are quiet containers, the numbers are the subject. */
-html .theme-hero, html .theme-panel-card, html .theme-sidebar {
+html .theme-hero,
+html .theme-panel-card,
+html .theme-sidebar {
   box-shadow: var(--shadow-sm) !important;
 }
 html .theme-hero {
@@ -393,7 +300,8 @@ html .theme-hero {
 html .theme-progress-bar {
   height: 0.5rem !important;
 }
-html .app-chip, html .theme-badge-row > span {
+html .app-chip,
+html .theme-badge-row > span {
   font-weight: 600;
   box-shadow: none !important;
 }
@@ -401,94 +309,109 @@ html .theme-step-list > * + * {
   margin-top: 0.5rem !important;
 }
 
-@media (min-width: 1024px) {/* Klar keeps the wizard rail: an analyst wants the whole structure visible. */
+@media (min-width: 1024px) {
+  /* Keep setup sections visible beside the form on desktop. */
   html .theme-setup-grid {
     grid-template-columns: 296px minmax(0, 1fr) !important;
   }
-/* The dashboard is a single full-width column in every theme: plan editing
+  /* The dashboard is a single full-width column in every theme: plan editing
      is its own tab, so nothing has to be squeezed into a sidebar. */
   html .theme-simulation-grid {
     grid-template-columns: minmax(0, 1fr) !important;
   }
-html .theme-hero-top {
+  html .theme-hero-top {
     align-items: center !important;
-  }}
+  }
+}
 
-@media (max-width: 767px) {html .theme-hero {
+@media (max-width: 767px) {
+  html .theme-hero {
     transform: none;
-  }}
+  }
+}
 /* Print Styles for PDF Generation */
 @page {
   size: A4;
   margin: 15mm;
 }
 
-@media print {/* Hide interactive elements and navigation */
-  header:not([data-print-visible]), nav:not([data-print-visible]), footer:not([data-print-visible]), .no-print, .print-hidden {
+@media print {
+  /* Hide interactive elements and navigation */
+  header:not([data-print-visible]),
+  nav:not([data-print-visible]),
+  footer:not([data-print-visible]),
+  .no-print,
+  .print-hidden {
     display: none !important;
   }
-/* Show print-only elements */
+  /* Show print-only elements */
   .print-only {
     display: block !important;
   }
-/* Page break control */
-  h1, h2, h3, h4, h5, h6 {
+  /* Page break control */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     break-after: avoid;
     page-break-after: avoid;
     orphans: 3;
     widows: 3;
   }
-p {
+  p {
     orphans: 3;
     widows: 3;
   }
-.report-section {
+  .report-section {
     break-inside: avoid;
     page-break-inside: avoid;
     margin-bottom: 2rem;
   }
-.card, .chart-container {
+  .card,
+  .chart-container {
     break-inside: avoid;
     page-break-inside: avoid;
     margin-bottom: 1.5rem;
   }
-.page-break-before {
+  .page-break-before {
     break-before: page;
     page-break-before: always;
     padding-top: 0;
   }
-.page-break-after {
+  .page-break-after {
     break-after: page;
     page-break-after: always;
   }
-/* Ensure colors and backgrounds print correctly */
+  /* Ensure colors and backgrounds print correctly */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
-/* Optimize tables for print */
+  /* Optimize tables for print */
   table {
     break-inside: avoid;
     page-break-inside: avoid;
     width: 100%;
     border-collapse: collapse;
   }
-thead {
+  thead {
     display: table-header-group;
   }
-tr {
+  tr {
     break-inside: avoid;
     page-break-inside: avoid;
   }
-/* Ensure proper spacing */
+  /* Ensure proper spacing */
   .report-page {
     margin: 0;
     padding: 0;
     background: white;
     width: 100%;
   }
-/* Typography adjustments for print */
+  /* Typography adjustments for print */
   body {
     font-size: 11pt;
     line-height: 1.6;
@@ -497,146 +420,147 @@ tr {
     font-family:
       -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   }
-/* Adjust heading sizes for print */
+  /* Adjust heading sizes for print */
   h1 {
     font-size: 24pt;
     margin-bottom: 12pt;
     font-weight: 700;
   }
-h2 {
+  h2 {
     font-size: 18pt;
     margin-bottom: 10pt;
     margin-top: 16pt;
     font-weight: 600;
   }
-h3 {
+  h3 {
     font-size: 14pt;
     margin-bottom: 8pt;
     margin-top: 12pt;
     font-weight: 600;
   }
-h4 {
+  h4 {
     font-size: 12pt;
     margin-bottom: 6pt;
     margin-top: 10pt;
     font-weight: 600;
   }
-/* Chart containers and content scaling for print */
+  /* Chart containers and content scaling for print */
   .chart-container {
     width: 100% !important;
     max-width: 100% !important;
     overflow: visible !important;
     box-sizing: border-box;
   }
-/* Ensure charts don't get truncated */
+  /* Ensure charts don't get truncated */
   .chart-container canvas {
     max-width: 100% !important;
     width: 100% !important;
     height: auto !important;
   }
-/* Adjust chart heights for print */
+  /* Adjust chart heights for print */
   .chart-container > div {
     height: 400px !important;
   }
-/* Prevent text cutoff in charts */
+  /* Prevent text cutoff in charts */
   .chart-container * {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
-/* Additional spacing for better layout */
+  /* Additional spacing for better layout */
   .report-section {
     margin-bottom: 2mm;
   }
-/* Ensure proper page margins */
+  /* Ensure proper page margins */
   .print-only {
     margin-bottom: 8px;
   }
-/* Grid layouts for print */
+  /* Grid layouts for print */
   .grid {
     display: grid !important;
     gap: 0.75rem;
   }
-/* Prevent grid items from breaking */
+  /* Prevent grid items from breaking */
   .grid > * {
     break-inside: avoid;
     page-break-inside: avoid;
   }
-/* Chart sizing for print */
+  /* Chart sizing for print */
   .recharts-responsive-container {
     min-height: 200px !important;
     max-height: 300px !important;
     width: 100% !important;
     margin: 0.5rem 0;
   }
-/* Ensure chart text is readable */
+  /* Ensure chart text is readable */
   .recharts-text {
     font-size: 8pt !important;
   }
-/* Ensure backgrounds print properly */
+  /* Ensure backgrounds print properly */
   .bg-blue-50 {
     background-color: rgb(239 246 255) !important;
     -webkit-print-color-adjust: exact !important;
   }
-.bg-green-50 {
+  .bg-green-50 {
     background-color: rgb(240 253 244) !important;
     -webkit-print-color-adjust: exact !important;
   }
-.bg-yellow-50 {
+  .bg-yellow-50 {
     background-color: rgb(254 252 232) !important;
     -webkit-print-color-adjust: exact !important;
   }
-.bg-red-50 {
+  .bg-red-50 {
     background-color: rgb(254 242 242) !important;
     -webkit-print-color-adjust: exact !important;
   }
-.bg-gray-50 {
+  .bg-gray-50 {
     background-color: rgb(249 250 251) !important;
     -webkit-print-color-adjust: exact !important;
   }
-.bg-purple-50 {
+  .bg-purple-50 {
     background-color: rgb(250 245 255) !important;
     -webkit-print-color-adjust: exact !important;
   }
-/* Text sizing for readability */
+  /* Text sizing for readability */
   .text-xs {
     font-size: 8pt !important;
   }
-.text-sm {
+  .text-sm {
     font-size: 9pt !important;
   }
-.text-base {
+  .text-base {
     font-size: 10pt !important;
   }
-.text-lg {
+  .text-lg {
     font-size: 12pt !important;
   }
-.text-xl {
+  .text-xl {
     font-size: 14pt !important;
   }
-.text-2xl {
+  .text-2xl {
     font-size: 16pt !important;
   }
-.text-3xl {
+  .text-3xl {
     font-size: 20pt !important;
   }
-/* Spacing adjustments */
+  /* Spacing adjustments */
   .p-8 {
     padding: 12pt !important;
   }
-.p-6 {
+  .p-6 {
     padding: 10pt !important;
   }
-.p-4 {
+  .p-4 {
     padding: 8pt !important;
   }
-.mb-8 {
+  .mb-8 {
     margin-bottom: 12pt !important;
   }
-.mb-6 {
+  .mb-6 {
     margin-bottom: 10pt !important;
   }
-.mb-4 {
+  .mb-4 {
     margin-bottom: 8pt !important;
-  }}
+  }
+}
 .scrollbar-invisible {
   scrollbar-width: none;
 }
@@ -672,36 +596,45 @@ h4 {
   background-color: var(--scrollbar-thumb-hover);
 }
 /* Setup wizard: step content transition */
-@keyframes wizard-step-in {from {
+@keyframes wizard-step-in {
+  from {
     opacity: 0;
     transform: translateY(10px);
   }
-to {
+  to {
     opacity: 1;
     transform: translateY(0);
-  }}
+  }
+}
 .animate-step-in {
   animation: wizard-step-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 /* Indeterminate route-transition bar: shown while a navigation is pending, so
    "Complete setup" is never a click into silence. */
-@keyframes route-progress {0% {
+@keyframes route-progress {
+  0% {
     transform: translateX(-100%);
   }
-100% {
+  100% {
     transform: translateX(400%);
-  }}
+  }
+}
 .animate-route-progress {
   animation: route-progress 1.1s ease-in-out infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {.animate-route-progress {
+@media (prefers-reduced-motion: reduce) {
+  .animate-route-progress {
     animation-duration: 3s !important;
   }
-.animate-step-in, .animate-fade-in, .animate-fade-in-delayed, .animate-fade-in-more-delayed {
+  .animate-step-in,
+  .animate-fade-in,
+  .animate-fade-in-delayed,
+  .animate-fade-in-more-delayed {
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
-  }}
+  }
+}
 /* ------------------------------------------------------------------ */
 /* Landing page: theme-aware tokens so the marketing page reads as the */
 /* same product in every theme instead of inverting into a neon slab.  */
@@ -714,7 +647,8 @@ to {
 .landing-cta-title {
   color: var(--landing-cta-fg);
 }
-.landing-cta-sub, .landing-cta-link {
+.landing-cta-sub,
+.landing-cta-link {
   color: color-mix(in srgb, var(--landing-cta-fg) 76%, transparent);
 }
 .landing-cta-link:hover {
