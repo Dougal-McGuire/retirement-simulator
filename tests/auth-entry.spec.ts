@@ -27,7 +27,7 @@ test.describe('account entry points', () => {
     await expect(page).toHaveURL(/\/en\/simulation$/)
     // The compact dashboard carries no account chrome of its own; landing on
     // it is the observable outcome.
-    await expect(page.getByTestId('compact-command-bar')).toBeVisible()
+    await expect(page.getByTestId('run-button')).toBeVisible()
   })
 
   test('?stay keeps a signed-in visitor on the landing page with a dashboard shortcut', async ({

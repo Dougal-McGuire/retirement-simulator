@@ -19,34 +19,22 @@ const readStoredParams = (page: Page) =>
   })
 
 test.describe('compact simulation dashboard', () => {
-  test('shows the command bar, KPI strip, fan chart and bottom strip', async ({ page }) => {
+  test('shows the result overview and keeps quick levers optional', async ({ page }) => {
     await page.goto('/en/simulation')
-
-    const bar = page.getByTestId('compact-command-bar')
-    await expect(bar).toBeVisible()
-
-    // All four inline levers, named on their thumbs where `role="slider"` is.
+    await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
+    await expect(page.getByTestId('kpi-strip')).toContainText('paths meet your goal')
+    await expect(page.getByTestId('fan-chart')).toBeVisible()
+    const quick = page.getByTestId('command-quick-row')
+    await expect(quick).not.toBeVisible()
+    await page.getByText('What if …?', { exact: true }).click()
     for (const name of [
       'Retirement age',
       'Annual savings',
       'Monthly spending',
       'Expected return',
     ]) {
-      await expect(bar.getByRole('slider', { name })).toBeVisible()
+      await expect(quick.getByRole('slider', { name })).toBeVisible()
     }
-
-    // The first run completes and the verdict arrives everywhere at once.
-    await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
-    await expect(page.getByTestId('kpi-strip')).toBeVisible()
-    await expect(page.getByTestId('fan-chart')).toBeVisible()
-    await expect(page.getByTestId('bottom-strip')).toBeVisible()
-
-    // KPI strip labels straight from the design.
-    const kpis = page.getByTestId('kpi-strip')
-    await expect(kpis).toContainText('Success')
-    await expect(kpis).toContainText('Lasts to')
-    await expect(kpis).toContainText('1st-yr draw')
-    await expect(kpis).toContainText('Median end')
   })
 
   test('switches tabs under the compact chrome', async ({ page }) => {
@@ -72,6 +60,7 @@ test.describe('compact simulation dashboard', () => {
     await page.goto('/en/simulation')
     await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
 
+    await page.getByText('What if …?', { exact: true }).click()
     const slider = page.getByRole('slider', { name: 'Retirement age' })
     await slider.focus()
     await slider.press('ArrowRight')
@@ -91,6 +80,7 @@ test.describe('compact simulation dashboard', () => {
     await page.goto('/en/simulation')
 
     await expect(page.getByTestId('advanced-params')).toHaveCount(0)
+    await page.getByText('What if …?', { exact: true }).click()
     await page.getByRole('button', { name: /Advanced/ }).click()
 
     const advanced = page.getByTestId('advanced-params')
@@ -105,6 +95,7 @@ test.describe('compact simulation dashboard', () => {
   test('measures the recommendation chips and applies one on click', async ({ page }) => {
     test.setTimeout(90000) // three extra scenario runs behind a debounce
     await page.goto('/en/simulation')
+    await page.getByTestId('tab-scenarios').click()
     await expect(page.getByTestId('bottom-strip')).toBeVisible({ timeout: 30000 })
 
     // Chips arrive once the extra scenario runs settle, each with a delta.
@@ -149,6 +140,7 @@ test.describe('compact simulation dashboard', () => {
     await page.goto('/en/simulation')
     await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
 
+    await page.getByTestId('tab-scenarios').click()
     await page.getByTestId('enter-compare').click()
     const compare = page.getByTestId('compare-view')
     await expect(compare).toBeVisible()
@@ -163,7 +155,7 @@ test.describe('compact simulation dashboard', () => {
     await expect(compare.getByRole('table')).toContainText('Withdrawal rule')
 
     await compare.getByRole('button', { name: 'Exit compare' }).click()
-    await expect(page.getByTestId('compact-command-bar')).toBeVisible()
+    await expect(page.getByTestId('run-button')).toBeVisible()
   })
 
   test('runs on demand from the Run button', async ({ page }) => {
@@ -172,7 +164,10 @@ test.describe('compact simulation dashboard', () => {
 
     // The meta line only gains a duration once a run has been timed.
     await page.getByTestId('run-button').click()
-    await expect(page.getByText(/\d[.,]\d s/)).toBeVisible({ timeout: 30000 })
+    await expect(page.getByTestId('run-button')).toBeEnabled({ timeout: 30000 })
+    await expect(
+      page.getByText('Results from your latest calculation', { exact: true })
+    ).toBeVisible()
   })
 })
 
@@ -264,12 +259,10 @@ test.describe('market model and glide path', () => {
     // Anchor on the *historical* result, not merely the first non-null rate —
     // the Monte Carlo run that started on page load can land in storage just
     // after the click and would otherwise be captured as the baseline.
-    await expect
-      .poll(async () => (await readState())?.model, { timeout: 15000 })
-      .toBe('historical')
+    await expect.poll(async () => (await readState())?.model, { timeout: 15000 }).toBe('historical')
     const first = (await readState())!.rate
     await page.reload()
-    await expect(page.getByTestId('compact-command-bar')).toBeVisible()
+    await expect(page.getByTestId('run-button')).toBeVisible()
     await expect.poll(async () => (await readState())?.rate, { timeout: 15000 }).toBe(first)
   })
 

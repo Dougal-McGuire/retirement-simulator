@@ -20,6 +20,7 @@ interface BottomStripProps {
   results: SimulationResults
   kpis: CompactKpis
   onOpenFullEditor: () => void
+  recommendationsOnly?: boolean
 }
 
 /**
@@ -28,7 +29,13 @@ interface BottomStripProps {
  * success-rate delta. Clicking a chip applies the lever to the working copy —
  * as reversible as any other edit.
  */
-export function BottomStrip({ params, results, kpis, onOpenFullEditor }: BottomStripProps) {
+export function BottomStrip({
+  params,
+  results,
+  kpis,
+  onOpenFullEditor,
+  recommendationsOnly = false,
+}: BottomStripProps) {
   const t = useTranslations('simulationCompact.bottom')
   const format = useFormatter()
   const locale = useLocale()
@@ -133,26 +140,37 @@ export function BottomStrip({ params, results, kpis, onOpenFullEditor }: BottomS
         fontSize: 'var(--fs-xs)',
       }}
     >
-      <span className="ds-micro">{t('bridge')}</span>
-      <div
-        style={{ display: 'flex', height: 12, width: 220, borderRadius: 2, overflow: 'hidden', flex: 'none' }}
-        aria-hidden="true"
-      >
-        <div style={{ width: `${savingPct.toFixed(1)}%`, background: 'var(--gray-200)' }} />
-        <div style={{ width: `${bridgePct.toFixed(1)}%`, background: 'var(--viz-seq-3)' }} />
-        <div style={{ flex: 1, background: 'var(--viz-seq-1)' }} />
-      </div>
-      <span className="ds-meta">
-        {kpis.bridgeYears > 0
-          ? t('bridgeMeta', {
-              years: format.number(kpis.bridgeYears),
-              from: format.number(params.retirementAge),
-              to: format.number(kpis.firstPensionAge),
-              pension: pensionMonthly,
-            })
-          : t('bridgeMetaImmediate', { pension: pensionMonthly })}
-      </span>
-      <div style={{ width: 1, height: 18, background: 'var(--line)', flex: 'none' }} />
+      {!recommendationsOnly && (
+        <>
+          <span className="ds-micro">{t('bridge')}</span>
+          <div
+            style={{
+              display: 'flex',
+              height: 12,
+              width: 220,
+              borderRadius: 2,
+              overflow: 'hidden',
+              flex: 'none',
+            }}
+            aria-hidden="true"
+          >
+            <div style={{ width: `${savingPct.toFixed(1)}%`, background: 'var(--gray-200)' }} />
+            <div style={{ width: `${bridgePct.toFixed(1)}%`, background: 'var(--viz-seq-3)' }} />
+            <div style={{ flex: 1, background: 'var(--viz-seq-1)' }} />
+          </div>
+          <span className="ds-meta">
+            {kpis.bridgeYears > 0
+              ? t('bridgeMeta', {
+                  years: format.number(kpis.bridgeYears),
+                  from: format.number(params.retirementAge),
+                  to: format.number(kpis.firstPensionAge),
+                  pension: pensionMonthly,
+                })
+              : t('bridgeMetaImmediate', { pension: pensionMonthly })}
+          </span>
+          <div style={{ width: 1, height: 18, background: 'var(--line)', flex: 'none' }} />
+        </>
+      )}
       <span className="ds-micro">{t('recs')}</span>
       {recs.length === 0 ? (
         <span className="ds-meta">{t('recsPending')}</span>
