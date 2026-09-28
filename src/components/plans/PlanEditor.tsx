@@ -130,7 +130,7 @@ function EditorCard({
       id={id}
       data-testid={id}
       className={cn(
-        'rounded-sm theme-panel-card flex scroll-mt-32 flex-col gap-6 border border-border bg-white p-6',
+        'rounded-sm theme-panel-card flex scroll-mt-32 flex-col gap-6 border border-border bg-card p-6',
         className
       )}
     >
@@ -188,7 +188,7 @@ function PresetRow({
               onClick={() => onSelect(option.key)}
               className={cn(
                 'rounded-sm flex flex-col items-start gap-0.5 border-2 border-border px-3 py-2 text-left transition-colors',
-                isActive ? 'bg-amber text-ink shadow-sm' : 'bg-white text-ink hover:bg-accent/10'
+                isActive ? 'bg-amber text-ink shadow-sm' : 'bg-card text-ink hover:bg-accent/10'
               )}
             >
               <span className="text-xs font-semibold  ">{option.label}</span>
@@ -420,7 +420,7 @@ export function PlanEditor({
 
   return (
     <div className={cn('space-y-5', className)} data-testid="plan-editor">
-      <div className="rounded-sm flex flex-col gap-4 border border-border bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-sm flex flex-col gap-4 border border-border bg-card px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <h2 className="text-[1rem] font-semibold   text-ink">{t('title')}</h2>
           <InfoTip
@@ -755,8 +755,8 @@ export function PlanEditor({
                       className={cn(
                         'rounded-sm flex flex-col items-start gap-1 border-2 border-border px-3 py-2.5 text-left transition-colors',
                         isSelected
-                          ? 'bg-accent text-white shadow-sm'
-                          : 'bg-white text-ink hover:bg-accent/10'
+                          ? 'bg-action text-action-foreground shadow-sm'
+                          : 'bg-card text-ink hover:bg-accent/10'
                       )}
                     >
                       <span className="text-xs font-semibold  ">
@@ -869,8 +869,8 @@ export function PlanEditor({
                   className={cn(
                     'rounded-sm flex shrink-0 items-center gap-2 border-2 border-border px-3 py-1.5 text-xs font-semibold   transition-colors',
                     glideOn
-                      ? 'bg-accent text-white shadow-sm'
-                      : 'bg-white text-ink hover:bg-accent/10'
+                      ? 'bg-action text-action-foreground shadow-sm'
+                      : 'bg-card text-ink hover:bg-accent/10'
                   )}
                 >
                   <span
@@ -926,7 +926,7 @@ export function PlanEditor({
                     })}
                   />
 
-                  <details className="rounded-sm border-2 border-border bg-white px-3 py-2">
+                  <details className="rounded-sm border-2 border-border bg-card px-3 py-2">
                     <summary className="cursor-pointer text-xs font-semibold   text-ink">
                       {tControls('fields.glidePath.advanced')}
                     </summary>
@@ -1087,8 +1087,8 @@ export function PlanEditor({
                         className={cn(
                           'rounded-sm flex flex-col items-start gap-1 border-2 border-border px-3 py-2 text-left transition-colors',
                           isSelected
-                            ? 'bg-accent text-white shadow-sm'
-                            : 'bg-white text-ink hover:bg-accent/10'
+                            ? 'bg-action text-action-foreground shadow-sm'
+                            : 'bg-card text-ink hover:bg-accent/10'
                         )}
                       >
                         <span className="text-xs font-semibold  ">
@@ -1120,7 +1120,7 @@ export function PlanEditor({
                 helpText={tTax('exemption.help')}
               />
 
-              <details className="rounded-sm border-2 border-border bg-white px-3 py-2">
+              <details className="rounded-sm border-2 border-border bg-card px-3 py-2">
                 <summary className="cursor-pointer text-xs font-semibold   text-ink">
                   {tTax('pension.summary')}
                 </summary>
@@ -1233,7 +1233,7 @@ export function PlanEditor({
       </Tabs>
 
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
-        <DialogContent className="bg-white sm:max-w-[30rem]" data-testid="plan-reset-dialog">
+        <DialogContent className="bg-card sm:max-w-[30rem]" data-testid="plan-reset-dialog">
           <DialogHeader>
             <DialogTitle>{t('reset.title')}</DialogTitle>
             <DialogDescription>{t('reset.description', { name: planName })}</DialogDescription>

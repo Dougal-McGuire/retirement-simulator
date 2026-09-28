@@ -39,9 +39,7 @@ export function ActionToast({ message, actions, testId }: ActionToastProps) {
             onClick={action.onClick}
             className={cn(
               'rounded-sm border-2 border-border px-2.5 py-1 text-[0.62rem] font-extrabold   transition-colors hover:-translate-y-[1px]',
-              action.tone === 'primary'
-                ? 'bg-amber text-ink'
-                : 'bg-white text-ink'
+              action.tone === 'primary' ? 'bg-amber text-ink' : 'bg-card text-ink'
             )}
           >
             {action.label}

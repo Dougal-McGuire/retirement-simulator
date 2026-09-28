@@ -31,7 +31,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "theme-control flex min-w-0 items-center justify-between gap-2 border border-border bg-field px-3 text-sm font-medium text-ink transition-colors outline-none rounded-sm h-10 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 disabled:opacity-50 disabled:cursor-not-allowed",
+        "ds-control flex min-w-0 items-center justify-between gap-2 border border-border bg-field px-3 text-sm font-medium text-ink transition-colors outline-none rounded-sm h-10 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 disabled:opacity-50 disabled:cursor-not-allowed",
         className
       )}
       {...props}
@@ -55,7 +55,7 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          'bg-white text-ink z-[99999] max-h-[300px] min-w-[var(--radix-select-trigger-width)] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-none border border-border shadow-sm',
+          'bg-card text-ink z-[99999] max-h-[300px] min-w-[var(--radix-select-trigger-width)] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-none border border-border shadow-sm',
           className
         )}
         position={position}

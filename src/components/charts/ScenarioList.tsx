@@ -47,7 +47,7 @@ type ScenarioResult = {
 const healthClasses: Record<PlanHealth, string> = {
   strong: 'border-success-600 bg-success-50 text-success-700',
   watch: 'border-warning-600 bg-warning-50 text-warning-700',
-  strained: 'border-danger bg-red-50 text-danger',
+  strained: 'border-danger bg-[var(--red-50)] text-danger',
 }
 
 /**
@@ -219,7 +219,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
 
   return (
     <Card className="overflow-hidden">
-      <CardContent className="bg-white p-5">
+      <CardContent className="bg-card p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Landmark className="h-5 w-5 text-accent" aria-hidden="true" />
@@ -238,7 +238,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
             It is the hero's number verbatim, at the hero's run count. */}
         {context.hasResults && (
           <p
-            className="rounded-sm mt-3 border-2 border-border bg-white px-3 py-2 text-xs font-semibold text-ink"
+            className="rounded-sm mt-3 border-2 border-border bg-card px-3 py-2 text-xs font-semibold text-ink"
             data-testid="stress-lever-baseline"
             data-baseline={context.successRate}
             data-runs={context.effectiveRuns}
@@ -274,7 +274,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
                 <div
                   key={scenario.id}
                   data-testid="stress-lever"
-                  className="rounded-sm flex flex-col gap-3 border-2 border-border bg-white px-4 py-3 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4"
+                  className="rounded-sm flex flex-col gap-3 border-2 border-border bg-card px-4 py-3 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-semibold   text-ink">
@@ -290,7 +290,7 @@ export function ScenarioList({ params, results, isLoading }: ScenarioListProps) 
                         <span
                           className={cn(
                             'rounded-sm border-2 px-2 py-1 text-xs font-semibold  ',
-                            isSaturated ? 'border-border bg-white text-ink' : healthClasses[health]
+                            isSaturated ? 'border-border bg-card text-ink' : healthClasses[health]
                           )}
                           data-testid="stress-lever-delta"
                         >

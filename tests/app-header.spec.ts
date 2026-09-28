@@ -1,17 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
-/** Every visible child of the strip must sit on one line. */
-async function expectSingleRow(strip: Locator) {
-  const centers = await strip.evaluate((el) =>
-    Array.from(el.children)
-      .map((child) => child.getBoundingClientRect())
-      .filter((box) => box.width > 0 && box.height > 0)
-      .map((box) => box.top + box.height / 2)
-  )
-  expect(centers.length).toBeGreaterThan(2)
-  expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(8)
-}
-
 /**
  * Hover until the tooltip shows. Under parallel workers the first hover can
  * land before hydration, when no handler is attached yet.
@@ -27,14 +15,32 @@ async function expectTooltip(page: Page, trigger: Locator, text: string) {
 test.describe('shared app header', () => {
   test.use({ viewport: { width: 1440, height: 900 } })
 
-  test('setup: controls form one row and the page action comes last', async ({ page }) => {
+  test('setup: workspace toolbar with plan, overview link and menu in one row', async ({
+    page,
+  }) => {
     await page.goto('/en/setup')
 
-    const strip = page.getByTestId('app-header-actions')
-    await expect(strip).toBeVisible()
-    await expectSingleRow(strip)
-    await expect(strip.getByRole('combobox', { name: 'Language' })).toBeVisible()
-    await expect(strip.locator(':scope > *').last()).toHaveText('Go to Simulation')
+    // The wizard shares the workspace chrome: plan context on the left, the
+    // way back to the overview and the account/language menu on the right.
+    const toolbar = page.locator('.setup-toolbar')
+    await expect(toolbar).toBeVisible()
+    const actions = toolbar.locator('.workspace-actions')
+    const rowCenters = await Promise.all(
+      [page.getByTestId('wizard-plan-context'), ...(await actions.locator(':scope > *').all())].map(
+        async (item) => {
+          const box = (await item.boundingBox())!
+          return box.y + box.height / 2
+        }
+      )
+    )
+    expect(rowCenters).toHaveLength(3)
+    expect(Math.max(...rowCenters) - Math.min(...rowCenters)).toBeLessThan(8)
+    await expect(actions.locator(':scope > *').first()).toHaveText('Skip for now')
+    await expect(actions.locator(':scope > *').last()).toHaveText('Menu')
+    await expect(page.getByTestId('app-header-actions')).toHaveCount(0)
+
+    await page.getByTestId('setup-menu').click()
+    await expect(page.getByRole('dialog').getByRole('combobox', { name: 'Language' })).toBeVisible()
   })
 
   // The simulation page no longer uses the shared header (compact redesign);

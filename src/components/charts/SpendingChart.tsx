@@ -165,7 +165,7 @@ export function SpendingChart({
   }, [domainMax, formatCurrencyShort, isMobile])
 
   return (
-    <div className="rounded-sm w-full min-w-0 space-y-5 border border-border bg-white p-4 shadow-sm sm:p-6">
+    <div className="rounded-sm w-full min-w-0 space-y-5 border border-border bg-card p-4 shadow-sm sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <h4 id="spending-chart-title" className="text-base font-extrabold   text-ink sm:text-lg">
@@ -178,7 +178,7 @@ export function SpendingChart({
           <div
             role="group"
             aria-label={tAssets('scale.label')}
-            className="rounded-sm flex items-center border-2 border-border bg-white"
+            className="rounded-sm flex items-center border-2 border-border bg-card"
           >
             {(['focus', 'full'] as const).map((mode) => (
               <button
@@ -188,8 +188,8 @@ export function SpendingChart({
                 aria-pressed={scaleMode === mode}
                 className={`px-2.5 py-1 text-[0.62rem] font-bold transition-colors ${
                   scaleMode === mode
-                    ? 'bg-accent text-white'
-                    : 'bg-white text-muted-foreground hover:text-ink'
+                    ? 'bg-action text-action-foreground'
+                    : 'bg-card text-muted-foreground hover:text-ink'
                 }`}
               >
                 {tAssets(`scale.${mode}`)}

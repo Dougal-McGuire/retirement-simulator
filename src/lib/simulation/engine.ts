@@ -1069,9 +1069,14 @@ function runSingleSimulation(
       }
     }
 
+    const yearPriceLevel = inflationIndexHistory[yearIndex]
     const incomeTax =
-      flows.incomeTaxLinked[yearIndex] * inflationIndexHistory[yearIndex] +
-      flows.incomeTaxFixed[yearIndex]
+      flows.incomeTaxLinked[yearIndex] * yearPriceLevel + flows.incomeTaxFixed[yearIndex]
+    const pensionTax =
+      flows.pensionTaxLinked[yearIndex] * yearPriceLevel + flows.pensionTaxFixed[yearIndex]
+    const oneOffIncomeTax =
+      flows.oneTimeIncomeTaxLinked[yearIndex] * yearPriceLevel +
+      flows.oneTimeIncomeTaxFixed[yearIndex]
     cashFlowHistory.push({
       openingAssets,
       investmentReturn,
@@ -1084,6 +1089,14 @@ function runSingleSimulation(
       portfolioContribution,
       shortfall: yearShortfall,
       closingAssets: currentAssets,
+      pensionGross:
+        flows.pensionNetLinked[yearIndex] * yearPriceLevel +
+        flows.pensionNetFixed[yearIndex] +
+        pensionTax,
+      pensionTax,
+      oneOffIncomeGross: scheduledIncome + oneOffIncomeTax,
+      oneOffIncomeTax,
+      scheduledExpenses: extraExpense,
     })
     assetHistory.push(currentAssets)
 
@@ -1187,8 +1200,9 @@ export function runMonteCarloSimulation(
           nominal[key] = 0
           real[key] = 0
         }
-        nominal[key] += row[key] / effectiveRuns
-        real[key] += row[key] / result.inflationIndexHistory[index] / effectiveRuns
+        const value = row[key] ?? 0
+        nominal[key] = (nominal[key] ?? 0) + value / effectiveRuns
+        real[key] = (real[key] ?? 0) + value / result.inflationIndexHistory[index] / effectiveRuns
       }
     })
     assetRuns.push(result.assetHistory)

@@ -33,8 +33,16 @@ export default {
         },
         accent: {
           DEFAULT: 'rgb(var(--accent-rgb) / <alpha-value>)',
-          foreground: '#ffffff',
+          foreground: 'var(--on-action)',
         },
+        // Solid fill for primary controls. `accent` is the text/line accent and
+        // is lifted in the dark scheme, so it cannot carry white labels there.
+        action: {
+          DEFAULT: 'rgb(var(--action-rgb) / <alpha-value>)',
+          foreground: 'var(--on-action)',
+        },
+        // Content (icons, labels) placed on a solid semantic hue fill.
+        'on-hue': 'var(--on-hue)',
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
@@ -60,39 +68,21 @@ export default {
         'viz-purple': 'rgb(var(--viz-purple-rgb) / <alpha-value>)',
         'viz-pink': 'rgb(var(--viz-pink-rgb) / <alpha-value>)',
         'viz-orange': 'rgb(var(--viz-orange-rgb) / <alpha-value>)',
-        // Enhanced color palette for retirement app
+        // Status palettes (legacy step names), resolved through tokens so
+        // they re-tune with the colour scheme. See interface.css.
         success: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
+          50: 'var(--success-50)',
+          100: 'var(--success-100)',
+          500: 'var(--success-500)',
+          600: 'var(--success-600)',
+          700: 'var(--success-700)',
         },
         warning: {
-          50: '#fffbeb',
-          100: '#fef3c7',
-          500: '#f59e0b',
-          600: '#d97706',
-          700: '#b45309',
-        },
-        info: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-        },
-        retirement: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
+          50: 'var(--warning-50)',
+          100: 'var(--warning-100)',
+          500: 'var(--warning-500)',
+          600: 'var(--warning-600)',
+          700: 'var(--warning-700)',
         },
       },
       fontFamily: {
@@ -103,8 +93,6 @@ export default {
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
       },
       borderRadius: {
-        neo: 'var(--ui-radius)',
-        'neo-soft': 'var(--ui-radius)',
         lg: 'var(--ui-radius)',
         md: 'var(--ui-radius)',
         sm: 'var(--ui-radius)',
@@ -113,10 +101,6 @@ export default {
         '18': '4.5rem',
         '88': '22rem',
         '128': '32rem',
-      },
-      transitionDuration: {
-        neo: '100ms',
-        'neo-fast': '150ms',
       },
       animation: {
         'fade-in': 'fadeIn 0.2s ease-out',

@@ -44,14 +44,15 @@ test.describe('account entry points', () => {
     await expect(page.getByTestId('auth-account')).toContainText(TEST_USER.name)
   })
 
-  // The compact dashboard dropped the shared header, so the account strip is
-  // asserted on the setup page only.
-  test('setup header shows the account in a single-row action strip', async ({ page }) => {
+  // The setup wizard mirrors the workspace: account and language live in its
+  // Menu dialog.
+  test('setup menu shows the account, as the workspace menu does', async ({ page }) => {
     await stubSignedIn(page)
 
     await page.goto('/en/setup')
-    const strip = page.getByTestId('app-header-actions')
-    await expect(strip.getByTestId('auth-account')).toContainText(TEST_USER.name)
-    await expect(strip.getByTestId('auth-sync-status')).toBeVisible()
+    await page.getByTestId('setup-menu').click()
+    const menu = page.getByRole('dialog')
+    await expect(menu.getByTestId('auth-account')).toContainText(TEST_USER.name)
+    await expect(menu.getByTestId('auth-sync-status')).toBeVisible()
   })
 })

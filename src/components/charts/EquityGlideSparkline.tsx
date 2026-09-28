@@ -63,7 +63,7 @@ export function EquityGlideSparkline({
         role="img"
         aria-label={label}
         preserveAspectRatio="none"
-        className="rounded-sm h-12 w-full border-2 border-border bg-white"
+        className="rounded-sm h-12 w-full border-2 border-border bg-card"
       >
         <title>{label}</title>
         {/* Half-way reference: the fixed 0-100% scale is only readable with one. */}
@@ -95,12 +95,7 @@ export function EquityGlideSparkline({
           strokeDasharray="3 3"
           vectorEffect="non-scaling-stroke"
         />
-        <circle
-          cx={points[0]?.[0] ?? 0}
-          cy={points[0]?.[1] ?? 0}
-          r={2.5}
-          className="fill-ink"
-        />
+        <circle cx={points[0]?.[0] ?? 0} cy={points[0]?.[1] ?? 0} r={2.5} className="fill-ink" />
       </svg>
       {caption && (
         <figcaption className="text-[0.58rem] font-semibold tabular-nums text-muted-foreground">

@@ -23,9 +23,12 @@ export function TableOfContents({ title, ariaLabel, items }: TableOfContentsProp
                 {item.label}
               </a>
               <span className={styles.tocLeader} aria-hidden="true" />
+              {/* The inline report script fills in the page number (and its
+                  data attributes) before hydration. */}
               <span
                 className={styles.tocPage}
                 aria-hidden="true"
+                suppressHydrationWarning
                 data-toc-page
                 data-target={`#${item.id}`}
               >

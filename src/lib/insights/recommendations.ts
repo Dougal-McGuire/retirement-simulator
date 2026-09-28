@@ -150,7 +150,7 @@ export function generateRecommendations(
   if (successRate >= 70 && successRate < 90) {
     push('optimizeMix', 'Medium', {
       en: `At ${pct(successRate / 100, 1)} the outcome turns on sequence risk, not on the average return. Review the balance between the ${pct(params.averageROI, 1)} growth assumption and stability — the allocation glide path models exactly that trade.`,
-      de: `Bei ${pct(successRate / 100, 1)} entscheidet die Reihenfolge der Renditen, nicht der Durchschnitt. Prüfen Sie die Balance zwischen der Renditeannahme von ${pct(params.averageROI, 1)} und Stabilität — genau das bildet der Gleitpfad ab.`,
+      de: `Bei ${pct(successRate / 100, 1)} entscheidet die Reihenfolge der Renditen, nicht der Durchschnitt. Es lohnt ein Blick auf die Balance zwischen der Renditeannahme von ${pct(params.averageROI, 1)} und Stabilität — genau das bildet der Gleitpfad ab.`,
     })
   }
 
@@ -176,12 +176,12 @@ export function generateRecommendations(
   if (allowance <= 0) {
     push('taxAllowance', 'Medium', {
       en: 'This plan is modelled with no Sparerpauschbetrag at all. The allowance is €1,000 per person (€2,000 jointly assessed) and only reaches you where a Freistellungsauftrag is on file with the bank — set it in the tax card so the projection reflects what you actually keep.',
-      de: 'Der Plan rechnet ohne Sparerpauschbetrag. Er beträgt 1.000 € je Person (2.000 € bei Zusammenveranlagung) und wirkt nur mit einem Freistellungsauftrag bei der Bank — tragen Sie ihn in der Steuerkarte ein, damit die Projektion Ihr Netto zeigt.',
+      de: 'Der Plan rechnet ohne Sparerpauschbetrag. Er beträgt 1.000 € je Person (2.000 € bei Zusammenveranlagung) und wirkt nur mit einem Freistellungsauftrag bei der Bank — mit dem Betrag in der Steuerkarte zeigt die Projektion das tatsächliche Netto.',
     })
   } else if (typeof taxDrag === 'number' && taxDrag > 0.05) {
     push('taxAllowance', taxDrag > 0.12 ? 'High' : 'Medium', {
       en: `The median run loses ${pct(taxDrag, 1)} of every withdrawal to Abgeltungsteuer. Spread the Freistellungsauftrag across the accounts that actually realise gains, and realise them across calendar years so the ${eur(allowance)} allowance is used every year rather than once.`,
-      de: `Im mittleren Lauf gehen ${pct(taxDrag, 1)} jeder Entnahme an die Abgeltungsteuer. Verteilen Sie den Freistellungsauftrag auf die Depots, die tatsächlich Gewinne realisieren, und realisieren Sie über Kalenderjahre verteilt, damit die ${eur(allowance)} jedes Jahr genutzt werden.`,
+      de: `Im mittleren Lauf gehen ${pct(taxDrag, 1)} jeder Entnahme an die Abgeltungsteuer. Wird der Freistellungsauftrag auf die Depots verteilt, die tatsächlich Gewinne realisieren, und werden Gewinne über Kalenderjahre gestreckt, greifen die ${eur(allowance)} jedes Jahr statt nur einmal.`,
     })
   }
 

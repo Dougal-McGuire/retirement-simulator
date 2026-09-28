@@ -1,0 +1,255 @@
+/* Setup wizard inside the workspace shell (layout from ../simulation/workspace.css).
+   Only wizard-specific pieces live here: progress, step list, plan chip. */
+.workspace-setup .setup-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-2);
+  padding: 0 var(--ui-space-3) var(--ui-space-6);
+  margin-bottom: var(--ui-space-4);
+  border-bottom: 1px solid var(--ui-border);
+}
+.workspace-setup .setup-progress p {
+  margin: 0;
+}
+.workspace-setup .setup-progress-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 var(--ui-space-2);
+}
+.workspace-setup .setup-progress-step {
+  font-size: var(--ui-font-body);
+  font-weight: 600;
+}
+.workspace-setup .setup-progress-percent,
+.workspace-setup .setup-progress-time {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.workspace-setup .setup-progress-time {
+  flex-wrap: wrap;
+}
+.workspace-setup .setup-progress-time > .tabular-nums {
+  color: var(--ui-text);
+  font-weight: 600;
+}
+.workspace-setup .setup-progress-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--ui-radius);
+  background: var(--ui-subtle);
+}
+.workspace-setup .setup-progress-bar > div {
+  height: 100%;
+  background: var(--ui-accent);
+  transition: width 300ms ease-out;
+}
+
+/* The steps mirror the workspace navigation: same row height, same accent
+   bar on the current entry. */
+.workspace-setup .setup-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.workspace-setup .setup-steps button {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0 !important;
+  background: transparent;
+  color: var(--ui-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.workspace-setup .setup-steps button:hover {
+  background: var(--ui-subtle);
+}
+.workspace-setup .setup-steps button[data-state='active'] {
+  border-left-color: var(--ui-accent);
+  background: var(--ui-subtle);
+  color: var(--ui-text);
+}
+.workspace-setup .setup-steps button[data-state='done'] {
+  color: var(--ui-text);
+}
+.workspace-setup .setup-step-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  background: var(--ui-surface);
+  font-size: var(--ui-font-small);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.workspace-setup .setup-steps button[data-state='active'] .setup-step-marker {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+}
+.workspace-setup .setup-steps button[data-state='done'] .setup-step-marker {
+  border-color: var(--action);
+  background: var(--action);
+  color: var(--on-action);
+}
+.workspace-setup .setup-step-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+.workspace-setup .setup-step-copy > span {
+  font-size: var(--ui-font-body);
+}
+.workspace-setup .setup-steps button[data-state='active'] .setup-step-copy > span {
+  font-weight: 600;
+}
+.workspace-setup .setup-step-copy small {
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+
+/* Toolbar: plan context where the workspace has its plan picker. */
+.workspace-setup .setup-plan {
+  flex-direction: row;
+  align-items: center;
+}
+.workspace-setup .setup-plan-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-width: 0;
+  min-height: var(--ui-control-height);
+  padding: var(--ui-space-1) var(--ui-space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface);
+}
+.workspace-setup .setup-plan-chip strong {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-setup .setup-plan-chip em {
+  padding: 0 var(--ui-space-2);
+  border-radius: var(--ui-radius);
+  background: color-mix(in srgb, var(--warn) 12%, var(--ui-surface));
+  font-size: var(--ui-font-small);
+  font-style: normal;
+  white-space: nowrap;
+}
+.workspace-setup .setup-toolbar .workspace-button {
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.workspace-setup .setup-eyebrow {
+  margin: 0 0 var(--ui-space-1) !important;
+  font-size: var(--ui-font-small) !important;
+}
+.workspace-setup .setup-live {
+  margin: 0 0 var(--ui-space-6);
+}
+
+@media (max-width: 760px) {
+  /* Phones: the same single header row as the workspace (brand dropped),
+     then a slim progress strip, then the step. The step list folds away —
+     the card heading names the current step — and Back/Next is a fixed
+     bottom bar. Laid out here explicitly so the wizard does not depend on
+     how the workspace places its own sidebar parts. */
+  .retirement-workspace.workspace-setup {
+    display: flex;
+    flex-direction: column;
+  }
+  .workspace-setup .workspace-sidebar,
+  .workspace-setup .workspace-body {
+    display: contents;
+  }
+  .workspace-setup .workspace-brand,
+  .workspace-setup .setup-steps,
+  .workspace-setup .workspace-plan-label {
+    display: none;
+  }
+  .workspace-setup .setup-toolbar {
+    order: 1;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--ui-space-2);
+    min-height: 0;
+    padding: var(--ui-space-2) var(--ui-space-4);
+  }
+  .workspace-setup .setup-plan {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+  }
+  .workspace-setup .setup-plan-chip {
+    max-width: 100%;
+  }
+  /* No hover on phones: the working-copy tooltip gives way to the name. */
+  .workspace-setup .setup-plan-chip > :last-child:not(strong):not(em) {
+    display: none;
+  }
+  /* The unsaved label shrinks to the workspace's dirty dot; the words stay
+     available to screen readers. */
+  .workspace-setup .setup-plan-chip em {
+    position: relative;
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--warn);
+    color: transparent;
+  }
+  .workspace-setup .setup-toolbar .workspace-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    width: auto;
+    margin: 0;
+  }
+  .workspace-setup .setup-toolbar .workspace-button {
+    padding-inline: var(--ui-space-3);
+  }
+  .workspace-setup .setup-progress {
+    order: 2;
+    margin: 0;
+    padding: var(--ui-space-3) var(--ui-space-4);
+    background: var(--ui-surface);
+    border-bottom: 1px solid var(--ui-border);
+  }
+  .workspace-setup .setup-progress-time {
+    display: none;
+  }
+  .workspace-setup .workspace-main {
+    order: 3;
+    width: 100%;
+    padding: var(--ui-space-4);
+  }
+}
+@media (max-width: 380px) {
+  .workspace-setup .setup-toolbar .workspace-button svg {
+    display: none;
+  }
+}

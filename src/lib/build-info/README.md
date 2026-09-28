@@ -13,26 +13,16 @@ This directory contains the build information that is generated at build/dev tim
    - Git information (commit hash, tag, branch)
    - Key package versions (Next.js, React, etc.)
 
-3. **Usage**: The `VersionInfo` component displays this information when the info icon is clicked in the header
-
-## Viewing Version Info
-
-In the application, click the info icon (ℹ️) next to the simulation badges in the header to see a toast with:
-- Version number
-- Build number
-- Build date
-- Git commit hash
-- Git tag (if available)
-- Key package versions
+3. **Usage**: Nothing in the app imports it at the moment. The header `VersionInfo` popover that used to display it was removed with the workspace redesign; the file is still generated so a future about/diagnostics surface (or a deploy log) can read it.
 
 ## Development
 
 The `build-info.json` file is:
 - **Generated** at build/dev time by the script
 - **Ignored** by git (.gitignore)
-- **Required** for the app to run (imported by VersionInfo component)
+- **Not required** at runtime (no module imports it)
 
-If you see an error about missing `build-info.json`, run:
+To regenerate it manually, run:
 ```bash
 node scripts/generate-build-info.js
 ```

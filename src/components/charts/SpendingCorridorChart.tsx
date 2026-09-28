@@ -102,7 +102,7 @@ export function SpendingCorridorChart({
           acc,
           point.spending_p90,
           point.floor ?? 0,
-          scaleMode === 'full' ? point.ceiling ?? 0 : 0
+          scaleMode === 'full' ? (point.ceiling ?? 0) : 0
         ),
       0
     )
@@ -190,11 +190,16 @@ export function SpendingCorridorChart({
     return <ChartTooltipCard title={t('tooltip.label', { age: label ?? '' })} rows={rows} />
   }
 
+  const chartMargin = isMobile
+    ? { top: 20, right: 8, left: 0, bottom: 4 }
+    : { top: 24, right: 16, left: 4, bottom: 4 }
+  const markerFontSize = isMobile ? 9 : 10
+  const plotRight = size.width - chartMargin.right
+
   const showPensionMarker =
     legalRetirementAge > retirementAge && points.some((point) => point.age >= legalRetirementAge)
 
-  const resetZoom = () =>
-    setIndexRange({ startIndex: 0, endIndex: Math.max(0, points.length - 1) })
+  const resetZoom = () => setIndexRange({ startIndex: 0, endIndex: Math.max(0, points.length - 1) })
 
   return (
     <div className="space-y-3" data-testid="spending-corridor-chart">
@@ -205,7 +210,7 @@ export function SpendingCorridorChart({
           <div
             role="group"
             aria-label={tAssets('scale.label')}
-            className="rounded-sm flex items-center border-2 border-border bg-white"
+            className="rounded-sm flex items-center border-2 border-border bg-card"
           >
             {(['focus', 'full'] as const).map((mode) => (
               <button
@@ -215,8 +220,8 @@ export function SpendingCorridorChart({
                 aria-pressed={scaleMode === mode}
                 className={`px-2.5 py-1 text-[0.62rem] font-bold transition-colors ${
                   scaleMode === mode
-                    ? 'bg-accent text-white'
-                    : 'bg-white text-muted-foreground hover:text-ink'
+                    ? 'bg-action text-action-foreground'
+                    : 'bg-card text-muted-foreground hover:text-ink'
                 }`}
               >
                 {tAssets(`scale.${mode}`)}
@@ -240,16 +245,7 @@ export function SpendingCorridorChart({
         aria-label={t('aria', { retirementAge })}
       >
         {size.width > 0 && points.length > 0 ? (
-          <ComposedChart
-            width={size.width}
-            height={size.height}
-            data={points}
-            margin={
-              isMobile
-                ? { top: 20, right: 8, left: 0, bottom: 4 }
-                : { top: 24, right: 16, left: 4, bottom: 4 }
-            }
-          >
+          <ComposedChart width={size.width} height={size.height} data={points} margin={chartMargin}>
             <defs>
               <linearGradient id="corridorFan" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={hue.solid} stopOpacity={0.24} />
@@ -303,26 +299,28 @@ export function SpendingCorridorChart({
               x={retirementAge}
               stroke={chartInk.marker}
               strokeDasharray="4 4"
-              label={{
-                value: t('markers.retirement'),
-                position: 'insideTopLeft',
-                fill: chartInk.tick,
-                fontSize: isMobile ? 9 : 10,
-                fontWeight: 700,
-              }}
+              label={
+                <MarkerLabel
+                  value={t('markers.retirement')}
+                  row={0}
+                  fontSize={markerFontSize}
+                  plotRight={plotRight}
+                />
+              }
             />
             {showPensionMarker && (
               <ReferenceLine
                 x={legalRetirementAge}
                 stroke={chartInk.marker}
                 strokeDasharray="4 4"
-                label={{
-                  value: t('markers.pension'),
-                  position: 'insideTopRight',
-                  fill: chartInk.tick,
-                  fontSize: isMobile ? 9 : 10,
-                  fontWeight: 700,
-                }}
+                label={
+                  <MarkerLabel
+                    value={t('markers.pension')}
+                    row={1}
+                    fontSize={markerFontSize}
+                    plotRight={plotRight}
+                  />
+                }
               />
             )}
             <Line
@@ -415,10 +413,20 @@ export function SpendingCorridorChart({
                 <tr key={point.age}>
                   <td>{point.age}</td>
                   <td className="ds-num">{formatCurrency(point.spending_p10)}</td>
-                  <td className="ds-num" style={{ fontWeight: 700 }}>{formatCurrency(point.spending_p50)}</td>
+                  <td className="ds-num" style={{ fontWeight: 700 }}>
+                    {formatCurrency(point.spending_p50)}
+                  </td>
                   <td className="ds-num">{formatCurrency(point.spending_p90)}</td>
-                  {hasFloor && <td className="ds-num">{point.floor == null ? '—' : formatCurrency(point.floor)}</td>}
-                  {hasCeiling && <td className="ds-num">{point.ceiling == null ? '—' : formatCurrency(point.ceiling)}</td>}
+                  {hasFloor && (
+                    <td className="ds-num">
+                      {point.floor == null ? '—' : formatCurrency(point.floor)}
+                    </td>
+                  )}
+                  {hasCeiling && (
+                    <td className="ds-num">
+                      {point.ceiling == null ? '—' : formatCurrency(point.ceiling)}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -426,5 +434,49 @@ export function SpendingCorridorChart({
         </div>
       </details>
     </div>
+  )
+}
+
+/**
+ * Label for a vertical age marker. It sits inside the plot, below the top
+ * y-axis tick, beside its line (flipped to the left near the right edge),
+ * and each marker gets its own row, so two close markers never overlap each
+ * other or the axis labels. A halo in the card colour keeps it legible over
+ * the band and lines.
+ */
+function MarkerLabel({
+  value,
+  row,
+  fontSize,
+  plotRight,
+  viewBox,
+}: {
+  value: string
+  row: number
+  fontSize: number
+  plotRight: number
+  viewBox?: { x?: number; y?: number }
+}) {
+  const lineX = viewBox?.x ?? 0
+  const top = viewBox?.y ?? 0
+  // Rough bold-text width; only used to decide which side of the line to use.
+  const estimatedWidth = value.length * fontSize * 0.62
+  const flip = lineX + 4 + estimatedWidth > plotRight
+  return (
+    <text
+      x={flip ? lineX - 4 : lineX + 4}
+      y={top + fontSize + 8 + row * (fontSize + 6)}
+      textAnchor={flip ? 'end' : 'start'}
+      fill={chartInk.tick}
+      fontSize={fontSize}
+      fontWeight={700}
+      stroke="hsl(var(--card))"
+      strokeWidth={3}
+      strokeLinejoin="round"
+      paintOrder="stroke"
+      data-testid="corridor-marker-label"
+    >
+      {value}
+    </text>
   )
 }

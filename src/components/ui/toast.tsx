@@ -27,18 +27,22 @@ export function ToastProvider() {
       // Above dialogs, selects and tooltips (which sit at 99999): a toast the
       // user cannot see is a toast that never happened.
       containerStyle={{ zIndex: 100000, inset: '1rem' }}
-      containerClassName="!bottom-[max(1rem,env(safe-area-inset-bottom))] max-sm:!left-2 max-sm:!right-2"
+      // `--toast-bottom` lets a page with bottom chrome (the workspace's phone
+      // tab bar) lift toasts above it.
+      containerClassName="!bottom-[var(--toast-bottom,max(1rem,env(safe-area-inset-bottom)))] max-sm:!left-2 max-sm:!right-2"
       toastOptions={{
         duration: TOAST_DURATION,
         className: 'max-w-[calc(100vw-1.5rem)] sm:max-w-[24rem]',
+        // Design-system surface (1px line, 4px radius) rather than the old
+        // 3px ink frame, which read as a glaring outline in the dark scheme.
         style: {
-          background: 'var(--white)',
-          color: 'var(--ink)',
-          border: '3px solid var(--ink)',
-          borderRadius: '0px',
+          background: 'var(--surface-raised)',
+          color: 'var(--ui-text)',
+          border: '1px solid var(--line-strong)',
+          borderRadius: 'var(--ui-radius)',
           padding: '12px 16px',
           fontSize: '14px',
-          boxShadow: 'var(--shadow-sm)',
+          boxShadow: 'var(--shadow-lg)',
           maxWidth: 'none',
         },
         success: {

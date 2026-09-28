@@ -1,9 +1,38 @@
-/* Shared interface tokens. Components and workspace layouts use these values. */
+/*
+ * Shared interface tokens. Components and workspace layouts use these values.
+ *
+ * Colour schemes (three states, token level only — components never branch on
+ * the scheme, they read tokens):
+ *   - bare :root                                   → light (below)
+ *   - @media (prefers-color-scheme: dark), guarded
+ *     by :root:not([data-color-scheme=light])      → dark, following the OS
+ *   - :root[data-color-scheme=dark]                → dark, explicit override
+ * `data-color-scheme` is set before first paint by the inline script in
+ * src/app/layout.tsx from the stored preference (see src/lib/colorScheme.ts).
+ * The two dark blocks at the end of the token section must stay identical;
+ * src/lib/__tests__/colorScheme.test.ts enforces that.
+ *
+ * Naming notes: `--white`/`--white-rgb` is the *paper* colour (surface), not
+ * literal white; `--amber-rgb` is the neutral highlight chip; `--ink-rgb` is
+ * the text colour. `--accent` is the text/line accent (lifted in dark), while
+ * `--action` is the solid fill behind `--on-action` text. Anything drawn on a
+ * solid semantic hue (ok, danger, viz-*) uses `--on-hue` for its content.
+ */
 :root {
   color-scheme: light;
   --radius: var(--ui-radius);
   --ink: rgb(var(--ink-rgb));
   --white: rgb(var(--white-rgb));
+  --action-rgb: 49 95 136;
+  --action: rgb(var(--action-rgb));
+  --action-hover: #274d6e;
+  --on-action: #ffffff;
+  --on-hue: #ffffff;
+  --surface-raised: var(--ui-surface);
+  --overlay: rgb(15 20 27 / 0.5);
+  --shadow-dialog: 0 8px 32px #0000001a;
+  --cta-slab-bg: #0f1524;
+  --cta-slab-fg: #f6f8fb;
   --theme-pattern-blend: normal;
   --background: 240 6% 97%;
   --foreground: 214 9% 15%;
@@ -101,6 +130,16 @@
   --green-50: oklch(98.2% 0.018 155.826);
   --green-300: oklch(87.1% 0.15 154.449);
   --green-700: oklch(52.7% 0.154 150.069);
+  --success-50: #f0fdf4;
+  --success-100: #dcfce7;
+  --success-500: #22c55e;
+  --success-600: #16a34a;
+  --success-700: #15803d;
+  --warning-50: #fffbeb;
+  --warning-100: #fef3c7;
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+  --warning-700: #b45309;
   --accent-hover: #274d6e;
   --canvas: var(--ui-bg);
   --surface: var(--ui-surface);
@@ -110,8 +149,6 @@
   --text-muted: var(--ui-muted);
   --text-label: var(--ui-muted);
   --text-hint: var(--ui-muted);
-  --action: var(--accent);
-  --action-hover: var(--accent-hover);
   --danger: rgb(var(--danger-rgb));
   --warn: var(--amber-700);
   --ok: rgb(var(--ok-rgb));
@@ -179,12 +216,244 @@
   --ui-font-title: 24px;
 }
 
+/* ---------------------------------------------------------------- */
+/* Dark scheme. Keep the two blocks below identical (test-enforced).  */
+/* ---------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-color-scheme='light']) {
+    color-scheme: dark;
+    /* Ground: deep blue-slate that shares the accent's hue (≈212°), raised
+       surfaces one step lighter, dialogs/popovers one more. */
+    --ui-bg: #0e141b;
+    --ui-surface: #151c24;
+    --ui-subtle: #1d2631;
+    --surface-raised: #19212b;
+    --ui-border: #29333f;
+    --line-strong: #3a4654;
+    --ui-text: #e3e8ee;
+    --ui-muted: #9ba7b4;
+    /* Accent lifted for text and lines; the solid action fill stays a mid-tone
+       steel blue so white labels keep ≥ 4.5:1. */
+    --ui-accent: #7eb0dd;
+    --accent-rgb: 126 176 221;
+    --accent-hover: #a3c8ea;
+    --action-rgb: 58 109 159;
+    --action-hover: #3f75a9;
+    --on-action: #ffffff;
+    --on-hue: #0e141b;
+    --ink-rgb: 227 232 238;
+    --white-rgb: 21 28 36;
+    --amber-rgb: 36 46 58;
+    --danger-rgb: 242 150 140;
+    --ok-rgb: 108 196 154;
+    --viz-pink-rgb: 141 156 174;
+    --viz-purple-rgb: 180 158 206;
+    --viz-teal-rgb: 126 176 221;
+    --viz-orange-rgb: 160 167 176;
+    --overlay: rgb(4 7 10 / 0.66);
+    --shadow-lg: 0 12px 28px -8px rgb(0 0 0 / 0.55), 0 4px 10px -4px rgb(0 0 0 / 0.4);
+    --shadow-dialog: 0 16px 48px rgb(0 0 0 / 0.5);
+    --cta-slab-bg: #13263a;
+    --cta-slab-fg: #eef3f8;
+    --grid-line: rgb(227 232 238 / 0.05);
+    --chart-brush: #566371;
+    --scrollbar-thumb: rgb(227 232 238 / 0.18);
+    --scrollbar-thumb-hover: rgb(227 232 238 / 0.32);
+    /* shadcn-style HSL channels */
+    --background: 212 32% 8%;
+    --foreground: 213 24% 91%;
+    --card: 212 26% 11%;
+    --popover: 213 26% 13%;
+    --primary: 210 47% 43%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 213 26% 15%;
+    --secondary-foreground: 213 24% 91%;
+    --muted: 213 26% 15%;
+    --muted-foreground: 211 14% 66%;
+    --destructive: 6 80% 75%;
+    --destructive-foreground: 212 32% 8%;
+    --border: 213 21% 20%;
+    --input: 212 18% 28%;
+    --field: 212 32% 9%;
+    --ring: 208 58% 68%;
+    --chart-1: 187 48% 52%;
+    --chart-2: 270 40% 72%;
+    --chart-3: 4 78% 70%;
+    --chart-4: 148 42% 56%;
+    --chart-5: 32 70% 62%;
+    /* Neutral ramp, ordered by distance from the surface (50 = hover wash,
+       200 = tracks and gridlines, 500 = icons, 900 = strongest ink). */
+    --gray-50: #1b232d;
+    --gray-100: #212a35;
+    --gray-200: #2a3440;
+    --gray-300: #3a4654;
+    --gray-400: #566371;
+    --gray-500: #7d8a98;
+    --gray-600: #9ea9b5;
+    --gray-700: #bcc5ce;
+    --gray-800: #d6dce3;
+    --gray-900: #edf1f5;
+    /* Semantic washes (50), rims (300) and inks (500–700). */
+    --red-50: #2b1b1d;
+    --red-300: #6b3634;
+    --red-500: #e2685d;
+    --red-600: #ec7f74;
+    --red-700: #f2968c;
+    --amber-50: #2a2415;
+    --amber-300: #6a5626;
+    --amber-700: #e2b457;
+    --green-50: #152a20;
+    --green-300: #2c5c43;
+    --green-700: #6cc49a;
+    --success-50: #14261d;
+    --success-100: #183124;
+    --success-500: #4fb884;
+    --success-600: #4a9d74;
+    --success-700: #7fd0a6;
+    --warning-50: #282111;
+    --warning-100: #332a14;
+    --warning-500: #d99a2b;
+    --warning-600: #b88a35;
+    --warning-700: #e8bb62;
+    /* Categorical and sequential chart hues, re-validated on --ui-surface. */
+    --viz-1: #7eb0dd;
+    --viz-2: #a1acb8;
+    --viz-3: #8ad4d0;
+    --viz-4: #c3cad2;
+    --viz-5: #d4a07f;
+    --viz-6: #8ad4d0;
+    --viz-seq-1: #1b2f42;
+    --viz-seq-2: #264764;
+    --viz-seq-3: #3a6892;
+    --viz-seq-4: #5b8fc0;
+    --viz-seq-5: #8cbde8;
+  }
+}
+:root[data-color-scheme='dark'] {
+  color-scheme: dark;
+  /* Ground: deep blue-slate that shares the accent's hue (≈212°), raised
+     surfaces one step lighter, dialogs/popovers one more. */
+  --ui-bg: #0e141b;
+  --ui-surface: #151c24;
+  --ui-subtle: #1d2631;
+  --surface-raised: #19212b;
+  --ui-border: #29333f;
+  --line-strong: #3a4654;
+  --ui-text: #e3e8ee;
+  --ui-muted: #9ba7b4;
+  /* Accent lifted for text and lines; the solid action fill stays a mid-tone
+     steel blue so white labels keep ≥ 4.5:1. */
+  --ui-accent: #7eb0dd;
+  --accent-rgb: 126 176 221;
+  --accent-hover: #a3c8ea;
+  --action-rgb: 58 109 159;
+  --action-hover: #3f75a9;
+  --on-action: #ffffff;
+  --on-hue: #0e141b;
+  --ink-rgb: 227 232 238;
+  --white-rgb: 21 28 36;
+  --amber-rgb: 36 46 58;
+  --danger-rgb: 242 150 140;
+  --ok-rgb: 108 196 154;
+  --viz-pink-rgb: 141 156 174;
+  --viz-purple-rgb: 180 158 206;
+  --viz-teal-rgb: 126 176 221;
+  --viz-orange-rgb: 160 167 176;
+  --overlay: rgb(4 7 10 / 0.66);
+  --shadow-lg: 0 12px 28px -8px rgb(0 0 0 / 0.55), 0 4px 10px -4px rgb(0 0 0 / 0.4);
+  --shadow-dialog: 0 16px 48px rgb(0 0 0 / 0.5);
+  --cta-slab-bg: #13263a;
+  --cta-slab-fg: #eef3f8;
+  --grid-line: rgb(227 232 238 / 0.05);
+  --chart-brush: #566371;
+  --scrollbar-thumb: rgb(227 232 238 / 0.18);
+  --scrollbar-thumb-hover: rgb(227 232 238 / 0.32);
+  /* shadcn-style HSL channels */
+  --background: 212 32% 8%;
+  --foreground: 213 24% 91%;
+  --card: 212 26% 11%;
+  --popover: 213 26% 13%;
+  --primary: 210 47% 43%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 213 26% 15%;
+  --secondary-foreground: 213 24% 91%;
+  --muted: 213 26% 15%;
+  --muted-foreground: 211 14% 66%;
+  --destructive: 6 80% 75%;
+  --destructive-foreground: 212 32% 8%;
+  --border: 213 21% 20%;
+  --input: 212 18% 28%;
+  --field: 212 32% 9%;
+  --ring: 208 58% 68%;
+  --chart-1: 187 48% 52%;
+  --chart-2: 270 40% 72%;
+  --chart-3: 4 78% 70%;
+  --chart-4: 148 42% 56%;
+  --chart-5: 32 70% 62%;
+  /* Neutral ramp, ordered by distance from the surface (50 = hover wash,
+     200 = tracks and gridlines, 500 = icons, 900 = strongest ink). */
+  --gray-50: #1b232d;
+  --gray-100: #212a35;
+  --gray-200: #2a3440;
+  --gray-300: #3a4654;
+  --gray-400: #566371;
+  --gray-500: #7d8a98;
+  --gray-600: #9ea9b5;
+  --gray-700: #bcc5ce;
+  --gray-800: #d6dce3;
+  --gray-900: #edf1f5;
+  /* Semantic washes (50), rims (300) and inks (500–700). */
+  --red-50: #2b1b1d;
+  --red-300: #6b3634;
+  --red-500: #e2685d;
+  --red-600: #ec7f74;
+  --red-700: #f2968c;
+  --amber-50: #2a2415;
+  --amber-300: #6a5626;
+  --amber-700: #e2b457;
+  --green-50: #152a20;
+  --green-300: #2c5c43;
+  --green-700: #6cc49a;
+  --success-50: #14261d;
+  --success-100: #183124;
+  --success-500: #4fb884;
+  --success-600: #4a9d74;
+  --success-700: #7fd0a6;
+  --warning-50: #282111;
+  --warning-100: #332a14;
+  --warning-500: #d99a2b;
+  --warning-600: #b88a35;
+  --warning-700: #e8bb62;
+  /* Categorical and sequential chart hues, re-validated on --ui-surface. */
+  --viz-1: #7eb0dd;
+  --viz-2: #a1acb8;
+  --viz-3: #8ad4d0;
+  --viz-4: #c3cad2;
+  --viz-5: #d4a07f;
+  --viz-6: #8ad4d0;
+  --viz-seq-1: #1b2f42;
+  --viz-seq-2: #264764;
+  --viz-seq-3: #3a6892;
+  --viz-seq-4: #5b8fc0;
+  --viz-seq-5: #8cbde8;
+}
+
 html body {
   font-size: var(--ui-font-body);
   font-weight: 400;
   line-height: 1.5;
   color: var(--ui-text);
   background: var(--ui-bg);
+  /* The viewport uses viewport-fit=cover (layout.tsx), so on notched phones
+     the page itself keeps out of the notch and the status bar. The insets are
+     0 everywhere else. The bottom inset is left to each page: the workspace
+     and the wizard pad their fixed bottom bars and content themselves. */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+html body:not(:has(.retirement-workspace)) {
+  padding-bottom: env(safe-area-inset-bottom);
 }
 html :is(h1, h2, h3, h4, h5, h6, strong) {
   letter-spacing: 0;
@@ -196,7 +465,7 @@ html h1 {
 html :is(h2, h3, h4) {
   font-size: var(--ui-font-section);
 }
-html :is(.theme-control, .ds-btn, .workspace-button, [data-slot='select-trigger']) {
+html :is(.ds-control, .ds-btn, .workspace-button, [data-slot='select-trigger']) {
   min-height: var(--ui-control-height);
   font-size: var(--ui-font-body);
   font-weight: 500;
@@ -205,7 +474,7 @@ html :is(.theme-control, .ds-btn, .workspace-button, [data-slot='select-trigger'
   box-shadow: none;
   letter-spacing: 0;
 }
-html :is(.theme-control, .ds-btn, .workspace-button, [data-slot='select-trigger']):hover {
+html :is(.ds-control, .ds-btn, .workspace-button, [data-slot='select-trigger']):hover {
   transform: none !important;
 }
 html :is(.ds-chip, .ds-pill, .app-chip, [data-slot='badge']) {
@@ -216,17 +485,26 @@ html :is(.ds-chip, .ds-pill, .app-chip, [data-slot='badge']) {
 }
 html :is([data-slot='dialog-content'], [data-slot='select-content']) {
   border-radius: var(--ui-radius);
-  background: var(--ui-surface);
+  background: var(--surface-raised);
   color: var(--ui-text);
   font-size: var(--ui-font-body);
 }
 html [data-slot='dialog-content'] {
   padding: var(--ui-space-6);
   gap: var(--ui-space-4);
-  box-shadow: 0 8px 32px #0000001a;
+  box-shadow: var(--shadow-dialog);
 }
 html [data-slot='dialog-title'] {
   font-size: var(--ui-font-section);
+}
+/* Section labels inside a settings sheet (HeaderControlsMenu): small muted
+   labels under the sheet title, not section-sized headings. Declared here
+   because the unlayered heading scale above outranks Tailwind utilities. */
+html .sheet-section-heading {
+  font-size: var(--ui-font-small);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ui-muted);
 }
 html :is([data-slot='select-item'], [data-slot='dialog-description']) {
   font-size: var(--ui-font-body);

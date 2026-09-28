@@ -278,7 +278,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
       id="plan-editor-withdrawal"
       data-testid="withdrawal-planner"
       className={cn(
-        'rounded-sm theme-panel-card flex scroll-mt-32 flex-col gap-5 border border-border bg-white p-5 shadow-sm',
+        'rounded-sm theme-panel-card flex scroll-mt-32 flex-col gap-5 border border-border bg-card p-5 shadow-sm',
         className
       )}
     >
@@ -310,8 +310,8 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
                   className={cn(
                     'rounded-sm flex flex-col items-start gap-1 border-2 border-border px-3 py-2.5 text-left transition-colors',
                     isSelected
-                      ? 'bg-accent text-white shadow-sm'
-                      : 'bg-white text-ink hover:bg-accent/10'
+                      ? 'bg-action text-action-foreground shadow-sm'
+                      : 'bg-card text-ink hover:bg-accent/10'
                   )}
                 >
                   <span className="text-xs font-semibold  ">{strategyLabel(strategy)}</span>
@@ -438,7 +438,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
           )}
         </div>
 
-        <div className="rounded-sm space-y-4 border border-border bg-white p-4 shadow-sm">
+        <div className="rounded-sm space-y-4 border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-center gap-2">
               <h4 className="text-sm font-semibold   text-ink">{t('compare.title')}</h4>
@@ -460,7 +460,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
           </div>
 
           {status === 'error' && (
-            <p className="rounded-sm border-2 border-danger bg-red-50 px-3 py-2 text-xs font-semibold text-danger">
+            <p className="rounded-sm border-2 border-danger bg-[var(--red-50)] px-3 py-2 text-xs font-semibold text-danger">
               {t('compare.error')}
             </p>
           )}
@@ -528,7 +528,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
                                     updateParams({ withdrawalStrategy: snapshot.strategy })
                                   }
                                   data-testid={`strategy-compare-apply-${snapshot.strategy}`}
-                                  className="rounded-sm border border-border px-1.5 py-px text-xs font-semibold   text-muted-foreground transition-colors hover:bg-accent hover:text-white"
+                                  className="rounded-sm border border-border px-1.5 py-px text-xs font-semibold   text-muted-foreground transition-colors hover:bg-action hover:text-action-foreground"
                                 >
                                   {t('compare.apply')}
                                 </button>
@@ -562,7 +562,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
                       data-testid="strategy-compare-card"
                       data-strategy={snapshot.strategy}
                       className={cn(
-                        'rounded-sm border-2 border-border bg-white px-4 py-3',
+                        'rounded-sm border-2 border-border bg-card px-4 py-3',
                         active && 'bg-amber/15'
                       )}
                     >

@@ -7,10 +7,11 @@
     "notConfigured": "Anmeldung nicht konfiguriert",
     "loading": "Konto wird geladen",
     "accountFallbackName": "Google-Konto",
-    "localOnly": "Ihre Daten bleiben auf diesem Gerät — die Anmeldung trennt lediglich Profile.",
+    "localOnly": "Deine Daten bleiben auf diesem Gerät — die Anmeldung trennt lediglich Profile.",
+    "syncOnSignIn": "Mit deinem Google-Konto werden deine Pläne im Konto gespeichert und auf allen deinen Geräten synchronisiert.",
     "migration": {
       "title": "Vorhandene Pläne in dieses Konto übernehmen?",
-      "description": "Sie haben auf diesem Gerät Pläne erstellt, bevor Sie sich angemeldet haben. Sollen sie in dieses Konto kopiert werden oder möchten Sie neu starten?",
+      "description": "Du hast auf diesem Gerät Pläne erstellt, bevor du dich angemeldet hast. Sollen sie in dieses Konto kopiert werden oder möchtest du neu starten?",
       "note": "Die anonymen Pläne bleiben in jedem Fall auf diesem Gerät — nach dem Abmelden sind sie wieder da.",
       "confirm": "Pläne übernehmen",
       "decline": "Neu starten"
@@ -22,14 +23,14 @@
       "minutes": "vor {count} Min.",
       "hours": "vor {count} Std.",
       "offline": "Offline (auf diesem Gerät gespeichert)",
-      "hint": "Ihre Pläne werden in Ihrem Google-Konto gespeichert und stehen auf jedem Gerät zur Verfügung, auf dem Sie sich anmelden.",
-      "offlineHint": "Die Cloud-Synchronisierung ist gerade nicht erreichbar. Ihre Pläne bleiben auf diesem Gerät und werden automatisch wieder synchronisiert."
+      "hint": "Deine Pläne werden in deinem Google-Konto gespeichert und stehen auf jedem Gerät zur Verfügung, auf dem du dich anmeldest.",
+      "offlineHint": "Die Cloud-Synchronisierung ist gerade nicht erreichbar. Deine Pläne bleiben auf diesem Gerät und werden automatisch wieder synchronisiert."
     }
   },
   "landing": {
     "meta": {
       "title": "Ruhestandssimulator — Monte-Carlo-Ruhestandsplanung",
-      "description": "Testen Sie Ihren Ruhestandsplan gegen Tausende simulierte Marktverläufe. Kostenlos, privat und vollständig im Browser."
+      "description": "Teste deinen Ruhestandsplan gegen Tausende simulierte Marktverläufe. Kostenlos, privat und vollständig im Browser."
     },
     "nav": {
       "appName": "Ruhestandssimulator",
@@ -41,15 +42,15 @@
       "stay": "Auf dieser Seite bleiben"
     },
     "hero": {
-      "badge": "Monte-Carlo-Engine · läuft in Ihrem Browser",
-      "titleLine1": "Ihr Ruhestand,",
+      "badge": "Monte-Carlo-Engine · läuft in deinem Browser",
+      "titleLine1": "Dein Ruhestand,",
       "titleLine2": "{runs}-mal simuliert.",
-      "subtitle": "Die Engine spielt Ihr gesamtes Finanzleben durch Tausende simulierte Märkte — Schwankungen, Inflation, Rente und Ausgaben — damit Sie die ganze Bandbreite der Ergebnisse sehen, bevor Sie Ihren Ruhestand auf eine einzige Annahme setzen.",
+      "subtitle": "Die Engine spielt dein gesamtes Finanzleben durch Tausende simulierte Märkte — Schwankungen, Inflation, Rente und Ausgaben — damit du die ganze Bandbreite der Ergebnisse siehst, bevor du deinen Ruhestand auf eine einzige Annahme setzt.",
       "ctaPrimary": "Jetzt planen — kostenlos",
       "ctaSecondary": "Dashboard erkunden",
-      "note": "Keine Registrierung. Keine Cloud. Ihre Daten verlassen nie diesen Browser.",
-      "lede": "Eine Durchschnittsrendite sagt Ihnen nichts.",
-      "runsNote": "Der Chart oben ist ein gespeicherter Lauf der Engine: {previewRuns} Pfade, davon {previewRate} am Ende noch finanziert. Derselbe Plan rechnet auf Ihrem eigenen Dashboard standardmäßig {defaultRuns} Pfade und meldet {defaultRate} — weniger Stichproben, gleicher Plan. Die Laufzahl ist im Plan-Editor jederzeit erhöhbar."
+      "note": "Keine Registrierung nötig. Ohne Anmeldung verlassen deine Daten nie diesen Browser.",
+      "lede": "Eine Durchschnittsrendite sagt dir nichts.",
+      "runsNote": "Der Chart oben ist ein gespeicherter Lauf der Engine: {previewRuns} Pfade, davon {previewRate} am Ende noch finanziert. Derselbe Plan rechnet auf deinem eigenen Dashboard standardmäßig {defaultRuns} Pfade und meldet {defaultRate} — weniger Stichproben, gleicher Plan. Im Plan-Editor kannst du die Laufzahl jederzeit erhöhen."
     },
     "stats": {
       "scenarios": {
@@ -61,7 +62,7 @@
       },
       "privacy": {
         "value": "0",
-        "label": "Bytes Ihrer Daten verlassen den Browser"
+        "label": "Bytes deiner Daten verlassen den Browser"
       },
       "years": {
         "label": "Jahre, Jahr für Jahr modelliert"
@@ -92,7 +93,7 @@
         },
         "live": {
           "title": "Sofortige Was-wäre-wenn-Antworten",
-          "body": "Bewegen Sie einen Regler und die Perzentile zeichnen sich in rund 100 Millisekunden neu. Hinterfragen Sie jede Annahme — live."
+          "body": "Bewege einen Regler, und die Perzentile zeichnen sich in rund 100 Millisekunden neu. Hinterfrage jede Annahme — live."
         },
         "phases": {
           "title": "Beide Hälften der Reise",
@@ -100,11 +101,11 @@
         },
         "reports": {
           "title": "Berichte zum Teilen",
-          "body": "Exportieren Sie einen sauberen, umfassenden PDF-Bericht Ihres Plans — inklusive Annahmen, Charts und Empfehlungen."
+          "body": "Exportiere einen sauberen, umfassenden PDF-Bericht deines Plans — inklusive Annahmen, Charts und Empfehlungen."
         },
         "privacy": {
           "title": "Privat von Grund auf",
-          "body": "Kein Konto und kein Tracking Ihrer Finanzen. Parameter bleiben ausschließlich im lokalen Speicher Ihres Browsers."
+          "body": "Kein Konto und kein Tracking deiner Finanzen. Parameter bleiben ausschließlich im lokalen Speicher deines Browsers."
         },
         "bilingual": {
           "title": "Zweisprachig & lokalisiert",
@@ -122,16 +123,16 @@
         },
         "step2": {
           "title": "Tausende Zukünfte durchrechnen",
-          "body": "Die Engine spielt Ihr gesamtes Finanzleben durch simulierte Märkte — gute wie schlechte Jahrzehnte."
+          "body": "Die Engine spielt dein gesamtes Finanzleben durch simulierte Märkte — gute wie schlechte Jahrzehnte."
         },
         "step3": {
           "title": "Testen und verfeinern",
-          "body": "Justieren Sie Annahmen live, beobachten Sie die Bänder und exportieren Sie das PDF, sobald der Plan trägt."
+          "body": "Justiere Annahmen live, beobachte die Bänder und exportiere das PDF, sobald der Plan trägt."
         }
       }
     },
     "cta": {
-      "title": "Wissen, wo Sie stehen.",
+      "title": "Wissen, wo du stehst.",
       "subtitle": "Fünf Minuten Setup. Ein Leben lang Klarheit.",
       "button": "Jetzt Plan erstellen",
       "secondary": "oder das Live-Dashboard erkunden"
@@ -140,13 +141,13 @@
       "tagline": "Monte-Carlo-Ruhestandsplanung — kostenlos, offen, privat.",
       "setup": "Geführtes Setup",
       "simulation": "Simulations-Dashboard",
-      "copyright": "© {year} Ruhestandssimulator. Läuft vollständig auf Ihrem Gerät."
+      "copyright": "© {year} Ruhestandssimulator. Läuft vollständig auf deinem Gerät."
     },
     "spread": {
       "eyebrow": "Warum eine Zahl täuscht",
       "title": "Gleicher Plan. Gleiche Durchschnittsrendite. Drei sehr verschiedene Zukünfte.",
       "body": "So viel Vermögen bleibt im Beispielplan oben mit Alter {endAge} übrig. Verändert hat sich nur die Reihenfolge der Marktrenditen — und allein sie entscheidet, ob der Plan komfortabel oder knapp endet.",
-      "footnote": "{runs} Läufe des Standardplans · {successRate} blieben bis Alter {endAge} finanziert. Ändern Sie eine Annahme und die gesamte Bandbreite zeichnet sich neu.",
+      "footnote": "{runs} Läufe des Standardplans · {successRate} blieben bis Alter {endAge} finanziert. Ändere eine Annahme, und die gesamte Bandbreite zeichnet sich neu.",
       "items": {
         "low": {
           "label": "Schlechteste 10% der Läufe",
@@ -166,8 +167,8 @@
       "cta": "Beispielplan ansehen",
       "resume": "Zurück zum Beispielplan",
       "opening": "Beispiel wird geladen …",
-      "hint": "Ein fertiger Plan mit echten Zeitfenstern und Nachlassziel. Er kommt zu Ihren eigenen dazu — jederzeit umbenennbar oder löschbar.",
-      "limit": "Sie haben bereits die maximalen {max} Pläne. Löschen Sie einen, um das Beispiel hinzuzufügen."
+      "hint": "Ein fertiger Plan mit echten Zeitfenstern und Nachlassziel. Er kommt zu deinen eigenen dazu — jederzeit umbenennbar oder löschbar.",
+      "limit": "Du hast bereits das Maximum von {max} Plänen erreicht. Lösche einen, um das Beispiel hinzuzufügen."
     }
   },
   "layout": {
@@ -197,10 +198,19 @@
       "de": "Deutsch"
     }
   },
+  "appearance": {
+    "label": "Darstellung",
+    "options": {
+      "system": "System",
+      "light": "Hell",
+      "dark": "Dunkel"
+    },
+    "hint": "„System“ folgt der Einstellung deines Geräts."
+  },
   "setup": {
     "header": {
       "title": "Einrichtung",
-      "subtitle": "Definieren Sie Ihre Basisannahmen, bevor Sie die Ruhestands-Engine starten.",
+      "subtitle": "Lege deine Basisannahmen fest, bevor die Simulation startet.",
       "simulationLink": "Zur Simulation",
       "badges": {
         "guide": "Geführtes Setup",
@@ -222,11 +232,11 @@
       "upNext": "Als Nächstes: {step}"
     },
     "validation": {
-      "ageRange": "Geben Sie ein Alter zwischen {min} und {max} ein.",
+      "ageRange": "Gib ein Alter zwischen {min} und {max} ein.",
       "nonNegative": "Dieser Wert darf nicht negativ sein.",
       "typicalBetween": "Ungewöhnlicher Wert — typische Angaben liegen zwischen {min} und {max}.",
-      "retirementAfterCurrent": "Ihr geplantes Renteneintrittsalter sollte über Ihrem aktuellen Alter liegen.",
-      "horizonAfterRetirement": "Ihr Planungshorizont sollte über das Renteneintrittsalter hinausgehen.",
+      "retirementAfterCurrent": "Dein geplantes Renteneintrittsalter sollte über deinem aktuellen Alter liegen.",
+      "horizonAfterRetirement": "Dein Planungshorizont sollte über das Renteneintrittsalter hinausgehen.",
       "range": "Bitte einen Wert zwischen {min} und {max} eingeben.",
       "atLeast": "Bitte {min} oder mehr eingeben.",
       "notANumber": "Bitte eine Zahl eingeben.",
@@ -241,7 +251,7 @@
     "steps": {
       "personal": {
         "title": "Persönliche Angaben",
-        "description": "Ihr Alter und der geplante Ruhestandszeitraum"
+        "description": "Dein Alter und der geplante Ruhestandszeitraum"
       },
       "assets": {
         "title": "Vermögen & Einkommen",
@@ -260,11 +270,11 @@
       "fields": {
         "currentAge": {
           "label": "Aktuelles Alter",
-          "help": "Wie alt sind Sie aktuell?"
+          "help": "Wie alt bist du aktuell?"
         },
         "retirementAge": {
           "label": "Geplantes Renteneintrittsalter",
-          "tooltip": "Wann möchten Sie aufhören zu arbeiten und von Ihrem Vermögen leben? Ein früherer Ruhestand erfordert höhere Ersparnisse.",
+          "tooltip": "Wann möchtest du aufhören zu arbeiten und von deinem Vermögen leben? Ein früherer Ruhestand erfordert höhere Ersparnisse.",
           "help": "Geplanter Zeitpunkt für den Ruhestand. Bestimmt, wie viele Arbeitsjahre bis dahin verbleiben.",
           "valueLabel": "Alter {value}",
           "remaining": "Noch {count, plural, one {# Arbeitsjahr} other {# Arbeitsjahre}}"
@@ -277,7 +287,7 @@
         "endAge": {
           "label": "Planungshorizont (Endalter)",
           "tooltip": "Bis zu welchem Alter soll geplant werden? (meist 85–95)",
-          "help": "Zeitraum, den der Plan abdecken soll. Wählen Sie Lebenserwartung plus Sicherheitsreserve."
+          "help": "Zeitraum, den der Plan abdecken soll. Wähle Lebenserwartung plus Sicherheitsreserve."
         }
       },
       "timeline": "{workingYears, plural, one {# Arbeitsjahr} other {# Arbeitsjahre}} bis zur Rente · {retirementYears, plural, one {# Jahr} other {# Jahre}} Ruhestand zu finanzieren"
@@ -286,15 +296,15 @@
       "fields": {
         "currentAssets": {
           "label": "Aktuelles Vermögen",
-          "help": "Gesamter Wert Ihrer derzeitigen Anlagen und Ersparnisse"
+          "help": "Gesamter Wert deiner derzeitigen Anlagen und Ersparnisse"
         },
         "annualSavings": {
           "label": "Jährliche Sparrate",
-          "help": "Wie viel können Sie bis zum Ruhestand pro Jahr zurücklegen?"
+          "help": "Wie viel kannst du bis zum Ruhestand pro Jahr zurücklegen?"
         },
         "annualSavingsGrowthRate": {
           "label": "Sparratenwachstum",
-          "help": "Erwartete jährliche Steigerung Ihrer Sparrate mit wachsendem Einkommen."
+          "help": "Erwartete jährliche Steigerung deiner Sparrate mit wachsendem Einkommen."
         },
         "monthlyPension": {
           "label": "Monatliche Rente",
@@ -303,10 +313,10 @@
       },
       "oneTimeIncomes": {
         "title": "Einmalige Einnahmen",
-        "help": "Fügen Sie erwartete Einmalzahlungen wie Versicherungen oder Erbschaften hinzu.",
+        "help": "Füge erwartete Einmalzahlungen wie Versicherungen oder Erbschaften hinzu.",
         "add": "Einnahme hinzufügen",
         "empty": "Noch keine Einmalzahlungen erfasst",
-        "emptyHint": "Fügen Sie erwartete Zuflüsse wie Erbschaften, Versicherungen, Immobilienverkäufe oder Bonuszahlungen hinzu",
+        "emptyHint": "Füge erwartete Zuflüsse wie Erbschaften, Versicherungen, Immobilienverkäufe oder Bonuszahlungen hinzu",
         "nameLabel": "Name",
         "namePlaceholder": "z.B. Erbschaft, Immobilienverkauf",
         "ageLabel": "Auszahlungsalter",
@@ -326,10 +336,10 @@
       }
     },
     "expenses": {
-      "intro": "Definieren Sie Ihre erwarteten Ausgaben im Ruhestand. Fügen Sie so viele Posten hinzu, wie Sie benötigen:",
+      "intro": "Lege deine erwarteten Ausgaben im Ruhestand fest. Füge so viele Posten hinzu, wie du brauchst:",
       "add": "Ausgabe hinzufügen",
-      "empty": "Noch keine Ausgaben erfasst. Klicken Sie auf eine Vorlage unten, um loszulegen, oder fügen Sie eigene hinzu.",
-      "emptyHint": "Fügen Sie wiederkehrende und einmalige Ausgaben wie Versicherungen, Lebensmittel, Urlaub oder Hausreparaturen hinzu",
+      "empty": "Noch keine Ausgaben erfasst. Klicke unten auf eine Vorlage, um loszulegen, oder füge eigene hinzu.",
+      "emptyHint": "Füge wiederkehrende und einmalige Ausgaben wie Versicherungen, Lebensmittel, Urlaub oder Hausreparaturen hinzu",
       "nameLabel": "Ausgabenname",
       "namePlaceholder": "z.B. Lebensmittel, Nebenkosten, Urlaub",
       "amountLabel": "Betrag (€)",
@@ -356,7 +366,7 @@
       "realReturn": "Implizite Realrendite nach Inflation",
       "averageROI": {
         "label": "Durchschnittliche Rendite",
-        "help": "Erwartete durchschnittliche jährliche Rendite Ihrer Anlagen"
+        "help": "Erwartete durchschnittliche jährliche Rendite deiner Anlagen"
       },
       "averageInflation": {
         "label": "Durchschnittliche Inflation",
@@ -421,8 +431,8 @@
         "growthRate": "Zusätzliches Wachstum p. a. (%)",
         "growthRateHint": "Wirkt jedes Jahr unabhängig von der Inflationsanpassung: mit Anpassung zusätzlich zur Inflation, ohne Anpassung als nominale Steigerung (2.140 € → 2.161 € bei 1 %).",
         "taxablePortion": "Besteuerungsanteil (%)",
-        "taxablePortionHint": "Anteil dieser Rente, der mit Ihrem Einkommensteuersatz besteuert wird. Leer = Plan-Standard von {portion}.",
-        "pensionIndexedOff": "Fester Euro-Betrag — aktivieren Sie die Inflationsanpassung, wenn diese Rente jährlich angepasst wird.",
+        "taxablePortionHint": "Anteil dieser Rente, der mit deinem Einkommensteuersatz besteuert wird. Leer = Plan-Standard von {portion}.",
+        "pensionIndexedOff": "Fester Euro-Betrag — aktiviere die Inflationsanpassung, wenn diese Rente jährlich angepasst wird.",
         "startDate": "Monat & Jahr (optional)",
         "startDateHint": "Legt das Alter über das Jahr fest; der Monat wird angezeigt, nicht simuliert.",
         "note": "Notiz",
@@ -509,7 +519,11 @@
         "vacations": "Urlaub",
         "repairs": "Instandhaltung Haus",
         "carMaintenance": "Auto-Unterhalt",
-        "statutoryPension": "Gesetzliche Rente"
+        "statutoryPension": "Gesetzliche Rente",
+        "demoPartTime": "Teilzeit-Beratung",
+        "demoInheritance": "Erbschaft",
+        "demoRoof": "Dachsanierung",
+        "demoCare": "Pflegekosten"
       },
       "listTitle": "Einnahmen, Ausgaben & Renten"
     },
@@ -519,12 +533,19 @@
       "medianEnd": "Median mit {age}",
       "computing": "Berechne…",
       "note": "Schnellvorschau aus {runs} Läufen — im Dashboard läuft der ganze Plan."
+    },
+    "shell": {
+      "backToOverview": "Zur Übersicht",
+      "skipToOverview": "Überspringen",
+      "planLabel": "Plan",
+      "menuTitle": "Konto und Sprache",
+      "menuDescription": "Melde dich an, um deine Pläne zu synchronisieren, oder ändere Sprache und Darstellung."
     }
   },
   "simulation": {
     "header": {
       "title": "Ruhestandssimulation",
-      "subtitle": "Planen, justieren und überwachen Sie Ihren Ruhestand mit Live-Monte-Carlo-Ergebnissen.",
+      "subtitle": "Plane, justiere und überwache deinen Ruhestand mit Live-Monte-Carlo-Ergebnissen.",
       "setupLink": "Einrichtung",
       "badges": {
         "engine": "Live-Monte-Carlo",
@@ -534,12 +555,12 @@
       },
       "confidenceLabel": "Erfolgswahrscheinlichkeit",
       "confidence": {
-        "high": "Ihr Plan ist sehr robust. Halten Sie Beiträge stabil und prüfen Sie ihn jährlich.",
+        "high": "Dein Plan ist sehr robust. Halte die Beiträge stabil und prüfe ihn jährlich.",
         "medium": "Solide Aussichten mit Verbesserungspotenzial – Ausgaben oder Anlageaufteilung feinjustieren.",
         "low": "Aktuell angespannt. Sparrate erhöhen, Ausgaben senken oder Risiko neu ausrichten."
       },
       "confidenceMeta": "Basiert auf {count} stochastischen Simulationen",
-      "subtitleHistorical": "Planen, justieren und überwachen Sie Ihren Ruhestand gegen jedes Startjahr der echten Marktgeschichte."
+      "subtitleHistorical": "Plane, justiere und überwache deinen Ruhestand gegen jedes Startjahr der echten Marktgeschichte."
     },
     "tabs": {
       "overview": "Überblick",
@@ -606,17 +627,6 @@
       "glidePath": "Gleitpfad {start} → {end}",
       "editFullPlan": "Ganzen Plan bearbeiten"
     },
-    "kpi": {
-      "success": "Erfolg",
-      "lastsTo": "Reicht bis",
-      "firstYearDraw": "Entnahme 1. Jahr",
-      "medianEnd": "Median Ende",
-      "p10Age": "P10: {age}",
-      "perMonth": "{amount}/Mon.",
-      "p10End": "P10: {value}",
-      "grossMean": "Ø brutto · {amount}/Mon.",
-      "successHint": "Budget und Vermögensziel erreicht"
-    },
     "chart": {
       "bandOuter": "P10–90",
       "bandInner": "P20–80",
@@ -682,26 +692,6 @@
       "setup": "Einrichtungsassistent"
     }
   },
-  "parameterSidebar": {
-    "trigger": "Parameter",
-    "title": "Simulationsparameter",
-    "description": "Passen Sie Ihre Ruhestandsparameter an und sehen Sie die Ergebnisse in Echtzeit."
-  },
-  "mobileMenu": {
-    "trigger": "Menü",
-    "title": "Menü",
-    "close": "Menü schließen",
-    "description": "Schnellzugriff auf Einstellungen und Aktionen",
-    "sections": {
-      "language": "Sprache",
-      "theme": "Design",
-      "actions": "Aktionen"
-    },
-    "actions": {
-      "generateReport": "Bericht erstellen",
-      "goToSetup": "Zum Setup"
-    }
-  },
   "parameterControls": {
     "title": "Simulationsparameter",
     "customConfiguration": "Benutzerdefinierte Konfiguration",
@@ -712,7 +702,7 @@
     "retirementYears": "Ruhestand: {years}J",
     "currentlyLoaded": "Aktuell geladen",
     "noSavedSetups": "Noch keine Pläne",
-    "saveParametersHint": "Speichern Sie Ihre Parameter oben",
+    "saveParametersHint": "Speichere deine Parameter oben",
     "noSetupsYet": "Noch keine Pläne",
     "saveAsHint": "Nutze „Als neuen Plan speichern“, um eine Konfiguration zu sichern",
     "presets": {
@@ -782,7 +772,7 @@
         },
         "oneTime": {
           "title": "Einmalige Einnahmen",
-          "description": "Planen Sie Einmalzuflüsse wie Versicherungsleistungen oder Erbschaften"
+          "description": "Plane Einmalzuflüsse wie Versicherungsleistungen oder Erbschaften"
         },
         "expenses": {
           "title": "Ausgaben",
@@ -816,11 +806,11 @@
     "fields": {
       "currentAge": {
         "label": "Aktuelles Alter",
-        "tooltip": "Ihr aktuelles Alter für die Planung. Bestimmt die verbleibenden Arbeitsjahre bis zum Ruhestand."
+        "tooltip": "Dein aktuelles Alter für die Planung. Bestimmt die verbleibenden Arbeitsjahre bis zum Ruhestand."
       },
       "retirementAge": {
         "label": "Gewünschtes Rentenalter",
-        "tooltip": "Zeitpunkt, zu dem Sie nicht mehr arbeiten möchten. Ein früherer Ruhestand verlangt höhere Ersparnisse.",
+        "tooltip": "Zeitpunkt, zu dem du nicht mehr arbeiten möchtest. Ein früherer Ruhestand verlangt höhere Ersparnisse.",
         "valueLabel": "Alter {value}",
         "remaining": "Noch {count, plural, one {# Arbeitsjahr} other {# Arbeitsjahre}}"
       },
@@ -834,15 +824,15 @@
       },
       "currentAssets": {
         "label": "Aktuelles Vermögen (€)",
-        "tooltip": "Gesamtwert Ihrer derzeitigen Anlagen, Ersparnisse und Ruhestandskonten."
+        "tooltip": "Gesamtwert deiner derzeitigen Anlagen, Ersparnisse und Ruhestandskonten."
       },
       "annualSavings": {
         "label": "Jährliche Sparrate (€)",
-        "tooltip": "Betrag, den Sie bis zum Ruhestand jährlich sparen und investieren können."
+        "tooltip": "Betrag, den du bis zum Ruhestand jährlich sparen und investieren kannst."
       },
       "annualSavingsGrowthRate": {
         "label": "Wachstum der Sparrate",
-        "tooltip": "Erwartete jährliche Steigerung Ihrer Sparrate vor dem Ruhestand, z. B. durch Einkommenszuwachs."
+        "tooltip": "Erwartete jährliche Steigerung deiner Sparrate vor dem Ruhestand, z. B. durch Einkommenszuwachs."
       },
       "monthlyPension": {
         "label": "Monatliche Rente (€)",
@@ -850,11 +840,11 @@
       },
       "oneTimeIncomes": {
         "label": "Einmalige Einnahmen",
-        "tooltip": "Erfassen Sie Einmalzuflüsse (Versicherungen, Immobilienverkauf, Erbschaften). Diese werden zu Beginn des Folgejahres investiert.",
-        "description": "Verwalten Sie einmalige Cash-Zuflüsse für den Plan.",
+        "tooltip": "Erfasse Einmalzuflüsse (Versicherungen, Immobilienverkauf, Erbschaften). Diese werden zu Beginn des Folgejahres investiert.",
+        "description": "Verwalte einmalige Cash-Zuflüsse für den Plan.",
         "add": "Einnahme hinzufügen",
         "empty": "Bereit für Einmalzahlungen?",
-        "emptyHint": "Fügen Sie erwartete Zuflüsse wie Erbschaften, Versicherungen, Immobilienverkäufe oder Bonuszahlungen hinzu",
+        "emptyHint": "Füge erwartete Zuflüsse wie Erbschaften, Versicherungen, Immobilienverkäufe oder Bonuszahlungen hinzu",
         "nameLabel": "Name",
         "namePlaceholder": "z.B. Erbschaft, Immobilienverkauf",
         "ageLabel": "Alter bei Auszahlung",
@@ -874,7 +864,7 @@
       "expenses": {
         "add": "Ausgabe hinzufügen",
         "empty": "Noch keine Ausgaben definiert",
-        "emptyHint": "Fügen Sie wiederkehrende und einmalige Ausgaben wie Versicherungen, Lebensmittel, Urlaub oder Hausreparaturen hinzu",
+        "emptyHint": "Füge wiederkehrende und einmalige Ausgaben wie Versicherungen, Lebensmittel, Urlaub oder Hausreparaturen hinzu",
         "nameLabel": "Name",
         "namePlaceholder": "z.B. Lebensmittel, Nebenkosten, Urlaub",
         "amountLabel": "Betrag (€)",
@@ -970,11 +960,11 @@
       },
       "marketModel": {
         "label": "Marktmodell",
-        "tooltip": "Monte Carlo zieht Renditen aus Ihren Annahmen. Der historische Marktverlauf spielt eine echte Renditereihe Jahr für Jahr nach.",
+        "tooltip": "Monte Carlo zieht Renditen aus deinen Annahmen. Der historische Marktverlauf spielt eine echte Renditereihe Jahr für Jahr nach.",
         "options": {
           "monteCarlo": {
             "label": "Monte-Carlo-Simulation",
-            "description": "Zufallsziehungen aus Ihren Annahmen zu Rendite, Schwankung und Inflation."
+            "description": "Zufallsziehungen aus deinen Annahmen zu Rendite, Schwankung und Inflation."
           },
           "historical": {
             "label": "Historischer Marktverlauf",
@@ -1034,7 +1024,7 @@
           },
           "rate": {
             "label": "Einkommensteuersatz auf die Rente",
-            "help": "Ihr effektiver Einkommensteuersatz auf den steuerpflichtigen Rententeil."
+            "help": "Dein effektiver Einkommensteuersatz auf den steuerpflichtigen Rententeil."
           },
           "net": "{gross} brutto → {net} netto pro Monat ({rate} der Rente)"
         },
@@ -1088,7 +1078,7 @@
     "errors": {
       "requestFailed": "PDF-Erstellung fehlgeschlagen: {status}",
       "generic": "PDF konnte nicht erstellt werden",
-      "timeout": "PDF-Erstellung hat zu lange gedauert. Bitte versuchen Sie es erneut."
+      "timeout": "PDF-Erstellung hat zu lange gedauert. Bitte versuche es erneut."
     },
     "disabled": {
       "noData": "Keine Daten",
@@ -1098,51 +1088,6 @@
       "generating": "Erstelle…",
       "generate": "Bericht erstellen",
       "ready": "Bericht heruntergeladen"
-    }
-  },
-  "planHero": {
-    "title": "Planzustand",
-    "score": {
-      "label": "Gesundheitswert",
-      "strong": "Stark",
-      "moderate": "Solide",
-      "needsAttention": "Handlungsbedarf"
-    },
-    "success": {
-      "label": "Erfolgsquote",
-      "detail": "{runs} Simulationsläufe",
-      "caption": "Anteil der simulierten Verläufe, in denen das Vermögen bis zum Planende reicht.",
-      "detailHistorical": "{runs} historische Startjahre",
-      "captionLegacy": "Verläufe, in denen das Geld bis zum Planende reicht UND mindestens {amount} (heutige Kaufkraft) übrig bleiben.",
-      "depletionDetail": "Das Geld reicht in {rate} der Verläufe",
-      "qualifierLegacy": "Inkl. Vermächtnisziel {amount}",
-      "qualifierSurvival": "Geld allein reicht in {rate}",
-      "qualifierPlain": "Geld reicht bis Alter {age} — kein Vermächtnisziel gesetzt"
-    },
-    "lasts": {
-      "label": "Vermögen reicht",
-      "toAge": "bis Alter {age}",
-      "beyond": "über {age} hinaus",
-      "detailP10": "Worst Case (P10): Alter {age}",
-      "detailNone": "In 9 von 10 Fällen reicht das Geld über {age} hinaus",
-      "detailNoneRisk": "In 9 von 10 Fällen reicht das Geld über {age} hinaus · {rate} der Läufe erschöpfen dennoch"
-    },
-    "withdrawal": {
-      "label": "Entnahme im 1. Jahr",
-      "detail": "{need} müssen aus dem Portfolio kommen"
-    },
-    "bridge": {
-      "label": "Rentenbrücke",
-      "value": "{years, plural, =0 {Keine Lücke} one {# Jahr} other {# Jahre}}",
-      "detail": "bis zur gesetzlichen Rente mit {age}",
-      "detailEarly": "erste Rente mit {age} · gesetzliches Referenzalter {legal}"
-    },
-    "notAvailable": "n/v",
-    "warnings": {
-      "highWithdrawal": "Die Entnahmerate von {rate} im ersten Jahr liegt über dem nachhaltigen Bereich (max. 6 %).",
-      "medianDepletion": "Im Median ist Ihr Vermögen mit {age} aufgebraucht – vor dem Planungshorizont.",
-      "bridgeGap": "Der Bedarf in der Brückenphase ({need}) übersteigt Ihr Medianvermögen zum Rentenstart ({assets}).",
-      "inconsistentAges": "Bitte prüfen Sie die Altersangaben – aktuelles Alter, Renteneintritt und Endalter überschneiden sich."
     }
   },
   "planDashboard": {
@@ -1184,7 +1129,7 @@
   "recommendations": {
     "title": "Empfehlungen",
     "subtitle": "Aus diesem Plan abgeleitet — jede Maßnahme nennt die Zahl, die sie ausgelöst hat. Geschätzte Wirkung in Prozentpunkten der Erfolgsquote.",
-    "empty": "Führen Sie die Simulation aus, um Empfehlungen zu sehen.",
+    "empty": "Führe die Simulation aus, um Empfehlungen zu sehen.",
     "uplift": "+{min}–{max} Pkt.",
     "impact": {
       "high": "Hohe Wirkung",
@@ -1202,7 +1147,7 @@
   "simulationChart": {
     "empty": {
       "title": "Keine Simulationsdaten verfügbar",
-      "subtitle": "Passen Sie die Parameter an und starten Sie die Simulation."
+      "subtitle": "Passe die Parameter an und starte die Simulation."
     },
     "assetTable": {
       "toggle": "Tabelle der Vermögensmeilensteine anzeigen",
@@ -1287,17 +1232,10 @@
     },
     "aria": {
       "description": "Vermögens-Fächerdiagramm: Der Medianverlauf ist als durchgezogene Linie dargestellt, umgeben von einem wahrscheinlichen Bereich (20.–80. Perzentil) und einem Gesamtbereich (10.–90. Perzentil).",
-      "controls": "Verwenden Sie die Pfeiltasten, um durch die Diagrammdaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen.",
-      "brush": "Angezeigter Altersbereich, {startAge} bis {endAge}. Ziehen Sie die Griffe, um in einen Teil des Zeitraums zu zoomen."
+      "controls": "Verwende die Pfeiltasten, um durch die Diagrammdaten zu navigieren. Drücke R, um den Zoom zurückzusetzen. Ziehe über das Diagramm, um in einen Zeitbereich zu zoomen.",
+      "brush": "Angezeigter Altersbereich, {startAge} bis {endAge}. Ziehe die Griffe, um in einen Teil des Zeitraums zu zoomen."
     },
     "descriptionHistorical": "Projizierter Portfoliowert aus einer historischen Rückrechnung: ein Pfad je Startjahr der Renditereihe. Die durchgezogene Linie ist der Median; die schattierten Bänder zeigen, wo die meisten dieser Verläufe liegen."
-  },
-  "shortfallChart": {
-    "title": "Erschöpfungsrisiko",
-    "subtitle": "Anteil der Simulationsläufe, deren Vermögen bis zum jeweiligen Alter aufgebraucht ist",
-    "ariaLabel": "Diagramm des Anteils der Simulationsläufe mit erschöpftem Vermögen je Alter",
-    "yAxisLabel": "Läufe erschöpft",
-    "ageLabel": "Alter"
   },
   "spendingChart": {
     "title": "Ausgaben im Ruhestand",
@@ -1345,8 +1283,8 @@
     },
     "aria": {
       "description": "Diagramm zu monatlichen Ausgaben ab Rentenalter {retirementAge}: eine durchgezogene Medianlinie in einem schattierten Band vom 10. bis 90. Perzentil der Ergebnisse.",
-      "controls": "Verwenden Sie die Pfeiltasten, um durch die Ausgabendaten zu navigieren. Drücken Sie R, um den Zoom zurückzusetzen. Ziehen Sie über das Diagramm, um in einen Zeitbereich zu zoomen.",
-      "brush": "Angezeigter Altersbereich, {startAge} bis {endAge}. Ziehen Sie die Griffe, um in einen Teil des Zeitraums zu zoomen."
+      "controls": "Verwende die Pfeiltasten, um durch die Ausgabendaten zu navigieren. Drücke R, um den Zoom zurückzusetzen. Ziehe über das Diagramm, um in einen Zeitbereich zu zoomen.",
+      "brush": "Angezeigter Altersbereich, {startAge} bis {endAge}. Ziehe die Griffe, um in einen Teil des Zeitraums zu zoomen."
     }
   },
   "pdf": {
@@ -2307,9 +2245,9 @@
     }
   },
   "headerControls": {
-    "trigger": "Sprache und Theme",
-    "title": "Darstellung",
-    "description": "Sprache der Oberfläche wechseln oder ein anderes Theme wählen.",
+    "trigger": "Sprache und Darstellung",
+    "title": "Anzeigeeinstellungen",
+    "description": "Wechsle die Sprache der Oberfläche oder die Darstellung (hell, dunkel oder wie dein Gerät).",
     "close": "Schließen",
     "account": "Konto"
   },
@@ -2372,42 +2310,12 @@
     },
     "editAria": "{field} bearbeiten",
     "jump": "Zu {group} springen",
-    "goals": {
-      "title": "Nachlassziel",
-      "description": "Was am Planende noch übrig sein soll — in heutiger Kaufkraft.",
-      "targetLabel": "Nachlassziel",
-      "targetHelp": "In heutiger Kaufkraft. 0 bedeutet: Der Plan muss nur reichen, übrig bleiben muss nichts.",
-      "disabled": "Kein Nachlassziel: Ein Verlauf gilt als Erfolg, solange das Geld reicht.",
-      "funded": "Erfüllungswahrscheinlichkeit",
-      "fundedHint": "Reicht bis zum Ende und erreicht das Ziel",
-      "survives": "Geld reicht überhaupt",
-      "survivesHint": "Ohne Nachlassziel gerechnet",
-      "medianTerminal": "Median mit {age}",
-      "surplus": "{amount} über dem Ziel",
-      "shortfall": "{amount} unter dem Ziel",
-      "onTarget": "Genau auf Ziel",
-      "notAvailable": "—",
-      "fundedHintNoGoal": "Kein Ziel gesetzt — reines Durchhalten"
-    },
     "sections": {
       "navLabel": "Plan-Abschnitte",
       "staleStats": "Ein Wert unten liegt außerhalb des gültigen Bereichs — diese Kennzahlen beschreiben noch die zuletzt übernommene Eingabe.",
       "previous": "Zurück: {title}",
       "next": "Weiter: {title}"
     }
-  },
-  "quickAdjust": {
-    "title": "Schnelles Was-wäre-wenn",
-    "description": "Die vier Stellschrauben mit der größten Wirkung. Jede Änderung landet im Arbeitsstand.",
-    "openEditor": "Gesamten Plan bearbeiten",
-    "expensesHint": "Skaliert die {count} laufenden Ausgaben dieses Plans ({total}/Mon.) anteilig.",
-    "fields": {
-      "retirementAge": "Renteneintrittsalter",
-      "annualSavings": "Jährliche Sparrate",
-      "monthlyExpenses": "Monatliche Ausgaben",
-      "averageROI": "Erwartete Rendite"
-    },
-    "expensesHintScheduled": "Skaliert die {count} laufenden Ausgaben ({total}/Mon.) anteilig. Die {scheduled} terminierten Zahlungen mit Altersfenster bleiben unverändert — diese im Tab „Plan“ bearbeiten."
   },
   "withdrawalPlanner": {
     "title": "Entnahmeplaner",
@@ -2427,7 +2335,7 @@
       "none": "Keine",
       "unit": "/Mon."
     },
-    "tradeoff": "Eine kleinere Spanne heißt planbareres Einkommen; eine höhere Erfolgsquote heißt weniger Pleiterisiko. Verschieben Sie die Rate und beobachten Sie beides.",
+    "tradeoff": "Eine kleinere Spanne heißt planbareres Einkommen; eine höhere Erfolgsquote heißt weniger Pleiterisiko. Verschiebe die Rate und beobachte beides.",
     "corridor": {
       "title": "Entnahmekorridor",
       "description": "Das schraffierte Band ist der Bereich, in dem 80% der simulierten Zukünfte landen. Die gestrichelten Linien sind keine Prognose: Sie zeigen, was die Regel selbst zusagt — unabhängig vom Markt.",
@@ -2450,8 +2358,8 @@
         "pension": "Gesetzliche Rente"
       },
       "caveat": "Die Untergrenze gilt, solange das Depot reicht — sie ist eine Regel, keine Garantie eines Dritten.",
-      "noFloor": "Diese Strategie sagt keine Untergrenze zu: Legen Sie unten eine fest, um dem Einkommen einen harten Boden zu geben.",
-      "empty": "Starten Sie die Simulation, um den Korridor zu sehen.",
+      "noFloor": "Diese Strategie sagt keine Untergrenze zu: Lege unten eine fest, um dem Einkommen einen harten Boden zu geben.",
+      "empty": "Starte die Simulation, um den Korridor zu sehen.",
       "aria": "Entnahmekorridor ab Alter {retirementAge}: mediane Ausgaben mit P10–P90-Band sowie geplanter Unter- und Obergrenze der Strategie."
     },
     "compare": {
@@ -2461,7 +2369,7 @@
       "rerun": "Erneut rechnen",
       "running": "Läuft…",
       "error": "Der Strategievergleich ist fehlgeschlagen. Bitte erneut versuchen.",
-      "empty": "Starten Sie den Vergleich, um alle vier Strategien nebeneinander zu sehen.",
+      "empty": "Starte den Vergleich, um alle vier Strategien nebeneinander zu sehen.",
       "stale": "Der Plan hat sich seit diesem Vergleich geändert.",
       "columns": {
         "strategy": "Strategie",
@@ -2477,13 +2385,69 @@
       "runsNote": "Jede Strategie läuft über dieselben {runs} Marktpfade, die Unterschiede kommen also allein aus den Regeln. Die Lebensausgaben sind der aufsummierte Medianpfad in heutigen Euro; die Spanne ist P90 ÷ P10 mit {age}."
     }
   },
-  "welcome": {
-    "title": "Zum ersten Mal hier?",
-    "dismiss": "Hinweis ausblenden",
-    "chips": {
-      "edit": "Plan bearbeiten → Tab „Plan“",
-      "whatIf": "Was-wäre-wenn testen → Regler und „Schnelles Was-wäre-wenn“ oben",
-      "compare": "Zukünfte vergleichen → Tab „Szenarien“"
+  "cashflowSankey": {
+    "title": "Woher das Geld kommt – und wohin es fließt",
+    "caption": "{period} · {unit}. Durchschnitt aller simulierten Verläufe – dieselben Beträge wie in der Aufstellung unten. Sie lassen sich addieren; sie sind nicht der Median (P50).",
+    "periodAge": "Alter {age}",
+    "periodSum": "Ganzer Ruhestand, Alter {from}–{to} (Summe)",
+    "unitNominal": "nominale Euro",
+    "unitReal": "heutige Kaufkraft",
+    "summary": "{period}: {sources} {count, plural, one {finanziert} other {finanzieren}} {uses}.",
+    "summaryPeriodAge": "Im Jahr mit {age}",
+    "summaryPeriodSum": "Über den ganzen Ruhestand (Alter {from}–{to})",
+    "summaryUnfunded": "{amount} des Bedarfs bleiben ungedeckt.",
+    "summaryEmpty": "In diesem Jahr fließt kein Geld.",
+    "share": "Anteil an allen Zuflüssen",
+    "amount": "Betrag",
+    "unfundedPart": "Davon nicht gedeckt",
+    "showTable": "Als Tabelle zeigen",
+    "hideTable": "Tabelle ausblenden",
+    "tableCaption": "Geldströme im Diagramm · {period} · {unit}",
+    "from": "Von",
+    "to": "Nach",
+    "wholeRetirement": "Ganzer Ruhestand (Summe)",
+    "moneyIn": "Woher",
+    "moneyOut": "Wohin",
+    "nodes": {
+      "pension": "Renten (brutto)",
+      "otherIncome": "Weitere Einnahmen (brutto)",
+      "income": "Renten und Einnahmen (brutto)",
+      "oneOffIncome": "Einmalige Einnahmen (brutto)",
+      "savings": "Sparbeitrag",
+      "withdrawal": "Depotentnahme (brutto)",
+      "shortfall": "Nicht gedeckt",
+      "available": "Verfügbar nach Steuern",
+      "incomeTax": "Einkommensteuer",
+      "capitalGainsTax": "Kapitalertragsteuer",
+      "baselineSpending": "Laufende Ausgaben",
+      "scheduledExpenses": "Geplante Sonderausgaben",
+      "spending": "Ausgabenbedarf",
+      "reinvested": "Einzahlung ins Depot"
+    },
+    "phrases": {
+      "pension": "{amount} Rente",
+      "otherIncome": "{amount} weitere Einnahmen",
+      "income": "{amount} Renten und Einnahmen",
+      "oneOffIncome": "{amount} einmalige Einnahmen",
+      "savings": "{amount} Sparbeitrag",
+      "withdrawal": "{amount} Depotentnahme",
+      "taxes": "{amount} Steuern",
+      "baselineSpending": "{amount} laufende Ausgaben",
+      "scheduledExpenses": "{amount} geplante Sonderausgaben",
+      "spending": "{amount} Ausgaben",
+      "reinvested": "{amount} Einzahlung ins Depot"
+    },
+    "ledger": {
+      "pensionGross": "davon Renten",
+      "otherIncomeGross": "davon weitere Einnahmen",
+      "oneOffIncomeGross": "davon einmalige Einnahmen",
+      "baselineSpending": "davon laufende Ausgaben",
+      "scheduledExpenses": "davon geplante Sonderausgaben",
+      "edit": "in „{section}“ bearbeiten",
+      "selectRow": "Alter {age} im Diagramm zeigen",
+      "sumHeading": "Alter {from}–{to}, aufsummiert",
+      "rowHint": "Wähle eine Zeile, um dieses Jahr im Diagramm zu sehen.",
+      "totalTaxSum": "Über Alter {from}–{to} abgezogene Steuern insgesamt: {amount}. Sie sind bereits in der Berechnung berücksichtigt."
     }
   },
   "cashflowResults": {
@@ -2563,28 +2527,64 @@
       "overview": {
         "label": "Überblick",
         "title": "Überblick",
-        "description": "Zielerreichung, Vermögen und zentrale Planannahmen."
+        "description": "Zielerreichung, Vermögen und zentrale Planannahmen.",
+        "short": "Überblick"
       },
       "plan": {
         "label": "Mein Plan",
         "title": "Mein Plan",
-        "description": "Persönliche Daten, Einnahmen, Ausgaben und Berechnungsannahmen bearbeiten."
+        "description": "Persönliche Daten, Einnahmen, Ausgaben und Berechnungsannahmen bearbeiten.",
+        "short": "Mein Plan"
       },
       "cashflow": {
         "label": "Zahlungsströme",
         "title": "Zahlungsströme",
-        "description": "Einnahmen, Steuern und Ausgaben je Jahr."
+        "description": "Einnahmen, Steuern und Ausgaben je Jahr.",
+        "short": "Zahlungen"
       },
       "scenarios": {
         "label": "Varianten",
         "title": "Varianten",
-        "description": "Änderungen berechnen und gespeicherte Pläne vergleichen."
+        "description": "Änderungen berechnen und gespeicherte Pläne vergleichen.",
+        "short": "Varianten"
       }
     },
     "applyChanges": "Änderungen direkt ausprobieren",
     "today": "Heute",
     "firstPension": "Erste geplante Rente",
     "noPension": "Keine eingetragen",
-    "horizon": "Planungshorizont"
+    "horizon": "Planungshorizont",
+    "whatIf": {
+      "draft": "Entwurf",
+      "draftAria": "Dein Arbeitsstand weicht vom gespeicherten Plan ab",
+      "note": "Änderungen hier sind Entwürfe – sie gelten erst für deinen Plan, wenn du speicherst.",
+      "pending": "Speichern oder verwerfen kannst du sie oben in der Kopfzeile."
+    },
+    "compareEntry": {
+      "title": "Mit einem anderen Plan vergleichen",
+      "detail": "{active} direkt neben {other}",
+      "duplicateTitle": "Variante anlegen, um zu vergleichen",
+      "duplicateDetail": "Kopiert deinen aktuellen Plan – so prüfst du eine Änderung neben dem Original."
+    },
+    "discard": "Verwerfen",
+    "discardedToast": "Ungespeicherte Änderungen an „{name}“ verworfen",
+    "calculateHint": "Ergebnisse aktualisieren sich automatisch. Neu berechnen brauchst du nur, wenn sie veraltet sind.",
+    "status": {
+      "running": "Berechne …",
+      "updated": "Aktualisiert",
+      "stale": "Veraltet",
+      "empty": "Noch keine Ergebnisse"
+    },
+    "planMenu": {
+      "trigger": "Aktueller Plan: {name}",
+      "triggerDirty": "Aktueller Plan: {name}, ungespeicherte Änderungen",
+      "label": "Pläne",
+      "heading": "Deine Pläne",
+      "active": "Aktiv",
+      "actions": "Planaktionen",
+      "manage": "Pläne verwalten …",
+      "createdToast": "„{name}“ erstellt"
+    },
+    "unsavedShort": "Ungespeichert"
   }
 }

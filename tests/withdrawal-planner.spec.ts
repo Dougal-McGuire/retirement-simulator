@@ -32,6 +32,26 @@ test.describe('withdrawal planner', () => {
 
     // The corridor and the four readouts are there from the start.
     await expect(planner.getByTestId('spending-corridor-chart')).toBeVisible()
+
+    // Age-marker labels overlap neither each other nor the axis ticks.
+    const markerLabels = planner.getByTestId('corridor-marker-label')
+    await expect(markerLabels.first()).toBeVisible()
+    const collisions = await planner.getByTestId('spending-corridor-chart').evaluate((chart) => {
+      const boxes = (selector: string) =>
+        [...chart.querySelectorAll(selector)].map((el) => el.getBoundingClientRect())
+      const labels = boxes('[data-testid="corridor-marker-label"]')
+      const ticks = boxes('.recharts-cartesian-axis-tick-value')
+      const hit = (a: DOMRect, b: DOMRect) =>
+        a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+      return labels.flatMap((label, i) => [
+        ...ticks.filter((tick) => hit(label, tick)).map(() => `label ${i} / tick`),
+        ...labels
+          .slice(i + 1)
+          .filter((other) => hit(label, other))
+          .map(() => `label ${i} / label`),
+      ])
+    })
+    expect(collisions).toEqual([])
     await expect(planner.getByTestId('withdrawal-stat-floor')).toBeVisible()
     await expect(planner.getByTestId('withdrawal-stat-volatility')).toBeVisible()
 

@@ -14,8 +14,6 @@ import {
 } from '@/lib/stores/simulationStore'
 import { useDisplayReal, useSetPlanSection } from '@/lib/stores/displayStore'
 import type { PlanSectionGroup } from '@/components/plans/planSections'
-import { CompactCommandBar } from '@/components/simulation-compact/CompactCommandBar'
-import { AdvancedParamsPanel } from '@/components/simulation-compact/AdvancedParamsPanel'
 import { BottomStrip } from '@/components/simulation-compact/BottomStrip'
 import { CompareView } from '@/components/simulation-compact/CompareView'
 import { buildCompactKpis } from '@/components/simulation-compact/metrics'
@@ -25,7 +23,9 @@ import { CashflowCard } from '@/components/charts/CashflowCard'
 import { ScenarioList } from '@/components/charts/ScenarioList'
 import { RecommendationList } from '@/components/charts/RecommendationList'
 import { WorkspaceHeader, EuroDisplay } from '@/components/workspace/WorkspaceHeader'
-import { Overview } from '@/components/workspace/Overview'
+import { Overview, WhatIfStrip } from '@/components/workspace/Overview'
+import { WorkspaceBrand } from '@/components/workspace/WorkspaceShell'
+import { useRunStatus } from '@/components/workspace/useRunStatus'
 import './workspace.css'
 
 type View = 'overview' | 'plan' | 'cashflow' | 'scenarios'
@@ -49,9 +49,9 @@ export default function SimulationPage() {
   const sidebarVertical = useMediaQuery('(min-width: 761px)')
   const editorVertical = useMediaQuery('(min-width: 1101px)')
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const runStatus = useRunStatus()
   const [view, setView] = useState<View>('overview')
   const [compare, setCompare] = useState(false)
-  const [advanced, setAdvanced] = useState(false)
   const stale = results ? !areSimulationParamsEqual(params, results.params) : false
   const kpis = useMemo(
     () => (results ? buildCompactKpis(results.params, results, { displayReal }) : null),
@@ -64,6 +64,12 @@ export default function SimulationPage() {
   const edit = (section: PlanSectionGroup) => {
     setPlanSection(section)
     navigate('plan')
+    headingRef.current?.focus({ preventScroll: true })
+  }
+  /** Overview's compare entry: Alternatives, already in compare mode. */
+  const openCompare = () => {
+    setCompare(true)
+    navigate('scenarios')
     headingRef.current?.focus({ preventScroll: true })
   }
 
@@ -97,12 +103,14 @@ export default function SimulationPage() {
       className="retirement-workspace"
     >
       <aside className="workspace-sidebar" id="navigation">
-        <div className="workspace-brand">{t('brand')}</div>
+        <WorkspaceBrand />
         <Tabs.List className="workspace-navigation" aria-label={t('navigation')}>
           {destinations.map(({ value, icon: Icon }) => (
             <Tabs.Trigger key={value} value={value} data-testid={`tab-${value}`}>
               <Icon size={21} aria-hidden="true" />
-              <span>{t(`views.${value}.label`)}</span>
+              <span className="workspace-tab-label">{t(`views.${value}.label`)}</span>
+              {/* The phone bottom bar swaps in a short label (CSS). */}
+              <span className="workspace-tab-short">{t(`views.${value}.short`)}</span>
             </Tabs.Trigger>
           ))}
         </Tabs.List>
@@ -111,8 +119,19 @@ export default function SimulationPage() {
         </div>
       </aside>
       <div className="workspace-body">
-        <WorkspaceHeader results={stale ? null : results} loading={loading} onRun={() => run()} />
-        <main id="main-content" className="workspace-main" aria-busy={loading}>
+        <WorkspaceHeader
+          results={stale ? null : results}
+          loading={loading}
+          onRun={() => run()}
+          status={runStatus.status}
+          needsRun={runStatus.needsRun}
+        />
+        <main
+          id="main-content"
+          className="workspace-main"
+          aria-busy={loading}
+          data-run-status={runStatus.status}
+        >
           <div className="workspace-page-heading">
             <div>
               <h1 ref={headingRef} tabIndex={-1}>
@@ -120,9 +139,6 @@ export default function SimulationPage() {
               </h1>
               <p>{t(`views.${view}.description`)}</p>
             </div>
-          </div>
-          <div className="workspace-run-status" role="status" aria-live="polite">
-            {loading ? t('computing') : stale ? tc('stale') : results ? t('current') : t('empty')}
           </div>
           {error && (
             <div role="alert" className="workspace-error">
@@ -135,25 +151,12 @@ export default function SimulationPage() {
           <Tabs.Content value={view} className="workspace-content">
             {view === 'overview' && (
               <>
-                <details className="workspace-experiment">
-                  <summary>
-                    <SlidersHorizontal size={20} aria-hidden="true" />
-                    <div>
-                      <strong>{t('experiment')}</strong>
-                      <span>{t('experimentHint')}</span>
-                    </div>
-                  </summary>
-                  <CompactCommandBar
-                    quickOnly
-                    results={results}
-                    successRate={results?.successRate ?? null}
-                    isLoading={loading}
-                    advancedOpen={advanced}
-                    onToggleAdvanced={() => setAdvanced((v) => !v)}
-                    onRun={() => run()}
-                  />
-                  {advanced && <AdvancedParamsPanel onOpenFullEditor={() => edit('market')} />}
-                </details>
+                <WhatIfStrip
+                  results={results}
+                  loading={loading}
+                  onRun={() => run()}
+                  onEdit={edit}
+                />
                 {results && kpis ? (
                   <Overview
                     results={results}
@@ -161,6 +164,7 @@ export default function SimulationPage() {
                     displayReal={displayReal}
                     onEdit={edit}
                     onCashflow={() => navigate('cashflow')}
+                    onCompare={openCompare}
                   />
                 ) : (
                   <div className="workspace-panel workspace-empty">{t('computing')}</div>
@@ -176,7 +180,7 @@ export default function SimulationPage() {
             {view === 'cashflow' &&
               (results ? (
                 <div className="workspace-stack">
-                  <CashflowCard params={results.params} results={results} />
+                  <CashflowCard params={results.params} results={results} onEdit={edit} />
                   <details className="workspace-experiment">
                     <summary>{t('spendingAnalysis')}</summary>
                     <SpendingSection results={results} />

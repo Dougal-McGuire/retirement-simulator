@@ -37,7 +37,7 @@ export function SpendingSection({ results }: SpendingSectionProps) {
         formatCurrencyShort={formatCurrencyShort}
       />
 
-      <details className="rounded-sm border border-border bg-white p-4 shadow-sm">
+      <details className="rounded-sm border border-border bg-card p-4 shadow-sm">
         <summary className="cursor-pointer text-[0.68rem] font-semibold   text-accent">
           {t('spendingTable.toggle')}
         </summary>
@@ -49,7 +49,7 @@ export function SpendingSection({ results }: SpendingSectionProps) {
               floor: formatPercent(results.params.dsFloorRate),
             })}
           </p>
-          <table className="rounded-sm min-w-full border border-border bg-white text-[0.68rem]  ">
+          <table className="rounded-sm min-w-full border border-border bg-card text-[0.68rem]  ">
             <caption className="sr-only">{t('spendingTable.caption')}</caption>
             <thead>
               <tr className="bg-muted">

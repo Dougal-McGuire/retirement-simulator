@@ -36,7 +36,6 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@openai/codex": "^0.142.0",
-    "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-select": "^2.2.6",
@@ -59,7 +58,6 @@
     "next-intl": "^4.8.2",
     "puppeteer-core": "^24.37.2",
     "react": "19.2.4",
-    "react-countup": "^6.5.3",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.71.1",
     "react-hot-toast": "^2.6.0",

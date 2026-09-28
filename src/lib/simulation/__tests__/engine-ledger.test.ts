@@ -137,4 +137,66 @@ describe('booked annual cash flows', () => {
     // Nominally indexed pension has a constant base-year gross amount.
     expect(result.cashFlowMeansReal?.[5].incomeGross).toBeCloseTo(100, 7)
   })
+
+  it('books which income source and which expenses make up the totals', () => {
+    const result = runMonteCarloSimulation(
+      scenario({
+        retirementAge: 61,
+        endAge: 66,
+        averageROI: 0,
+        pensionTaxablePortion: 1,
+        pensionTaxRate: 0.2,
+        cashFlows: [
+          { id: 'pension', kind: 'pension', name: 'Pension', amount: 100, frequency: 'annual' },
+          {
+            id: 'rent',
+            kind: 'income',
+            name: 'Rent',
+            amount: 50,
+            frequency: 'annual',
+            taxTreatment: 'none',
+          },
+          {
+            id: 'gift',
+            kind: 'income',
+            name: 'Gift',
+            amount: 1000,
+            frequency: 'once',
+            startAge: 62,
+            taxTreatment: 'oneFifth',
+          },
+          { id: 'living', kind: 'expense', name: 'Living', amount: 300, frequency: 'annual' },
+          {
+            id: 'care',
+            kind: 'expense',
+            name: 'Care',
+            amount: 40,
+            frequency: 'annual',
+            startAge: 64,
+          },
+        ],
+      })
+    )
+    for (const series of [result.cashFlowMeans!, result.cashFlowMeansReal!]) {
+      for (const row of series) {
+        expect(row.pensionGross).toBeGreaterThanOrEqual(0)
+        expect(row.pensionGross! + row.oneOffIncomeGross!).toBeLessThanOrEqual(
+          row.incomeGross + 1e-9
+        )
+        expect(row.pensionTax! + row.oneOffIncomeTax!).toBeLessThanOrEqual(row.incomeTax + 1e-9)
+        expect(row.scheduledExpenses!).toBeLessThanOrEqual(row.expenses + 1e-9)
+      }
+    }
+    const byAge = (age: number) => result.cashFlowMeans![result.ages.indexOf(age)]
+    // Pension taxed at 20 % of its full amount; rent untaxed on top.
+    expect(byAge(61)).toMatchObject({ pensionGross: 100, pensionTax: 20, incomeGross: 150 })
+    // The gift is credited the year after its booking age, with its own tax.
+    expect(byAge(63).oneOffIncomeGross).toBeCloseTo(1000, 7)
+    expect(byAge(63).oneOffIncomeTax).toBeCloseTo(byAge(63).incomeTax - 20, 7)
+    expect(byAge(62).oneOffIncomeGross).toBe(0)
+    // Care is a scheduled expense riding on top of the baseline budget.
+    expect(byAge(64).scheduledExpenses).toBe(40)
+    expect(byAge(63).scheduledExpenses).toBe(0)
+    expect(byAge(64).expenses).toBe(340)
+  })
 })

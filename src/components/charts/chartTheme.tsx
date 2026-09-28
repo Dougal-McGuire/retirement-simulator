@@ -6,9 +6,10 @@ import { cn } from '@/lib/utils'
 /**
  * Shared visual language for the simulation dashboard charts.
  *
- * All colors are derived from the active theme's `--neo-*-rgb` tokens so the
- * charts adapt automatically to every theme (including the dark "elegant" one)
- * without hard-coding palette values.
+ * All colors are read from the interface tokens in `src/app/interface.css`
+ * (`--ink-rgb`, `--accent-rgb`, `--viz-*`, `--white` = paper) so the charts
+ * re-skin with the light and dark colour schemes without hard-coding palette
+ * values.
  */
 
 /** rgb(var(<token>) / alpha) helper for theme-aware translucent colors. */
@@ -17,7 +18,8 @@ export const withAlpha = (rgbToken: string, alpha: number) => `rgb(var(${rgbToke
 /** Recessive ink values for grid, axes, cursors and brush chrome. */
 export const chartInk = {
   grid: withAlpha('--ink-rgb', 0.07),
-  tick: withAlpha('--ink-rgb', 0.55),
+  // 0.72 keeps tick labels ≥ 4.5:1 on the surface in both colour schemes.
+  tick: withAlpha('--ink-rgb', 0.72),
   axisLine: withAlpha('--ink-rgb', 0.14),
   marker: withAlpha('--ink-rgb', 0.45),
   cursor: withAlpha('--ink-rgb', 0.35),
@@ -190,9 +192,7 @@ export function ChartLegend({ items, className }: { items: LegendItem[]; classNa
       {items.map((item) => (
         <li key={item.key} className="flex items-center gap-2">
           <LegendSwatch kind={item.kind} color={item.color} />
-          <span className="text-[0.66rem] font-semibold  text-muted-foreground">
-            {item.label}
-          </span>
+          <span className="text-[0.66rem] font-semibold  text-muted-foreground">{item.label}</span>
         </li>
       ))}
     </ul>
@@ -219,7 +219,7 @@ export function ChartTooltipCard({
   footer?: ReactNode
 }) {
   return (
-    <div className="rounded-sm pointer-events-none min-w-[12.5rem] border-2 border-border bg-white/95 px-3.5 py-3 shadow-sm backdrop-blur-sm">
+    <div className="rounded-sm pointer-events-none min-w-[12.5rem] border-2 border-border bg-card/95 px-3.5 py-3 shadow-sm backdrop-blur-sm">
       <div className="mb-2 border-b border-ink/15 pb-1.5 text-[0.66rem] font-extrabold   text-ink">
         {title}
       </div>

@@ -1,5 +1,4 @@
 import { Suspense } from 'react'
-import Image from 'next/image'
 import {
   Activity,
   ArrowRight,
@@ -13,6 +12,7 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { Link } from '@/navigation'
 import { Button } from '@/components/ui/button'
 import { ExamplePlanButton } from '@/components/plans/ExamplePlanButton'
+import { AppearanceSwitch } from '@/components/navigation/AppearanceSwitch'
 import { FanChartPreview } from './FanChartPreview'
 import { LandingHeaderActions } from './LandingHeaderActions'
 import {
@@ -25,6 +25,12 @@ import {
   PREVIEW_TERMINAL,
 } from './preview-data'
 import { cn } from '@/lib/utils'
+
+/** The app mark as a mask, painted with `--ink` by `.brand-mark` (globals.css). */
+const BRAND_MARK_STYLE = {
+  WebkitMaskImage: 'url(/piggy.svg)',
+  maskImage: 'url(/piggy.svg)',
+} as const
 
 const FEATURES = [
   {
@@ -39,15 +45,15 @@ const FEATURES = [
     tile: 'bg-primary text-primary-foreground',
     rotate: '-rotate-2',
   },
-  { key: 'phases', Icon: Route, tile: 'bg-ok text-white', rotate: 'rotate-2' },
-  { key: 'reports', Icon: FileText, tile: 'bg-viz-orange text-white', rotate: '-rotate-3' },
+  { key: 'phases', Icon: Route, tile: 'bg-ok text-on-hue', rotate: 'rotate-2' },
+  { key: 'reports', Icon: FileText, tile: 'bg-viz-orange text-on-hue', rotate: '-rotate-3' },
   {
     key: 'privacy',
     Icon: ShieldCheck,
-    tile: 'bg-viz-pink text-white',
+    tile: 'bg-viz-pink text-on-hue',
     rotate: 'rotate-2',
   },
-  { key: 'bilingual', Icon: Languages, tile: 'bg-viz-purple text-white', rotate: '-rotate-2' },
+  { key: 'bilingual', Icon: Languages, tile: 'bg-viz-purple text-on-hue', rotate: '-rotate-2' },
 ] as const
 
 const HOW_STEPS = [
@@ -103,10 +109,7 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
           <Link href="/" className="group flex min-w-0 items-center gap-3">
             <span className="rounded-sm flex h-10 w-10 items-center justify-center border border-border bg-amber shadow-sm transition-colors group-hover:-translate-x-[1px] group-hover:-translate-y-[1px] group-hover:shadow-sm">
-              {/* No `priority`: the 1 KB inline-size logo never wins a preload
-                  race, and the emitted <link rel="preload"> only produced a
-                  "preloaded but not used" console warning. */}
-              <Image src="/piggy.svg" alt="" width={24} height={24} />
+              <span className="brand-mark h-6 w-6" style={BRAND_MARK_STYLE} aria-hidden="true" />
             </span>
             {/* On phones the 20-character compound broke mid-word next to
                 three buttons; the logo carries the link there, the name
@@ -199,7 +202,7 @@ export function LandingPage() {
             {STATS.map(({ key, value }) => (
               <div
                 key={key}
-                className="rounded-sm theme-panel-card border border-border bg-white p-5 shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
+                className="rounded-sm theme-panel-card border border-border bg-card p-5 shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
               >
                 <p className="landing-display font-heading text-2xl font-black tabular-nums text-ink sm:text-3xl">
                   {value}
@@ -215,7 +218,7 @@ export function LandingPage() {
         {/* ================= Same plan, different futures ================= */}
         <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:pb-28">
           <div className="mx-auto mb-10 flex max-w-2xl flex-col items-center text-center">
-            <span className="rounded-sm landing-label inline-block border border-border bg-amber px-3 py-1 text-[0.66rem] font-bold text-gray-950 shadow-sm">
+            <span className="rounded-sm landing-label inline-block border border-border bg-amber px-3 py-1 text-[0.66rem] font-bold text-ink shadow-sm">
               {t('spread.eyebrow')}
             </span>
             <h2 className="landing-display mt-5 text-balance font-heading text-2xl font-black text-ink sm:text-4xl">
@@ -230,7 +233,7 @@ export function LandingPage() {
             {SPREAD_ITEMS.map(({ key, value, accent }) => (
               <li
                 key={key}
-                className="rounded-sm theme-panel-card border border-border bg-white shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
+                className="rounded-sm theme-panel-card border border-border bg-card shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
               >
                 <span className={cn('block h-2 w-full border-b border-border', accent)} />
                 <div className="p-6">
@@ -275,7 +278,7 @@ export function LandingPage() {
             {FEATURES.map(({ key, Icon, tile, rotate }) => (
               <li
                 key={key}
-                className="rounded-sm theme-panel-card group border border-border bg-white p-6 shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
+                className="rounded-sm theme-panel-card group border border-border bg-card p-6 shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
               >
                 <span
                   className={cn(
@@ -300,7 +303,7 @@ export function LandingPage() {
         {/* ================= How it works ================= */}
         <section className="mx-auto max-w-6xl px-4 pb-24 sm:px-6 lg:pb-32">
           <div className="mx-auto mb-12 flex max-w-2xl flex-col items-center text-center">
-            <span className="rounded-sm inline-block border border-border bg-ok landing-label px-3 py-1 text-[0.66rem] font-bold text-gray-950 shadow-sm">
+            <span className="rounded-sm inline-block border border-border bg-ok landing-label px-3 py-1 text-[0.66rem] font-bold text-on-hue shadow-sm">
               {t('how.eyebrow')}
             </span>
             <h2 className="landing-display mt-5 text-balance font-heading text-2xl font-black text-ink sm:text-4xl">
@@ -312,11 +315,11 @@ export function LandingPage() {
             {HOW_STEPS.map(({ key, accent }, index) => (
               <li
                 key={key}
-                className="rounded-sm theme-panel-card relative border border-border bg-white shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
+                className="rounded-sm theme-panel-card relative border border-border bg-card shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
               >
                 <span className={cn('block h-2 w-full border-b border-border', accent)} />
                 <div className="p-6">
-                  <span className="rounded-sm flex h-11 w-11 items-center justify-center border border-border bg-white font-heading text-base font-black text-ink shadow-sm">
+                  <span className="rounded-sm flex h-11 w-11 items-center justify-center border border-border bg-card font-heading text-base font-black text-ink shadow-sm">
                     {index + 1}
                   </span>
                   <h3 className="landing-label mt-5 text-sm font-extrabold text-ink">
@@ -356,22 +359,24 @@ export function LandingPage() {
             >
               {t('cta.secondary')}
             </Link>
-            <ExamplePlanButton variant="secondary" size="sm" className="mt-6 w-full max-w-[20rem]" />
+            <ExamplePlanButton
+              variant="secondary"
+              size="sm"
+              className="mt-6 w-full max-w-[20rem]"
+            />
           </div>
         </section>
       </main>
 
       {/* ================= Footer ================= */}
-      <footer className="relative z-10 bg-white/70">
+      <footer className="relative z-10 bg-card/70">
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <span className="rounded-sm flex h-9 w-9 items-center justify-center border border-border bg-amber shadow-sm">
-              <Image src="/piggy.svg" alt="" width={20} height={20} />
+              <span className="brand-mark h-5 w-5" style={BRAND_MARK_STYLE} aria-hidden="true" />
             </span>
             <div>
-              <p className="landing-label text-[0.72rem] font-black text-ink">
-                {t('nav.appName')}
-              </p>
+              <p className="landing-label text-[0.72rem] font-black text-ink">{t('nav.appName')}</p>
               <p className="landing-body mt-1 text-[0.68rem] font-medium text-muted-foreground">
                 {t('footer.tagline')}
               </p>
@@ -394,9 +399,12 @@ export function LandingPage() {
           </nav>
         </div>
         <div className="border-t-2 border-ink/15">
-          <p className="landing-body mx-auto max-w-6xl px-4 py-5 text-[0.66rem] font-medium text-muted-foreground sm:px-6">
-            {t('footer.copyright', { year })}
-          </p>
+          <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <p className="landing-body text-[0.66rem] font-medium text-muted-foreground">
+              {t('footer.copyright', { year })}
+            </p>
+            <AppearanceSwitch />
+          </div>
         </div>
       </footer>
     </div>

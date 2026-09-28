@@ -64,23 +64,19 @@ export function ScenarioPlanDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white sm:max-w-[32rem]" data-testid="scenario-plan-dialog">
+      <DialogContent className="bg-card sm:max-w-[32rem]" data-testid="scenario-plan-dialog">
         <DialogHeader>
           <DialogTitle>{td('title')}</DialogTitle>
           <DialogDescription>{td('description', { source: sourceName })}</DialogDescription>
         </DialogHeader>
 
         <div className="rounded-sm border-2 border-border bg-muted px-3 py-2">
-          <p className="text-[0.58rem] font-extrabold   text-muted-foreground">
-            {td('source')}
-          </p>
+          <p className="text-[0.58rem] font-extrabold   text-muted-foreground">{td('source')}</p>
           <p className="mt-1 truncate text-[0.78rem] font-extrabold text-ink">{sourceName}</p>
         </div>
 
         <div>
-          <p className="text-[0.58rem] font-extrabold   text-muted-foreground">
-            {td('changes')}
-          </p>
+          <p className="text-[0.58rem] font-extrabold   text-muted-foreground">{td('changes')}</p>
           {changes.length === 0 ? (
             <p className="mt-2 text-[0.72rem] font-medium text-muted-foreground">
               {td('noChanges')}
@@ -120,7 +116,7 @@ export function ScenarioPlanDialog({
               if (event.key === 'Enter') confirm()
             }}
             placeholder={td('placeholder')}
-            className="rounded-sm mt-2 h-11 border-2 border-border bg-white px-3 py-2 text-[0.78rem] font-semibold"
+            className="rounded-sm mt-2 h-11 border-2 border-border bg-card px-3 py-2 text-[0.78rem] font-semibold"
           />
         </div>
 

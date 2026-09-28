@@ -204,6 +204,21 @@ export interface AnnualCashFlow {
   portfolioContribution: number
   shortfall: number
   closingAssets: number
+  /**
+   * Ledger detail, booked by the engine alongside the totals above so the
+   * cash-flow diagram never has to re-derive it. Optional: results persisted
+   * before these existed lack them, and consumers fall back to the totals.
+   *
+   * `pensionGross` and `oneOffIncomeGross` are parts of `incomeGross`;
+   * `pensionTax` and `oneOffIncomeTax` are parts of `incomeTax`; the rest of
+   * each is other scheduled income (part-time work, rent, …) and its tax.
+   */
+  pensionGross?: number
+  pensionTax?: number
+  oneOffIncomeGross?: number
+  oneOffIncomeTax?: number
+  /** Part of `expenses` from scheduled flows (windows, one-offs); the rest is the baseline budget. */
+  scheduledExpenses?: number
 }
 
 export interface SimulationResults {

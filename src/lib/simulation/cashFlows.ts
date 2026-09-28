@@ -588,6 +588,18 @@ export interface CashFlowSeries {
   expenseLinked: number[]
   expenseFixed: number[]
   /**
+   * Ledger detail only — the engine never reads these to move money. The
+   * pension part of `income*` (net of its tax) and of `incomeTax*`, and the
+   * income tax on one-off income, so the booked ledger can say which source
+   * paid which tax without re-deriving it from the flow list.
+   */
+  pensionNetLinked: number[]
+  pensionNetFixed: number[]
+  pensionTaxLinked: number[]
+  pensionTaxFixed: number[]
+  oneTimeIncomeTaxLinked: number[]
+  oneTimeIncomeTaxFixed: number[]
+  /**
    * What tax each taxed flow pays in its first paying year (a one-off: its
    * only year), keyed by flow id — for the editor to show "tax · net".
    */
@@ -622,6 +634,12 @@ export function buildCashFlowSeries(
   const incomeTaxFixed = new Array<number>(years).fill(0)
   const expenseLinked = new Array<number>(years).fill(0)
   const expenseFixed = new Array<number>(years).fill(0)
+  const pensionNetLinked = new Array<number>(years).fill(0)
+  const pensionNetFixed = new Array<number>(years).fill(0)
+  const pensionTaxLinked = new Array<number>(years).fill(0)
+  const pensionTaxFixed = new Array<number>(years).fill(0)
+  const oneTimeIncomeTaxLinked = new Array<number>(years).fill(0)
+  const oneTimeIncomeTaxFixed = new Array<number>(years).fill(0)
   const oneTimeIncomeLinkedByAge = new Map<number, number>()
   const oneTimeIncomeFixedByAge = new Map<number, number>()
   const taxByFlow = new Map<string, FlowTaxSummary>()
@@ -767,6 +785,15 @@ export function buildCashFlowSeries(
 
       if (income) (linked ? incomeTaxLinked : incomeTaxFixed)[offset] += tax
       const net = Math.max(0, amount - tax)
+      if (isPension) {
+        const pensionTax = linked ? pensionTaxLinked : pensionTaxFixed
+        const pensionNet = linked ? pensionNetLinked : pensionNetFixed
+        pensionTax[offset] += tax
+        pensionNet[offset] += net
+      } else if (once) {
+        const onceTax = linked ? oneTimeIncomeTaxLinked : oneTimeIncomeTaxFixed
+        onceTax[offset] += tax
+      }
       if (tax > 0 && !taxByFlow.has(flow.id)) {
         taxByFlow.set(flow.id, {
           age: currentAge + offset - (once ? 1 : 0),
@@ -796,6 +823,12 @@ export function buildCashFlowSeries(
     incomeTaxFixed,
     expenseLinked,
     expenseFixed,
+    pensionNetLinked,
+    pensionNetFixed,
+    pensionTaxLinked,
+    pensionTaxFixed,
+    oneTimeIncomeTaxLinked,
+    oneTimeIncomeTaxFixed,
     taxByFlow,
   }
 }

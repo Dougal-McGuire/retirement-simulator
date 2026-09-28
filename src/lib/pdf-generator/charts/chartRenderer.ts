@@ -2,12 +2,33 @@ import * as vega from 'vega'
 import * as vl from 'vega-lite'
 import type { TopLevelSpec } from 'vega-lite'
 
+/**
+ * vega-lite monkey-patches `Set.prototype.toJSON` when it is imported (it uses
+ * it to hash specs while compiling). Left in place, that patch leaks into the
+ * whole server process and breaks React's RSC serialisation of every `Set`
+ * (in development, every page then logs "Only plain objects can be passed to
+ * Client Components … Set objects are not supported"). Take the patch off
+ * right after import and put it back only for the duration of a compile.
+ */
+const vegaLiteSetToJSON = Object.getOwnPropertyDescriptor(Set.prototype, 'toJSON')
+if (vegaLiteSetToJSON) delete (Set.prototype as { toJSON?: unknown }).toJSON
+
+function compileVegaLite(spec: TopLevelSpec) {
+  if (!vegaLiteSetToJSON) return vl.compile(spec)
+  Object.defineProperty(Set.prototype, 'toJSON', vegaLiteSetToJSON)
+  try {
+    return vl.compile(spec)
+  } finally {
+    delete (Set.prototype as { toJSON?: unknown }).toJSON
+  }
+}
+
 vega.formatLocale({
   decimal: ',',
   thousands: '.',
   grouping: [3],
   currency: ['', ' €'],
-  percent: '%'
+  percent: '%',
 })
 
 export interface ProjectionPoint {
@@ -82,7 +103,7 @@ export async function renderProjectionChart(points: ProjectionPoint[]): Promise<
     },
   }
 
-  const { spec: compiled } = vl.compile(spec)
+  const { spec: compiled } = compileVegaLite(spec)
   const view = new vega.View(vega.parse(compiled), { renderer: 'svg' })
   return view.toSVG()
 }
@@ -137,7 +158,7 @@ export async function renderBreakdownChart(data: BreakdownDatum[]): Promise<stri
     },
   }
 
-  const { spec: compiled } = vl.compile(spec)
+  const { spec: compiled } = compileVegaLite(spec)
   const view = new vega.View(vega.parse(compiled), { renderer: 'svg' })
   return view.toSVG()
 }

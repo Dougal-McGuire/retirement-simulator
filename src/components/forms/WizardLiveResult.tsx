@@ -104,18 +104,14 @@ export function WizardLiveResult({ className }: { className?: string }) {
       data-success-rate={preview?.successRate ?? ''}
       aria-live="polite"
       className={cn(
-        'rounded-sm flex flex-wrap items-center gap-x-5 gap-y-2 border border-border bg-white px-4 py-2.5 shadow-sm',
+        'rounded-sm flex flex-wrap items-center gap-x-5 gap-y-2 border border-border bg-card px-4 py-2.5 shadow-sm',
         className
       )}
     >
-      <span className="text-[0.58rem] font-extrabold   text-muted-foreground">
-        {t('label')}
-      </span>
+      <span className="text-[0.58rem] font-extrabold   text-muted-foreground">{t('label')}</span>
 
       <span className="flex items-baseline gap-1.5">
-        <span className="text-[0.58rem] font-bold   text-muted-foreground">
-          {t('successRate')}
-        </span>
+        <span className="text-[0.58rem] font-bold   text-muted-foreground">{t('successRate')}</span>
         <span
           data-testid="wizard-live-success"
           className="text-sm font-black tabular-nums text-ink"
@@ -128,10 +124,7 @@ export function WizardLiveResult({ className }: { className?: string }) {
         <span className="text-[0.58rem] font-bold   text-muted-foreground">
           {t('medianEnd', { age: params.endAge })}
         </span>
-        <span
-          data-testid="wizard-live-median"
-          className="text-sm font-black tabular-nums text-ink"
-        >
+        <span data-testid="wizard-live-median" className="text-sm font-black tabular-nums text-ink">
           {preview === null ? '—' : formatCurrency(preview.medianEndAssets)}
         </span>
       </span>

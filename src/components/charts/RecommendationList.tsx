@@ -22,7 +22,7 @@ interface RecommendationListProps {
 }
 
 const impactClasses: Record<'High' | 'Medium' | 'Low', string> = {
-  High: 'border-danger bg-red-50 text-danger',
+  High: 'border-danger bg-[var(--red-50)] text-danger',
   Medium: 'border-warning-600 bg-warning-50 text-warning-700',
   Low: 'border-border bg-muted text-muted-foreground',
 }
@@ -71,7 +71,7 @@ export function RecommendationList({ params, results }: RecommendationListProps)
 
   return (
     <Card className="overflow-hidden">
-      <CardContent className="bg-white p-5">
+      <CardContent className="bg-card p-5">
         <div className="flex items-center gap-3">
           <Lightbulb className="h-5 w-5 text-accent" aria-hidden="true" />
           <h4 className="text-sm font-extrabold  ">{t('title')}</h4>
@@ -91,9 +91,7 @@ export function RecommendationList({ params, results }: RecommendationListProps)
                   className="rounded-sm border-2 border-border bg-background p-4 shadow-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-extrabold   text-ink">
-                      {rec.title}
-                    </p>
+                    <p className="text-sm font-extrabold   text-ink">{rec.title}</p>
                     <span className="flex items-center gap-2">
                       {uplift && (
                         <span className="rounded-sm border-2 border-success-600 bg-success-50 px-2 py-1 text-[0.68rem] font-extrabold   text-success-700">

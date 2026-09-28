@@ -476,7 +476,7 @@ export function CashFlowList({
               'rounded-sm inline-flex items-center gap-1.5 border-2 border-border px-3 py-1.5 text-xs font-semibold   transition-colors',
               state.kind === kind
                 ? 'bg-muted text-ink border-accent'
-                : 'bg-white text-muted-foreground hover:bg-muted'
+                : 'bg-card text-muted-foreground hover:bg-muted'
             )}
           >
             {kind === 'pension' ? (
@@ -835,7 +835,7 @@ export function CashFlowList({
         <>
           {/* Timeline: the only place a plan's windows are visible at a glance. */}
           <div
-            className="rounded-sm space-y-2 border border-border bg-white p-3 shadow-sm"
+            className="rounded-sm space-y-2 border border-border bg-card p-3 shadow-sm"
             data-testid="cashflow-timeline"
           >
             <div className="flex items-center justify-between text-xs font-semibold   text-muted-foreground">
@@ -884,9 +884,9 @@ export function CashFlowList({
             </div>
           </div>
 
-          <div className="rounded-sm overflow-x-auto border border-border bg-white shadow-sm">
+          <div className="rounded-sm overflow-x-auto border border-border bg-card shadow-sm">
             <table className="w-full min-w-[17rem]">
-              <thead className="border-b border-border bg-gray-50">
+              <thead className="border-b border-border bg-muted">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-bold   text-muted-foreground">
                     {t('table.item')}
@@ -985,7 +985,7 @@ export function CashFlowList({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-ink hover:bg-accent hover:text-white"
+                              className="h-8 w-8 text-ink hover:bg-action hover:text-action-foreground"
                               aria-label={`${t('actions.edit')}: ${displayName(flow)}`}
                               onClick={() => {
                                 setEditDraft(
@@ -1005,7 +1005,7 @@ export function CashFlowList({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-ink hover:bg-danger hover:text-white"
+                              className="h-8 w-8 text-ink hover:bg-danger hover:text-on-hue"
                               aria-label={`${t('actions.remove')}: ${displayName(flow)}`}
                               onClick={() => handleRemove(flow.id)}
                             >
@@ -1032,7 +1032,7 @@ export function CashFlowList({
                 key={template.key}
                 type="button"
                 onClick={() => handleAddTemplate(template)}
-                className="rounded-sm border-2 border-dashed border-border bg-white/50 px-3 py-2 text-left text-xs font-semibold   text-ink transition-colors hover:-translate-x-[1px] hover:-translate-y-[1px] hover:bg-amber/15 hover:shadow-sm"
+                className="rounded-sm border-2 border-dashed border-border bg-card/50 px-3 py-2 text-left text-xs font-semibold   text-ink transition-colors hover:-translate-x-[1px] hover:-translate-y-[1px] hover:bg-amber/15 hover:shadow-sm"
               >
                 <span className="flex items-center gap-1.5">
                   {template.kind === 'pension' ? (
@@ -1056,7 +1056,7 @@ export function CashFlowList({
       <div
         className={cn(
           'rounded-sm border border-border px-4 py-4 shadow-sm',
-          safeFlows.length === 0 ? 'bg-gradient-to-br from-accent/5 to-amber/5' : 'bg-white'
+          safeFlows.length === 0 ? 'bg-gradient-to-br from-accent/5 to-amber/5' : 'bg-card'
         )}
       >
         {safeFlows.length === 0 && (

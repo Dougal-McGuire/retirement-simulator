@@ -42,16 +42,18 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          'bg-white text-ink border border-border shadow-sm opacity-100 mix-blend-normal animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-[99999] w-fit origin-(--radix-tooltip-content-transform-origin) rounded-none px-3 py-2 text-xs text-balance',
+          'bg-card text-ink border border-border shadow-sm opacity-100 mix-blend-normal animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-[99999] w-fit origin-(--radix-tooltip-content-transform-origin) rounded-none px-3 py-2 text-xs text-balance',
           className
         )}
         style={{ backgroundColor: 'var(--white)', backdropFilter: 'none' }}
         {...props}
       >
         {children}
+        {/* A diamond in the tooltip's own surface and border tokens; its
+            outer two edges carry the border so it reads as part of the card. */}
         <TooltipPrimitive.Arrow
-          className="z-[99999] size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45"
-          style={{ fill: 'var(--white)', stroke: 'var(--ink)' }}
+          className="z-[99999] size-2.5 translate-y-[calc(-50%_-_1px)] rotate-45 border-r border-b border-border"
+          style={{ fill: 'transparent', backgroundColor: 'var(--white)' }}
         />
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>

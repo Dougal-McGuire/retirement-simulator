@@ -207,7 +207,7 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
               left: 4,
               top: grid.topPct,
               transform: 'translateY(-110%)',
-              background: 'rgba(255,255,255,.78)',
+              background: 'color-mix(in srgb, var(--surface) 78%, transparent)',
               padding: '0 3px',
               borderRadius: 2,
             }}
@@ -224,7 +224,7 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
             gap: 10,
             flexWrap: 'wrap',
             fontSize: 11,
-            background: 'rgba(255,255,255,.88)',
+            background: 'color-mix(in srgb, var(--surface) 88%, transparent)',
             padding: '2px 6px',
             borderRadius: 'var(--radius)',
           }}
@@ -256,7 +256,7 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
               bottom: 8,
               minWidth: 190,
               padding: '7px 9px',
-              background: 'rgba(255,255,255,.96)',
+              background: 'color-mix(in srgb, var(--surface) 96%, transparent)',
               border: '1px solid var(--line-strong)',
               borderRadius: 'var(--radius)',
               boxShadow: 'var(--shadow-sm)',

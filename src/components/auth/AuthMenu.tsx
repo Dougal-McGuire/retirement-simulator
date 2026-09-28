@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { useAuthEnabled } from './AuthProvider'
+import { useAuthEnabled, useCloudSyncEnabled } from './AuthProvider'
 import { AccountStatusLine } from './AccountStatusLine'
 
 interface AuthMenuProps {
@@ -56,6 +56,7 @@ const SIGN_IN_BUTTON_CLASS = 'w-full justify-center gap-2 px-3 text-xs '
 function AuthUnavailable({ className, compact }: AuthMenuProps) {
   const t = useTranslations('auth')
   const label = t('notConfigured')
+  const [open, setOpen] = useState(false)
 
   // On a 390px toolbar a permanently disabled icon button says nothing and
   // costs 52px that the report button and the menu trigger both need — it was
@@ -64,23 +65,33 @@ function AuthUnavailable({ className, compact }: AuthMenuProps) {
   // explain itself.
   if (compact) return null
 
+  // The explanation opens on mouse hover or *keyboard* focus only. It used to
+  // hang off a `tabIndex=0` span that Radix Dialog auto-focused when the Menu
+  // opened: the tooltip opened on that programmatic focus and stayed open
+  // (nothing blurred it on touch), covering the language selector on phones.
+  // `aria-disabled` keeps the button itself focusable, so no wrapper is needed.
   return (
-    <Tooltip>
-      {/* Disabled buttons swallow pointer events, so the span carries the trigger. */}
+    <Tooltip open={open} onOpenChange={(next) => !next && setOpen(false)}>
       <TooltipTrigger asChild>
-        <span className={cn('inline-flex', compact ? '' : className)} tabIndex={0}>
-          <Button
-            type="button"
-            variant="outline"
-            size={compact ? 'icon' : 'sm'}
-            disabled
-            aria-label={label}
-            className={cn(compact ? 'h-10 w-10' : SIGN_IN_BUTTON_CLASS)}
-          >
-            <GoogleIcon className="h-4 w-4 shrink-0 opacity-60" />
-            {!compact && <span className="truncate">{t('signIn')}</span>}
-          </Button>
-        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-disabled="true"
+          aria-label={label}
+          data-testid="auth-unavailable"
+          onClick={(event) => event.preventDefault()}
+          // Pointer *movement*, not enter: Chrome fires enter when a dialog
+          // opens under a resting cursor, which is not a hover.
+          onPointerMove={(event) => event.pointerType === 'mouse' && !open && setOpen(true)}
+          onPointerLeave={() => setOpen(false)}
+          onFocus={(event) => event.currentTarget.matches(':focus-visible') && setOpen(true)}
+          onBlur={() => setOpen(false)}
+          className={cn(SIGN_IN_BUTTON_CLASS, 'w-auto cursor-not-allowed opacity-60', className)}
+        >
+          <GoogleIcon className="h-4 w-4 shrink-0 opacity-60" />
+          <span className="truncate">{t('signIn')}</span>
+        </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">{label}</TooltipContent>
     </Tooltip>
@@ -91,6 +102,8 @@ function AuthUnavailable({ className, compact }: AuthMenuProps) {
 function AuthSession({ className, compact, signInRedirectTo }: AuthMenuProps) {
   const t = useTranslations('auth')
   const { data: session, status } = useSession()
+  const cloudSync = useCloudSyncEnabled()
+  const signInHint = cloudSync ? t('syncOnSignIn') : t('localOnly')
   const [isPending, setIsPending] = useState(false)
 
   const currentPath = () => {
@@ -129,8 +142,8 @@ function AuthSession({ className, compact, signInRedirectTo }: AuthMenuProps) {
   if (status !== 'authenticated' || !session?.user) {
     const label = t('signIn')
     return (
-      // The landing page promises "no sign-up, no cloud" — the tooltip spells
-      // out that signing in still keeps every plan on this device.
+      // Says what signing in does on *this* deployment: with cloud storage the
+      // plans follow the account; without it they stay on this device.
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -140,7 +153,7 @@ function AuthSession({ className, compact, signInRedirectTo }: AuthMenuProps) {
             onClick={handleSignIn}
             disabled={isPending}
             aria-label={compact ? label : undefined}
-            title={t('localOnly')}
+            title={signInHint}
             className={cn(compact ? 'h-10 w-10' : SIGN_IN_BUTTON_CLASS, className)}
           >
             <GoogleIcon className="h-4 w-4 shrink-0" />
@@ -148,7 +161,7 @@ function AuthSession({ className, compact, signInRedirectTo }: AuthMenuProps) {
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-[16rem]">
-          {compact ? `${label} — ${t('localOnly')}` : t('localOnly')}
+          {compact ? `${label} — ${signInHint}` : signInHint}
         </TooltipContent>
       </Tooltip>
     )
@@ -201,7 +214,7 @@ function AuthSession({ className, compact, signInRedirectTo }: AuthMenuProps) {
     <div
       data-testid="auth-account"
       className={cn(
-        'rounded-sm flex h-10 items-center gap-2 border border-border bg-white px-2 shadow-sm',
+        'rounded-sm flex h-10 items-center gap-2 border border-border bg-card px-2 shadow-sm',
         className
       )}
     >

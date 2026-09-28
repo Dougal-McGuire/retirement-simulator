@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import {
@@ -28,6 +28,13 @@ interface PlanNameDialogProps {
   initialName?: string
   inputId: string
   onConfirm: (name: string) => void
+  /**
+   * Where focus goes when the dialog closes. Defaults to whatever was focused
+   * when it opened. These dialogs are opened from buttons and menu items rather
+   * than a `DialogTrigger`, so without this Radix drops focus on `<body>` — which
+   * also stranded keyboard users inside a parent dialog after Escape.
+   */
+  returnFocusRef?: RefObject<HTMLElement | null>
 }
 
 /** Shared name prompt for creating, renaming and saving plans. */
@@ -44,9 +51,18 @@ export function PlanNameDialog({
   initialName = '',
   inputId,
   onConfirm,
+  returnFocusRef,
 }: PlanNameDialogProps) {
   const t = useTranslations('plans')
   const [name, setName] = useState(initialName)
+  const openedFrom = useRef<HTMLElement | null>(null)
+
+  // Layout effect: runs before Radix moves focus into the dialog.
+  useLayoutEffect(() => {
+    if (!open) return
+    const active = document.activeElement
+    openedFrom.current = active instanceof HTMLElement && active !== document.body ? active : null
+  }, [open])
 
   useEffect(() => {
     if (open) setName(initialName)
@@ -61,7 +77,15 @@ export function PlanNameDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white sm:max-w-[30rem]">
+      <DialogContent
+        className="bg-card sm:max-w-[30rem]"
+        onCloseAutoFocus={(event) => {
+          const target = returnFocusRef?.current ?? openedFrom.current
+          if (!target?.isConnected) return
+          event.preventDefault()
+          target.focus()
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -80,7 +104,7 @@ export function PlanNameDialog({
               if (event.key === 'Enter') confirm()
             }}
             placeholder={placeholder}
-            className="rounded-sm mt-2 h-11 border-2 border-border bg-white px-3 py-2 text-[0.78rem] font-semibold"
+            className="rounded-sm mt-2 h-11 border-2 border-border bg-card px-3 py-2 text-[0.78rem] font-semibold"
           />
         </div>
         <DialogFooter className="sm:flex-wrap">

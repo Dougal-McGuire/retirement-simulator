@@ -239,7 +239,7 @@ html .theme-panel-header {
 html .theme-panel-body {
   padding: var(--theme-card-body-padding) !important;
 }
-html .theme-control,
+html .ds-control,
 html [data-slot='select-trigger'],
 html [data-slot='select-item'],
 html input,
@@ -249,7 +249,7 @@ html [role='tab'] {
   text-transform: var(--theme-control-transform) !important;
   letter-spacing: var(--theme-ui-letter-spacing) !important;
 }
-html .theme-control:hover,
+html .ds-control:hover,
 html [data-slot='select-trigger']:hover {
   transform: translate(var(--theme-hover-x), var(--theme-hover-y)) !important;
 }
@@ -268,18 +268,17 @@ html .border-3:not(.theme-hero):not(.theme-sidebar):not(.theme-panel-card),
 html .border-2 {
   border-radius: var(--theme-radius-control);
 }
-/* The closing call-to-action is a dark slab in *every* theme — including the
-   default one, which this rule used to skip. There the example-plan caption
-   inherited the page's muted grey and landed at ~2.6:1 on black. Tie the muted
-   ink inside the slab to the slab's own foreground token instead, and keep it
-   opaque enough (90%) to clear AA at the caption's small size. */
+/* The closing call-to-action is a deep slab in both colour schemes. The
+   example-plan caption would otherwise inherit the page's muted grey (~2.6:1
+   on the slab); tie the muted ink inside it to the slab's own foreground
+   token and keep it opaque enough (90%) to clear AA at the caption's size. */
 .landing-cta .text-muted-foreground,
 html .landing-cta .text-muted-foreground {
   color: color-mix(in srgb, var(--landing-cta-fg) 90%, transparent) !important;
 }
 /* Chart milestone labels ("RETIREMENT", "PENSION STARTS") are uppercased by an
    inline style on the Recharts reference line, which no class-based rule can
-   reach. These themes read in sentence case throughout. */
+   reach. The interface reads in sentence case throughout. */
 html text.recharts-label {
   text-transform: none !important;
   letter-spacing: 0.03em !important;
@@ -314,7 +313,7 @@ html .theme-step-list > * + * {
   html .theme-setup-grid {
     grid-template-columns: 296px minmax(0, 1fr) !important;
   }
-  /* The dashboard is a single full-width column in every theme: plan editing
+  /* The dashboard is a single full-width column: plan editing
      is its own tab, so nothing has to be squeezed into a sidebar. */
   html .theme-simulation-grid {
     grid-template-columns: minmax(0, 1fr) !important;
@@ -589,12 +588,6 @@ html .theme-step-list > * + * {
 .scrollbar-track-transparent::-webkit-scrollbar-track {
   background: transparent;
 }
-.scrollbar-thumb-neo-black\/20::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb);
-}
-.hover\:scrollbar-thumb-neo-black\/40:hover::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-hover);
-}
 /* Setup wizard: step content transition */
 @keyframes wizard-step-in {
   from {
@@ -636,12 +629,25 @@ html .theme-step-list > * + * {
   }
 }
 /* ------------------------------------------------------------------ */
-/* Landing page: theme-aware tokens so the marketing page reads as the */
-/* same product in every theme instead of inverting into a neon slab.  */
+/* Landing page: the closing call-to-action is a deep slab in both     */
+/* colour schemes; its colours come from the --cta-slab-* tokens.      */
 /* ------------------------------------------------------------------ */
+/* App mark: the piggy glyph used as a mask so it is painted in the current
+   ink and follows the colour scheme (an <img> would stay #1f1f1f). The mask
+   image itself is set inline by the component (see LandingPage). */
+.brand-mark {
+  display: block;
+  background-color: var(--ink);
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
 .landing-cta {
-  --landing-cta-bg: var(--ink);
-  --landing-cta-fg: var(--white);
+  --landing-cta-bg: var(--cta-slab-bg);
+  --landing-cta-fg: var(--cta-slab-fg);
   background-color: var(--landing-cta-bg);
 }
 .landing-cta-title {
@@ -653,10 +659,6 @@ html .theme-step-list > * + * {
 }
 .landing-cta-link:hover {
   color: var(--landing-cta-fg);
-}
-html .landing-cta {
-  --landing-cta-bg: #0f1524;
-  --landing-cta-fg: #f6f8fb;
 }
 /*
  * Landing typography: themes widen every heading and every `tracking-*`

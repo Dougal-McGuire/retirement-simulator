@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Prerequisites
 
-- **Node.js**: >= 22 (< 23)
+- **Node.js**: 24.14.0 (`.nvmrc`; `engines` requires >= 24.14.0 < 25, CI uses 24.14.0)
 - **Package Manager**: pnpm >= 10 (use `corepack enable` to activate)
 
 ## Commands
@@ -22,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `pnpm lint` - Run ESLint
 - `pnpm lint:fix` - Auto-fix ESLint issues
+- `pnpm typecheck` - Type-check with `tsc --noEmit`
 - `pnpm format` - Format code with Prettier
 
 ### Testing
@@ -38,9 +39,11 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
 
 - **Framework**: Next.js 16 (App Router) with Turbopack
 - **UI**: React 19, Tailwind CSS 4, shadcn/ui components (Radix UI)
-- **State**: Zustand with localStorage persistence
-- **Forms**: react-hook-form + zod validation
-- **Charts**: Recharts for interactive visualizations
+- **State**: Zustand with localStorage persistence (namespaced per signed-in account)
+- **Validation**: zod (API request bodies, report schema)
+- **Charts**: Recharts for interactive visualizations, including the cash-flow Sankey
+- **Auth / sync**: Auth.js (`next-auth` v5) with Google; optional cloud plan sync via Upstash Redis REST
+- **Theming**: color-scheme tokens in `src/app/interface.css` (System/Light/Dark, `src/lib/colorScheme.ts`)
 - **i18n**: next-intl (locales: en, de)
 - **PDF**: React PDF (`@react-pdf/renderer`)
 - **Testing**: Jest (unit) + Playwright (E2E)
@@ -52,18 +55,22 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
 - **Type Safety**: Comprehensive TypeScript interfaces in `src/types/index.ts`
 - **Internationalization**: next-intl with locale routing (`/[locale]/...`), translations in `src/i18n/messages/{en,de}.json`
 - **Reports**: `/api/generate-pdf` validates report data and renders PDFs with React PDF; the legacy `/reports/[id]/print` HTML route remains in the tree but is not the primary generation path
+- **Auth & Cloud Sync**: Google sign-in (`src/auth.ts`, `src/lib/auth/env.ts`) and `/api/plans` (`src/lib/server/planStore.ts`, Upstash via `KV_REST_API_*` or `UPSTASH_REDIS_REST_*`) are both optional: without credentials the auth UI hides, `/api/plans` answers 501 and plans stay in localStorage
+- **Dark Mode**: `prefers-color-scheme` by default; an explicit choice sets `<html data-color-scheme>` before first paint. PDFs and the print route force light
 
 ### Key Routes
 
 - `/[locale]/` - Landing page
 - `/[locale]/setup` - Multi-step wizard for parameter input
-- `/[locale]/simulation` - Results dashboard with interactive charts and parameter controls
+- `/[locale]/simulation` - Workspace with four workflows: Überblick (overview), Mein Plan (plan editor), Zahlungsströme (Sankey + ledger), Varianten (strategy and plan comparison); plan menu in the header
+- `/api/plans` - Account-scoped plan storage (GET/PUT, needs sign-in and a configured store)
+- `/api/auth/[...nextauth]` - Auth.js handlers
 - `/reports/[id]/print` - Legacy print-optimized report layout
 - `/api/generate-pdf` - PDF generation endpoint using React PDF
 
 ### Simulation Flow
 
-1. User inputs parameters via setup wizard or parameter controls
+1. User inputs parameters via the setup wizard or the plan editor (Mein Plan)
 2. `SimulationStore.updateParams()` triggers auto-run (debounced 100ms)
 3. `runMonteCarloSimulation()` runs N simulations (default: 500) with lognormal market returns
 4. Results include percentile data (P10, P20, P50, P80, P90) and success rate
@@ -77,10 +84,12 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
 
 ### State Management Details
 
-- **Persistence**: Zustand middleware persists params and savedSetups to localStorage
+- **Persistence**: Zustand middleware persists `plans`, `activePlanId`, `params`, `draftParams` and results to localStorage
+- **Plans**: Up to 12 named plans (`MAX_PLANS`); one is active. Edits go to a working copy (`draftParams`, `isDirty`) until `savePlanDraft()` or `revertPlanDraft()`; switching plans with unsaved edits goes through `PlanSwitchGuard`
+- **Cloud Sync**: When signed in and configured, `PlanCloudSync` merges local and remote plans (`src/lib/stores/planSync.ts`)
 - **Auto-run**: Parameter changes trigger simulation after 100ms (debounced)
 - **Suspension**: Auto-run can be suspended (e.g., during chart interactions) with `setAutoRunSuspended()`
-- **Saved Setups**: Up to 10 named parameter sets can be saved/loaded
+- **Saved Setups**: Legacy `savedSetups` is only a mirror of `plans` so old save/load calls keep working; plans are the source of truth
 
 ### PDF Generation
 
@@ -92,12 +101,21 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
 
 - **SimulationParams**: Demographics (ages), assets, income (savings, pension), expenses (monthly, annual), market assumptions (ROI, inflation, volatility, taxes)
 - **SimulationResults**: Percentile data for assets and spending at each age, success rate
-- **DEFAULT_PARAMS**: Realistic German retirement scenario (see `src/types/index.ts:142`)
+- **Plan**: Named `SimulationParams` snapshot with id and timestamps (`MAX_PLANS = 12`)
+- **DEFAULT_PARAMS**: Realistic German retirement scenario (see `src/types/index.ts`)
 
 ### Component Structure
 
 - **UI Components**: shadcn/ui components in `src/components/ui/`
-- **Form Components**: Parameter controls and labeled inputs in `src/components/forms/`
+- **Workspace**: Shell, header, plan menu and overview in `src/components/workspace/`
+- **Plans**: Plan editor, section nav, switcher, switch guard, withdrawal planner in `src/components/plans/`
+- **Auth**: Account menu, auth provider, cloud sync in `src/components/auth/`
+- **Form Components**: Setup wizard fields and labeled inputs in `src/components/forms/`
 - **Chart Components**: Recharts-based visualizations in `src/components/charts/`
 - **Report Components**: PDF report sections in `src/components/report/sections/`
-- **Navigation**: Locale switcher, skip links, parameter sidebar in `src/components/navigation/`
+- **Navigation**: Locale switcher, appearance switch, header controls menu, skip links in `src/components/navigation/`
+
+### Copy & Register
+
+- German UI copy uses informal "du" (lowercase du/dein). The PDF report (`src/lib/pdf-generator/**`, `src/components/report/**`) stays formal "Sie"; copy shared by both (e.g. `src/lib/insights/recommendations.ts`) is written without direct address
+- `en.json` and `de.json` must keep identical key sets

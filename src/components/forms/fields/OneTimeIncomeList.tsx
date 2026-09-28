@@ -224,7 +224,7 @@ export function OneTimeIncomeList({
                 variant="ghost"
                 size="icon"
                 onClick={handleSaveEdit}
-                className="h-8 w-8 text-green-600 hover:bg-green-600 hover:text-muted-foreground"
+                className="h-8 w-8 text-ok hover:bg-ok hover:text-on-hue"
                 aria-label={getIncomeControlLabel(strings.save, income)}
               >
                 <Check className="h-3.5 w-3.5" />
@@ -293,9 +293,9 @@ export function OneTimeIncomeList({
   return (
     <div className="space-y-4">
       {!isEmpty && (
-        <div className="rounded-sm overflow-hidden border border-border bg-white shadow-sm">
+        <div className="rounded-sm overflow-hidden border border-border bg-card shadow-sm">
           <table className="w-full">
-            <thead className="border-b border-border bg-gray-50">
+            <thead className="border-b border-border bg-muted">
               <tr>
                 <th className="whitespace-nowrap px-4 py-3 text-left text-[0.65rem] font-bold   text-muted-foreground">
                   {strings.tableHeaders.name}
@@ -308,9 +308,7 @@ export function OneTimeIncomeList({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
-              {orderedIncomes.map(renderIncomeRow)}
-            </tbody>
+            <tbody className="divide-y divide-border">{orderedIncomes.map(renderIncomeRow)}</tbody>
           </table>
         </div>
       )}
@@ -318,7 +316,7 @@ export function OneTimeIncomeList({
       <div
         className={cn(
           'rounded-sm border border-border px-4 py-5 shadow-sm',
-          isEmpty ? 'bg-gradient-to-br from-accent/5 to-amber/5' : 'bg-white'
+          isEmpty ? 'bg-gradient-to-br from-accent/5 to-amber/5' : 'bg-card'
         )}
       >
         {isEmpty && (
@@ -327,9 +325,7 @@ export function OneTimeIncomeList({
               <Plus className="h-4 w-4 text-ink" strokeWidth={3} aria-hidden="true" />
             </span>
             <div className="space-y-1">
-              <p className="text-[0.72rem] font-extrabold   text-ink">
-                {strings.empty}
-              </p>
+              <p className="text-[0.72rem] font-extrabold   text-ink">{strings.empty}</p>
               <p className="text-[0.62rem] font-semibold   text-muted-foreground">
                 {strings.emptyHint ??
                   'Add expected windfalls like inheritances, insurance payouts, property sales, or bonus payments'}

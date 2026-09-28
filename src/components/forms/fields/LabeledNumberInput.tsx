@@ -269,7 +269,7 @@ export function LabeledNumberInput({
               </TooltipTrigger>
               <TooltipContent
                 side="top"
-                className="rounded-sm max-w-xs border-2 border-border bg-white px-3 py-2 text-ink shadow-sm"
+                className="rounded-sm max-w-xs border-2 border-border bg-card px-3 py-2 text-ink shadow-sm"
               >
                 {tooltip && (
                   <p className="text-xs font-medium normal-case leading-relaxed">{tooltip}</p>

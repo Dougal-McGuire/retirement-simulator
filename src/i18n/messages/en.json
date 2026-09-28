@@ -8,6 +8,7 @@
     "loading": "Loading account",
     "accountFallbackName": "Google account",
     "localOnly": "Your data stays on this device — sign-in only separates profiles.",
+    "syncOnSignIn": "With your Google account, your plans are stored in the account and synced across all your devices.",
     "migration": {
       "title": "Bring your existing plans into this account?",
       "description": "You created plans on this device before signing in. Copy them into this account, or start with a clean workspace?",
@@ -47,7 +48,7 @@
       "subtitle": "The engine replays your whole financial life through thousands of simulated markets — volatility, inflation, pension, and spending — so you see the full range of outcomes before you bet your retirement on a single guess.",
       "ctaPrimary": "Start planning — it's free",
       "ctaSecondary": "Explore the dashboard",
-      "note": "No sign-up. No cloud. Your data never leaves this browser.",
+      "note": "No sign-up needed. Without signing in, your data never leaves this browser.",
       "lede": "One average return tells you nothing.",
       "runsNote": "The chart above is one baked run of the engine: {previewRuns} paths, {previewRate} of them still funded at the end. The same plan on your own dashboard runs {defaultRuns} paths by default and reports {defaultRate} — fewer samples, same plan. Raise the run count in the plan editor whenever you want a tighter answer."
     },
@@ -196,6 +197,15 @@
       "en": "English",
       "de": "Deutsch"
     }
+  },
+  "appearance": {
+    "label": "Appearance",
+    "options": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "hint": "System follows your device setting."
   },
   "setup": {
     "header": {
@@ -509,7 +519,11 @@
         "vacations": "Vacations",
         "repairs": "Home repairs",
         "carMaintenance": "Car maintenance",
-        "statutoryPension": "Statutory pension"
+        "statutoryPension": "Statutory pension",
+        "demoPartTime": "Part-time consulting",
+        "demoInheritance": "Inheritance",
+        "demoRoof": "Roof renovation",
+        "demoCare": "Care costs"
       },
       "listTitle": "Income, expenses & pensions"
     },
@@ -519,6 +533,13 @@
       "medianEnd": "Median at {age}",
       "computing": "Calculating…",
       "note": "Quick preview from {runs} runs — the dashboard runs the full plan."
+    },
+    "shell": {
+      "backToOverview": "Back to overview",
+      "skipToOverview": "Skip for now",
+      "planLabel": "Plan",
+      "menuTitle": "Account and language",
+      "menuDescription": "Sign in to sync your plans, or change the language or appearance."
     }
   },
   "simulation": {
@@ -606,17 +627,6 @@
       "glidePath": "Glide path {start} → {end}",
       "editFullPlan": "Edit full plan"
     },
-    "kpi": {
-      "success": "Success",
-      "lastsTo": "Lasts to",
-      "firstYearDraw": "1st-yr draw",
-      "medianEnd": "Median end",
-      "p10Age": "P10: {age}",
-      "perMonth": "{amount}/mo",
-      "p10End": "P10: {value}",
-      "grossMean": "Mean gross · {amount}/mo",
-      "successHint": "Budget and legacy goal met"
-    },
     "chart": {
       "bandOuter": "P10–90",
       "bandInner": "P20–80",
@@ -680,26 +690,6 @@
       "title": "Plans and tools",
       "description": "Manage plans, export a report, and change account or language.",
       "setup": "Setup wizard"
-    }
-  },
-  "parameterSidebar": {
-    "trigger": "Parameters",
-    "title": "Simulation Parameters",
-    "description": "Adjust your retirement planning parameters and see results update in real time."
-  },
-  "mobileMenu": {
-    "trigger": "Menu",
-    "title": "Menu",
-    "close": "Close menu",
-    "description": "Quick access to settings and actions",
-    "sections": {
-      "language": "Language",
-      "theme": "Theme",
-      "actions": "Actions"
-    },
-    "actions": {
-      "generateReport": "Generate Report",
-      "goToSetup": "Go to Setup"
     }
   },
   "parameterControls": {
@@ -1100,51 +1090,6 @@
       "ready": "Report downloaded"
     }
   },
-  "planHero": {
-    "title": "Plan health",
-    "score": {
-      "label": "Health score",
-      "strong": "Strong",
-      "moderate": "Moderate",
-      "needsAttention": "Needs attention"
-    },
-    "success": {
-      "label": "Success rate",
-      "detail": "{runs} simulation runs",
-      "caption": "Share of simulated futures in which your money lasts through the whole plan.",
-      "detailHistorical": "{runs} historical start years",
-      "captionLegacy": "Futures where the money lasts the whole plan AND leaves at least {amount} in today’s euros.",
-      "depletionDetail": "Money simply lasts in {rate} of futures",
-      "qualifierLegacy": "Incl. legacy goal {amount}",
-      "qualifierSurvival": "Money lasts on its own in {rate}",
-      "qualifierPlain": "Money lasts through age {age} — no legacy goal set"
-    },
-    "lasts": {
-      "label": "Assets last",
-      "toAge": "to age {age}",
-      "beyond": "beyond {age}",
-      "detailP10": "Worst case (P10): age {age}",
-      "detailNone": "P10 outcome stays funded past {age}",
-      "detailNoneRisk": "P10 outcome stays funded past {age} · {rate} of runs still deplete"
-    },
-    "withdrawal": {
-      "label": "First-year withdrawal",
-      "detail": "{need} needed from the portfolio"
-    },
-    "bridge": {
-      "label": "Pension bridge",
-      "value": "{years, plural, =0 {No gap} one {# year} other {# years}}",
-      "detail": "until statutory pension at {age}",
-      "detailEarly": "first pension at {age} · statutory reference age {legal}"
-    },
-    "notAvailable": "—",
-    "warnings": {
-      "highWithdrawal": "First-year withdrawal rate of {rate} is above the sustainable range (max. 6%).",
-      "medianDepletion": "In the median outcome your assets run out at age {age} — before your plan horizon.",
-      "bridgeGap": "The bridge-period need of {need} exceeds your median assets at retirement ({assets}).",
-      "inconsistentAges": "Check your age inputs — current, retirement and end age overlap."
-    }
-  },
   "planDashboard": {
     "notAvailable": "—",
     "cashflow": {
@@ -1291,13 +1236,6 @@
       "brush": "Age range shown, {startAge} to {endAge}. Drag the handles to zoom the chart into part of the timeline."
     },
     "descriptionHistorical": "Projected portfolio value from a historical backtest: one path per start year in the return series. The solid line is the median outcome; the shaded bands show where most of those histories land."
-  },
-  "shortfallChart": {
-    "title": "Risk of running out",
-    "subtitle": "Share of simulation runs whose assets are exhausted by each age",
-    "ariaLabel": "Chart showing the share of simulation runs with depleted assets by age",
-    "yAxisLabel": "runs depleted",
-    "ageLabel": "Age"
   },
   "spendingChart": {
     "title": "Spending Patterns During Retirement",
@@ -2307,9 +2245,9 @@
     }
   },
   "headerControls": {
-    "trigger": "Language and theme",
+    "trigger": "Language and appearance",
     "title": "Display settings",
-    "description": "Switch the interface language or pick a different visual theme.",
+    "description": "Switch the interface language or the appearance (light, dark or like your device).",
     "close": "Close",
     "account": "Account"
   },
@@ -2372,42 +2310,12 @@
     },
     "editAria": "Edit {field}",
     "jump": "Jump to {group}",
-    "goals": {
-      "title": "Legacy goal",
-      "description": "What this plan should still be worth at the end, in today's euros.",
-      "targetLabel": "Legacy target",
-      "targetHelp": "In today's purchasing power. 0 means the plan only has to last — nothing has to be left over.",
-      "disabled": "No legacy goal: a run succeeds as long as the money lasts.",
-      "funded": "Funded probability",
-      "fundedHint": "Never depletes and clears the target",
-      "survives": "Money simply lasts",
-      "survivesHint": "Ignoring the legacy goal",
-      "medianTerminal": "Median left at {age}",
-      "surplus": "{amount} above target",
-      "shortfall": "{amount} below target",
-      "onTarget": "Right on target",
-      "notAvailable": "—",
-      "fundedHintNoGoal": "No goal set — this is plain survival"
-    },
     "sections": {
       "navLabel": "Plan sections",
       "staleStats": "A value below is out of range — these figures still describe the last accepted entry.",
       "previous": "Back: {title}",
       "next": "Next: {title}"
     }
-  },
-  "quickAdjust": {
-    "title": "Quick what-if",
-    "description": "The four levers that move the outcome most. Every change lands in the working copy.",
-    "openEditor": "Edit full plan",
-    "expensesHint": "Scales the {count} lifetime expenses in this plan ({total}/mo) proportionally.",
-    "fields": {
-      "retirementAge": "Retirement age",
-      "annualSavings": "Annual savings",
-      "monthlyExpenses": "Monthly expenses",
-      "averageROI": "Expected return"
-    },
-    "expensesHintScheduled": "Scales the {count} lifetime expenses ({total}/mo) proportionally. The {scheduled} scheduled flows with an age window are not affected — edit those in the Plan tab."
   },
   "withdrawalPlanner": {
     "title": "Withdrawal planner",
@@ -2477,13 +2385,69 @@
       "runsNote": "Each strategy is run over the same {runs} market paths, so the differences are the rules and nothing else. Lifetime spending is the median path summed in today’s euros; the spread is P90 ÷ P10 at age {age}."
     }
   },
-  "welcome": {
-    "title": "New here?",
-    "dismiss": "Dismiss this hint",
-    "chips": {
-      "edit": "Edit your plan → Plan tab",
-      "whatIf": "Try what-ifs → the levers and Quick what-if above",
-      "compare": "Compare futures → Scenarios tab"
+  "cashflowSankey": {
+    "title": "Where the money comes from and where it goes",
+    "caption": "{period} · {unit}. Averages across all simulated paths — the same figures as the ledger below. They add up; they are not the median (P50).",
+    "periodAge": "Age {age}",
+    "periodSum": "Whole retirement, ages {from}–{to} (sum)",
+    "unitNominal": "nominal euros",
+    "unitReal": "today’s purchasing power",
+    "summary": "{period}: {sources} {count, plural, one {funds} other {fund}} {uses}.",
+    "summaryPeriodAge": "At age {age}",
+    "summaryPeriodSum": "Across retirement (ages {from}–{to})",
+    "summaryUnfunded": "{amount} of the budget stays unfunded.",
+    "summaryEmpty": "No money moves in this year.",
+    "share": "Share of all money in",
+    "amount": "Amount",
+    "unfundedPart": "Of which unfunded",
+    "showTable": "Show as table",
+    "hideTable": "Hide table",
+    "tableCaption": "Flows in the diagram · {period} · {unit}",
+    "from": "From",
+    "to": "To",
+    "wholeRetirement": "Whole retirement (sum)",
+    "moneyIn": "Money in",
+    "moneyOut": "Money out",
+    "nodes": {
+      "pension": "Pensions (gross)",
+      "otherIncome": "Other income (gross)",
+      "income": "Pensions and other income (gross)",
+      "oneOffIncome": "One-off income (gross)",
+      "savings": "Savings contribution",
+      "withdrawal": "Portfolio sale (gross)",
+      "shortfall": "Unfunded",
+      "available": "Available after tax",
+      "incomeTax": "Income tax",
+      "capitalGainsTax": "Capital gains tax",
+      "baselineSpending": "Regular spending",
+      "scheduledExpenses": "Scheduled expenses",
+      "spending": "Spending budget",
+      "reinvested": "Into the portfolio"
+    },
+    "phrases": {
+      "pension": "{amount} in pensions",
+      "otherIncome": "{amount} other income",
+      "income": "{amount} pensions and other income",
+      "oneOffIncome": "{amount} one-off income",
+      "savings": "{amount} savings",
+      "withdrawal": "{amount} from the portfolio",
+      "taxes": "{amount} taxes",
+      "baselineSpending": "{amount} regular spending",
+      "scheduledExpenses": "{amount} scheduled expenses",
+      "spending": "{amount} spending",
+      "reinvested": "{amount} paid into the portfolio"
+    },
+    "ledger": {
+      "pensionGross": "of which pensions",
+      "otherIncomeGross": "of which other income",
+      "oneOffIncomeGross": "of which one-off income",
+      "baselineSpending": "of which regular spending",
+      "scheduledExpenses": "of which scheduled expenses",
+      "edit": "edit in “{section}”",
+      "selectRow": "Show age {age} in the diagram",
+      "sumHeading": "Ages {from}–{to}, summed",
+      "rowHint": "Select a row to show that year in the diagram.",
+      "totalTaxSum": "Total taxes deducted across ages {from}–{to}: {amount}. These are already included in the calculation."
     }
   },
   "cashflowResults": {
@@ -2563,28 +2527,64 @@
       "overview": {
         "label": "Overview",
         "title": "Overview",
-        "description": "Goal completion, assets and key plan assumptions."
+        "description": "Goal completion, assets and key plan assumptions.",
+        "short": "Overview"
       },
       "plan": {
         "label": "My plan",
         "title": "My plan",
-        "description": "Edit personal details, income, spending and calculation assumptions."
+        "description": "Edit personal details, income, spending and calculation assumptions.",
+        "short": "My plan"
       },
       "cashflow": {
         "label": "Cash flows",
         "title": "Cash flows",
-        "description": "Income, taxes and spending by year."
+        "description": "Income, taxes and spending by year.",
+        "short": "Cash flow"
       },
       "scenarios": {
         "label": "Alternatives",
         "title": "Alternatives",
-        "description": "Calculate changes and compare saved plans."
+        "description": "Calculate changes and compare saved plans.",
+        "short": "Alternatives"
       }
     },
     "applyChanges": "Try a change in your current plan",
     "today": "Today",
     "firstPension": "First planned pension",
     "noPension": "None entered",
-    "horizon": "Planning horizon"
+    "horizon": "Planning horizon",
+    "whatIf": {
+      "draft": "Draft",
+      "draftAria": "Your working copy differs from the saved plan",
+      "note": "Changes here are drafts – they only apply to your plan once you save.",
+      "pending": "Save or discard them at the top of the page."
+    },
+    "compareEntry": {
+      "title": "Compare with another plan",
+      "detail": "{active} side by side with {other}",
+      "duplicateTitle": "Create a variant to compare",
+      "duplicateDetail": "Copies your current plan so you can test a change next to the original."
+    },
+    "discard": "Discard",
+    "discardedToast": "Discarded unsaved changes to “{name}”",
+    "calculateHint": "Results update automatically. Recalculate only if they are out of date.",
+    "status": {
+      "running": "Recalculating …",
+      "updated": "Updated",
+      "stale": "Out of date",
+      "empty": "No results yet"
+    },
+    "planMenu": {
+      "trigger": "Current plan: {name}",
+      "triggerDirty": "Current plan: {name}, unsaved changes",
+      "label": "Plans",
+      "heading": "Your plans",
+      "active": "Active",
+      "actions": "Plan actions",
+      "manage": "Manage plans …",
+      "createdToast": "Created “{name}”"
+    },
+    "unsavedShort": "Unsaved"
   }
 }

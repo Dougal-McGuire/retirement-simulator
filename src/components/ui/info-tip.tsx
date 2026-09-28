@@ -64,11 +64,9 @@ export function InfoTip({
           </TooltipTrigger>
           <TooltipContent
             side={side}
-            className="rounded-sm max-w-xs border-2 border-border bg-white px-3 py-2 text-ink shadow-sm"
+            className="rounded-sm max-w-xs border-2 border-border bg-card px-3 py-2 text-ink shadow-sm"
           >
-            <div className="text-xs font-medium normal-case leading-relaxed ">
-              {content}
-            </div>
+            <div className="text-xs font-medium normal-case leading-relaxed ">{content}</div>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

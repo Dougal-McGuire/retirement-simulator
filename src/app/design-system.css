@@ -60,12 +60,12 @@
   }
   .ds-btn--default {
     background: var(--action);
-    color: #fff;
+    color: var(--on-action);
     text-decoration: none;
   }
   .ds-btn--default:hover {
     background: var(--action-hover);
-    color: #fff;
+    color: var(--on-action);
   }
   .ds-btn--outline {
     background: var(--surface);
@@ -129,9 +129,9 @@
     background: var(--gray-50);
   }
   .ds-chip[aria-pressed='true'] {
-    border-color: var(--accent);
-    background: var(--accent);
-    color: #fff;
+    border-color: var(--action);
+    background: var(--action);
+    color: var(--on-action);
   }
   .ds-kbd {
     border: 1px solid var(--line-strong);

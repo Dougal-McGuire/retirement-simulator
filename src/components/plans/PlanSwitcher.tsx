@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
+import { PlanSwitchGuard } from '@/components/plans/PlanSwitchGuard'
 import { planDisplayName } from '@/lib/plans/planName'
 import { suggestDuplicateName } from '@/lib/stores/plans'
 import { toast, TOAST_DURATION } from '@/components/ui/toast'
@@ -89,7 +90,6 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
 
   const activeName = planDisplayName(activePlan, t)
   const atLimit = plans.length >= MAX_PLANS
-  const pendingPlan = pendingPlanId ? plans.find((plan) => plan.id === pendingPlanId) : undefined
   // Prefilled into the duplicate dialog, so the copy is named before it exists
   // rather than inheriting a "(copy)" that later shows up in a PDF.
   const duplicateSuggestion = suggestDuplicateName(
@@ -153,7 +153,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
     <div
       data-testid="plan-switcher"
       className={cn(
-        'rounded-sm theme-plan-switcher flex flex-col gap-4 border border-border bg-white p-4',
+        'rounded-sm theme-plan-switcher flex flex-col gap-4 border border-border bg-card p-4',
         className
       )}
     >
@@ -185,7 +185,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2">
         <Select value={activePlan.id} onValueChange={requestSwitch}>
           <SelectTrigger
             size="sm"
@@ -226,60 +226,53 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
           </SelectContent>
         </Select>
 
-        {/* Mobile has no room for the select and the actions on one line, so
-            the actions become a full-width four-up toolbar instead of a short
-            orphaned row of icons hanging under the left edge of the select. */}
-        {/* Naming rule for this toolbar: exactly *one* source per button.
-            `title` and `aria-label` carrying the same string made a screen
-            reader read the button as its own description — "New plan, New
-            plan". The labelled button drops `title`; the icon-only buttons keep
-            `title` (it is both the tooltip and the accessible name) and drop
-            `aria-label`. The plan-limit message is not a tooltip either: it is
-            already spelled out in the visible line below this row. */}
-        <div className="grid shrink-0 grid-cols-4 items-center gap-1.5 sm:flex">
+        {/* Every action carries a visible label: four bare icons (pencil,
+            copy, bin) made users guess, and a tooltip is invisible on touch.
+            Two-up on phones, one row under the select from `sm` up. The plan-limit message is
+            not a tooltip either: it is spelled out in the line below. */}
+        <div className="grid grid-cols-2 items-center gap-1.5 sm:flex sm:flex-wrap">
           <Button
             variant="outline"
             size="sm"
-            className="h-10 w-full px-0 sm:w-auto sm:px-3"
+            className="h-10 w-full px-3 sm:w-auto"
             disabled={atLimit}
             onClick={() => setNewOpen(true)}
             data-testid="plan-new"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
-            <span className="ml-1.5 hidden sm:inline">{t('actions.new')}</span>
-            <span className="sr-only sm:hidden">{t('actions.new')}</span>
+            <span className="ml-1.5">{t('actions.new')}</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="h-10 w-full px-0 sm:w-10"
-            title={t('actions.rename')}
+            className="h-10 w-full px-3 sm:w-auto"
             onClick={() => setRenameOpen(true)}
             data-testid="plan-rename"
           >
             <Pencil className="h-4 w-4" aria-hidden="true" />
+            <span className="ml-1.5">{t('actions.rename')}</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="h-10 w-full px-0 sm:w-10"
-            title={t('actions.duplicate')}
+            className="h-10 w-full px-3 sm:w-auto"
             disabled={atLimit}
             onClick={() => setDuplicateOpen(true)}
             data-testid="plan-duplicate"
           >
             <Copy className="h-4 w-4" aria-hidden="true" />
+            <span className="ml-1.5">{t('actions.duplicate')}</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="h-10 w-full px-0 text-danger sm:w-10"
-            title={t('actions.delete')}
+            className="h-10 w-full px-3 text-danger sm:w-auto"
             disabled={plans.length <= 1}
             onClick={() => setDeleteOpen(true)}
             data-testid="plan-delete"
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
+            <span className="ml-1.5">{t('actions.delete')}</span>
           </Button>
         </div>
       </div>
@@ -367,7 +360,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
       />
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="bg-white sm:max-w-[28rem]">
+        <DialogContent className="bg-card sm:max-w-[28rem]">
           <DialogHeader>
             <DialogTitle>{t('dialogs.delete.title')}</DialogTitle>
             <DialogDescription>
@@ -392,52 +385,11 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
 
       {/* Switching plans with unsaved work asks first — the working copy is the
           only place those edits exist. */}
-      <Dialog
-        open={pendingPlanId !== null}
-        onOpenChange={(open) => !open && setPendingPlanId(null)}
-      >
-        <DialogContent className="bg-white sm:max-w-[30rem]" data-testid="plan-switch-guard">
-          <DialogHeader>
-            <DialogTitle>{t('switchGuard.title', { name: activeName })}</DialogTitle>
-            <DialogDescription>
-              {t('switchGuard.description', {
-                name: activeName,
-                target: pendingPlan ? planDisplayName(pendingPlan, t) : '',
-              })}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="sm:flex-wrap">
-            <Button variant="outline" size="sm" onClick={() => setPendingPlanId(null)}>
-              {t('switchGuard.cancel')}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              data-testid="plan-switch-discard"
-              onClick={() => {
-                const target = pendingPlanId
-                setPendingPlanId(null)
-                if (target) setActivePlan(target)
-              }}
-            >
-              {t('switchGuard.discard')}
-            </Button>
-            <Button
-              size="sm"
-              data-testid="plan-switch-save"
-              onClick={() => {
-                const target = pendingPlanId
-                savePlanDraft()
-                toast.success(t('dirty.savedToast', { name: activeName }))
-                setPendingPlanId(null)
-                if (target) setActivePlan(target)
-              }}
-            >
-              {t('switchGuard.save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PlanSwitchGuard
+        pendingPlanId={pendingPlanId}
+        activeName={activeName}
+        onDone={() => setPendingPlanId(null)}
+      />
     </div>
   )
 }

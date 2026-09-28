@@ -253,7 +253,7 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
               left: 4,
               top: grid.topPct,
               transform: 'translateY(-110%)',
-              background: 'rgba(255,255,255,.78)',
+              background: 'color-mix(in srgb, var(--surface) 78%, transparent)',
               padding: '0 3px',
               borderRadius: 2,
             }}
@@ -271,7 +271,7 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
             alignItems: 'center',
             fontSize: 11,
             color: 'var(--text-label)',
-            background: 'rgba(255,255,255,.86)',
+            background: 'color-mix(in srgb, var(--surface) 86%, transparent)',
             padding: '2px 6px',
             borderRadius: 'var(--radius)',
           }}
@@ -314,7 +314,7 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
               bottom: 8,
               minWidth: 170,
               padding: '7px 9px',
-              background: 'rgba(255,255,255,.96)',
+              background: 'color-mix(in srgb, var(--surface) 96%, transparent)',
               border: '1px solid var(--line-strong)',
               borderRadius: 'var(--radius)',
               boxShadow: 'var(--shadow-sm)',

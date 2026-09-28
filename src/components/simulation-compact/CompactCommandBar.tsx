@@ -174,11 +174,11 @@ export function CompactCommandBar({
               width: 20,
               height: 20,
               borderRadius: 4,
-              background: 'var(--accent)',
+              background: 'var(--action)',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fff',
+              color: 'var(--on-action)',
               font: '600 10px var(--font-mono)',
               flex: 'none',
             }}
@@ -240,8 +240,8 @@ export function CompactCommandBar({
                     minHeight: 36,
                     padding: '0 12px',
                     whiteSpace: 'nowrap',
-                    background: selected ? 'var(--accent)' : 'var(--surface)',
-                    color: selected ? '#fff' : 'var(--text-label)',
+                    background: selected ? 'var(--action)' : 'var(--surface)',
+                    color: selected ? 'var(--on-action)' : 'var(--text-label)',
                   }}
                 >
                   {option.label}
@@ -281,9 +281,9 @@ export function CompactCommandBar({
             <span
               className="ds-kbd"
               style={{
-                background: 'rgba(255,255,255,.2)',
-                borderColor: 'rgba(255,255,255,.4)',
-                color: '#fff',
+                background: 'color-mix(in srgb, var(--on-action) 20%, transparent)',
+                borderColor: 'color-mix(in srgb, var(--on-action) 40%, transparent)',
+                color: 'var(--on-action)',
               }}
               aria-hidden="true"
             >

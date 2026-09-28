@@ -28,12 +28,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { OneTimeIncome } from '@/types'
-import { AppHeader } from '@/components/navigation/AppHeader'
-import { AuthMenu } from '@/components/auth/AuthMenu'
-import { HeaderControlsMenu } from '@/components/navigation/HeaderControlsMenu'
+import { WorkspaceAccountMenu, WorkspaceBrand } from '@/components/workspace/WorkspaceShell'
 import { InfoTip } from '@/components/ui/info-tip'
 import { cn } from '@/lib/utils'
 import { parseSetupProgressStep } from './setupProgress'
+import '../simulation/workspace.css'
+import './setup-shell.css'
 
 const STEP_KEYS = ['personal', 'assets', 'expenses', 'market'] as const
 
@@ -52,6 +52,7 @@ export default function SetupPage() {
   const tStatus = useTranslations('stepStatus')
   const tUi = useTranslations('ui')
   const tPlans = useTranslations('plans')
+  const tShell = useTranslations('setup.shell')
   const format = useFormatter()
 
   const params = useSimulationStore((state) => state.params)
@@ -214,7 +215,7 @@ export default function SetupPage() {
     setCurrentStep(stepIndex)
   }
 
-  const glassCardClass = 'rounded-sm border border-border bg-white shadow-sm'
+  const glassCardClass = 'rounded-sm border border-border bg-card shadow-sm'
 
   const clampIncomeAge = (value: number) => {
     const rounded = Math.round(value)
@@ -474,7 +475,7 @@ export default function SetupPage() {
               />
             </div>
 
-            <div className="rounded-sm space-y-4 border-2 border-border bg-white px-4 py-5 shadow-sm sm:px-5">
+            <div className="rounded-sm space-y-4 border-2 border-border bg-card px-4 py-5 shadow-sm sm:px-5">
               <div className="flex items-center gap-2">
                 <h5 className="text-[0.72rem] font-extrabold   text-ink">
                   {t('assets.oneTimeIncomes.title')}
@@ -619,7 +620,7 @@ export default function SetupPage() {
   const minutesLeft = Math.max(1, Math.ceil((steps.length - currentStep - 1) * 1.25))
 
   return (
-    <div className="app-page app-page-setup relative min-h-screen pb-16">
+    <div className="retirement-workspace workspace-setup">
       {/* Route-transition indicator: the dashboard route can take a moment to
           compile and render, and without this the wizard simply appears to
           have swallowed the click. */}
@@ -634,29 +635,93 @@ export default function SetupPage() {
           <span className="sr-only">{t('finish.opening')}</span>
         </div>
       )}
-      <AppHeader
-        eyebrow={
-          <>
-            <span className="text-muted-foreground">
-              {t('header.badges.guide')} · {t('header.badges.time')}
+
+      {/* Same shell as the workspace: brand and navigation on the left — here
+          the wizard's own steps — with the plan toolbar across the top. */}
+      <aside className="workspace-sidebar setup-sidebar" id="navigation">
+        <WorkspaceBrand />
+        {/* Single canonical progress statement for the whole page: the
+            step counter, the bar and the time estimate live here only. */}
+        <div className="setup-progress">
+          <div className="setup-progress-row">
+            <p className="setup-progress-step">{progressLabel}</p>
+            <p className="setup-progress-percent">
+              <span className="tabular-nums">{percentLabel}</span>
+              {progressPercent === 100 && (
+                <Check className="h-3.5 w-3.5 text-ok" aria-hidden="true" />
+              )}
+            </p>
+          </div>
+          <div
+            className="setup-progress-bar"
+            role="progressbar"
+            aria-label={`${progressLabel}, ${percentLabel}`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progressPercent}
+          >
+            <div style={{ width: `${progressPercent}%` }} />
+          </div>
+          <p className="setup-progress-time">
+            {t('progress.timeRemaining')}:{' '}
+            <span className="tabular-nums">
+              {t('progress.minutesRemaining', { minutes: minutesLeft })}
             </span>
-            {/* Which plan this session is editing — the wizard writes to a
-                working copy, never straight into the stored plan. The chip
-                turns yellow while that copy differs from the saved plan. */}
+            <InfoTip
+              content={t('progress.autosave')}
+              label={t('progress.autosave')}
+              iconClassName="h-3 w-3"
+            />
+          </p>
+        </div>
+
+        <ol aria-label={t('progress.stepsLabel')} className="setup-steps">
+          {steps.map((step, index) => {
+            const isCompleted = index < currentStep
+            const isActive = index === currentStep
+            const statusLabel = isCompleted
+              ? tStatus('completed')
+              : isActive
+                ? tStatus('current')
+                : tStatus('notStarted')
+
+            return (
+              <li key={step.id}>
+                <button
+                  type="button"
+                  onClick={() => handleStepClick(index)}
+                  aria-label={`${step.title} - ${statusLabel}`}
+                  aria-current={isActive ? 'step' : undefined}
+                  data-state={isActive ? 'active' : isCompleted ? 'done' : 'todo'}
+                >
+                  <span className="setup-step-marker" aria-hidden="true">
+                    {isCompleted ? <Check size={14} /> : index + 1}
+                  </span>
+                  <span className="setup-step-copy">
+                    <span>{step.title}</span>
+                    <small>{statusLabel}</small>
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ol>
+      </aside>
+
+      <div className="workspace-body">
+        <header className="workspace-toolbar setup-toolbar">
+          {/* Which plan this session is editing — the wizard writes to a
+              working copy, never straight into the stored plan. The chip is
+              marked while that copy differs from the saved plan. */}
+          <div className="workspace-plan-picker setup-plan">
+            <span className="workspace-plan-label">{tShell('planLabel')}</span>
             <span
               data-testid="wizard-plan-context"
               data-dirty={isDirty || undefined}
-              className={cn(
-                'rounded-sm inline-flex items-center gap-1.5 border-2 border-border px-2.5 py-1 normal-case  text-ink shadow-sm',
-                isDirty ? 'bg-amber' : 'bg-accent/10'
-              )}
+              className="setup-plan-chip"
             >
-              <span className="font-bold">{activePlanName}</span>
-              {isDirty && (
-                <span className="font-semibold text-ink/70">
-                  · {t('planContext.unsaved')}
-                </span>
-              )}
+              <strong>{activePlanName}</strong>
+              {isDirty && <em>{t('planContext.unsaved')}</em>}
               <InfoTip
                 content={t('planContext.hint')}
                 label={t('planContext.editing', { name: activePlanName })}
@@ -664,162 +729,37 @@ export default function SetupPage() {
                 iconClassName="h-3 w-3"
               />
             </span>
-          </>
-        }
-        title={t('header.title')}
-        subtitle={t('header.subtitle')}
-        actions={
-          <Button variant="secondary" size="sm" asChild>
-            <Link href="/simulation">{t('header.simulationLink')}</Link>
-          </Button>
-        }
-        mobileActions={
-          <>
-            <AuthMenu compact className="shrink-0" />
-            <Button variant="secondary" size="sm" asChild className="min-w-0 flex-1">
-              <Link href="/simulation">{t('header.simulationLink')}</Link>
-            </Button>
-            <HeaderControlsMenu />
-          </>
-        }
-      >
-        {/* Live preview of the plan being typed. The wizard suspends the
-            store's auto-run, so without this the first number a user ever
-            sees is on a different page. */}
-        <WizardLiveResult className="max-w-3xl" />
-      </AppHeader>
+          </div>
+          <div className="workspace-actions">
+            <Link href="/simulation" className="workspace-button" data-testid="setup-overview-link">
+              <ArrowLeft size={16} aria-hidden="true" />
+              {isFirstRun ? tShell('skipToOverview') : tShell('backToOverview')}
+            </Link>
+            <WorkspaceAccountMenu testId="setup-menu" />
+          </div>
+        </header>
 
-      <main
-        id="main-content"
-        className="theme-container relative z-10 mx-auto mt-2 max-w-[90rem] px-2 pb-16 sm:px-3 lg:px-4"
-      >
-        <div className="theme-page-grid theme-setup-grid grid grid-cols-1 gap-8 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
-          <aside
-            className={cn(
-              glassCardClass,
-              'theme-sidebar theme-stepper space-y-6 p-6 lg:sticky lg:top-6 lg:self-start'
-            )}
-          >
-            {/* Single canonical progress statement for the whole page: the
-                step counter, the bar and the time estimate live here only. */}
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <p className="text-[0.78rem] font-extrabold   text-ink">
-                  {progressLabel}
-                </p>
-                <p className="flex items-center gap-1.5 text-[0.68rem] font-semibold   text-muted-foreground">
-                  <span className="tabular-nums">{percentLabel}</span>
-                  {progressPercent === 100 && (
-                    <Check className="h-3.5 w-3.5 text-ok" aria-hidden="true" />
-                  )}
-                </p>
-              </div>
-              <div
-                className="rounded-sm theme-progress-bar relative h-3 w-full overflow-hidden border-2 border-border bg-white shadow-sm"
-                role="progressbar"
-                aria-label={`${progressLabel}, ${percentLabel}`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={progressPercent}
-              >
-                <div
-                  className="h-full bg-accent transition-all duration-300 ease-out"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[0.62rem] font-semibold   text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5">
-                  {t('progress.timeRemaining')}:{' '}
-                  <span className="tabular-nums text-ink">
-                    {t('progress.minutesRemaining', { minutes: minutesLeft })}
-                  </span>
-                  <InfoTip
-                    content={t('progress.autosave')}
-                    label={t('progress.autosave')}
-                    iconClassName="h-3 w-3"
-                  />
-                </span>
-              </div>
+        {/* `workspace-content` applies the workspace's type scale to the step
+            card, so fields read the same here as in the plan editor. */}
+        <main id="main-content" className="workspace-main workspace-content setup-main">
+          <div className="workspace-page-heading">
+            <div>
+              <p className="setup-eyebrow">
+                {t('header.badges.guide')} · {t('header.badges.time')}
+              </p>
+              <h1>{t('header.title')}</h1>
+              <p>{t('header.subtitle')}</p>
             </div>
+          </div>
 
-            <div className="hidden lg:block">
-              <ol
-                aria-label={t('progress.stepsLabel')}
-                className="theme-step-list m-0 list-none space-y-6 p-0"
-              >
-                {steps.map((step, index) => {
-                  const isCompleted = index < currentStep
-                  const isActive = index === currentStep
-                  const statusLabel = isCompleted
-                    ? tStatus('completed')
-                    : isActive
-                      ? tStatus('current')
-                      : tStatus('notStarted')
+          {/* Live preview of the plan being typed. The wizard suspends the
+              store's auto-run, so without this the first number a user ever
+              sees is on a different page. */}
+          <WizardLiveResult className="setup-live" />
 
-                  return (
-                    <li key={step.id} className="theme-step-item relative pl-12">
-                      {index < steps.length - 1 && (
-                        <span
-                          className={cn(
-                            'theme-step-connector absolute left-5 top-11 h-[calc(100%-2.75rem)] w-px bg-ink/20',
-                            isCompleted && 'bg-ink'
-                          )}
-                        />
-                      )}
-
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          'rounded-sm theme-step-button absolute left-0 top-0 flex h-10 w-10 items-center justify-center border border-border bg-white font-extrabold text-ink shadow-sm transition-colors',
-                          isCompleted && 'bg-secondary',
-                          isActive &&
-                            !isCompleted &&
-                            'bg-white ring-3 ring-accent ring-offset-2',
-                          !isCompleted && !isActive && 'bg-muted text-muted-foreground'
-                        )}
-                      >
-                        {isCompleted ? (
-                          <Check className="h-5 w-5 text-secondary-foreground" />
-                        ) : (
-                          <span className="text-sm">{index + 1}</span>
-                        )}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => handleStepClick(index)}
-                        aria-label={`${step.title} - ${statusLabel}`}
-                        aria-current={isActive ? 'step' : undefined}
-                        className="theme-step-copy group relative block w-full cursor-pointer text-left before:absolute before:-left-12 before:inset-y-0 before:right-0 before:content-['']"
-                      >
-                        <p
-                          className={cn(
-                            'text-[0.78rem] font-bold   transition-colors',
-                            isCompleted || isActive ? 'text-ink' : 'text-muted-foreground',
-                            'group-hover:text-accent'
-                          )}
-                        >
-                          {step.title}
-                        </p>
-                        <p
-                          className={cn(
-                            'mt-1 text-[0.6rem] font-semibold  ',
-                            isActive ? 'text-accent' : 'text-muted-foreground/70'
-                          )}
-                        >
-                          {statusLabel}
-                        </p>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ol>
-            </div>
-          </aside>
-
-          <section className="theme-content theme-setup-content space-y-5">
+          <section className="setup-content space-y-5">
             <Card className={cn(glassCardClass, 'theme-active-step-card')}>
-              <CardHeader className="border-b border-border bg-white">
+              <CardHeader className="border-b border-border bg-card">
                 <div className="flex items-center gap-2">
                   <CardTitle
                     ref={stepHeadingRef}
@@ -844,8 +784,12 @@ export default function SetupPage() {
             </Card>
 
             {/* Spacer so the fixed mobile action bar never covers the last
-                rows of the step card. Desktop keeps the bar in flow. */}
-            <div className="h-[5.5rem] sm:hidden" aria-hidden="true" />
+                rows of the step card (plus the home-indicator inset the bar
+                pads itself by). Desktop keeps the bar in flow. */}
+            <div
+              className="h-[calc(5.5rem+env(safe-area-inset-bottom,0px))] sm:hidden"
+              aria-hidden="true"
+            />
 
             <div className="theme-wizard-actions fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t border-border bg-background px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-3 shadow-[0_-4px_0_0_rgba(0,0,0,0.06)] sm:static sm:z-auto sm:mx-0 sm:flex-row sm:items-start sm:justify-between sm:border-t-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-0 sm:shadow-none">
               <div className="flex items-center gap-3 sm:contents">
@@ -888,8 +832,8 @@ export default function SetupPage() {
               )}
             </div>
           </section>
-        </div>
-      </main>
+        </main>
+      </div>
 
       {/* The wizard edits the same working copy as the dashboard, so finishing
           is an explicit decision: update the plan, branch off a new one, or
@@ -900,7 +844,7 @@ export default function SetupPage() {
         // feedback that the click was received.
         onOpenChange={(open) => !isNavigating && setSavePlanOpen(open)}
       >
-        <DialogContent className="bg-white sm:max-w-[32rem]" data-testid="wizard-finish-dialog">
+        <DialogContent className="bg-card sm:max-w-[32rem]" data-testid="wizard-finish-dialog">
           <DialogHeader>
             <DialogTitle>{isFirstRun ? t('finish.firstRunTitle') : t('finish.title')}</DialogTitle>
             <DialogDescription>
@@ -927,7 +871,7 @@ export default function SetupPage() {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') handleFirstRunFinish()
                 }}
-                className="rounded-sm mt-2 h-11 border-2 border-border bg-white px-3 py-2 text-[0.78rem] font-semibold"
+                className="rounded-sm mt-2 h-11 border-2 border-border bg-card px-3 py-2 text-[0.78rem] font-semibold"
               />
             </div>
           )}

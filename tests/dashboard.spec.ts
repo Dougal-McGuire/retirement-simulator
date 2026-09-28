@@ -162,12 +162,10 @@ test.describe('compact simulation dashboard', () => {
     await page.goto('/en/simulation')
     await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
 
-    // The meta line only gains a duration once a run has been timed.
+    // The header status says when results are current again.
     await page.getByTestId('run-button').click()
     await expect(page.getByTestId('run-button')).toBeEnabled({ timeout: 30000 })
-    await expect(
-      page.getByText('Results from your latest calculation', { exact: true })
-    ).toBeVisible()
+    await expect(page.getByTestId('run-status')).toHaveText('Updated')
   })
 })
 

@@ -9,7 +9,8 @@ const script = `(() => {
   }
 
   function runQaChecks() {
-    const locale = document.body.getAttribute('data-locale') || 'de'
+    const main = document.querySelector('main[data-locale]')
+    const locale = (main && main.getAttribute('data-locale')) || 'de'
     const errors = []
     const bodyText = document.body.textContent || ''
     if (locale === 'de' && /Page\s+\d+/i.test(bodyText)) {
@@ -154,10 +155,8 @@ const script = `(() => {
         document.addEventListener('DOMContentLoaded', () => resolve(undefined), { once: true })
       })
     }
-    const main = document.querySelector('main[data-locale]')
-    if (main && !document.body.getAttribute('data-locale')) {
-      document.body.setAttribute('data-locale', main.getAttribute('data-locale') || 'de')
-    }
+    // The locale is read from <main data-locale> directly: writing it onto
+    // <body> before React hydrates made the hydration pass mismatch.
     await waitForFonts()
     await populateTocPages()
     runQaChecks()

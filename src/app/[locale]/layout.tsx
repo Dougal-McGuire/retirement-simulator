@@ -7,6 +7,7 @@ import { ToastProvider } from '@/components/ui/toast'
 import { SkipLinks } from '@/components/navigation/SkipLinks'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import { isAuthConfigured } from '@/lib/auth/env'
+import { isCloudStoreConfigured } from '@/lib/server/planStore'
 import { isLocale, locales } from '@/i18n/config'
 
 interface LocaleLayoutProps {
@@ -35,7 +36,7 @@ export default async function LocaleLayout({
     <NextIntlClientProvider locale={locale} messages={messages}>
       {/* Resolved on the server: without OAuth credentials no SessionProvider
           is mounted and the auth UI renders a disabled state instead. */}
-      <AuthProvider enabled={isAuthConfigured()}>
+      <AuthProvider enabled={isAuthConfigured()} cloudSync={isCloudStoreConfigured()}>
         <SkipLinks />
         {children}
         <Analytics />

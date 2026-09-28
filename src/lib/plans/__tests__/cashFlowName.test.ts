@@ -1,5 +1,9 @@
 import { DEFAULT_PARAMS } from '@/types'
-import { cashFlowDisplayName, localizeCashFlowName } from '../cashFlowName'
+import {
+  cashFlowDisplayName,
+  DEFAULT_CASH_FLOW_NAME_KEYS,
+  localizeCashFlowName,
+} from '../cashFlowName'
 import { buildDemoPlanParams, DEMO_PLAN_NAME_KEY } from '../demoPlan'
 import { reconcileCashFlows, withCashFlowProjections } from '@/lib/simulation/cashFlows'
 
@@ -108,5 +112,20 @@ describe('buildDemoPlanParams', () => {
 
   it('is labelled as the example rather than as the user’s own plan', () => {
     expect(DEMO_PLAN_NAME_KEY).toBe('demo')
+  })
+})
+
+describe('allow-listed cash-flow name keys', () => {
+  it('has a UI translation for every key in both locales', () => {
+    const catalogs = {
+      en: require('@/i18n/messages/en.json'),
+      de: require('@/i18n/messages/de.json'),
+    }
+    for (const [locale, messages] of Object.entries(catalogs)) {
+      const defaults = messages.setup.cashFlows.defaults as Record<string, unknown>
+      for (const key of DEFAULT_CASH_FLOW_NAME_KEYS) {
+        expect([locale, key, typeof defaults[key]]).toEqual([locale, key, 'string'])
+      }
+    }
   })
 })
