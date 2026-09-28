@@ -94,3 +94,10 @@ test.describe('i18n routing', () => {
     await expect(progressbar).toHaveAttribute('aria-valuenow', '50')
   })
 })
+
+test('<html lang> follows the page locale', async ({ page }) => {
+  await page.goto('/de')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'de')
+  await page.goto('/en')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+})

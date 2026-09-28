@@ -4,6 +4,7 @@ import { styles, tokens } from '../styles'
 import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
 import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
+import { allPensionsSwitchedOff } from '@/lib/pdf-generator/pensionSwitch'
 
 interface RecommendationsProps {
   content: ReportContent
@@ -125,9 +126,13 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
     {
       when: isGerman ? 'Jährlich' : 'Annually',
       what: isGerman ? 'Annahmen nachziehen' : 'Refresh the assumptions',
-      detail: isGerman
-        ? `Rentenbescheid, Ausgabenliste (${fmtCurrency(finances.monthlyPension, locale)} monatliche Rente heute) und Planungshorizont bis ${person.horizonAge} überprüfen.`
-        : `Revisit the pension statement, the expense list (${fmtCurrency(finances.monthlyPension, locale)} monthly pension today) and the horizon at age ${person.horizonAge}.`,
+      detail: allPensionsSwitchedOff(expenses)
+        ? isGerman
+          ? `Rentenbescheid (die Rente ist im Plan derzeit ausgeschaltet), Ausgabenliste und Planungshorizont bis ${person.horizonAge} überprüfen.`
+          : `Revisit the pension statement (the pension is currently switched off in the plan), the expense list and the horizon at age ${person.horizonAge}.`
+        : isGerman
+          ? `Rentenbescheid, Ausgabenliste (${fmtCurrency(finances.monthlyPension, locale)} monatliche Rente heute) und Planungshorizont bis ${person.horizonAge} überprüfen.`
+          : `Revisit the pension statement, the expense list (${fmtCurrency(finances.monthlyPension, locale)} monthly pension today) and the horizon at age ${person.horizonAge}.`,
     },
   ]
 

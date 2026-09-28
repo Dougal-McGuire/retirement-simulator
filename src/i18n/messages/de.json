@@ -425,7 +425,7 @@
         "inflationLinked": "Wächst mit der Inflation",
         "inflationLinkedOn": "Der Betrag behält seine heutige Kaufkraft.",
         "inflationLinkedOff": "Fester Euro-Betrag — verliert mit der Zeit Kaufkraft. Das Zusatzwachstum unten verzinst ihn trotzdem nominal.",
-        "nominalTag": "fester €-Betrag",
+        "nominalTag": "fester €‑Betrag",
         "growthRate": "Zusätzliches Wachstum p. a. (%)",
         "growthRateHint": "Wirkt jedes Jahr unabhängig von der Inflationsanpassung: mit Anpassung zusätzlich zur Inflation, ohne Anpassung als nominale Steigerung (2.140 € → 2.161 € bei 1 %).",
         "taxablePortion": "Besteuerungsanteil (%)",
@@ -464,6 +464,7 @@
         "period": "Zeitraum",
         "amount": "Betrag",
         "actions": "Aktionen",
+        "switchedOff": "{count} ausgeschaltet",
         "groups": {
           "income": "Einnahmen · {count}",
           "expense": "Ausgaben · {count}"
@@ -475,6 +476,13 @@
         "cancel": "Abbrechen",
         "edit": "Bearbeiten",
         "remove": "Entfernen"
+      },
+      "switch": {
+        "label": "Berücksichtigen",
+        "aria": "„{name}“ in der Berechnung",
+        "off": "Aus",
+        "offHint": "Ausgeschaltet – bleibt im Plan, zählt aber in keiner Berechnung.",
+        "offTimeline": "{name} · ausgeschaltet"
       },
       "advanced": {
         "show": "Erweiterte Optionen",
@@ -492,7 +500,8 @@
         "income": "Laufende Einnahmen pro Jahr",
         "expense": "Laufende Ausgaben pro Jahr",
         "note": "Die Summen zeigen laufende Positionen zum vollen Satz; Einmalzahlungen und Zeitfenster stehen in der Zeitleiste oben.",
-        "pension": "Renteneinkommen pro Jahr (brutto)"
+        "pension": "Renteneinkommen pro Jahr (brutto)",
+        "switchedOff": "{count, plural, =1 {# Posten ausgeschaltet – in keiner Summe} other {# Posten ausgeschaltet – in keiner Summe}}"
       },
       "templates": {
         "label": "Vorlagen (zum Hinzufügen klicken)",
@@ -1927,6 +1936,18 @@
         "changes": "Was sich ändert",
         "noChanges": "Diese Stellschraube ändert keine Parameter.",
         "confirm": "Plan erstellen"
+      },
+      "saveDraft": {
+        "title": "Änderungen als neuen Plan speichern",
+        "description": "Deine ungespeicherten Änderungen werden ein eigener Plan. „{source}“ bleibt, wie er gespeichert ist, und bleibt aktiv.",
+        "changes": "Was sich gegenüber „{source}“ ändert",
+        "noChanges": "Keine Änderung, die sich hier zusammenfassen lässt.",
+        "label": "Name des neuen Plans",
+        "placeholder": "z. B. Ohne Erbschaft",
+        "confirm": "Plan erstellen",
+        "without": "Ohne {name}",
+        "with": "Mit {name}",
+        "failed": "Der Plan konnte nicht angelegt werden. Deine Änderungen sind noch da."
       }
     },
     "comparison": {
@@ -2030,13 +2051,19 @@
       "staleDirty": "Der aktive Plan hat ungespeicherte Änderungen — diese Zeile zeigt weiterhin den gespeicherten Plan.",
       "staleRanAt": "Berechnet {time}",
       "runsNoteEntry": "{name}: {runs} Läufe",
-      "runsNoteEntryHistorical": "{name}: {runs} historische Pfade"
+      "runsNoteEntryHistorical": "{name}: {runs} historische Pfade",
+      "flowSwitch": {
+        "on": "berücksichtigt",
+        "off": "ausgeschaltet",
+        "absent": "nicht im Plan"
+      }
     },
     "toasts": {
       "planCreatedFrom": "„{name}“ aus „{source}“ erstellt — im Planvergleich ausgewählt.",
       "switchToPlan": "Dorthin wechseln",
       "dismiss": "Schließen",
-      "compare": "Vergleichen"
+      "compare": "Vergleichen",
+      "draftSavedAsNew": "„{name}“ gespeichert. „{source}“ ist wieder auf dem gespeicherten Stand."
     },
     "dirty": {
       "badge": "Ungespeicherte Änderungen",
@@ -2107,7 +2134,8 @@
       "pensionGap": "Gesetzliche Rente beginnt mit {age}",
       "expenseCount": "{count, plural, =0 {Keine Einträge} =1 {# Eintrag} other {# Einträge}}",
       "pensions": "Renten mit {age}",
-      "pensionsHint": "{count, plural, =0 {keine Rente} =1 {# Rente} other {# Renten}} · brutto pro Monat"
+      "pensionsHint": "{count, plural, =0 {keine Rente} =1 {# Rente} other {# Renten}} · brutto pro Monat",
+      "switchedOff": "{count} ausgeschaltet"
     },
     "reset": {
       "trigger": "Auf Standard zurücksetzen",
@@ -2194,8 +2222,6 @@
     }
   },
   "cashflowSankey": {
-    "title": "Woher das Geld kommt – und wohin es fließt",
-    "caption": "{period} · {unit}. Durchschnitt aller simulierten Verläufe – dieselben Beträge wie in der Aufstellung unten. Sie lassen sich addieren; sie sind nicht der Median (P50).",
     "periodAge": "Alter {age}",
     "periodSum": "Ganzer Ruhestand, Alter {from}–{to} (Summe)",
     "unitNominal": "nominale Euro",
@@ -2208,11 +2234,6 @@
     "share": "Anteil an allen Zuflüssen",
     "amount": "Betrag",
     "unfundedPart": "Davon nicht gedeckt",
-    "showTable": "Als Tabelle zeigen",
-    "hideTable": "Tabelle ausblenden",
-    "tableCaption": "Geldströme im Diagramm · {period} · {unit}",
-    "from": "Von",
-    "to": "Nach",
     "wholeRetirement": "Ganzer Ruhestand (Summe)",
     "moneyIn": "Woher",
     "moneyOut": "Wohin",
@@ -2246,28 +2267,54 @@
       "reinvested": "{amount} Einzahlung ins Depot"
     },
     "ledger": {
-      "pensionGross": "davon Renten",
-      "otherIncomeGross": "davon weitere Einnahmen",
-      "oneOffIncomeGross": "davon einmalige Einnahmen",
-      "baselineSpending": "davon laufende Ausgaben",
-      "scheduledExpenses": "davon geplante Sonderausgaben",
       "edit": "in „{section}“ bearbeiten",
       "selectRow": "Alter {age} im Diagramm zeigen",
       "sumHeading": "Alter {from}–{to}, aufsummiert",
       "rowHint": "Wähle eine Zeile, um dieses Jahr im Diagramm zu sehen.",
       "totalTaxSum": "Über Alter {from}–{to} abgezogene Steuern insgesamt: {amount}. Sie sind bereits in der Berechnung berücksichtigt."
+    },
+    "diagramLabel": "Geldfluss-Diagramm. Pfeiltasten wechseln zwischen den Knoten; Enter klappt eine Kategorie in ihre Posten auf oder öffnet einen Posten im Plan.",
+    "expandAll": "Alle Posten",
+    "collapseAll": "Übersicht",
+    "more": "Weitere ({count})",
+    "unassigned": "Ohne Zuordnung",
+    "estimated": "anteilig",
+    "estimatedNote": "Anteilig: Deine Entnahmeregel passt das Budget als Ganzes an, nicht einzelne Posten.",
+    "taxEstimatedNote": "Steuer anteilig: Einnahmen mit unterschiedlicher Besteuerung werden gemeinsam versteuert.",
+    "categoryShare": "Anteil an „{category}“",
+    "period": "Zeitraum",
+    "creditedAt": "gutgeschrieben mit {age}",
+    "disabledFlows": "{count, plural, one {# Posten ausgeschaltet} other {# Posten ausgeschaltet}} – nicht berechnet",
+    "shareOf": "{share} von „{category}“",
+    "taxPart": "davon {amount} Steuer",
+    "taxPartEstimated": "davon {amount} Steuer (anteilig)",
+    "actions": {
+      "expand": "Posten zeigen",
+      "showAll": "alle Posten zeigen",
+      "edit": "im Plan bearbeiten",
+      "collapseGroup": "{name} – zuklappen"
+    },
+    "hints": {
+      "click": "Klicken",
+      "expand": "Klicken: einzelne Posten zeigen",
+      "showAll": "Klicken: alle Posten zeigen",
+      "editFlow": "Klicken: diesen Posten im Plan bearbeiten"
+    },
+    "table": {
+      "caption": "Aufstellung",
+      "item": "Posten",
+      "totalIn": "Zuflüsse gesamt",
+      "taxes": "Steuern",
+      "net": "Netto",
+      "netDetail": "{grossLabel} {gross} − Steuern {tax}"
     }
   },
   "cashflowResults": {
-    "title": "Wohin das Geld fließt",
     "age": "Alter",
     "nominal": "Jahresbeträge · nominale Euro",
     "real": "Jahresbeträge · heutige Kaufkraft",
     "method": "Durchschnitt der tatsächlichen Geldbewegungen über alle simulierten Verläufe. Diese Beträge lassen sich addieren; sie sind nicht der Median (P50) aus den Diagrammen. Durch Rundung können einzelne Euro abweichen.",
     "missing": "Bitte die Simulation neu berechnen, um die jährlichen Geldbewegungen zu sehen.",
-    "incomeTitle": "Einnahmen nach Steuern",
-    "withdrawalTitle": "Aus dem Depot",
-    "budgetTitle": "Ausgaben und Finanzierung",
     "incomeGross": "Renten und weitere Einnahmen brutto",
     "incomeTax": "Steuern auf Renten und Einnahmen",
     "incomeNet": "Einnahmen netto",
@@ -2346,7 +2393,8 @@
       "actions": "Planaktionen",
       "manage": "Pläne verwalten …",
       "createdToast": "„{name}“ erstellt",
-      "compare": "Pläne vergleichen"
+      "compare": "Pläne vergleichen",
+      "saveAsNew": "Änderungen als neuen Plan speichern …"
     },
     "unsavedShort": "Ungespeichert",
     "pageTitle": "{plan} – Ruhestandsplanung",
@@ -2383,7 +2431,8 @@
       "successShort": "Erfolg",
       "endAssets": "Vermögen am Ende · Median",
       "endAssetsShort": "Ende · Median",
-      "deltaAria": "Veränderung gegenüber dem gespeicherten Plan: {delta}"
+      "deltaAria": "Veränderung gegenüber dem gespeicherten Plan: {delta}",
+      "saveAsNew": "Als neuen Plan speichern …"
     },
     "verdict": {
       "lead": "der simulierten Verläufe finanzieren dein Budget und dein Vermögensziel bis Alter {end}."
@@ -2399,7 +2448,8 @@
     },
     "cards": {
       "person": {
-        "value": "Ruhestart mit {age}",
+        "label": "Geplanter Ruhestart",
+        "value": "Mit {age} Jahren",
         "detail": "Heute {current} · geplant bis {end}",
         "pension": "Gesetzliche Rente ab {age}"
       },
@@ -2409,10 +2459,15 @@
       "flows": {
         "value": "{amount} pro Monat",
         "counts": "{pensions, plural, =0 {keine Rente} one {# Rente} other {# Renten}} · {expenses} Ausgabenposten · {incomes} Einnahmen",
-        "pensions": "Renten mit {age}: {amount} brutto/Monat"
+        "pensions": "Renten mit {age}: {amount} brutto/Monat",
+        "statutoryOff": "Gesetzliche Rente ausgeschaltet",
+        "pensionsOff": "{count, plural, one {Rente ausgeschaltet} other {Alle # Renten ausgeschaltet}}",
+        "switchedOff": "{count} ausgeschaltet"
       },
       "market": {
-        "value": "{rate} Rendite",
+        "label": "Erwartete Rendite",
+        "labelHistorical": "Marktmodell",
+        "value": "{rate} pro Jahr",
         "valueHistorical": "Historische Renditen",
         "detail": "Inflation {inflation} · Schwankung ± {volatility}",
         "detailHistorical": "{from}–{to} · {count} Startjahre",
@@ -2452,7 +2507,23 @@
       "measuring": "Wird gemessen …",
       "waiting": "Wird neu gemessen, sobald deine Eingaben ruhen.",
       "leadsTo": "ergibt",
-      "saveAsPlan": "Als Plan speichern"
+      "saveAsPlan": "Als Plan speichern",
+      "pensionOff": "Gesetzliche Rente ausgeschaltet",
+      "worstDecileUnit": "schlechtestes Zehntel",
+      "flows": {
+        "title": "Unsichere Posten",
+        "description": "Einmalige, befristete und zusätzliche Posten. Schalte einen aus, um zu sehen, was dein Plan ohne ihn schafft.",
+        "without": "ohne: {delta}",
+        "with": "mit: {delta}",
+        "withoutAria": "Ohne „{name}“: {delta}, Erfolgsquote {value}",
+        "withoutAriaAssets": "Ohne „{name}“: Vermögen im schlechtesten Zehntel {delta}, ergibt {value}",
+        "withAria": "Mit „{name}“: {delta}, Erfolgsquote {value}",
+        "withAriaAssets": "Mit „{name}“: Vermögen im schlechtesten Zehntel {delta}, ergibt {value}",
+        "open": "„{name}“ in „Einnahmen & Ausgaben“ öffnen",
+        "empty": "Keine einmaligen oder befristeten Posten im Plan.",
+        "emptyAction": "Posten hinzufügen",
+        "more": "{count, plural, =1 {# weiterer Posten} other {# weitere Posten}} unter „Einnahmen & Ausgaben“"
+      }
     }
   }
 }

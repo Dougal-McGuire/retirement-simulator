@@ -6,6 +6,7 @@ import { RecommendationList } from '@/components/charts/RecommendationList'
 import { LazyMount } from '../LazyMount'
 import { LeverImpactList } from '../levers/LeverImpactList'
 import { QuickLevers } from '../levers/QuickLevers'
+import { UncertainFlowsList } from '../levers/UncertainFlowsList'
 import { WorkspaceSection } from './WorkspaceSection'
 import './levers.css'
 
@@ -29,7 +30,8 @@ function LeversSkeleton() {
 /**
  * Stellschrauben (`#levers`): the one place to try changes, in one order —
  * quick sliders, then what moves the needle (measured stress levers you can
- * apply or save as a plan), then recommendations.
+ * apply or save as a plan), then the uncertain items with their switches and
+ * measured impact, then recommendations.
  *
  * Everything here edits the working copy; saving and discarding happen only
  * in the result bar. The lever measurements are the only background runs on
@@ -49,6 +51,7 @@ export const LeversSection = memo(function LeversSection() {
         <div className="ws-levers">
           <QuickLevers onHoldChange={setHolding} />
           <LeverImpactList holding={holding} />
+          <UncertainFlowsList holding={holding} />
           <RecommendationList />
         </div>
       </LazyMount>

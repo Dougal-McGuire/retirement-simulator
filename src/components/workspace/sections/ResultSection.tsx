@@ -13,6 +13,7 @@ import { useDisplayReal } from '@/lib/stores/displayStore'
 import { useSetComparisonSelection } from '@/lib/stores/comparisonStore'
 import { suggestDuplicateName } from '@/lib/stores/plans'
 import { effectiveRunCount } from '@/lib/simulation/context'
+import { isCashFlowEnabled } from '@/lib/simulation/cashFlows'
 import {
   useActivePlanId,
   useDuplicatePlan,
@@ -168,7 +169,9 @@ const ResultBody = memo(function ResultBody({ results }: { results: SimulationRe
   const runs = format.number(context.effectiveRuns)
   const fanHeight = phone ? 260 : 330
   const fanTotal = fanHeight + (phone ? FAN_CHROME_PHONE : FAN_CHROME)
-  const hasPension = p.cashFlows.some((flow) => flow.kind === 'pension' && flow.amount > 0)
+  const hasPension = p.cashFlows.some(
+    (flow) => flow.kind === 'pension' && flow.amount > 0 && isCashFlowEnabled(flow)
+  )
 
   const stages: {
     key: 'today' | 'retirement' | 'pension' | 'horizon'
@@ -253,10 +256,7 @@ const ResultBody = memo(function ResultBody({ results }: { results: SimulationRe
       <section className="ws-chart-card" aria-labelledby="result-assets-title">
         <h3 id="result-assets-title">{t('assetTitle')}</h3>
         <p>{t('assetDescription')}</p>
-        <LazyMount
-          minHeight={fanTotal}
-          fallback={<FanSkeleton />}
-        >
+        <LazyMount minHeight={fanTotal} fallback={<FanSkeleton />}>
           <MemoFanChartCard results={results} displayReal={displayReal} height={fanHeight} />
         </LazyMount>
       </section>

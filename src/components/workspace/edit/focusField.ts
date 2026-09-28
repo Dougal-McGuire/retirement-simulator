@@ -6,10 +6,15 @@ function isFocusable(el: HTMLElement): boolean {
   return tabIndex !== null && Number(tabIndex) >= 0
 }
 
-/** The field's wrapper: the nearest ancestor that also holds its label. */
+/**
+ * The field's wrapper: the nearest ancestor that also holds its label, or one
+ * that declares itself the wrapper (`data-field-wrapper`, e.g. a list row
+ * whose controls are labelled by aria-label).
+ */
 function fieldWrapper(el: HTMLElement, body: HTMLElement): HTMLElement {
   let node: HTMLElement | null = el
   while (node && node !== body) {
+    if (node !== el && node.hasAttribute('data-field-wrapper')) return node
     if (node !== el && node.querySelector('label')) return node
     node = node.parentElement
   }

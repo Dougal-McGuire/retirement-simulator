@@ -159,6 +159,73 @@ test('navigation labels and result-bar controls fit at every width', async ({ pa
   }
 })
 
+test("a long plan name uses the bar's free room, never the KPIs' or the draft's", async ({
+  page,
+}) => {
+  const longName = 'S2 Kapitaloption 62 (Variante mit Erbschaft)'
+  await page.setViewportSize({ width: 1920, height: 1000 })
+  await gotoWorkspace(page, '/de/simulation')
+  await page.evaluate((name) => {
+    const key = 'retirement-simulator-store'
+    const parsed = JSON.parse(window.localStorage.getItem(key)!)
+    const plan = parsed.state.plans.find(
+      (entry: { id: string }) => entry.id === parsed.state.activePlanId
+    )
+    plan.name = name
+    delete plan.nameKey
+    window.localStorage.setItem(key, JSON.stringify(parsed))
+  }, longName)
+  await page.reload()
+  const bar = page.getByTestId('result-bar')
+  const trigger = page.getByTestId('plan-menu-trigger')
+  await expect(trigger).toContainText(longName)
+  const name = trigger.locator('.workspace-plan-trigger-name')
+
+  /** The visible clusters, left to right, never overlap; the bar never scrolls. */
+  async function expectClustersApart(width: number, state: string) {
+    const boxes = await bar.evaluate((element) =>
+      ['.ws-bar-kpis', '.ws-bar-draft', '.workspace-plan-trigger', '.ws-bar-menu']
+        .map((selector) => element.querySelector<HTMLElement>(selector))
+        .filter((node): node is HTMLElement => !!node && node.getBoundingClientRect().width > 0)
+        .map((node) => {
+          const box = node.getBoundingClientRect()
+          return { left: box.left, right: box.right }
+        })
+    )
+    for (let index = 1; index < boxes.length; index++) {
+      expect(
+        boxes[index].left,
+        `cluster ${index} clear of cluster ${index - 1} at ${width}px (${state})`
+      ).toBeGreaterThanOrEqual(boxes[index - 1].right)
+    }
+    const overflow = await bar.evaluate((element) => element.scrollWidth - element.clientWidth)
+    expect(overflow, `result bar fits at ${width}px (${state})`).toBeLessThanOrEqual(0)
+  }
+
+  // Clean: from 1280 up the whole name fits (it used to stop at 320px).
+  for (const width of [1024, 1280, 1366, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 1000 })
+    await expectClustersApart(width, 'clean')
+    if (width >= 1280) {
+      expect(await name.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+        false
+      )
+    }
+  }
+
+  // Dirty: the draft cluster takes its room from the name, never from the KPIs.
+  await page.setViewportSize({ width: 1366, height: 1000 })
+  await openSection(page, 'levers')
+  await page.locator('#levers').getByTestId('quick-levers').getByRole('slider').first().focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(bar).toHaveAttribute('data-dirty', 'true')
+  await scrollToTop(page)
+  for (const width of [1024, 1280, 1366, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 1000 })
+    await expectClustersApart(width, 'dirty')
+  }
+})
+
 test('levers explain drafts; the result bar marks and saves them', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 1000 })
   await gotoWorkspace(page, '/de/simulation')

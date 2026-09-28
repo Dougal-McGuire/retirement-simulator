@@ -1,8 +1,12 @@
 import type { SimulationParams } from '@/types'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import {
+  applyCashFlows,
   buildCashFlowSeries,
   cashFlowSignature,
+  enabledCashFlows,
+  isCashFlowEnabled,
+  withCashFlowEnabled,
   isLifetimeExpenseFlow,
   isOnceIncomeFlow,
   isPensionFlow,
@@ -38,6 +42,8 @@ export type AssumptionKind =
   | 'marketModel'
   | 'toggle'
   | 'householdType'
+  /** A flow's switch: values are `FlowSwitchState`s. */
+  | 'flowSwitch'
 
 export interface AssumptionRow {
   /** Translation key suffix under `plans.comparison.assumptions.rows`. */
@@ -98,11 +104,57 @@ function scheduledTotals(params: SimulationParams): { income: number; expense: n
   }
 }
 
-/** How many flows are scheduled rather than lifetime-recurring. */
+/** How many (switched-on) flows are scheduled rather than lifetime-recurring. */
 function countScheduledFlows(params: SimulationParams): number {
-  return (params.cashFlows ?? []).filter(
+  return enabledCashFlows(params.cashFlows).filter(
     (flow) => !isLifetimeExpenseFlow(flow) && !isOnceIncomeFlow(flow) && !isPensionFlow(flow)
   ).length
+}
+
+/** Where a flow stands in one compared plan. */
+export type FlowSwitchState = 'on' | 'off' | 'absent'
+
+export interface FlowSwitchRow {
+  /** The flow id the plans share (a duplicated plan keeps its flows' ids). */
+  id: string
+  /** Name and key from the first plan that has the flow, for display. */
+  name: string
+  nameKey?: string
+  /** One entry per compared plan, in the order the plans were passed in. */
+  values: FlowSwitchState[]
+}
+
+/**
+ * Flows that are switched off in at least one compared plan and switched on
+ * in another — "Erbschaft: berücksichtigt → ausgeschaltet". Matched by id,
+ * because a scenario is normally a copy of its plan with one switch flipped.
+ *
+ * Only a real on/off difference makes a row: a flow off in every plan that
+ * has it describes no difference, and a flow that exists in one plan only
+ * already moves the amount rows.
+ */
+export function buildFlowSwitchRows(paramsList: SimulationParams[]): FlowSwitchRow[] {
+  const rows: FlowSwitchRow[] = []
+  const seen = new Set<string>()
+  for (const params of paramsList) {
+    for (const flow of params.cashFlows ?? []) {
+      if (seen.has(flow.id)) continue
+      seen.add(flow.id)
+      const values = paramsList.map((other): FlowSwitchState => {
+        const match = (other.cashFlows ?? []).find((entry) => entry.id === flow.id)
+        if (!match) return 'absent'
+        return isCashFlowEnabled(match) ? 'on' : 'off'
+      })
+      if (!values.includes('on') || !values.includes('off')) continue
+      rows.push({
+        id: flow.id,
+        name: flow.name,
+        ...(flow.nameKey !== undefined ? { nameKey: flow.nameKey } : {}),
+        values,
+      })
+    }
+  }
+  return rows
 }
 
 interface RowSpec {
@@ -416,6 +468,11 @@ export interface AssumptionChange {
   kind: AssumptionKind
   from: number | string
   to: number | string
+  /**
+   * Set for a flow-switch change: the row is labelled with the flow's own
+   * name (localized by the UI through `nameKey`) instead of a row key.
+   */
+  flow?: { name: string; nameKey?: string }
 }
 
 /**
@@ -455,4 +512,43 @@ export function comparisonFingerprint(params: SimulationParams): string {
   const flows = cashFlowSignature(params.cashFlows ?? []).join(',')
 
   return `${rows.join(';')}#${expenses}#${incomes}#${flows}`
+}
+
+/**
+ * The switch flips between a saved plan and a changed copy of it, as changes
+ * ("Erbschaft: berücksichtigt → ausgeschaltet"), in the copy's list order.
+ */
+export function diffFlowSwitches(
+  base: SimulationParams,
+  next: SimulationParams
+): AssumptionChange[] {
+  return buildFlowSwitchRows([base, next])
+    .filter((row) => row.values[0] !== 'absent' && row.values[1] !== 'absent')
+    .map((row) => ({
+      key: `flow:${row.id}`,
+      kind: 'flowSwitch' as const,
+      from: row.values[0],
+      to: row.values[1],
+      flow: { name: row.name, ...(row.nameKey !== undefined ? { nameKey: row.nameKey } : {}) },
+    }))
+}
+
+/**
+ * `base` with every flow switched as in `next` — what is left to diff once the
+ * switches are named on their own, so a switched-off inheritance is not also
+ * reported as "Einmalzahlungen 100.000 € → 0 €".
+ */
+export function withSwitchesOf(base: SimulationParams, next: SimulationParams): SimulationParams {
+  const nextState = new Map(
+    (next.cashFlows ?? []).map((flow) => [flow.id, isCashFlowEnabled(flow)])
+  )
+  return applyCashFlows({
+    ...base,
+    cashFlows: (base.cashFlows ?? []).map((flow) => {
+      const enabled = nextState.get(flow.id)
+      return enabled === undefined || enabled === isCashFlowEnabled(flow)
+        ? flow
+        : withCashFlowEnabled(flow, enabled)
+    }),
+  })
 }

@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { useFormatter, useTranslations } from 'next-intl'
+import { Fragment, useMemo, useState } from 'react'
+import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { ArrowDownRight, ArrowUpRight, Edit2, Landmark, Plus, Trash2 } from 'lucide-react'
 import {
   type CashFlow,
@@ -29,11 +29,14 @@ import {
 } from '@/components/ui/select'
 import { toast, TOAST_DURATION } from '@/components/ui/toast'
 import { ActionToast } from '@/components/ui/action-toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useGroupedNumber } from './useGroupedNumber'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import {
   buildCashFlowSeries,
   currentBaseYear,
+  isCashFlowEnabled,
+  withCashFlowEnabled,
   yearForAge,
   type PensionContext,
 } from '@/lib/simulation/cashFlows'
@@ -175,6 +178,8 @@ export function CashFlowList({
 }: CashFlowListProps) {
   const t = useTranslations('setup.cashFlows')
   const format = useFormatter()
+  // The document is `lang="en"` for every locale; names hyphenate by their own.
+  const locale = useLocale()
   // One grouped-number field per form: the add form and an open edit row can
   // both be on screen, and a shared caret ref would fight over them.
   const amountField = useGroupedNumber(0)
@@ -244,11 +249,17 @@ export function CashFlowList({
   )
   const orderedFlows = useMemo(() => groupedFlows.flatMap((group) => group.flows), [groupedFlows])
 
+  // A switched-off flow stays in the list but in no total.
+  const switchedOffCount = useMemo(
+    () => safeFlows.filter((flow) => !isCashFlowEnabled(flow)).length,
+    [safeFlows]
+  )
   const totals = useMemo(() => {
     let income = 0
     let expense = 0
     let pension = 0
     for (const flow of safeFlows) {
+      if (!isCashFlowEnabled(flow)) continue
       const perYear =
         flow.frequency === 'monthly'
           ? flow.amount * 12
@@ -320,9 +331,22 @@ export function CashFlowList({
         : {}),
       ...(startDate !== undefined ? { startDate } : {}),
       ...(note !== '' ? { note } : {}),
+      // Editing a switched-off flow keeps it switched off.
+      ...(id && safeFlows.some((entry) => entry.id === id && !isCashFlowEnabled(entry))
+        ? { enabled: false }
+        : {}),
     }
 
     onChange(id ? safeFlows.map((entry) => (entry.id === id ? flow : entry)) : [...safeFlows, flow])
+  }
+
+  /** On/off is an ordinary edit: the draft changes, the result recomputes. */
+  const handleToggle = (id: string) => {
+    onChange(
+      safeFlows.map((entry) =>
+        entry.id === id ? withCashFlowEnabled(entry, !isCashFlowEnabled(entry)) : entry
+      )
+    )
   }
 
   const handleAdd = () => {
@@ -829,7 +853,7 @@ export function CashFlowList({
     // A query container: the list sits in a 288px phone sheet, a 400px docked
     // panel and the full-width setup wizard, so its layout follows its own
     // width rather than the viewport's.
-    <div className="@container space-y-4" data-testid="cashflow-list">
+    <div className="@container space-y-4" data-testid="cashflow-list" lang={locale}>
       {!compact && (
         <div className="flex items-center gap-2 text-xs font-semibold   text-muted-foreground">
           <span>{t('listTitle')}</span>
@@ -850,193 +874,338 @@ export function CashFlowList({
                 {currentAge} – {endAge}
               </span>
             </div>
-            <div className="space-y-1">
+            {/* One grid for all rows, so every bar starts at the same x: the
+                name column is as wide as the longest name, up to half the
+                strip. A longer name wraps onto a second line; only a third
+                is clipped (the full name is in its title). */}
+            <div
+              className="grid items-center gap-x-3 gap-y-1"
+              style={{ gridTemplateColumns: 'fit-content(min(50%, 18rem)) minmax(0, 1fr)' }}
+            >
               {orderedFlows.map((flow) => {
                 const geometry = barGeometry(flow)
+                const on = isCashFlowEnabled(flow)
                 return (
-                  <div key={flow.id} className="flex items-center gap-2">
-                    <span className="w-24 shrink-0 truncate text-xs font-bold   text-ink @lg:w-32">
+                  <Fragment key={flow.id}>
+                    <span
+                      className={cn(
+                        'line-clamp-2 min-w-0 text-xs font-medium leading-4 [overflow-wrap:break-word]',
+                        on ? 'text-ink' : 'text-muted-foreground'
+                      )}
+                      title={
+                        on
+                          ? displayName(flow)
+                          : t('switch.offTimeline', { name: displayName(flow) })
+                      }
+                      data-flow-name
+                    >
                       {displayName(flow)}
                     </span>
-                    <span className="rounded-sm relative h-3 flex-1 border-2 border-ink/20 bg-muted/40">
+                    <span className="rounded-sm relative h-3 border-2 border-ink/20 bg-muted/40">
+                      {/* Switched off: the same window, hatched grey — still
+                          planned, not counted. */}
                       <span
                         className={cn(
-                          'absolute inset-y-0 border-y-2 border-border',
-                          flow.kind === 'pension'
-                            ? 'bg-accent'
-                            : flow.kind === 'income'
-                              ? 'bg-ok'
-                              : 'bg-viz-orange',
+                          'absolute inset-y-0 border-y-2',
+                          on
+                            ? cn(
+                                'border-border',
+                                flow.kind === 'pension'
+                                  ? 'bg-accent'
+                                  : flow.kind === 'income'
+                                    ? 'bg-ok'
+                                    : 'bg-viz-orange'
+                              )
+                            : 'border-dashed border-ink/40 bg-muted',
                           flow.frequency === 'once' && 'border-x-2'
                         )}
-                        style={geometry}
-                        title={`${displayName(flow)} · ${windowLabel(flow)}`}
+                        style={
+                          on
+                            ? geometry
+                            : {
+                                ...geometry,
+                                backgroundImage:
+                                  'repeating-linear-gradient(135deg, rgb(var(--ink-rgb) / 0.35) 0 2px, transparent 2px 6px)',
+                              }
+                        }
+                        data-flow-off={on ? undefined : 'true'}
+                        title={`${on ? displayName(flow) : t('switch.offTimeline', { name: displayName(flow) })} · ${windowLabel(flow)}`}
                       />
                     </span>
-                  </div>
+                  </Fragment>
                 )
               })}
-            </div>
-            {/* Retirement marker, so a window reads against the plan's phases. */}
-            <div className="relative ml-[6.5rem] h-3 @lg:ml-[8.5rem]">
-              <span
-                className="absolute top-0 -translate-x-1/2 text-xs font-semibold   text-accent"
-                style={{
-                  left: `${((Math.min(endAge, Math.max(currentAge, retirementAge)) - currentAge) / horizon) * 100}%`,
-                }}
-              >
-                {t('timeline.retirement', { age: retirementAge })}
-              </span>
+              {/* Retirement marker, so a window reads against the plan's phases. */}
+              <span aria-hidden="true" />
+              <div className="relative h-4">
+                <span
+                  className="absolute top-0 -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-accent"
+                  style={{
+                    left: `${((Math.min(endAge, Math.max(currentAge, retirementAge)) - currentAge) / horizon) * 100}%`,
+                  }}
+                >
+                  {t('timeline.retirement', { age: retirementAge })}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Below 32rem the table keeps two columns: each row stacks name,
-              amount and period in the first cell, and the actions stay in
-              view instead of scrolling off the right edge. */}
+          {/* Compact rows below 36rem (the edit panel, phones): name and
+              signed amount on one line, period and details under it, the
+              note on one clipped line. From 36rem (the setup wizard) period
+              and amount get their own columns. The actions never scroll away. */}
           <div className="rounded-sm overflow-x-auto border border-border bg-card shadow-sm">
-            <table className="w-full min-w-[16rem]">
+            <table className="table-own-padding w-full">
               <thead className="border-b border-border bg-muted">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-bold   text-muted-foreground">
+                  {/* The switch column: its word lives in each switch's
+                      tooltip; the header only names it for screen readers. */}
+                  <th className="w-12 py-1.5 pl-2 pr-0 text-left text-xs font-semibold text-muted-foreground">
+                    <span className="sr-only">{t('switch.label')}</span>
+                  </th>
+                  <th className="px-3 py-1.5 text-left text-xs font-semibold text-muted-foreground">
                     {t('table.item')}
                   </th>
-                  <th className="hidden px-3 py-2 text-left text-xs font-bold   text-muted-foreground @lg:table-cell">
+                  <th className="hidden px-3 py-1.5 text-left text-xs font-semibold text-muted-foreground @xl:table-cell">
                     {t('table.period')}
                   </th>
-                  <th className="hidden px-3 py-2 text-right text-xs font-bold   text-muted-foreground @lg:table-cell">
+                  <th className="hidden px-3 py-1.5 text-right text-xs font-semibold text-muted-foreground @xl:table-cell">
                     {t('table.amount')}
                   </th>
-                  <th className="w-20 px-2 py-2 text-center text-xs font-bold   text-muted-foreground">
-                    {t('table.actions')}
+                  <th className="w-[4.75rem] whitespace-nowrap px-1 py-1.5 text-center text-xs font-semibold text-muted-foreground @max-[19rem]:w-10">
+                    {/* Too narrow for the word over stacked buttons: it stays
+                      for screen readers only. */}
+                    <span className="@max-[19rem]:sr-only">{t('table.actions')}</span>
                   </th>
                 </tr>
               </thead>
-              {groupedFlows.map((group) => (
-                <tbody key={group.key} className="divide-y divide-border border-t border-border">
-                  <tr className="bg-muted/40" data-testid={`cashflow-group-${group.key}`}>
-                    <td
-                      colSpan={4}
-                      className="px-3 py-1.5 text-xs font-semibold   text-muted-foreground"
-                    >
-                      {t(`table.groups.${group.key}`, { count: group.flows.length })}
-                    </td>
-                  </tr>
-                  {group.flows.map((flow) =>
-                    editingId === flow.id ? (
-                      <tr key={flow.id} className="bg-accent/5">
-                        <td colSpan={4} className="px-3 py-3">
-                          {renderDraftForm(editDraft, setEditDraft, editAmountField, flow.id)}
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr key={flow.id}>
-                        <td className="px-3 py-2.5 text-left">
-                          <span className="flex items-center gap-1.5 text-xs font-bold  ">
-                            {flow.kind === 'pension' ? (
-                              <Landmark
-                                className="h-3.5 w-3.5 shrink-0 text-accent"
-                                aria-label={t('kind.pension')}
-                              />
-                            ) : flow.kind === 'income' ? (
-                              <ArrowUpRight
-                                className="h-3.5 w-3.5 shrink-0 text-ok"
-                                aria-label={t('kind.income')}
-                              />
-                            ) : (
-                              <ArrowDownRight
-                                className="h-3.5 w-3.5 shrink-0 text-viz-orange"
-                                aria-label={t('kind.expense')}
-                              />
-                            )}
-                            <span className="min-w-0 [overflow-wrap:anywhere]">
-                              {displayName(flow)}
+              {groupedFlows.map((group) => {
+                const groupOff = group.flows.filter((flow) => !isCashFlowEnabled(flow)).length
+                return (
+                  <tbody key={group.key} className="divide-y divide-border border-t border-border">
+                    <tr className="bg-muted/40" data-testid={`cashflow-group-${group.key}`}>
+                      <td
+                        colSpan={5}
+                        className="px-3 py-1 text-xs font-semibold   text-muted-foreground"
+                      >
+                        {/* `w-0 min-w-full`: a full-width row must not hand its
+                          width to the columns it spans (it would widen the
+                          switch column at the name's expense). */}
+                        <span className="block w-0 min-w-full">
+                          {t(`table.groups.${group.key}`, { count: group.flows.length - groupOff })}
+                          {groupOff > 0 && ` · ${t('table.switchedOff', { count: groupOff })}`}
+                        </span>
+                      </td>
+                    </tr>
+                    {group.flows.map((flow) => {
+                      const on = isCashFlowEnabled(flow)
+                      return editingId === flow.id ? (
+                        <tr key={flow.id} className="bg-accent/5">
+                          <td colSpan={5} className="px-3 py-3">
+                            <div className="w-0 min-w-full">
+                              {renderDraftForm(editDraft, setEditDraft, editAmountField, flow.id)}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr
+                          key={flow.id}
+                          data-field-wrapper
+                          data-testid={`cashflow-row-${flow.id}`}
+                          data-enabled={on ? 'true' : 'false'}
+                          className={on ? undefined : 'bg-muted/30'}
+                        >
+                          <td className="w-px py-1.5 pl-2 pr-0 align-top @xl:align-middle">
+                            <Tooltip delayDuration={400}>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  id={`cashflow-switch-${flow.id}`}
+                                  aria-checked={on}
+                                  aria-label={t('switch.aria', { name: displayName(flow) })}
+                                  data-testid={`cashflow-switch-${flow.id}`}
+                                  onClick={() => handleToggle(flow.id)}
+                                  className="group rounded-sm inline-flex h-7 w-10 items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+                                >
+                                  <span
+                                    aria-hidden="true"
+                                    className={cn(
+                                      'relative h-[18px] w-8 rounded-full border transition-colors motion-reduce:transition-none',
+                                      on ? 'border-action bg-action' : 'border-ink/50 bg-muted'
+                                    )}
+                                  >
+                                    <span
+                                      className={cn(
+                                        'absolute left-[2px] top-[2px] h-3 w-3 rounded-full transition-transform motion-reduce:transition-none',
+                                        on ? 'translate-x-[14px] bg-action-foreground' : 'bg-ink/60'
+                                      )}
+                                    />
+                                  </span>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="top"
+                                className="rounded-sm border border-border bg-card px-2 py-1 text-xs font-medium text-ink shadow-sm"
+                              >
+                                {on ? t('switch.label') : t('switch.offHint')}
+                              </TooltipContent>
+                            </Tooltip>
+                          </td>
+                          {/* The name cell takes whatever the switch and the actions
+                            leave: its text wraps between words (hyphenated where the
+                            browser can), and only a single word wider than the whole
+                            cell breaks inside — so the table never outgrows its frame
+                            and the actions column stays in view down to 320px. */}
+                          <td className="py-2 pl-2 pr-1 text-left align-top hyphens-auto [overflow-wrap:anywhere] @xl:px-3 @xl:align-middle">
+                            {/* Name and amount share a line while both fit at full
+                              length; otherwise the amount drops under the name
+                              (right-aligned) rather than squeezing it. */}
+                            <span
+                              className={cn(
+                                'flex flex-wrap items-start gap-x-1.5 text-xs font-semibold leading-[1.125rem] @md:text-[13px]',
+                                !on && 'text-muted-foreground'
+                              )}
+                            >
+                              {/* Icon and name stay together; the pair shrinks as one. */}
+                              <span className="flex min-w-0 flex-[1_1_auto] items-start gap-x-1.5">
+                                {flow.kind === 'pension' ? (
+                                  <Landmark
+                                    className={cn(
+                                      'mt-0.5 h-3.5 w-3.5 shrink-0',
+                                      on ? 'text-accent' : 'opacity-50'
+                                    )}
+                                    aria-label={t('kind.pension')}
+                                  />
+                                ) : flow.kind === 'income' ? (
+                                  <ArrowUpRight
+                                    className={cn(
+                                      'mt-0.5 h-3.5 w-3.5 shrink-0',
+                                      on ? 'text-ok' : 'opacity-50'
+                                    )}
+                                    aria-label={t('kind.income')}
+                                  />
+                                ) : (
+                                  <ArrowDownRight
+                                    className={cn(
+                                      'mt-0.5 h-3.5 w-3.5 shrink-0',
+                                      on ? 'text-viz-orange' : 'opacity-50'
+                                    )}
+                                    aria-label={t('kind.expense')}
+                                  />
+                                )}
+                                <span className="min-w-0" data-testid={`cashflow-name-${flow.id}`}>
+                                  {displayName(flow)}
+                                  {!on && (
+                                    <span
+                                      className="rounded-sm ml-1.5 inline-block border border-border bg-card px-1 align-[1px] text-[11px] font-semibold leading-4 text-muted-foreground"
+                                      data-testid={`cashflow-off-${flow.id}`}
+                                    >
+                                      {t('switch.off')}
+                                    </span>
+                                  )}
+                                </span>
+                              </span>
+                              <span
+                                className={cn(
+                                  'ml-auto shrink-0 whitespace-nowrap pl-1 tabular-nums @xl:hidden',
+                                  !on
+                                    ? 'text-muted-foreground'
+                                    : flow.kind === 'expense'
+                                      ? 'text-ink'
+                                      : 'text-ok'
+                                )}
+                              >
+                                {signedAmount(flow)}
+                              </span>
                             </span>
-                          </span>
-                          {/* Narrow containers fold the amount and period columns into the row. */}
-                          <span
+                            <span className="mt-0.5 block pl-5 text-xs text-muted-foreground">
+                              {/* Narrow containers fold the period column into this line. */}
+                              <span className="@xl:hidden">{windowLabel(flow)} · </span>
+                              {frequencyLabel(flow.frequency)}
+                              {flow.inflationLinked === false ? ` · ${t('fields.nominalTag')}` : ''}
+                              {flow.growthRate
+                                ? ` · ${format.number(flow.growthRate, { style: 'percent', maximumFractionDigits: 1 })}`
+                                : ''}
+                              {(() => {
+                                const summary = taxByFlow.get(flow.id)
+                                return summary && flow.kind === 'income'
+                                  ? ` · ${t('fields.taxTag', {
+                                      tax: formatCurrency(Math.round(summary.tax)),
+                                      net: formatCurrency(Math.round(summary.net)),
+                                    })}`
+                                  : ''
+                              })()}
+                            </span>
+                            {/* One line; the whole note is its title and in the edit form.
+                              `w-0 min-w-full`: the clipped line must not widen the column. */}
+                            {flow.note && (
+                              <span
+                                className="mt-0.5 block w-0 min-w-full truncate pl-5 text-xs text-muted-foreground"
+                                title={flow.note}
+                                data-testid={`cashflow-note-${flow.id}`}
+                              >
+                                {flow.note}
+                              </span>
+                            )}
+                          </td>
+                          <td className="hidden px-3 py-2 text-left text-xs text-muted-foreground @xl:table-cell">
+                            {windowLabel(flow)}
+                          </td>
+                          <td
                             className={cn(
-                              'mt-0.5 block text-xs font-bold tabular-nums @lg:hidden',
-                              flow.kind === 'expense' ? 'text-ink' : 'text-ok'
+                              'hidden whitespace-nowrap px-3 py-2 text-right align-middle text-[13px] font-semibold tabular-nums @xl:table-cell',
+                              !on
+                                ? 'text-muted-foreground'
+                                : flow.kind === 'expense'
+                                  ? 'text-ink'
+                                  : 'text-ok'
                             )}
                           >
                             {signedAmount(flow)}
-                          </span>
-                          <span className="mt-0.5 block text-xs font-semibold   text-muted-foreground">
-                            <span className="@lg:hidden">{windowLabel(flow)} · </span>
-                            {frequencyLabel(flow.frequency)}
-                            {flow.inflationLinked === false ? ` · ${t('fields.nominalTag')}` : ''}
-                            {flow.growthRate
-                              ? ` · ${format.number(flow.growthRate, { style: 'percent', maximumFractionDigits: 1 })}`
-                              : ''}
-                            {(() => {
-                              const summary = taxByFlow.get(flow.id)
-                              return summary && flow.kind === 'income'
-                                ? ` · ${t('fields.taxTag', {
-                                    tax: formatCurrency(Math.round(summary.tax)),
-                                    net: formatCurrency(Math.round(summary.net)),
-                                  })}`
-                                : ''
-                            })()}
-                          </span>
-                          {flow.note && (
-                            <span
-                              className="mt-0.5 block text-xs font-medium normal-case  text-muted-foreground"
-                              data-testid={`cashflow-note-${flow.id}`}
-                            >
-                              {flow.note}
-                            </span>
-                          )}
-                        </td>
-                        <td className="hidden px-3 py-2.5 text-left text-xs font-semibold   text-muted-foreground @lg:table-cell">
-                          {windowLabel(flow)}
-                        </td>
-                        <td
-                          className={cn(
-                            'hidden px-3 py-2.5 text-right text-xs font-bold tabular-nums @lg:table-cell',
-                            flow.kind === 'expense' ? 'text-ink' : 'text-ok'
-                          )}
-                        >
-                          {signedAmount(flow)}
-                        </td>
-                        <td className="w-20 px-2 py-2.5 text-center align-top @lg:align-middle">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-ink hover:bg-action hover:text-action-foreground"
-                              aria-label={`${t('actions.edit')}: ${displayName(flow)}`}
-                              onClick={() => {
-                                setEditDraft(
-                                  draftFromFlow(
-                                    flow,
-                                    editAmountField.format,
-                                    displayName(flow),
-                                    legalRetirementAge
+                          </td>
+                          <td className="w-px whitespace-nowrap px-1 py-1 text-center align-top @xl:align-middle">
+                            {/* Below 19rem (a 320px phone's panel) edit and delete
+                              stack, so the name keeps room for a whole word. */}
+                            <div className="flex items-center justify-center gap-0.5 @max-[19rem]:flex-col">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-ink hover:bg-action hover:text-action-foreground"
+                                aria-label={`${t('actions.edit')}: ${displayName(flow)}`}
+                                onClick={() => {
+                                  setEditDraft(
+                                    draftFromFlow(
+                                      flow,
+                                      editAmountField.format,
+                                      displayName(flow),
+                                      legalRetirementAge
+                                    )
                                   )
-                                )
-                                setEditingId(flow.id)
-                              }}
-                            >
-                              <Edit2 className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-ink hover:bg-danger hover:text-on-hue"
-                              aria-label={`${t('actions.remove')}: ${displayName(flow)}`}
-                              onClick={() => handleRemove(flow.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  )}
-                </tbody>
-              ))}
+                                  setEditingId(flow.id)
+                                }}
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-ink hover:bg-danger hover:text-on-hue"
+                                aria-label={`${t('actions.remove')}: ${displayName(flow)}`}
+                                onClick={() => handleRemove(flow.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                )
+              })}
             </table>
           </div>
         </>
@@ -1110,6 +1279,14 @@ export function CashFlowList({
               <dd className="tabular-nums text-ink">−{formatCurrency(totals.expense)}</dd>
             </div>
           </dl>
+        )}
+        {switchedOffCount > 0 && (
+          <p
+            className="mt-1.5 text-xs font-semibold text-muted-foreground"
+            data-testid="cashflow-switched-off-summary"
+          >
+            {t('summary.switchedOff', { count: switchedOffCount })}
+          </p>
         )}
       </div>
     </div>

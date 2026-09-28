@@ -1,0 +1,387 @@
+/* ---- Geldfluss: the Sankey's drill-down and the one table under it -----
+
+   ws-page.css keeps the section frame (control row, the Sankey surface, the
+   notes and disclosures). This file holds what the drill-down added: the
+   focusable SVG nodes and captions, the phone rows that open into items, the
+   switched-off line, and the "Aufstellung" table. */
+
+.ws-sankey-frame {
+  position: relative;
+  width: 100%;
+  margin-top: var(--ui-space-4);
+}
+.ws-sankey-svg {
+  display: block;
+  overflow: visible;
+}
+
+/* ---- SVG nodes: one tab stop, arrows between them ------------------- */
+
+.ws-sankey-svg :is(.ws-sankey-node, .ws-sankey-caption) {
+  outline: none;
+}
+.ws-sankey-svg .ws-sankey-node:not([data-action='none']),
+.ws-sankey-svg .ws-sankey-caption {
+  cursor: pointer;
+}
+.ws-sankey-hit {
+  fill: transparent;
+  stroke: none;
+  transition: fill var(--motion-fast) var(--motion-ease);
+}
+.ws-sankey-svg .ws-sankey-node:not([data-action='none']):hover .ws-sankey-hit,
+.ws-sankey-svg .ws-sankey-caption:hover .ws-sankey-hit {
+  fill: color-mix(in srgb, var(--ui-accent) 7%, transparent);
+}
+.ws-sankey-svg :is(.ws-sankey-node, .ws-sankey-caption):focus-visible .ws-sankey-hit {
+  stroke: var(--ui-accent);
+  stroke-width: 2px;
+}
+.ws-sankey-caption:hover text {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ws-sankey-glyph {
+  font-weight: 700;
+}
+
+/* ---- Control row: "Alle Posten" at the right end ------------------- */
+
+.ws-cashflow-expand-all {
+  margin-left: auto;
+}
+
+/* ---- Switched-off flows: one quiet line under the drawing --------- */
+
+.ws-sankey-disabled {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: var(--ui-space-3) 0 0;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.ws-sankey-disabled svg {
+  flex: none;
+}
+.ws-sankey-disabled a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 3px;
+}
+.ws-sankey-disabled a:hover {
+  color: var(--ui-accent);
+  text-decoration-color: currentColor;
+}
+
+/* ---- Phones: the stacked rows open into items ---------------------- */
+
+.ws-stacked-list {
+  margin: var(--ui-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ws-stacked-list > li + li {
+  border-top: 1px solid var(--ui-border);
+}
+.ws-stacked-group > .ws-stacked-list {
+  margin: 0;
+  border-top: 1px solid var(--ui-border);
+}
+.ws-stacked-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ui-space-2);
+  width: 100%;
+  padding: 6px 0;
+  font-size: var(--ui-font-body);
+  line-height: 1.4;
+}
+.ws-stacked-item .ws-stacked-line {
+  padding-left: 22px;
+  font-size: 13px;
+}
+.ws-stacked-button {
+  min-height: 40px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-stacked-item .ws-stacked-button {
+  font-size: 13px;
+}
+.ws-stacked-button:hover {
+  color: var(--ui-accent);
+}
+.ws-stacked-caption {
+  font-weight: 600;
+}
+.ws-stacked-chevron {
+  flex: none;
+  align-self: center;
+  color: var(--ui-muted);
+}
+.ws-stacked-row[data-active] {
+  background: var(--ui-tint-accent);
+}
+
+/* ---- "Aufstellung": the diagram as a table ------------------------- */
+
+.ws-flowtable-wrap {
+  margin-top: var(--ui-space-6);
+  overflow-x: auto;
+}
+.ws-cashflow .ws-flowtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ui-font-body);
+}
+.ws-cashflow .ws-flowtable caption {
+  margin-bottom: var(--ui-space-2);
+  text-align: left;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+.ws-cashflow .ws-flowtable :is(th, td) {
+  padding: 5px 0 5px var(--ui-space-4);
+  vertical-align: baseline;
+  border: 0;
+}
+.ws-cashflow .ws-flowtable thead th {
+  padding-top: 0;
+  font-size: var(--ui-font-small);
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: right;
+  color: var(--ui-muted);
+  vertical-align: bottom;
+  border-bottom: 1px solid var(--ui-border);
+}
+.ws-cashflow .ws-flowtable thead th:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+.ws-cashflow .ws-flowtable thead th:last-child {
+  width: 6.5rem;
+}
+.ws-cashflow .ws-flowtable tbody th {
+  padding-left: 0;
+  text-align: left;
+  font-weight: 400;
+  color: var(--ui-text);
+}
+.ws-cashflow .ws-flowtable td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ws-cashflow .ws-flowtable td:last-child {
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.ws-flowtable tbody tr {
+  border-top: 1px solid var(--ui-border);
+}
+.ws-flowtable tbody tr.ws-flowtable-head {
+  border-top: 0;
+}
+.ws-cashflow .ws-flowtable .ws-flowtable-head th {
+  padding-top: var(--ui-space-3);
+  padding-bottom: 2px;
+  font-size: var(--ui-font-small);
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+.ws-flowtable tbody tr[data-kind='item'] {
+  border-top-color: color-mix(in srgb, var(--ui-border) 55%, transparent);
+}
+.ws-cashflow .ws-flowtable tr[data-kind='item'] :is(th, td) {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.ws-cashflow .ws-flowtable tr[data-kind='item'] th {
+  padding-left: 22px;
+}
+.ws-cashflow .ws-flowtable tr[data-kind='item'] td:not(:last-child) {
+  font-size: 13px;
+}
+.ws-cashflow
+  .ws-flowtable
+  tr:is([data-kind='total'], [data-emphasis])
+  :is(th, td:not(:last-child)) {
+  font-weight: 600;
+}
+.ws-cashflow .ws-flowtable tr[data-kind='net'] th {
+  color: var(--ui-text);
+}
+.ws-flowtable tbody tr[data-active] {
+  background: var(--ui-tint-accent);
+}
+.ws-flowtable-name,
+.ws-flowtable-plain {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+/* Leaf categories line up with the openable ones (chevron + gap). */
+.ws-flowtable-plain {
+  gap: 8px;
+  padding-left: 20px;
+}
+.ws-flowtable-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-flowtable-toggle:hover {
+  color: var(--ui-accent);
+}
+.ws-flowtable-chevron {
+  flex: none;
+  color: var(--ui-muted);
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+.ws-flowtable-toggle[aria-expanded='true'] .ws-flowtable-chevron {
+  transform: rotate(90deg);
+}
+.ws-flowtable-count {
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--ui-muted);
+  background: var(--ui-subtle);
+  border-radius: var(--ui-radius);
+}
+.ws-flowtable-pencil {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--ui-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+}
+.ws-flowtable-pencil:hover {
+  color: var(--ui-accent);
+  background: var(--ui-subtle);
+}
+.ws-flowtable-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.ws-flowtable-link {
+  display: inline;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-flowtable-link svg {
+  display: inline;
+  margin-left: 6px;
+  vertical-align: -1px;
+  opacity: 0.5;
+}
+.ws-flowtable-link:hover {
+  color: var(--ui-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ws-flowtable-link:hover svg {
+  opacity: 1;
+}
+.ws-flowtable-meta {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--ui-font-small);
+  line-height: 1.4;
+  color: var(--ui-muted);
+}
+/* Wide enough: a balance line's "gross − tax" sits beside its label. */
+@container (min-width: 640px) {
+  .ws-flowtable tr[data-kind='net'] .ws-flowtable-meta {
+    display: inline;
+    margin: 0 0 0 var(--ui-space-3);
+  }
+}
+/* The share, repeated under the amount; only shown where its column folds. */
+.ws-flowtable-share-inline {
+  display: none;
+}
+/* Phones: two columns. The share folds under the amount, item rows indent
+   less, and a long name wraps (hyphenated where the browser can) instead of
+   pushing the amounts out of the frame — the table never scrolls sideways. */
+@container (max-width: 479px) {
+  .ws-cashflow .ws-flowtable thead th:nth-child(3),
+  .ws-cashflow .ws-flowtable tbody td:nth-child(3) {
+    display: none;
+  }
+  .ws-flowtable-share-inline {
+    display: block;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.3;
+    color: var(--ui-muted);
+  }
+  /* Names wrap between words first (the edit pencil may drop under a long
+     category name); breaking inside a word is only the last resort for a
+     single word wider than the whole column. */
+  .ws-cashflow .ws-flowtable tbody th {
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+  .ws-flowtable-name {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .ws-flowtable-pencil {
+    width: 24px;
+    height: 24px;
+  }
+  .ws-cashflow .ws-flowtable td {
+    padding-left: var(--ui-space-2);
+  }
+  .ws-cashflow .ws-flowtable tr[data-kind='item'] th {
+    padding-left: 12px;
+  }
+}
+.ws-flowtable-swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.ws-flowtable-item > .ws-flowtable-swatch {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-flowtable-chevron,
+  .ws-sankey-hit {
+    transition: none;
+  }
+}

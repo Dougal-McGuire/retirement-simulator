@@ -54,6 +54,9 @@ const CashFlowSchema = z.object({
   taxablePortion: z.number().min(0).max(1).optional(),
   taxTreatment: z.enum(['none', 'ordinary', 'oneFifth']).optional(),
   pensionTaxMode: z.enum(['share', 'statutory', 'versorgungsbezuege']).optional(),
+  // Without it Zod would strip the switch and a switched-off flow would be
+  // counted in the report.
+  enabled: z.boolean().optional(),
 })
 
 const OneTimeIncomeSchema = z.object({

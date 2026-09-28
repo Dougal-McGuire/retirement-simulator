@@ -1,10 +1,6 @@
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
-import {
-  fmtCurrency,
-  fmtNumber,
-  fmtPercent,
-  fmtRatioPercent,
-} from '@/lib/pdf-generator/formatters'
+import { allPensionsSwitchedOff } from '@/lib/pdf-generator/pensionSwitch'
+import { fmtCurrency, fmtNumber, fmtPercent, fmtRatioPercent } from '@/lib/pdf-generator/formatters'
 
 export type FindingTone = 'positive' | 'neutral' | 'risk'
 
@@ -130,8 +126,17 @@ export function deriveKeyFindings(content: ReportContent): KeyFinding[] {
     })
   }
 
-  // 4 — How much of the budget the pension actually covers.
-  if (annualSpend > 0) {
+  // 4 — How much of the budget the pension actually covers. A pension kept in
+  // the plan but switched off covers nothing, and is not described as paying.
+  if (annualSpend > 0 && allPensionsSwitchedOff(expenses)) {
+    findings.push({
+      id: 'pensionCoverage',
+      tone: 'neutral',
+      text: isGerman
+        ? `Keine Rente berücksichtigt (im Plan ausgeschaltet): das Jahresbudget von ${money(annualSpend)} kommt vollständig als Entnahme aus dem Depot.`
+        : `No pension included (switched off in the plan): the full ${money(annualSpend)} annual budget is withdrawn from the portfolio.`,
+    })
+  } else if (annualSpend > 0) {
     const coverage = Math.min(1, pensionAnnual / annualSpend)
     const residual = Math.max(0, annualSpend - pensionAnnual)
     findings.push({

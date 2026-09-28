@@ -31,9 +31,10 @@ const ICONS: Record<WorkspaceSectionId, typeof ChartNoAxesCombined> = {
 }
 
 /**
- * The one section index. CSS decides how it presents: a left rail (≥1024), a
- * sticky chip row under the result bar (761–1023) or a fixed bottom bar
- * (≤760). Plain links — Tab moves between them; a click scrolls the section
+ * The one section index. CSS decides how it presents: a left rail (≥1024;
+ * icons with tooltips while a docked panel is open below 1800px), a sticky
+ * chip row under the result bar (761–1023) or a fixed bottom bar (≤760).
+ * Plain links — Tab moves between them; a click scrolls the section
  * under the sticky chrome and focuses its heading, while middle-click and
  * "open in new tab" still follow the `href`. In compare mode every item means
  * "leave the comparison and go there".
@@ -121,6 +122,11 @@ export function SectionIndex() {
                 <span className="ws-index-label">{t(`sections.${id}.title`)}</span>
                 <span className="ws-index-short" aria-hidden="true">
                   {t(`sections.${id}.short`)}
+                </span>
+                {/* The compact rail's hover/focus tooltip; the label above
+                    stays the accessible name. */}
+                <span className="ws-index-tip" aria-hidden="true">
+                  {t(`sections.${id}.title`)}
                 </span>
               </a>
             </li>

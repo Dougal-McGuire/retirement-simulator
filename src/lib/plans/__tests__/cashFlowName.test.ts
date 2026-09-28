@@ -2,10 +2,12 @@ import { DEFAULT_PARAMS } from '@/types'
 import {
   cashFlowDisplayName,
   DEFAULT_CASH_FLOW_NAME_KEYS,
+  legacySeededExpenseNameKey,
   localizeCashFlowName,
 } from '../cashFlowName'
 import { buildDemoPlanParams, DEMO_PLAN_NAME_KEY } from '../demoPlan'
 import { reconcileCashFlows, withCashFlowProjections } from '@/lib/simulation/cashFlows'
+import { normalizePersistedParams } from '@/lib/stores/normalizeParams'
 
 const upper = (key: string) => key.toUpperCase()
 
@@ -66,6 +68,68 @@ describe('nameKey round trips', () => {
     expect(food.name).toBe('Wocheneinkauf')
     expect(food.nameKey).toBeUndefined()
     expect(cashFlowDisplayName(food, upper)).toBe('Wocheneinkauf')
+  })
+})
+
+describe('expenses seeded before keys existed', () => {
+  // How such a plan sits in storage: flows and their projection, both keyless.
+  const stripKeys = <T extends { nameKey?: string }>(entries: readonly T[]) =>
+    entries.map(({ nameKey: _dropped, ...rest }) => rest)
+  const keyless = () => {
+    const projected = withCashFlowProjections({ ...DEFAULT_PARAMS })
+    return {
+      ...projected,
+      cashFlows: stripKeys(projected.cashFlows),
+      customExpenses: stripKeys(projected.customExpenses),
+    }
+  }
+
+  it('recognises every seeded English name, ignoring case', () => {
+    expect(legacySeededExpenseNameKey('Health Insurance')).toBe('health')
+    expect(legacySeededExpenseNameKey(' home repairs ')).toBe('repairs')
+    expect(legacySeededExpenseNameKey('Car Maintenance')).toBe('carMaintenance')
+    expect(legacySeededExpenseNameKey('Wocheneinkauf')).toBeUndefined()
+    expect(legacySeededExpenseNameKey('toString')).toBeUndefined()
+  })
+
+  it('get their key back, so a German plan shows German names', () => {
+    const params = normalizePersistedParams(keyless())
+    const expenses = params.cashFlows.filter((flow) => flow.kind === 'expense')
+    expect(expenses).toHaveLength(8)
+    expenses.forEach((flow) => expect(flow.nameKey).toBeDefined())
+    const food = params.cashFlows.find((flow) => flow.id === 'food')!
+    expect(localizeCashFlowName(food, 'de-DE')).toBe('Lebensmittel')
+    expect(params.customExpenses.find((e) => e.id === 'health')?.nameKey).toBe('health')
+  })
+
+  it('leave renamed flows and non-expenses alone', () => {
+    const stored = keyless()
+    const params = normalizePersistedParams({
+      ...stored,
+      cashFlows: [
+        ...stored.cashFlows.map((flow) =>
+          flow.id === 'food' ? { ...flow, name: 'Wocheneinkauf' } : flow
+        ),
+        { id: 'gift', kind: 'income', name: 'Groceries', amount: 100, frequency: 'once' },
+      ],
+      customExpenses: stored.customExpenses.map((expense) =>
+        expense.id === 'food' ? { ...expense, name: 'Wocheneinkauf' } : expense
+      ),
+    })
+    expect(params.cashFlows.find((flow) => flow.id === 'food')?.nameKey).toBeUndefined()
+    expect(params.cashFlows.find((flow) => flow.id === 'gift')?.nameKey).toBeUndefined()
+  })
+
+  it('come out of the pre-v3 migration with keys', () => {
+    const params = normalizePersistedParams({
+      monthlyExpenses: { health: 400, food: 900 },
+      annualExpenses: { repairs: 3000 },
+    })
+    const keys = params.cashFlows
+      .filter((flow) => flow.kind === 'expense')
+      .map((flow) => flow.nameKey)
+      .sort()
+    expect(keys).toEqual(['food', 'health', 'repairs'])
   })
 })
 

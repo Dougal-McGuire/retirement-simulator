@@ -363,6 +363,18 @@
   text-align: right;
   color: var(--ui-text);
 }
+/* "schlechtestes Zehntel" beside a worst-decile euro figure; where the row
+   is tight it wraps under the figure as a whole (the figure itself never
+   breaks: its space before "€" is non-breaking). */
+.ws-levers-effect-result:has(.ws-levers-effect-unit) {
+  white-space: normal;
+}
+.ws-levers-effect-unit {
+  font-size: var(--ui-font-small);
+  font-weight: 400;
+  white-space: nowrap;
+  color: var(--ui-muted);
+}
 .ws-levers-effect-skeleton {
   width: 132px;
   height: 22px;
@@ -444,6 +456,82 @@
   color: var(--ui-muted);
 }
 
+/* ---- Unsichere Posten: switch · name and terms · measured effect ------ */
+
+.ws-levers-flows .ws-levers-flow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--ui-space-3);
+  row-gap: var(--ui-space-1);
+  padding: var(--ui-space-3) var(--ui-space-6) var(--ui-space-3) var(--ui-space-4);
+}
+.ws-levers-flows .ws-levers-flow-effect {
+  grid-column: 3;
+  transition: opacity var(--ws-motion-base) var(--ws-motion-ease);
+}
+/* Re-measuring after a change: the old figures stay, dimmed. */
+.ws-levers-flows[data-stale] .ws-levers-flow-effect {
+  opacity: 0.55;
+}
+.ws-levers-flow-switch {
+  min-height: 40px;
+  padding: 0 var(--ui-space-1);
+}
+.ws-levers-flow-text {
+  min-width: 0;
+}
+.ws-levers-flow-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--ui-space-2);
+  margin: 0;
+}
+/* The name opens its row in the flow list: a quiet, underlined link. */
+.ws-levers-flow-open {
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  color: var(--ui-text);
+  text-decoration: underline;
+  text-decoration-color: var(--ui-border);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-levers-flow-open:hover {
+  color: var(--ui-accent);
+  text-decoration-color: currentColor;
+}
+.ws-levers-flow-open:focus-visible,
+.ws-levers-flow-switch:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.ws-levers-flow-detail {
+  margin: 2px 0 0;
+  font-size: var(--ui-font-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-muted);
+}
+/* Switched off: the row reads as set aside — muted name and an "Aus" tag. */
+.ws-levers-flow[data-enabled='false'] .ws-levers-flow-open {
+  color: var(--ui-muted);
+}
+.ws-levers-flow-off {
+  padding: 0 6px;
+  font-size: var(--ui-font-small);
+  font-weight: 600;
+  line-height: 18px;
+  color: var(--ui-muted);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+
 /* ---- Narrow containers ---------------------------------------------- */
 
 /* One slider column below 640px of card (spec §5.5). */
@@ -501,6 +589,11 @@
     grid-column: 1;
     justify-content: flex-start;
   }
+  /* A worst-decile figure and its unit drop under the delta if need be. */
+  .ws-levers-effect {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
   /* "Übernehmen" and "Als Plan speichern" share one line down to 320px. */
   .ws-levers-actions .ws-levers-button {
     padding-inline: var(--ui-space-3);
@@ -516,7 +609,26 @@
   }
 }
 
+/* Uncertain items: the effect moves under the name. */
+@container (max-width: 559px) {
+  .ws-levers-flows .ws-levers-flow {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding-right: var(--ui-space-4);
+  }
+  .ws-levers-flows .ws-levers-flow-effect {
+    grid-column: 2;
+    flex-wrap: wrap;
+    row-gap: 2px;
+    justify-content: flex-start;
+  }
+  .ws-levers-flows .ws-levers-effect-result {
+    min-width: 0;
+    text-align: left;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .ws-levers-flows .ws-levers-flow-effect,
   .ws-levers-impact,
   .ws-levers-disclosure svg,
   .ws-levers-slider-thumb {

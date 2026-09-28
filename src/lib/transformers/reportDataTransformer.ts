@@ -1,7 +1,11 @@
 import type { SimulationParams, SimulationResults } from '@/types'
-import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
+import {
+  enabledCashFlows,
+  isCashFlowEnabled,
+  isLifetimeExpenseFlow,
+  pensionMonthlyAtAge,
+} from '@/lib/simulation/cashFlows'
 import type { ReportData } from '@/lib/pdf-generator/schema/reportData'
-import { isLifetimeExpenseFlow } from '@/lib/simulation/cashFlows'
 import { buildSimulationContext } from '@/lib/simulation/context'
 import { computeBridgeAnalysis } from '@/lib/insights/bridge'
 import { computePlanHealthScore } from '@/lib/insights/planHealth'
@@ -130,7 +134,8 @@ export function transformToReportData(
       })),
       // Only the flows `custom` above cannot represent, so the report never
       // counts the same euro twice: windows, one-off payments and income.
-      cashFlows: (params.cashFlows ?? [])
+      // A switched-off flow is in no figure of the report.
+      cashFlows: enabledCashFlows(params.cashFlows)
         .filter((flow) => !isLifetimeExpenseFlow(flow))
         .map((flow) => ({
           id: flow.id,
@@ -146,6 +151,18 @@ export function transformToReportData(
           ...(flow.taxablePortion !== undefined ? { taxablePortion: flow.taxablePortion } : {}),
           ...(flow.taxTreatment !== undefined ? { taxTreatment: flow.taxTreatment } : {}),
           ...(flow.pensionTaxMode !== undefined ? { pensionTaxMode: flow.pensionTaxMode } : {}),
+        })),
+      // Kept in the plan but out of the calculation; the report names them
+      // once so a reader knows what the figures leave out.
+      switchedOffFlows: (params.cashFlows ?? [])
+        .filter((flow) => !isCashFlowEnabled(flow))
+        .map((flow) => ({
+          id: flow.id,
+          kind: flow.kind,
+          name: flow.name,
+          ...(flow.nameKey !== undefined ? { nameKey: flow.nameKey } : {}),
+          amount: flow.amount,
+          frequency: flow.frequency,
         })),
     },
     assumptions: {

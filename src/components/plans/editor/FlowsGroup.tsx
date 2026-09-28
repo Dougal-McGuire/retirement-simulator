@@ -4,7 +4,12 @@ import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { CashFlowList } from '@/components/forms/fields/CashFlowList'
 import { buildCashFlowTemplates } from '@/components/forms/fields/cashFlowTemplates'
-import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
+import type { CashFlow } from '@/types'
+import {
+  hasLifetimeExpenseShape,
+  isCashFlowEnabled,
+  pensionMonthlyAtAge,
+} from '@/lib/simulation/cashFlows'
 import { calculateCombinedExpenses, taxContext } from '@/lib/simulation/engine'
 import { useSimulationParams, useUpdateParams } from '@/lib/stores/simulationStore'
 import { PanelGroupBody, useEditorFormat } from './shared'
@@ -20,7 +25,20 @@ export function FlowsGroup() {
   const expenses = params.customExpenses ?? []
   const combined = useMemo(() => calculateCombinedExpenses(expenses), [expenses])
   const cashFlows = params.cashFlows ?? []
-  const pensionFlowCount = cashFlows.filter((flow) => flow.kind === 'pension').length
+  // Every figure counts switched-on flows only; what is switched off is named
+  // next to the figure it would otherwise be part of.
+  const pensionFlowCount = cashFlows.filter(
+    (flow) => flow.kind === 'pension' && isCashFlowEnabled(flow)
+  ).length
+  const offCount = (matches: (flow: CashFlow) => boolean) =>
+    cashFlows.filter((flow) => !isCashFlowEnabled(flow) && matches(flow)).length
+  const withOff = (hint: string, count: number) =>
+    count > 0 ? `${hint} · ${t('summary.switchedOff', { count })}` : hint
+  const monthlyOff = offCount(
+    (flow) => hasLifetimeExpenseShape(flow) && flow.frequency === 'monthly'
+  )
+  const annualOff = offCount((flow) => hasLifetimeExpenseShape(flow) && flow.frequency === 'annual')
+  const pensionsOff = offCount((flow) => flow.kind === 'pension')
   // Every pension paying out at the statutory age, gross.
   const pensionGrossMonthly = pensionMonthlyAtAge(
     cashFlows,
@@ -46,21 +64,27 @@ export function FlowsGroup() {
         {
           label: t('summary.monthlyTotal'),
           value: formatCurrency(combined.totalMonthly),
-          hint: t('summary.expenseCount', {
-            count: expenses.filter((entry) => entry.interval === 'monthly').length,
-          }),
+          hint: withOff(
+            t('summary.expenseCount', {
+              count: expenses.filter((entry) => entry.interval === 'monthly').length,
+            }),
+            monthlyOff
+          ),
         },
         {
           label: t('summary.annualExtras'),
           value: formatCurrency(combined.totalAnnual),
-          hint: t('summary.expenseCount', {
-            count: expenses.filter((entry) => entry.interval === 'annual').length,
-          }),
+          hint: withOff(
+            t('summary.expenseCount', {
+              count: expenses.filter((entry) => entry.interval === 'annual').length,
+            }),
+            annualOff
+          ),
         },
         {
           label: t('summary.pensions', { age: params.legalRetirementAge }),
           value: formatCurrency(pensionGrossMonthly),
-          hint: t('summary.pensionsHint', { count: pensionFlowCount }),
+          hint: withOff(t('summary.pensionsHint', { count: pensionFlowCount }), pensionsOff),
         },
       ]}
     >

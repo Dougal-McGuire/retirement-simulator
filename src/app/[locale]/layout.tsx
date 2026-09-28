@@ -5,6 +5,7 @@ import { getMessages, setRequestLocale } from 'next-intl/server'
 import { Analytics } from '@vercel/analytics/next'
 import { ToastProvider } from '@/components/ui/toast'
 import { SkipLinks } from '@/components/navigation/SkipLinks'
+import { HtmlLang } from '@/components/navigation/HtmlLang'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import { isAuthConfigured } from '@/lib/auth/env'
 import { isCloudStoreConfigured } from '@/lib/server/planStore'
@@ -34,6 +35,7 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
+      <HtmlLang locale={locale} />
       {/* Resolved on the server: without OAuth credentials no SessionProvider
           is mounted and the auth UI renders a disabled state instead. */}
       <AuthProvider enabled={isAuthConfigured()} cloudSync={isCloudStoreConfigured()}>

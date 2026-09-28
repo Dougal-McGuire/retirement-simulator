@@ -1,10 +1,10 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
-import { Check, CircleAlert, LoaderCircle, RotateCw, Save, Undo2 } from 'lucide-react'
-import type { Plan } from '@/types'
+import { Check, CircleAlert, CopyPlus, LoaderCircle, RotateCw, Save, Undo2 } from 'lucide-react'
+import { MAX_PLANS, type Plan } from '@/types'
 import {
   useActivePlan,
   useActivePlanId,
@@ -32,6 +32,13 @@ import { useWorkspace } from './WorkspaceProvider'
 
 const PlanManagerDialog = dynamic(
   () => import('./PlanManagerDialog').then((module) => module.PlanManagerDialog),
+  { ssr: false }
+)
+const SaveDraftAsPlanDialog = dynamic(
+  () =>
+    import('@/components/plans/SaveDraftAsPlanDialog').then(
+      (module) => module.SaveDraftAsPlanDialog
+    ),
   { ssr: false }
 )
 
@@ -196,9 +203,12 @@ const BarRun = memo(function BarRun({
 const BarDraft = memo(function BarDraft({
   dirty,
   activeName,
+  onSaveAsNew,
 }: {
   dirty: boolean
   activeName: string
+  /** "Als neuen Plan speichern …": receives the button for focus return. */
+  onSaveAsNew: (trigger: HTMLButtonElement | null) => void
 }) {
   const t = useTranslations('workspace')
   const tp = useTranslations('plans')
@@ -207,6 +217,12 @@ const BarDraft = memo(function BarDraft({
   const save = useSavePlanDraft()
   const revert = useRevertPlanDraft()
   const updateParams = useUpdateParams()
+  // At the plan limit there is no room for a variant: the button stays in its
+  // place (so the bar does not jump) but says why it does nothing, like the
+  // plan menu's item.
+  const atPlanLimit = useSimulationStore((state) => state.plans.length >= MAX_PLANS)
+  const limitHint = tp('switcher.limit', { max: MAX_PLANS })
+  const limitHintId = useId()
 
   // ---- Discard with undo (moved verbatim from WorkspaceHeader) ------------
 
@@ -284,6 +300,30 @@ const BarDraft = memo(function BarDraft({
           >
             <Save size={16} aria-hidden="true" />
             {tc('saveButton')}
+          </button>
+          {/* Keep the changes as a variant instead: an icon beside Save where
+              the bar has room (≥1600); below that it is the first item of
+              the plan menu. */}
+          <button
+            type="button"
+            className="workspace-button workspace-button-quiet ws-bar-save-as"
+            data-testid="command-save-as-new"
+            aria-label={t('bar.saveAsNew')}
+            aria-haspopup={atPlanLimit ? undefined : 'dialog'}
+            aria-disabled={atPlanLimit || undefined}
+            aria-describedby={atPlanLimit ? limitHintId : undefined}
+            title={atPlanLimit ? `${t('bar.saveAsNew')} – ${limitHint}` : t('bar.saveAsNew')}
+            onClick={(event) => {
+              if (atPlanLimit) return
+              onSaveAsNew(event.currentTarget)
+            }}
+          >
+            <CopyPlus size={16} aria-hidden="true" />
+            {atPlanLimit && (
+              <span id={limitHintId} className="sr-only">
+                {limitHint}
+              </span>
+            )}
           </button>
         </>
       ) : (
@@ -366,6 +406,25 @@ export function ResultBar() {
   const [managerMounted, setManagerMounted] = useState(false)
   const planTriggerRef = useRef<HTMLElement | null>(null)
 
+  // ---- Save the draft as a new plan ---------------------------------------
+
+  const [saveAsOpen, setSaveAsOpen] = useState(false)
+  const [saveAsMounted, setSaveAsMounted] = useState(false)
+  const saveAsInvokerRef = useRef<HTMLElement | null>(null)
+  const saveAsNew = useCallback((trigger: HTMLButtonElement | null) => {
+    saveAsInvokerRef.current = trigger
+    setSaveAsMounted(true)
+    setSaveAsOpen(true)
+  }, [])
+  const compareWithNew = useCallback(
+    (sourceId: string, newPlanId: string) => {
+      setComparisonSelection([sourceId, newPlanId])
+      const invoker = saveAsInvokerRef.current
+      enterCompare(invoker?.isConnected ? invoker : null)
+    },
+    [enterCompare, setComparisonSelection]
+  )
+
   // Stable, so the memoized plan menu does not re-render with the bar.
   const manage = useCallback((trigger: HTMLButtonElement | null) => {
     planTriggerRef.current = trigger
@@ -403,7 +462,7 @@ export function ResultBar() {
       inert={barInert}
     >
       <div className="ws-bar-plan">
-        <MemoPlanMenu onManage={manage} onCompare={compare} />
+        <MemoPlanMenu onManage={manage} onCompare={compare} onSaveAsNew={saveAsNew} />
       </div>
 
       <div className="ws-bar-kpis" data-testid="result-bar-kpis">
@@ -411,7 +470,7 @@ export function ResultBar() {
         <BarRun status={status} needsRun={needsRun} />
       </div>
 
-      <BarDraft dirty={dirty} activeName={activeName} />
+      <BarDraft dirty={dirty} activeName={activeName} onSaveAsNew={saveAsNew} />
 
       <BarMenu />
 
@@ -420,6 +479,14 @@ export function ResultBar() {
           open={managerOpen}
           onOpenChange={setManagerOpen}
           returnFocusRef={planTriggerRef}
+        />
+      )}
+      {saveAsMounted && (
+        <SaveDraftAsPlanDialog
+          open={saveAsOpen}
+          onOpenChange={setSaveAsOpen}
+          returnFocusRef={saveAsInvokerRef}
+          onCompare={compareWithNew}
         />
       )}
     </header>

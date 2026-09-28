@@ -121,6 +121,12 @@ function WorkspacePage() {
     >
       <aside className="ws-rail" inert={pageInert}>
         <WorkspaceBrand />
+        {/* The compact rail (docked panel open) shows the app mark instead of the name. */}
+        <span
+          className="ws-rail-mark brand-mark"
+          aria-hidden="true"
+          style={{ WebkitMaskImage: 'url(/piggy.svg)', maskImage: 'url(/piggy.svg)' }}
+        />
         <SectionIndex />
         <div className="ws-rail-footer">
           <EuroDisplay />

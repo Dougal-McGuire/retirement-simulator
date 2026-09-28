@@ -5,7 +5,8 @@ import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import type { Plan, SimulationParams, SimulationResults } from '@/types'
 import { MAX_COMPARISON_PLANS } from '@/types'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
-import { comparisonFingerprint } from '@/lib/simulation/planDiff'
+import { buildFlowSwitchRows, comparisonFingerprint } from '@/lib/simulation/planDiff'
+import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import { effectiveRunCount } from '@/lib/simulation/context'
 import { planDisplayName } from '@/lib/plans/planName'
 import {
@@ -41,6 +42,8 @@ function deltaBadge(text: string, tone: 'ok' | 'warn' | 'danger' | 'neutral') {
 export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
   const t = useTranslations('simulationCompact.compare')
   const tPlans = useTranslations('plans')
+  const tSwitch = useTranslations('plans.comparison.flowSwitch')
+  const tFlows = useTranslations('setup.cashFlows')
   const format = useFormatter()
   const locale = useLocale()
   const plans = usePlans()
@@ -243,8 +246,15 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
         label: t('rows.pension', { age: format.number(ready[0].params.legalRetirementAge) }),
         values: ready.map((run) => t('perMonth', { amount: euro(run.params.monthlyPension) })),
       },
+      // A flow switched on in one plan and off in another: the scenario
+      // question itself ("Erbschaft: berücksichtigt → ausgeschaltet").
+      ...buildFlowSwitchRows(ready.map((run) => run.params)).map((row) => ({
+        key: `flow:${row.id}`,
+        label: cashFlowDisplayName(row, (key) => tFlows(`defaults.${key}`)),
+        values: row.values.map((value) => tSwitch(value)),
+      })),
     ]
-  }, [ready, t, format])
+  }, [ready, t, tSwitch, tFlows, format])
 
   const chartSeries = useMemo<CompareFanSeries[]>(() => {
     if (!base) return []

@@ -455,6 +455,8 @@ The skeleton (no results yet) is described in §6.6.
 
 `<CashflowCard params results onEdit={openEditor} />` inside `LazyMount`. The card's own title "Wohin das Geld fließt" becomes an `h3`, and the Sankey title becomes an `h4` (lane C). Nothing else moves.
 
+**Update (drill-down):** the link table and the three-column ledger are replaced by one "Aufstellung" grouped like the Sankey; categories open into their plan flows in both, and an item deep-links to its row in the flows panel. The ledger ✎ targets in §3.3 are kept on the table's rows (labels now match the Sankey nodes, e.g. "Kapitalertragsteuer", "Depotentnahme (brutto)", "Einkommensteuer", "Sparbeitrag"). See `2026-09-28-cashflow-drilldown.md`.
+
 ### 5.4 Entnahme (`#withdrawal`), lane A
 
 **Merge:** `WithdrawalPlanner` + `SpendingSection`, deduped to one chart.
@@ -972,7 +974,7 @@ The Playwright default viewport is 1280×720 (Desktop Chrome), which means **doc
   - Display switch: `display-toggle` (rail), `menu-display-toggle`
   - Ergebnis: `fan-chart`, `overview-compare`, `overview-duplicate`
   - Compare: `compare-view`, `compare-fan-chart`
-  - Geldfluss: all `cashflow-*`
+  - Geldfluss: all `cashflow-*` (drill-down, see `2026-09-28-cashflow-drilldown.md`: new `cashflow-table`, `cashflow-toggle-<category>`, `cashflow-expand-all`, `cashflow-disabled-flows`; SVG nodes `data-node` = category or `<category>:<flow id>` / `<category>:more`, captions `data-group`; removed `cashflow-sankey-table-toggle`, `cashflow-sankey-table`; `cashflow-sum-heading` now sits in the table caption)
   - Panel bodies and fields: `plan-editor-personal|income|expenses|market`, `plan-editor-personal-stats-stale`, all `editor-*` / `cashflow-*` / `market-model-*` / `glide-path-*` / `tax-*` / `household-type-*` ids, `pension-net-readout`, `tax-drag-readout`, `editor-timeline-issues`
   - Reset: `plan-reset-dialog|confirm|toast(-undo)`, `plan-editor-reset` (moved)
   - Entnahme: `withdrawal-planner` (the `WithdrawalPlanner` root, i.e. the body of `#withdrawal`), `withdrawal-*`, `strategy-compare-*`, `spending-corridor-chart`, `corridor-marker-label`

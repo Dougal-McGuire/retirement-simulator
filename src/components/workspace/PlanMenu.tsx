@@ -1,7 +1,16 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { ArrowLeftRight, Check, ChevronDown, Copy, FolderCog, Pencil, Plus } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  Check,
+  ChevronDown,
+  Copy,
+  CopyPlus,
+  FolderCog,
+  Pencil,
+  Plus,
+} from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { MAX_PLANS } from '@/types'
 import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
@@ -34,6 +43,7 @@ const ITEM_SELECTOR = '[role="menuitem"], [role="menuitemradio"]'
 export function PlanMenu({
   onManage,
   onCompare,
+  onSaveAsNew,
 }: {
   /** Opens the plan manager; receives the trigger so focus can come back to it. */
   onManage: (trigger: HTMLButtonElement | null) => void
@@ -42,6 +52,11 @@ export function PlanMenu({
    * the menu, so the trigger is what focus returns to on exit.
    */
   onCompare?: (trigger: HTMLButtonElement | null) => void
+  /**
+   * Saves the unsaved changes as a new plan (offered only while dirty).
+   * Receives the trigger, for the same reason as `onCompare`.
+   */
+  onSaveAsNew?: (trigger: HTMLButtonElement | null) => void
 }) {
   const t = useTranslations('workspace.planMenu')
   const tp = useTranslations('plans')
@@ -144,13 +159,14 @@ export function PlanMenu({
   }
 
   const runAction = (
-    action: 'new' | 'duplicate' | 'rename' | 'compare' | 'manage',
+    action: 'saveAsNew' | 'new' | 'duplicate' | 'rename' | 'compare' | 'manage',
     disabled = false
   ) => {
     if (disabled) return
     close()
     if (action === 'manage') onManage(triggerRef.current)
     else if (action === 'compare') onCompare?.(triggerRef.current)
+    else if (action === 'saveAsNew') onSaveAsNew?.(triggerRef.current)
     else setDialog(action)
   }
 
@@ -242,6 +258,18 @@ export function PlanMenu({
           <div role="group" aria-label={t('actions')}>
             {(
               [
+                // While there are unsaved changes, keeping them as a variant
+                // comes first: it is what the dirty marker invites.
+                ...(onSaveAsNew && dirty
+                  ? ([
+                      {
+                        action: 'saveAsNew',
+                        icon: CopyPlus,
+                        label: t('saveAsNew'),
+                        disabled: atLimit,
+                      },
+                    ] as const)
+                  : []),
                 { action: 'new', icon: Plus, label: tp('actions.new'), disabled: atLimit },
                 {
                   action: 'duplicate',

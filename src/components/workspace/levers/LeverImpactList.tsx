@@ -29,6 +29,7 @@ import { toast, TOAST_DURATION } from '@/components/ui/toast'
 import { ActionToast } from '@/components/ui/action-toast'
 import { ScenarioPlanDialog } from '@/components/plans/ScenarioPlanDialog'
 import { useNearViewport } from '../useNearViewport'
+import { SaturatedCallout, WorstDecileUnit } from './SaturatedCallout'
 import { useWorkspace } from '../WorkspaceProvider'
 import {
   useLeverMeasurements,
@@ -207,7 +208,8 @@ const LeverImpactView = memo(function LeverImpactView({
       { ...pendingScenario.params, simulationRuns: pending.base.simulationRuns },
       { activate: false }
     )
-    if (!newPlanId) return
+    // Nothing was created (the plan limit): the dialog says so and stays open.
+    if (!newPlanId) return tPlans('switcher.limit', { max: MAX_PLANS })
 
     setComparisonSelection([sourceId, newPlanId].filter(Boolean))
 
@@ -309,9 +311,7 @@ const LeverImpactView = memo(function LeverImpactView({
         )}
 
         {saturated && measurement && (
-          <p className="ws-levers-callout" data-testid="stress-lever-saturated">
-            {t('saturated', { rate: formatPercent(measurement.base.successRate) })}
-          </p>
+          <SaturatedCallout rate={measurement.base.successRate} testId="stress-lever-saturated" />
         )}
 
         <ul className="ws-levers-list">
@@ -340,6 +340,7 @@ const LeverImpactView = memo(function LeverImpactView({
                       <span className="ws-levers-effect-result">
                         <span className="sr-only">{tl('leadsTo')} </span>
                         {effect.result}
+                        {saturated && <WorstDecileUnit />}
                       </span>
                     </>
                   ) : (
@@ -386,6 +387,7 @@ const LeverImpactView = memo(function LeverImpactView({
         suggestedName={pending ? t(`items.${pending.id}.name`) : ''}
         changes={pending && pendingScenario ? diffParams(pending.base, pendingScenario.params) : []}
         onConfirm={saveScenarioAsPlan}
+        blockedReason={atPlanLimit ? tPlans('switcher.limit', { max: MAX_PLANS }) : undefined}
       />
     </section>
   )

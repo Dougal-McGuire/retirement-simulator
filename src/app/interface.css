@@ -222,11 +222,12 @@
   --ui-space-10: 40px;
   --ui-space-12: 48px;
   --ui-space-16: 64px;
-  /* Workspace layout: result bar, section rail, docked edit panel, overlay sheet. */
+  /* Workspace layout: result bar, section rail, docked edit panel, overlay sheet.
+     The two panel widths are minimums; ws-page.css grows them with the viewport. */
   --ui-bar-height: 56px;
   --ui-rail-width: 184px;
   --ui-panel-width: 400px;
-  --ui-sheet-width: 440px;
+  --ui-sheet-width: 480px;
   /* Motion. Everything that uses these is switched off under
      prefers-reduced-motion by the component styles. */
   --motion-fast: 120ms;
@@ -588,6 +589,12 @@ html :is(.ds-table, table) :is(th, td) {
 html :is(.ds-table, table) th {
   font-weight: 600;
   color: var(--ui-muted);
+}
+/* A table that sizes its cells with utilities (the flow list's compact rows,
+   whose switch and actions columns must stay narrow on phones): the global
+   cell padding above steps back to the utilities' own. */
+html table.table-own-padding :is(th, td) {
+  padding: revert-layer;
 }
 html :is(button, a, input, select, textarea):focus-visible {
   outline: 2px solid var(--ui-accent);

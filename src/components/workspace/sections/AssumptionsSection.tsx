@@ -16,7 +16,11 @@ import {
 import { ActionToast } from '@/components/ui/action-toast'
 import { toast, TOAST_DURATION } from '@/components/ui/toast'
 import { ASSUMPTION_PANELS, type AssumptionPanel } from '@/components/plans/planSections'
-import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
+import {
+  isCashFlowEnabled,
+  pensionMonthlyAtAge,
+  switchedOffPensions,
+} from '@/lib/simulation/cashFlows'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import {
   HISTORICAL_FIRST_YEAR,
@@ -36,7 +40,8 @@ import { useWorkspace } from '../WorkspaceProvider'
 import { WorkspaceSection } from './WorkspaceSection'
 
 interface CardContent {
-  label?: string
+  /** Names the key figure; every card has one, so the figures line up. */
+  label: string
   value: string
   details: string[]
 }
@@ -141,7 +146,10 @@ export const AssumptionsSection = memo(function AssumptionsSection() {
         maximumFractionDigits: digits,
       })
     const combined = calculateCombinedExpenses(params.customExpenses ?? [])
-    const flows = params.cashFlows ?? []
+    const allFlows = params.cashFlows ?? []
+    // Counts and sums cover switched-on flows; the rest is named once.
+    const flows = allFlows.filter(isCashFlowEnabled)
+    const switchedOff = allFlows.length - flows.length
     const savingsBase = params.annualSavings + combined.combinedAnnual
     const savingsRate = savingsBase > 0 ? params.annualSavings / savingsBase : 0
     const pensionGross = pensionMonthlyAtAge(
@@ -149,9 +157,13 @@ export const AssumptionsSection = memo(function AssumptionsSection() {
       params.legalRetirementAge,
       params.legalRetirementAge
     ).total
+    // Every pension switched off: say so instead of a "0 €" that reads like
+    // a missing input.
+    const pensionsOff = switchedOffPensions(allFlows)
     const historical = params.marketModel === 'historical'
     return {
       person: {
+        label: t('cards.person.label'),
         value: t('cards.person.value', { age: params.retirementAge }),
         details: [
           t('cards.person.detail', { current: params.currentAge, end: params.endAge }),
@@ -177,18 +189,23 @@ export const AssumptionsSection = memo(function AssumptionsSection() {
         label: t('plannedBudget'),
         value: t('cards.flows.value', { amount: euro(combined.combinedMonthly) }),
         details: [
-          t('cards.flows.counts', {
+          `${t('cards.flows.counts', {
             pensions: flows.filter((flow) => flow.kind === 'pension').length,
             expenses: flows.filter((flow) => flow.kind === 'expense').length,
             incomes: flows.filter((flow) => flow.kind === 'income').length,
-          }),
-          t('cards.flows.pensions', {
-            age: params.legalRetirementAge,
-            amount: euro(pensionGross),
-          }),
+          })}${switchedOff > 0 ? ` · ${t('cards.flows.switchedOff', { count: switchedOff })}` : ''}`,
+          pensionsOff
+            ? pensionsOff.statutory
+              ? t('cards.flows.statutoryOff')
+              : t('cards.flows.pensionsOff', { count: pensionsOff.count })
+            : t('cards.flows.pensions', {
+                age: params.legalRetirementAge,
+                amount: euro(pensionGross),
+              }),
         ],
       },
       market: {
+        label: historical ? t('cards.market.labelHistorical') : t('cards.market.label'),
         value: historical
           ? t('cards.market.valueHistorical')
           : t('cards.market.value', { rate: percent(params.averageROI, 2) }),
@@ -244,29 +261,32 @@ export const AssumptionsSection = memo(function AssumptionsSection() {
                 data-testid={`assumption-card-${id}`}
                 data-open={open ? 'true' : undefined}
               >
-                <h3>{title}</h3>
-                {card.label && <p className="ws-card-label">{card.label}</p>}
+                {/* Title and the edit action share one row; the button's
+                    ::after still makes the whole card its hit area. */}
+                <div className="ws-card-head">
+                  <h3>{title}</h3>
+                  <button
+                    type="button"
+                    className="ws-card-edit"
+                    data-testid={`edit-${id}`}
+                    data-edit-panel={id}
+                    aria-label={t('editPanel.editAria', { title })}
+                    aria-expanded={open}
+                    aria-controls="edit-panel"
+                    onClick={(event: MouseEvent<HTMLButtonElement>) =>
+                      openEditor({ panel: id }, event.currentTarget)
+                    }
+                  >
+                    {t('edit')}
+                  </button>
+                </div>
+                <p className="ws-card-label">{card.label}</p>
                 <p className="ws-card-value">{card.value}</p>
                 {card.details.map((detail) => (
                   <p key={detail} className="ws-card-detail">
                     {detail}
                   </p>
                 ))}
-                <button
-                  type="button"
-                  className="ws-card-edit"
-                  data-testid={`edit-${id}`}
-                  data-edit-panel={id}
-                  aria-label={t('editPanel.editAria', { title })}
-                  aria-expanded={open}
-                  aria-controls="edit-panel"
-                  onClick={(event: MouseEvent<HTMLButtonElement>) =>
-                    openEditor({ panel: id }, event.currentTarget)
-                  }
-                >
-                  {t('edit')}
-                  <ArrowRight size={14} aria-hidden="true" />
-                </button>
               </article>
             )
           })}

@@ -5,6 +5,7 @@ import { SectionHeader } from '../primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
 import { deriveKeyFindings, type FindingTone } from '@/lib/pdf-generator/insights/keyFindings'
 import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
+import { allPensionsSwitchedOff } from '@/lib/pdf-generator/pensionSwitch'
 
 interface ExecutiveSummaryProps {
   content: ReportContent
@@ -71,6 +72,7 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
 
   const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
   const pensionAnnual = finances.monthlyPension * 12
+  const pensionsOff = allPensionsSwitchedOff(expenses)
   const annualNetGap = Math.max(0, annualSpend - pensionAnnual)
   const confidence = profile.success.successRate
   const confidenceColor = rateColor(confidence)
@@ -241,9 +243,15 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
           />
           <DataRow
             label={isGerman ? 'Rentenzahlung' : 'Pension income'}
-            unit={isGerman
-              ? `${fmtCurrency(finances.monthlyPension, locale)} monatlich`
-              : `${fmtCurrency(finances.monthlyPension, locale)} monthly`}
+            unit={
+              pensionsOff
+                ? isGerman
+                  ? 'keine Rente berücksichtigt'
+                  : 'no pension included'
+                : isGerman
+                  ? `${fmtCurrency(finances.monthlyPension, locale)} monatlich`
+                  : `${fmtCurrency(finances.monthlyPension, locale)} monthly`
+            }
             value={fmtCurrency(pensionAnnual, locale)}
           />
           <DataRow

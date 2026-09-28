@@ -17,14 +17,13 @@
   container: ws-withdrawal / inline-size;
   display: flex;
   flex-direction: column;
-  gap: var(--ui-space-12, 48px);
+  gap: var(--ui-space-8);
   min-width: 0;
 }
 @media (max-width: 760px) {
   .ws-withdrawal {
     --ws-withdrawal-chart-h: 272px;
     --ws-withdrawal-chart-reserve: 470px;
-    gap: var(--ui-space-10, 40px);
   }
 }
 

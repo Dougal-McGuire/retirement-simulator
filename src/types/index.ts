@@ -378,6 +378,13 @@ export interface SimulationStore {
   savePlanDraft: () => void
   /** Throws the working copy away and restores the active plan's params. */
   revertPlanDraft: () => void
+  /**
+   * "Änderungen als neuen Plan speichern": stores the working copy as a new
+   * plan in the background and puts the active plan back to its saved state.
+   * The active plan stays active. Returns the new plan's id, or null when
+   * there is nothing unsaved or the plan limit is reached.
+   */
+  saveDraftAsNewPlan: (name: string) => string | null
 
   // Plan actions
   /**
@@ -486,6 +493,12 @@ export interface CashFlow {
    * `name` always holds a usable fallback, so a flow never renders blank.
    */
   nameKey?: string
+  /**
+   * Default true. False keeps the flow in the plan but out of every
+   * calculation — an uncertain event (an inheritance, a lump sum, care costs)
+   * switched off to see the plan without it. Stored only when false.
+   */
+  enabled?: boolean
   /** Amount per occurrence, in today's euros. */
   amount: number
   frequency: CashFlowFrequency

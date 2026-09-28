@@ -45,7 +45,9 @@ test('shows actual tax deductions and changes the selected year', async ({ page 
   await ledger.getByRole('combobox', { name: 'Alter' }).selectOption('67')
   await expect(ledger.getByTestId('cashflow-tax-total')).not.toContainText('insgesamt: 0 €')
   await ledger.getByText('Alle Jahre anzeigen', { exact: true }).click()
-  await expect(ledger.getByRole('table')).toContainText('Steuern auf Renten')
+  await expect(
+    ledger.getByRole('region', { name: 'Alle Jahre anzeigen' }).getByRole('table')
+  ).toContainText('Steuern auf Renten')
   await page.screenshot({ path: testInfo.outputPath('cashflows-desktop.png'), fullPage: true })
 })
 

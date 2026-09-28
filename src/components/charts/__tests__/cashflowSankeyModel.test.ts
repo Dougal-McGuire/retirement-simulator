@@ -2,12 +2,14 @@ import { DEFAULT_PARAMS, type AnnualCashFlow } from '@/types'
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 import { applyCashFlows } from '@/lib/simulation/cashFlows'
 import { buildDemoPlanParams } from '@/lib/plans/demoPlan'
+import { breakdownLedger, buildFlowTracks } from '@/lib/simulation/flowBreakdown'
 import {
   buildCashflowSankey,
   resolveLedgerSelection,
+  SANKEY_MIN_AMOUNT,
   sumLedgerRows,
   type CashflowSankeyModel,
-  type SankeyNodeId,
+  type Expansion,
 } from '../cashflowSankeyModel'
 
 const row = (overrides: Partial<AnnualCashFlow> = {}): AnnualCashFlow => ({
@@ -26,9 +28,9 @@ const row = (overrides: Partial<AnnualCashFlow> = {}): AnnualCashFlow => ({
 })
 
 const ids = (model: CashflowSankeyModel) => model.nodes.map((node) => node.id)
-const node = (model: CashflowSankeyModel, id: SankeyNodeId) =>
+const node = (model: CashflowSankeyModel, id: string) =>
   model.nodes.find((entry) => entry.id === id)
-const link = (model: CashflowSankeyModel, source: SankeyNodeId, target: SankeyNodeId) =>
+const link = (model: CashflowSankeyModel, source: string, target: string) =>
   model.links.find((entry) => entry.source === source && entry.target === target)?.value
 
 /** Every node that is not a pure source or sink passes on what it receives. */
@@ -231,5 +233,156 @@ describe('resolveLedgerSelection', () => {
     ])!
     expect(total.incomeGross).toBe(15)
     expect(total.pensionGross).toBeUndefined()
+  })
+})
+
+describe('drill-down into plan flows', () => {
+  const demo = runMonteCarloSimulation({ ...buildDemoPlanParams(), simulationRuns: 200 })
+  const tracks = buildFlowTracks(demo.params)
+  const at = (age: number, expanded: Expansion, real = false) => {
+    const series = (real ? demo.cashFlowMeansReal : demo.cashFlowMeans)!
+    const row = series[demo.ages.indexOf(age)]
+    const breakdown = breakdownLedger(tracks, {
+      series,
+      ages: demo.ages,
+      priceLevel: demo.inflationIndexP50,
+      real,
+      fromAge: age,
+      toAge: age,
+      row,
+    })
+    return {
+      overview: buildCashflowSankey(row),
+      model: buildCashflowSankey(row, SANKEY_MIN_AMOUNT, { breakdown, expanded }),
+    }
+  }
+  const everything: Expansion = {
+    pension: 'top',
+    otherIncome: 'top',
+    oneOffIncome: 'top',
+    baselineSpending: 'top',
+    scheduledExpenses: 'top',
+  }
+
+  it('replaces a category by its flows in place and still balances', () => {
+    const { overview, model } = at(64, { baselineSpending: 'top', otherIncome: 'top' })
+    expect(ids(model)).toEqual([
+      'otherIncome:demo-parttime',
+      'withdrawal',
+      // Part-time work is entered net: no income tax this year.
+      'available',
+      'capitalGainsTax',
+      'baselineSpending:health',
+      'baselineSpending:food',
+      'baselineSpending:vacations',
+      'baselineSpending:shopping',
+      'baselineSpending:repairs',
+      'baselineSpending:more',
+      'scheduledExpenses',
+    ])
+    expectBalanced(model)
+    expect(model.totalIn).toBeCloseTo(overview.totalIn, 6)
+    expect(model.taxes).toBeCloseTo(overview.taxes, 6)
+    // The items stand exactly for the category they replace.
+    const items = model.nodes.filter((entry) => entry.category === 'baselineSpending')
+    expect(items.reduce((sum, entry) => sum + entry.value, 0)).toBeCloseTo(
+      node(overview, 'baselineSpending')!.value,
+      6
+    )
+    expect(items.reduce((sum, entry) => sum + entry.rounded, 0)).toBe(
+      Math.round(node(overview, 'baselineSpending')!.value)
+    )
+    // Five largest, then the other three folded.
+    const more = model.nodes.find((entry) => entry.id === 'baselineSpending:more')!
+    expect(more.kind).toBe('more')
+    expect(more.folded!.map((item) => item.key)).toEqual([
+      'utilities',
+      'entertainment',
+      'carMaintenance',
+    ])
+    expect(model.groups.map((group) => [group.category, group.folded])).toEqual([
+      ['otherIncome', false],
+      ['baselineSpending', true],
+    ])
+    // An income item carries its share of the tax.
+    const partTime = model.nodes.find((entry) => entry.id === 'otherIncome:demo-parttime')!
+    expect(link(model, 'otherIncome:demo-parttime', 'available')).toBeCloseTo(
+      partTime.value - (partTime.tax ?? 0),
+      6
+    )
+  })
+
+  it('shows every item once a category is opened in full', () => {
+    const { model } = at(64, { baselineSpending: 'all' })
+    const items = model.nodes.filter((entry) => entry.category === 'baselineSpending')
+    expect(items).toHaveLength(8)
+    expect(items.every((entry) => entry.kind === 'item')).toBe(true)
+    expectBalanced(model)
+  })
+
+  it('balances in every year with everything open, nominal and real', () => {
+    for (const real of [false, true]) {
+      for (const age of demo.ages) {
+        const { overview, model } = at(age, everything, real)
+        expectBalanced(model)
+        expect(Math.abs(model.totalIn - overview.totalIn)).toBeLessThan(1)
+        expect(
+          model.expandable.every((category) => overview.nodes.some((n) => n.id === category))
+        ).toBe(true)
+      }
+    }
+  })
+
+  it('spreads an unfunded gap over the items like over their categories', () => {
+    const row0 = row({
+      portfolioWithdrawal: 40,
+      expenses: 100,
+      scheduledExpenses: 25,
+      shortfall: 60,
+    })
+    const plain = buildCashflowSankey(row0)
+    const breakdown = {
+      disabled: [],
+      categories: {
+        baselineSpending: {
+          category: 'baselineSpending' as const,
+          total: 75,
+          tax: 0,
+          items: [
+            { key: 'a', amount: 50, rounded: 50, share: 2 / 3 },
+            { key: 'b', amount: 25, rounded: 25, share: 1 / 3 },
+          ].map((item) => ({
+            ...item,
+            flow: {
+              id: item.key,
+              kind: 'expense' as const,
+              name: item.key,
+              amount: 1,
+              frequency: 'monthly' as const,
+            },
+            category: 'baselineSpending' as const,
+            tax: 0,
+            roundedTax: 0,
+            estimated: false,
+            taxEstimated: false,
+          })),
+        },
+      },
+    }
+    const model = buildCashflowSankey(row0, SANKEY_MIN_AMOUNT, {
+      breakdown,
+      expanded: { baselineSpending: 'top' },
+    })
+    expect(link(model, 'shortfall', 'baselineSpending:a')).toBeCloseTo(30, 9)
+    expect(link(model, 'shortfall', 'baselineSpending:b')).toBeCloseTo(15, 9)
+    expect(node(model, 'baselineSpending:a')?.unfunded).toBeCloseTo(30, 9)
+    expect(link(plain, 'shortfall', 'baselineSpending')).toBeCloseTo(45, 9)
+    expectBalanced(model)
+  })
+
+  it('does not open a category no plan flow explains', () => {
+    const { model } = at(55, everything)
+    expect(model.expandable).toEqual([])
+    expect(ids(model)).toEqual(['savings', 'available', 'reinvested'])
   })
 })

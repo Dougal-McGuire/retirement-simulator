@@ -321,4 +321,41 @@ describe('/api/generate-pdf', () => {
       })
     )
   })
+
+  it('keeps a switched-off flow out of the figures through export validation', async () => {
+    renderToBuffer.mockResolvedValue(Buffer.from('%PDF-1.4'))
+    const params: SimulationParams = {
+      ...DEFAULT_PARAMS,
+      monthlyPension: 0,
+      cashFlows: [
+        { ...DEFAULT_PARAMS.cashFlows[0], enabled: false },
+        {
+          id: 'inheritance',
+          name: 'Inheritance',
+          kind: 'income',
+          amount: 80000,
+          frequency: 'once',
+          startAge: 70,
+          enabled: false,
+        },
+      ],
+    }
+    const response = await POST(
+      createJsonRequest({ params, results: createSimulationResults(params), locale: 'en' })
+    )
+    expect(response.status).toBe(200)
+    const [data] = mapReportDataToContent.mock.calls.at(-1) as [
+      {
+        finances: { expectedMonthlyPensionEUR: number }
+        spending: { cashFlows: Array<{ id: string }>; switchedOffFlows: Array<{ id: string }> }
+      },
+    ]
+    // Zod must not strip the switch: without it the flows would count again.
+    expect(data.finances.expectedMonthlyPensionEUR).toBe(0)
+    expect(data.spending.cashFlows).toEqual([])
+    expect(data.spending.switchedOffFlows.map((flow) => flow.id)).toEqual([
+      'pension-statutory',
+      'inheritance',
+    ])
+  })
 })

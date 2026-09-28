@@ -276,6 +276,11 @@ export interface ReportExpenses {
    * single roof repair into "per year" would misstate it.
    */
   scheduledFlows: ReportCashFlow[]
+  /**
+   * Flows the plan keeps but the user switched off. In none of the figures;
+   * listed once as "Nicht berücksichtigt". Names already localized.
+   */
+  switchedOffFlows?: Array<Pick<ReportCashFlow, 'id' | 'kind' | 'name' | 'amount' | 'frequency'>>
 }
 
 export interface ReportScenario {
@@ -553,6 +558,12 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
         ...flow,
         name: localizeCashFlowName({ name: flow.name, nameKey: _key }, locale),
       })),
+      switchedOffFlows: (data.spending.switchedOffFlows ?? []).map(
+        ({ nameKey: _key, ...flow }) => ({
+          ...flow,
+          name: localizeCashFlowName({ name: flow.name, nameKey: _key }, locale),
+        })
+      ),
     },
     scenarios,
     recommendations: {

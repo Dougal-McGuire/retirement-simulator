@@ -5,7 +5,7 @@ import {
   pensionMonthlyAtAge,
 } from '@/lib/simulation/cashFlows'
 import { calculateCombinedExpenses, netAnnualPension } from '@/lib/simulation/engine'
-import { cashFlowsEqual } from '@/lib/simulation/cashFlows'
+import { cashFlowsEqual, isCashFlowEnabled } from '@/lib/simulation/cashFlows'
 
 export type PlanHealth = 'strong' | 'watch' | 'strained'
 
@@ -66,11 +66,12 @@ const scaleExpenses = (expenses: CustomExpense[], multiplier: number) =>
  * "Spend 10% less" means every recurring expense, not only the ones the legacy
  * array can express — a windowed care-cost flow is spending too. One-off
  * expenses are left alone: a roof repair does not get 10% cheaper by choosing
- * to live more modestly.
+ * to live more modestly. Switched-off flows are left alone too: the lever is
+ * measured on what the plan counts, and applying it must change only that.
  */
 const scaleExpenseFlows = (flows: CashFlow[], multiplier: number) =>
   flows.map((flow) =>
-    flow.kind === 'expense' && flow.frequency !== 'once'
+    flow.kind === 'expense' && flow.frequency !== 'once' && isCashFlowEnabled(flow)
       ? { ...flow, amount: Math.max(0, Math.round(flow.amount * multiplier)) }
       : flow
   )

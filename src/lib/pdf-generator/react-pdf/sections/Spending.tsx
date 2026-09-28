@@ -32,6 +32,7 @@ export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
   // are spending (or income that offsets it), and the "total horizon need" KPI
   // above now counts them, so the reader can see what went into the figure.
   const scheduledFlows = expenses.scheduledFlows ?? []
+  const switchedOff = expenses.switchedOffFlows ?? []
   const incomeWord = isGerman ? 'Einnahme' : 'Income'
   const expenseWord = isGerman ? 'Ausgabe' : 'Expense'
   const frequencyLabel = (frequency: ReportCashFlow['frequency']) => {
@@ -243,6 +244,23 @@ export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
             ))}
           </Table>
         </View>
+      )}
+
+      {switchedOff.length > 0 && (
+        <Text style={{ marginTop: 8, fontSize: 7, color: tokens.colors.ink[500], lineHeight: 1.4 }}>
+          {`${isGerman ? 'Nicht berücksichtigt' : 'Not included'}: ${switchedOff
+            .map(
+              (flow) =>
+                `${flow.name || (flow.kind !== 'expense' ? incomeWord : expenseWord)} (${
+                  flow.kind !== 'expense' ? '+' : '−'
+                }${fmtCurrency(flow.amount, locale)}, ${frequencyLabel(flow.frequency)})`
+            )
+            .join(' · ')}. ${
+            isGerman
+              ? 'Diese Posten sind im Plan hinterlegt, aber ausgeschaltet; sie fließen in keine Zahl dieses Berichts ein.'
+              : 'These items are kept in the plan but switched off; no figure in this report includes them.'
+          }`}
+        </Text>
       )}
     </View>
   )

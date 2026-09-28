@@ -5,6 +5,7 @@ import { ArrowRight, ChevronDown } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import type { CustomExpense } from '@/types'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
+import { hasLifetimeExpenseShape, isStatutoryPensionSwitchedOff } from '@/lib/simulation/cashFlows'
 import {
   useActivePlan,
   usePlanIsDirty,
@@ -83,11 +84,30 @@ export const QuickLevers = memo(function QuickLevers({ onHoldChange }: QuickLeve
     updateParams({ customExpenses: next })
   }
 
+  /**
+   * Back to the plan's spending. Written as flows, not as the legacy array:
+   * the array only lists switched-on expenses, so restoring it would drop an
+   * expense the draft switched back on. Here every lifetime expense comes
+   * back exactly as saved (amount and on/off) and nothing else is touched.
+   */
   const resetExpenses = () => {
     scaleBaseRef.current = null
-    const restored = planExpenses.map((expense) => ({ ...expense }))
-    emittedRef.current = restored
-    updateParams({ customExpenses: restored })
+    const planFlows = planParams?.cashFlows ?? []
+    const draftFlows = params.cashFlows ?? []
+    const savedById = new Map(
+      planFlows.filter(hasLifetimeExpenseShape).map((flow) => [flow.id, flow])
+    )
+    const draftIds = new Set(draftFlows.map((flow) => flow.id))
+    const restored = [
+      ...draftFlows.flatMap((flow) => {
+        if (!hasLifetimeExpenseShape(flow)) return [flow]
+        const saved = savedById.get(flow.id)
+        return saved ? [{ ...saved }] : []
+      }),
+      ...[...savedById.values()].filter((flow) => !draftIds.has(flow.id)),
+    ]
+    emittedRef.current = null
+    updateParams({ cashFlows: restored })
   }
 
   // ---- Held slider → pause background runs ---------------------------------
@@ -150,6 +170,9 @@ export const QuickLevers = memo(function QuickLevers({ onHoldChange }: QuickLeve
   const inflationDirty =
     planParams != null && params.averageInflation !== planParams.averageInflation
   const pensionDirty = planParams != null && params.monthlyPension !== planParams.monthlyPension
+  // A switched-off statutory pension is outside this slider's reach (it would
+  // read 0); it is switched back on in the flow list.
+  const pensionOff = isStatutoryPensionSwitchedOff(params.cashFlows)
   const endAgeDirty = planParams != null && params.endAge !== planParams.endAge
 
   return (
@@ -294,15 +317,17 @@ export const QuickLevers = memo(function QuickLevers({ onHoldChange }: QuickLeve
                 min={0}
                 max={pensionMax}
                 step={100}
-                formattedValue={currency(params.monthlyPension)}
+                disabled={pensionOff}
+                formattedValue={pensionOff ? tl('pensionOff') : currency(params.monthlyPension)}
+                valueText={pensionOff ? tl('pensionOff') : undefined}
                 onChange={(value) => updateParams({ monthlyPension: value })}
                 onReset={
-                  pensionDirty
+                  pensionDirty && !pensionOff
                     ? () => updateParams({ monthlyPension: planParams!.monthlyPension })
                     : undefined
                 }
                 resetLabel={resetLabel(ta('pensionAria'))}
-                planValue={pensionDirty ? planParams!.monthlyPension : undefined}
+                planValue={pensionDirty && !pensionOff ? planParams!.monthlyPension : undefined}
               />
               <InlineSlider
                 label={ta('endAgeAria')}

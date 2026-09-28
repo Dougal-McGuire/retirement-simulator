@@ -70,6 +70,24 @@ export const SpendingSchema = z.object({
       })
     )
     .default([]),
+  /**
+   * Flows the plan keeps but the user switched off: in none of the figures,
+   * named once so the reader knows what was left out. Optional for older
+   * clients.
+   */
+  switchedOffFlows: z
+    .array(
+      z.object({
+        id: z.string(),
+        kind: z.enum(['income', 'expense', 'pension']),
+        name: z.string(),
+        nameKey: z.string().max(64).optional(),
+        amount: z.number().min(0).max(100_000_000),
+        frequency: z.enum(['monthly', 'annual', 'once']),
+      })
+    )
+    .max(200)
+    .default([]),
 })
 
 export const AssumptionsSchema = z.object({

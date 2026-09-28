@@ -1,4 +1,5 @@
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
+import { allPensionsSwitchedOff } from '@/lib/pdf-generator/pensionSwitch'
 import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
 import {
   withdrawalStrategyLabel,
@@ -89,8 +90,10 @@ export function buildMethodologyCopy(content: ReportContent): MethodologyCopy {
         : `and a ${fmtPercent(assumptions.equityFundExemption, 0, intlLocale)} Teilfreistellung`
     )
   }
-  const pensionTax =
-    assumptions.pensionTaxablePortion > 0 && assumptions.pensionTaxRate > 0
+  // A switched-off pension is in no figure: its taxation is not described.
+  const pensionTax = allPensionsSwitchedOff(content.expenses)
+    ? ''
+    : assumptions.pensionTaxablePortion > 0 && assumptions.pensionTaxRate > 0
       ? isGerman
         ? ` Die gesetzliche Rente wird zu ${fmtPercent(assumptions.pensionTaxablePortion, 0, intlLocale)} als steuerpflichtig behandelt und mit ${fmtPercent(assumptions.pensionTaxRate, 0, intlLocale)} belastet.`
         : ` The state pension is treated as ${fmtPercent(assumptions.pensionTaxablePortion, 0, intlLocale)} taxable and charged at ${fmtPercent(assumptions.pensionTaxRate, 0, intlLocale)}.`

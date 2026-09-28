@@ -498,7 +498,7 @@ test('ledger labels open the matching panel and field, or the Entnahme section',
   await expect(page.locator('#editor-capitalGainsTax')).toBeFocused()
   await page.getByTestId('edit-panel-close').click()
 
-  await page.getByRole('button', { name: /^Gross portfolio withdrawal – edit in/ }).click()
+  await page.getByRole('button', { name: /^Portfolio sale \(gross\) – edit in/ }).click()
   await expect(page.getByTestId('edit-panel')).toHaveCount(0)
   await expect(page.locator('#withdrawal-title')).toBeInViewport()
   await expect(
@@ -675,7 +675,8 @@ test('assumption cards show plan inputs, carry the panel state and ignore the �
   await gotoWorkspace(page)
 
   const person = page.getByTestId('assumption-card-person')
-  await expect(person).toContainText('Retire at 60')
+  await expect(person).toContainText('Planned retirement')
+  await expect(person).toContainText('At age 60')
   await expect(person).toContainText('Today 55 · planned to 90')
   await expect(person).toContainText('State pension from 67')
   const savings = page.getByTestId('assumption-card-savings')
@@ -744,6 +745,43 @@ for (const width of [1280, 1440]) {
     }
   })
 }
+
+test('docked panel folds the rail to icons and hands the € switch to the Menu', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1366, height: 900 })
+  await gotoWorkspace(page)
+  const index = page.getByTestId('section-index')
+  const fullWidth = (await index.boundingBox())!.width
+  const display = page.getByTestId('display-toggle')
+  await expect(display).toBeVisible()
+
+  // Open: icons only — the names stay the links' accessible names — and the
+  // panel gets the room (≈520px at 1366, not the old 400).
+  const panel = await openPanel(page, 'flows')
+  await expect.poll(async () => (await index.boundingBox())!.width).toBeLessThan(64)
+  await expect(index.getByRole('link', { name: 'Money flow' })).toBeVisible()
+  expect((await panel.boundingBox())!.width).toBeGreaterThan(500)
+  await expect(display).toBeHidden()
+  await page.getByTestId('dashboard-tools').click()
+  const menu = page.getByRole('dialog', { name: 'Report and settings' })
+  await expect(menu.getByTestId('menu-display-toggle')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(menu).toHaveCount(0)
+  await expect(panel).toBeVisible()
+
+  // Close: the full rail and its switch come back.
+  await page.getByTestId('edit-panel-close').click()
+  await expect(panel).toHaveCount(0)
+  await expect(display).toBeVisible()
+  expect((await index.boundingBox())!.width).toBeCloseTo(fullWidth, 0)
+
+  // Wide enough for rail, page column and panel side by side: the rail stays.
+  await page.setViewportSize({ width: 1920, height: 1000 })
+  await openPanel(page, 'flows')
+  await expect(display).toBeVisible()
+  expect((await index.boundingBox())!.width).toBeCloseTo(fullWidth, 0)
+})
 
 test('docked panel: a ledger ✎ link keeps its line in place, opened twice', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })

@@ -346,16 +346,21 @@ export function EditPanel() {
         </div>
 
         <footer className="ws-panel-footer">
+          {/* The chevrons say "back" and "next"; the words stay in the
+              accessible name ("Zurück: …" / "Weiter: …"), so the row fits
+              one line beside Fertig. */}
           <nav className="ws-panel-walk" aria-label={t('navLabel')}>
             {previous && (
               <button
                 type="button"
                 className="workspace-button workspace-button-quiet"
                 data-testid="edit-panel-previous"
+                aria-label={tSections('previous', { title: panelTitle(previous) })}
+                title={tSections('previous', { title: panelTitle(previous) })}
                 onClick={() => openEditor({ panel: previous }, null)}
               >
                 <ChevronLeft size={16} aria-hidden="true" />
-                <span>{tSections('previous', { title: panelTitle(previous) })}</span>
+                <span>{panelTitle(previous)}</span>
               </button>
             )}
             {next && (
@@ -363,9 +368,11 @@ export function EditPanel() {
                 type="button"
                 className="workspace-button workspace-button-quiet"
                 data-testid="edit-panel-next"
+                aria-label={tSections('next', { title: panelTitle(next) })}
+                title={tSections('next', { title: panelTitle(next) })}
                 onClick={() => openEditor({ panel: next }, null)}
               >
-                <span>{tSections('next', { title: panelTitle(next) })}</span>
+                <span>{panelTitle(next)}</span>
                 <ChevronRight size={16} aria-hidden="true" />
               </button>
             )}

@@ -116,6 +116,8 @@ export function InlineSlider({
           className="ws-levers-slider-thumb"
           aria-label={ariaLabel}
           aria-valuetext={valueText ?? formattedValue}
+          // Radix marks a disabled slider with data-disabled only.
+          aria-disabled={disabled || undefined}
         />
       </SliderPrimitive.Root>
     </div>

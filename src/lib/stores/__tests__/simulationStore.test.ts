@@ -249,12 +249,14 @@ describe('simulationStore', () => {
       {
         id: 'migrated-monthly-food',
         name: 'Groceries',
+        nameKey: 'food',
         amount: 725,
         interval: 'monthly',
       },
       {
         id: 'migrated-annual-repairs',
         name: 'Home Repairs',
+        nameKey: 'repairs',
         amount: 3400,
         interval: 'annual',
       },
@@ -457,12 +459,14 @@ describe('simulationStore', () => {
       {
         id: 'migrated-monthly-utilities',
         name: 'Utilities',
+        nameKey: 'utilities',
         amount: 410,
         interval: 'monthly',
       },
       {
         id: 'migrated-annual-carMaintenance',
         name: 'Car Maintenance',
+        nameKey: 'carMaintenance',
         amount: 1600,
         interval: 'annual',
       },
@@ -671,6 +675,45 @@ describe('simulationStore', () => {
       expect(activePlanId).toBe(copyId)
       expect(copy?.params.currentAssets).toBe(999000)
       expect(copy?.name).not.toBe(plans[0].name)
+    })
+
+    it('saves the draft as a new plan and puts the source back to its saved state', async () => {
+      const { useSimulationStore } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+      const saved = useSimulationStore.getState().params
+
+      // A switch flip is an ordinary draft edit.
+      const flows = saved.cashFlows.map((flow) =>
+        flow.id === 'pension-statutory' ? { ...flow, enabled: false } : flow
+      )
+      useSimulationStore.getState().updateParams({ cashFlows: flows })
+      await flushSimulationQueue()
+      expect(useSimulationStore.getState().isDirty).toBe(true)
+      expect(useSimulationStore.getState().params.monthlyPension).toBe(0)
+      const draft = useSimulationStore.getState().params
+
+      const newId = useSimulationStore.getState().saveDraftAsNewPlan('Without pension')
+      await flushSimulationQueue()
+
+      const { plans, activePlanId, isDirty, params, planSuccessRates } =
+        useSimulationStore.getState()
+      const created = plans.find((plan) => plan.id === newId)
+      expect(created?.name).toBe('Without pension')
+      expect(created?.params.cashFlows).toEqual(draft.cashFlows)
+      expect(created?.params.monthlyPension).toBe(0)
+      // The source stays active, clean, and as it was saved.
+      expect(activePlanId).toBe(baseId)
+      expect(isDirty).toBe(false)
+      expect(params).toEqual(saved)
+      expect(plans.find((plan) => plan.id === baseId)?.params).toEqual(saved)
+      // The results on screen described the draft: the new plan keeps its rate.
+      expect(planSuccessRates[newId!]).toBe(75)
+    })
+
+    it('saves nothing as a new plan while the draft is clean', () => {
+      const { useSimulationStore } = setupStore()
+      expect(useSimulationStore.getState().saveDraftAsNewPlan('Nothing')).toBeNull()
+      expect(useSimulationStore.getState().plans).toHaveLength(1)
     })
 
     it('renames a plan, drops its built-in name key and keeps names unique', async () => {

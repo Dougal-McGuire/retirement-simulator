@@ -41,7 +41,7 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
 - **UI**: React 19, Tailwind CSS 4, shadcn/ui components (Radix UI)
 - **State**: Zustand with localStorage persistence (namespaced per signed-in account)
 - **Validation**: zod (API request bodies, report schema)
-- **Charts**: Recharts for interactive visualizations, including the cash-flow Sankey
+- **Charts**: Recharts for interactive visualizations; the cash-flow Sankey uses its own layout (`cashflowSankeyLayout.ts`) so item labels never collide
 - **Auth / sync**: Auth.js (`next-auth` v5) with Google; optional cloud plan sync via Upstash Redis REST
 - **Theming**: color-scheme tokens in `src/app/interface.css` (System/Light/Dark, `src/lib/colorScheme.ts`)
 - **i18n**: next-intl (locales: en, de)
@@ -103,6 +103,7 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
 - **SimulationParams**: Demographics (ages), assets, income (savings, pension), expenses (monthly, annual), market assumptions (ROI, inflation, volatility, taxes)
 - **SimulationResults**: Percentile data for assets and spending at each age, success rate
 - **Plan**: Named `SimulationParams` snapshot with id and timestamps (`MAX_PLANS = 12`)
+- **CashFlow**: one list of incomes, expenses and pensions (`params.cashFlows`); `enabled: false` keeps a flow in the plan but out of every calculation (`isCashFlowEnabled`, see `docs/specs/2026-09-28-flow-switches.md`)
 - **DEFAULT_PARAMS**: Realistic German retirement scenario (see `src/types/index.ts`)
 
 ### Component Structure
@@ -113,13 +114,13 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
   - `ResultBar` (plan menu, KPIs, run status, save/discard, Cmd/Ctrl+S), `SectionIndex` (rail / chip row / bottom bar by width), `PlanMenu`, `PlanManagerDialog`, `EuroDisplay`
   - `sections/`: `ResultSection`, `AssumptionsSection`, `CashflowSection`, `WithdrawalSection`, `LeversSection` on a shared `WorkspaceSection`
   - `edit/`: `EditPanel` (Radix dialog, `modal={false}`: docked ≥1280, overlay 761–1279, bottom sheet on phones), code-split panel bodies, `focusField` for deep links
-  - `levers/`: `QuickLevers`, `LeverImpactList`, `useLeverMeasurements`
+  - `levers/`: `QuickLevers`, `LeverImpactList`, `UncertainFlowsList` ("Unsichere Posten"), `useLeverMeasurements` / `useFlowMeasurements` (gated background runs sharing one queue)
   - Shared: `LazyMount` (mount near the viewport, `data-lazy-state`), `AnimatedNumber` (tweened numbers; tests read `data-value`), `Skeleton`
 - **Plans**: Plan switcher, switch guard, name/scenario dialogs, withdrawal planner and `planSections.ts` (panel ids, field → panel) in `src/components/plans/`; the edit panel bodies are the groups in `src/components/plans/editor/` (`PersonalGroup`, `SavingsGroup`, `FlowsGroup`, `MarketGroup`, `shared.tsx`)
 - **Compare and fan chart**: `CompareView`, `CompareFanChart`, `FanChartCard` and the Menu dialog (`DashboardTools`) in `src/components/simulation-compact/`
 - **Auth**: Account menu, auth provider, cloud sync in `src/components/auth/`
 - **Form Components**: Setup wizard fields and labeled inputs in `src/components/forms/`
-- **Chart Components**: Recharts-based visualizations in `src/components/charts/`
+- **Chart Components**: visualizations in `src/components/charts/`; `CashflowSankey` + `CashflowCard` (the "Aufstellung") share one expanded state and drill into flows via `src/lib/simulation/flowBreakdown.ts`
 - **Report Components**: PDF report sections in `src/components/report/sections/`
 - **Navigation**: Locale switcher, appearance switch, header controls menu, skip links in `src/components/navigation/`
 

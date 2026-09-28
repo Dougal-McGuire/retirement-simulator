@@ -8,43 +8,36 @@ import { LazyMount } from '../LazyMount'
 import { Skeleton } from '../Skeleton'
 import { useWorkspace } from '../WorkspaceProvider'
 import { WorkspaceSection } from './WorkspaceSection'
+import './cashflow.css'
 
-/** The Sankey and ledger only redraw for a new result (`onEdit` is stable). */
+/** The Sankey and its table only redraw for a new result (`onEdit` is stable). */
 const MemoCashflowCard = memo(CashflowCard)
 
-/** Room the Sankey and the ledger take once mounted (placeholder height). */
-const CASHFLOW_RESERVED_HEIGHT = 960
+/** Room the Sankey and the table take once mounted (placeholder height). */
+const CASHFLOW_RESERVED_HEIGHT = 1180
 
 /**
- * The card's shape while it waits: title and year picker, the method line,
- * the Sankey plot at its height and the three ledger columns.
+ * The card's shape while it waits: the control row, the Sankey (its sentence
+ * and plot) and the rows of the table under it.
  */
 function CashflowSkeleton() {
   return (
     <div className="ws-cashflow" aria-hidden="true" style={{ height: CASHFLOW_RESERVED_HEIGHT }}>
-      <div className="ws-cashflow-head">
-        <div className="ws-skeleton-lines" style={{ flex: '1 1 16rem' }}>
-          <Skeleton height={22} width="14rem" />
-          <Skeleton height={14} width="8rem" />
-        </div>
+      <div className="ws-cashflow-controls">
         <Skeleton height={40} width="12rem" />
-      </div>
-      <div className="ws-skeleton-lines" style={{ marginTop: 24 }}>
-        <Skeleton height={14} width="80%" />
-        <Skeleton height={14} width="55%" />
+        <Skeleton height={14} width="10rem" />
       </div>
       <div className="ws-sankey">
-        <Skeleton height={20} width="16rem" />
-        <Skeleton variant="chart" height={360} style={{ marginTop: 24 }} />
+        <div className="ws-skeleton-lines">
+          <Skeleton height={14} width="80%" />
+          <Skeleton height={14} width="45%" />
+        </div>
+        <Skeleton variant="chart" height={260} style={{ marginTop: 16 }} />
       </div>
-      <div className="ws-ledger">
-        {[0, 1, 2].map((key) => (
-          <div key={key} className="ws-skeleton-lines">
-            <Skeleton height={16} width="50%" />
-            <Skeleton height={14} />
-            <Skeleton height={14} />
-            <Skeleton height={14} width="80%" />
-          </div>
+      <div className="ws-flowtable-wrap ws-skeleton-lines">
+        <Skeleton height={16} width="30%" />
+        {[0, 1, 2, 3, 4, 5].map((key) => (
+          <Skeleton key={key} height={14} width={key % 3 === 2 ? '70%' : '100%'} />
         ))}
       </div>
     </div>
@@ -52,7 +45,7 @@ function CashflowSkeleton() {
 }
 
 /**
- * Geldfluss (`#cashflow`): the Sankey and the ledger, mounted when near the
+ * Geldfluss (`#cashflow`): the Sankey and its table, mounted when near the
  * viewport. Inside the page's `DeferredResultsScope`: a landing run redraws
  * them after the result bar has committed.
  */

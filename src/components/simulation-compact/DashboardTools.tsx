@@ -22,7 +22,8 @@ export const FOCUSABLE =
 
 /**
  * The workspace "Menu": report, language, account and appearance, plus the
- * nominal / today's-€ switch below 1024px (the rail shows it above). Plan
+ * nominal / today's-€ switch wherever the rail does not show it (below
+ * 1024px, and beside the compact rail while a docked panel is open). Plan
  * management lives in the plan menu's "Manage plans …" dialog, the guided
  * setup in the Annahmen section.
  */
@@ -75,7 +76,8 @@ export function DashboardTools({
         </div>
         {/* Colour scheme (System / Light / Dark); self-contained, see AppearanceSwitch. */}
         <AppearanceSwitch showLabel className="self-start" />
-        {/* Below 1024px the nominal / today's-€ switch lives here (ws-page.css). */}
+        {/* The nominal / today's-€ switch shows here whenever the rail's is off
+            screen: below 1024px and beside the compact rail (ws-page.css). */}
         <div className="workspace-menu-display hidden">
           <span>{td('label')}</span>
           <EuroDisplay testId="menu-display-toggle" />

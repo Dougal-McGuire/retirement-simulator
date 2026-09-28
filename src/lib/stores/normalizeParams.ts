@@ -22,6 +22,7 @@ import {
   reconcileCashFlows,
   statutoryPensionMonthly,
 } from '@/lib/simulation/cashFlows'
+import { isDefaultCashFlowNameKey, legacySeededExpenseNameKey } from '@/lib/plans/cashFlowName'
 
 type NumericParamKey = keyof Omit<
   SimulationParams,
@@ -156,11 +157,12 @@ export const sanitizeCustomExpenses = (expenses: unknown): CustomExpense[] => {
       const rawId = typeof expense.id === 'string' ? expense.id : ''
       const rawName = typeof expense.name === 'string' ? expense.name : ''
       // Preserved so a seeded expense keeps following the UI language across a
-      // round trip through storage (see `CashFlow.nameKey`).
+      // round trip through storage (see `CashFlow.nameKey`); one seeded before
+      // keys existed gets it back by name.
       const rawNameKey =
         typeof expense.nameKey === 'string' && expense.nameKey.trim() !== ''
           ? expense.nameKey.trim()
-          : undefined
+          : legacySeededExpenseNameKey(rawName)
       const rawAmount = Number(expense.amount)
       const rawInterval =
         expense.interval === 'monthly' || expense.interval === 'annual'
@@ -198,6 +200,7 @@ const migrateToCustomExpenses = (params: PersistedParams): CustomExpense[] => {
         expenses.push({
           id: `migrated-monthly-${key}`,
           name: monthlyLabels[key] || key,
+          ...(isDefaultCashFlowNameKey(key) ? { nameKey: key } : {}),
           amount: value,
           interval: 'monthly',
         })
@@ -217,6 +220,7 @@ const migrateToCustomExpenses = (params: PersistedParams): CustomExpense[] => {
         expenses.push({
           id: `migrated-annual-${key}`,
           name: annualLabels[key] || key,
+          ...(isDefaultCashFlowNameKey(key) ? { nameKey: key } : {}),
           amount: value,
           interval: 'annual',
         })

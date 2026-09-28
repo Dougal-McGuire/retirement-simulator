@@ -14,6 +14,7 @@ import {
   ordinaryIncomeTax,
   versorgungsfreibetrag,
 } from '@/lib/simulation/germanTax'
+import { legacySeededExpenseNameKey } from '@/lib/plans/cashFlowName'
 
 /**
  * Cash flows are the plan's one list of money movements. Two older shapes are
@@ -43,6 +44,20 @@ const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
  * an ordinary `pension` flow with its own id, start age and tax share.
  */
 export const STATUTORY_PENSION_FLOW_ID = 'pension-statutory'
+
+/** False for a flow the user switched off (see `CashFlow.enabled`). */
+export const isCashFlowEnabled = (flow: Pick<CashFlow, 'enabled'>): boolean =>
+  flow.enabled !== false
+
+/**
+ * The flow switched on or off. "On" drops the field instead of storing
+ * `true`, so switching back leaves the flow byte-identical to before.
+ */
+export function withCashFlowEnabled(flow: CashFlow, enabled: boolean): CashFlow {
+  const { enabled: _previous, ...rest } = flow
+  void _previous
+  return enabled ? rest : { ...rest, enabled: false }
+}
 const STATUTORY_PENSION_NAME_KEY = 'statutoryPension'
 const STATUTORY_PENSION_NAME = 'Statutory pension'
 
@@ -59,8 +74,19 @@ const optionalAge = (value: unknown): number | undefined => {
   return parsed === null ? undefined : Math.round(parsed)
 }
 
-/** A flow that `customExpenses` can represent: lifetime, recurring, expense. */
+/**
+ * A flow that `customExpenses` can represent: lifetime, recurring, expense —
+ * and switched on. The legacy arrays have no way to say "switched off", so a
+ * disabled flow is outside their subset: the projection omits it and
+ * {@link reconcileCashFlows} carries it through untouched instead of dropping
+ * it for being absent from the array.
+ */
 export function isLifetimeExpenseFlow(flow: CashFlow): boolean {
+  return isCashFlowEnabled(flow) && hasLifetimeExpenseShape(flow)
+}
+
+/** Lifetime recurring expense by shape alone, on or off. */
+export function hasLifetimeExpenseShape(flow: CashFlow): boolean {
   return (
     flow.kind === 'expense' &&
     (flow.frequency === 'monthly' || flow.frequency === 'annual') &&
@@ -69,9 +95,26 @@ export function isLifetimeExpenseFlow(flow: CashFlow): boolean {
   )
 }
 
-/** A flow that `oneTimeIncomes` can represent. */
+/** A switched-on flow that `oneTimeIncomes` can represent (see above). */
 export function isOnceIncomeFlow(flow: CashFlow): boolean {
+  return isCashFlowEnabled(flow) && hasOnceIncomeShape(flow)
+}
+
+function hasOnceIncomeShape(flow: CashFlow): boolean {
   return flow.kind === 'income' && flow.frequency === 'once'
+}
+
+/**
+ * A single payment, switched on or off — the *shape*, for display and
+ * grouping. Calculations use {@link isOnceIncomeFlow}.
+ */
+export function isOneOffFlow(flow: CashFlow): boolean {
+  return flow.kind !== 'pension' && flow.frequency === 'once'
+}
+
+/** The flows a calculation may see: everything not switched off. */
+export function enabledCashFlows(flows: readonly CashFlow[] | undefined): CashFlow[] {
+  return (flows ?? []).filter(isCashFlowEnabled)
 }
 
 export function isPensionFlow(flow: CashFlow): boolean {
@@ -151,7 +194,7 @@ export function pensionStartAge(flow: CashFlow, legalRetirementAge: number): num
  */
 export function firstPensionAge(flows: readonly CashFlow[], legalRetirementAge: number): number {
   const starts = flows
-    .filter((flow) => isPensionFlow(flow) && flow.amount > 0)
+    .filter((flow) => isPensionFlow(flow) && isCashFlowEnabled(flow) && flow.amount > 0)
     .map((flow) => pensionStartAge(flow, legalRetirementAge))
   return starts.length > 0 ? Math.min(...starts) : legalRetirementAge
 }
@@ -172,7 +215,7 @@ export function pensionMonthlyAtAge(
   let fixed = 0
   let linked = 0
   for (const flow of flows) {
-    if (!isPensionFlow(flow) || flow.amount <= 0) continue
+    if (!isPensionFlow(flow) || !isCashFlowEnabled(flow) || flow.amount <= 0) continue
     if (age < pensionStartAge(flow, legalRetirementAge)) continue
     if (flow.endAge !== undefined && age > flow.endAge) continue
     if (flow.inflationLinked === true) linked += pensionMonthlyAmount(flow)
@@ -190,7 +233,7 @@ export function netPensionAnnualAtAge(
   let net = 0
   const rate = clamp(context.pensionTaxRate ?? 0, 0, 1)
   for (const flow of flows) {
-    if (!isPensionFlow(flow) || flow.amount <= 0) continue
+    if (!isPensionFlow(flow) || !isCashFlowEnabled(flow) || flow.amount <= 0) continue
     const start = pensionStartAge(flow, context.legalRetirementAge)
     if (age < start) continue
     if (flow.endAge !== undefined && age > flow.endAge) continue
@@ -204,20 +247,52 @@ export function netPensionAnnualAtAge(
   return Math.max(0, net)
 }
 
-/** The statutory pension's monthly amount — what `monthlyPension` projects. */
+/**
+ * The statutory pension's monthly amount — what `monthlyPension` projects.
+ * Zero while it is switched off: the legacy field describes the pension the
+ * calculation counts.
+ */
 export function statutoryPensionMonthly(flows: readonly CashFlow[]): number {
   const flow = flows.find((entry) => entry.id === STATUTORY_PENSION_FLOW_ID && isPensionFlow(entry))
-  return flow ? pensionMonthlyAmount(flow) : 0
+  return flow && isCashFlowEnabled(flow) ? pensionMonthlyAmount(flow) : 0
+}
+
+/** The statutory pension flow when the plan has one and it is switched off. */
+export function isStatutoryPensionSwitchedOff(flows: readonly CashFlow[] | undefined): boolean {
+  const flow = (flows ?? []).find((entry) => entry.id === STATUTORY_PENSION_FLOW_ID)
+  return flow !== undefined && !isCashFlowEnabled(flow)
+}
+
+/**
+ * The plan keeps pensions but every one of them is switched off, so no
+ * pension counts anywhere. `null` when a pension is on, or there is none.
+ * `statutory`: the one switched-off pension is the statutory one.
+ */
+export function switchedOffPensions(
+  flows: readonly CashFlow[] | undefined
+): { count: number; statutory: boolean } | null {
+  const pensions = (flows ?? []).filter((flow) => flow.kind === 'pension')
+  if (pensions.length === 0 || pensions.some(isCashFlowEnabled)) return null
+  return {
+    count: pensions.length,
+    statutory: pensions.length === 1 && pensions[0].id === STATUTORY_PENSION_FLOW_ID,
+  }
 }
 
 /**
  * Writes `monthlyPension` into the flow list: updates the statutory pension's
  * amount, creates it when the plan has none, removes it at zero. Everything
  * else on an existing statutory flow (start age, tax share, indexing) is kept.
+ *
+ * A switched-off statutory pension is outside the legacy field's reach: the
+ * field projects 0 for it, so honouring a write would delete the flow on the
+ * next round trip (0) or silently switch it back on (anything else). It is
+ * returned untouched; the flow list is the only way to edit or re-enable it.
  */
 export function withStatutoryPension(flows: readonly CashFlow[], amount: number): CashFlow[] {
   const monthly = Math.max(0, Number.isFinite(amount) ? amount : 0)
   const index = flows.findIndex((entry) => entry.id === STATUTORY_PENSION_FLOW_ID)
+  if (index !== -1 && !isCashFlowEnabled(flows[index])) return [...flows]
   if (monthly <= 0) return index === -1 ? [...flows] : flows.filter((_, i) => i !== index)
   if (index === -1) {
     return [
@@ -295,8 +370,13 @@ export function sanitizeCashFlow(entry: unknown, fallbackId: string): CashFlow |
   const name = typeof raw.name === 'string' ? raw.name : ''
   // Seeded flows carry a translation key so they follow the UI language; it
   // survives round-tripping through storage but never affects the model.
+  // Expenses seeded before keys existed get theirs back by name.
   const nameKey =
-    typeof raw.nameKey === 'string' && raw.nameKey.trim() !== '' ? raw.nameKey.trim() : undefined
+    typeof raw.nameKey === 'string' && raw.nameKey.trim() !== ''
+      ? raw.nameKey.trim()
+      : kind === 'expense'
+        ? legacySeededExpenseNameKey(name)
+        : undefined
   const startAge = optionalAge(raw.startAge)
   // A window is meaningless for a single payment, and keeping a stray `endAge`
   // around would make two otherwise identical flows compare unequal.
@@ -326,6 +406,7 @@ export function sanitizeCashFlow(entry: unknown, fallbackId: string): CashFlow |
     ...(pensionTaxMode !== undefined ? { pensionTaxMode } : {}),
     ...(startDate !== undefined ? { startDate } : {}),
     ...(note !== undefined ? { note } : {}),
+    ...(raw.enabled === false ? { enabled: false } : {}),
   }
 }
 
@@ -360,12 +441,17 @@ function readLegacyExpenses(value: unknown): CustomExpense[] | null {
       const amount = finiteOrNull(raw.amount)
       if (amount === null || amount < 0) return null
       if (raw.interval !== 'monthly' && raw.interval !== 'annual') return null
+      const name = typeof raw.name === 'string' ? raw.name : ''
+      // Same recovery as `sanitizeCashFlow`: this array is authoritative for
+      // the key when reconciling, so it has to agree.
+      const nameKey =
+        typeof raw.nameKey === 'string' && raw.nameKey.trim() !== ''
+          ? raw.nameKey.trim()
+          : legacySeededExpenseNameKey(name)
       return {
         id: typeof raw.id === 'string' && raw.id.trim() !== '' ? raw.id.trim() : `expense-${index}`,
-        name: typeof raw.name === 'string' ? raw.name : '',
-        ...(typeof raw.nameKey === 'string' && raw.nameKey.trim() !== ''
-          ? { nameKey: raw.nameKey.trim() }
-          : {}),
+        name,
+        ...(nameKey !== undefined ? { nameKey } : {}),
         amount,
         interval: raw.interval,
       }
@@ -424,6 +510,12 @@ const incomeKey = (name: string, age: number, amount: number) => `${name}|${age}
  * represented keeps its id and its extra attributes (`inflationLinked`,
  * `growthRate`), matched by id for expenses and by value for incomes.
  *
+ * A switched-off flow (`enabled: false`) is never projected, so it is outside
+ * every array's subset — carried through untouched like a windowed flow. The
+ * arrays can neither drop, edit nor re-enable it (an expense entry naming its
+ * id is absorbed; `monthlyPension` cannot reach a switched-off statutory
+ * pension).
+ *
  * Idempotent: reconciling params whose projections are already in sync returns
  * the same list, in the same order.
  */
@@ -454,6 +546,19 @@ export function reconcileCashFlows(params: {
     if (bucket) bucket.push(flow)
     else incomeFlowsByValue.set(key, [flow])
   })
+
+  // Switched-off flows are outside the arrays' subset (they are never
+  // projected), so the arrays can neither drop nor edit them. An expense entry
+  // that still carries a switched-off flow's id is a stale projection (or a
+  // plan-anchored rewrite such as the quick spending slider's): it is
+  // absorbed, never appended as an enabled duplicate. Incomes are matched by
+  // value, which is no identity — an entry equal to a switched-off income is
+  // a new, switched-on income (the wizard's one-off list adds exactly that).
+  const disabledExpenseIds = new Set(
+    flows
+      .filter((flow) => !isCashFlowEnabled(flow) && hasLifetimeExpenseShape(flow))
+      .map((flow) => flow.id)
+  )
 
   const takenIds = new Set(flows.map((flow) => flow.id))
   const uniqueId = (preferred: string) => {
@@ -489,6 +594,7 @@ export function reconcileCashFlows(params: {
       expenseFlowById.delete(expense.id)
       return
     }
+    if (disabledExpenseIds.has(expense.id)) return
     appended.push({
       id: uniqueId(expense.id),
       kind: 'expense',
@@ -665,6 +771,8 @@ export function buildCashFlowSeries(
   const expanded: Expanded[] = []
 
   for (const flow of flows) {
+    // A switched-off flow stays in the plan but is invisible to the model.
+    if (!isCashFlowEnabled(flow)) continue
     const amount = Math.max(0, flow.amount)
 
     if (isBaselineExpenseFlow(flow)) {
@@ -853,6 +961,9 @@ export function cashFlowSignature(flows: readonly CashFlow[]): string[] {
         flow.taxablePortion ?? '',
         flow.taxTreatment ?? '',
         flow.pensionTaxMode ?? '',
+        // Appended only when off, so every existing signature (and whatever
+        // fingerprint was built from it) stays byte-identical.
+        ...(isCashFlowEnabled(flow) ? [] : ['off']),
       ].join('|')
     )
     .sort()

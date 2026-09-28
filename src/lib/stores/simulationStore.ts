@@ -277,6 +277,32 @@ export const useSimulationStore = create<SimulationStore>()(
           requestRun()
         },
 
+        saveDraftAsNewPlan: (name: string) => {
+          const { plans, activePlanId, isDirty, params } = get()
+          if (!isDirty) return null
+          const source = findPlan(activePlanId)
+          if (!source) return null
+          if (plans.length >= MAX_PLANS) {
+            set({ error: 'planLimitReached' })
+            return null
+          }
+
+          const plan = makePlan({
+            id: createPlanId(plans),
+            name: uniquePlanName(name, plans),
+            params: normalizePersistedParams(params),
+          })
+          commitPlans([...plans, plan])
+          // The results on screen describe the draft, i.e. the new plan.
+          rememberSuccessRate(plan.id, successRateFor(plan.params))
+
+          // The draft now lives in the new plan; the source goes back to the
+          // state it was saved in and stays the plan being worked on.
+          adoptPlanParams(source)
+          requestRun()
+          return plan.id
+        },
+
         createPlan: (
           name: string,
           params?: SimulationParams,
@@ -852,6 +878,7 @@ export const useSetActivePlan = () => useSimulationStore((state) => state.setAct
 export const usePlanIsDirty = () => useSimulationStore((state) => state.isDirty)
 export const useSavePlanDraft = () => useSimulationStore((state) => state.savePlanDraft)
 export const useRevertPlanDraft = () => useSimulationStore((state) => state.revertPlanDraft)
+export const useSaveDraftAsNewPlan = () => useSimulationStore((state) => state.saveDraftAsNewPlan)
 export const usePlanSuccessRates = () => useSimulationStore((state) => state.planSuccessRates)
 export const useActivePlan = () =>
   useSimulationStore((state) => state.plans.find((plan) => plan.id === state.activePlanId))

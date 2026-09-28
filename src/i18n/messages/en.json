@@ -464,6 +464,7 @@
         "period": "Period",
         "amount": "Amount",
         "actions": "Actions",
+        "switchedOff": "{count} switched off",
         "groups": {
           "income": "Income · {count}",
           "expense": "Expenses · {count}"
@@ -475,6 +476,13 @@
         "cancel": "Cancel",
         "edit": "Edit",
         "remove": "Remove"
+      },
+      "switch": {
+        "label": "Include",
+        "aria": "“{name}” in the calculation",
+        "off": "Off",
+        "offHint": "Switched off – stays in the plan but counts in no calculation.",
+        "offTimeline": "{name} · switched off"
       },
       "advanced": {
         "show": "Advanced options",
@@ -492,7 +500,8 @@
         "income": "Recurring income per year",
         "expense": "Recurring expenses per year",
         "note": "Totals cover recurring items at full rate; one-off payments and age windows are shown in the timeline above.",
-        "pension": "Pension income per year (gross)"
+        "pension": "Pension income per year (gross)",
+        "switchedOff": "{count, plural, =1 {# item switched off – in no total} other {# items switched off – in no total}}"
       },
       "templates": {
         "label": "Templates (click to add)",
@@ -1927,6 +1936,18 @@
         "changes": "What changes",
         "noChanges": "This lever leaves the parameters unchanged.",
         "confirm": "Create plan"
+      },
+      "saveDraft": {
+        "title": "Save changes as a new plan",
+        "description": "Your unsaved changes become a plan of their own. “{source}” stays as it was saved and remains active.",
+        "changes": "What changes compared with “{source}”",
+        "noChanges": "No change that can be summarised here.",
+        "label": "Name of the new plan",
+        "placeholder": "e.g. Without inheritance",
+        "confirm": "Create plan",
+        "without": "Without {name}",
+        "with": "With {name}",
+        "failed": "The plan could not be created. Your changes are still here."
       }
     },
     "comparison": {
@@ -2030,13 +2051,19 @@
       "staleDirty": "The active plan has unsaved edits — this row still shows the saved plan.",
       "staleRanAt": "Run {time}",
       "runsNoteEntry": "{name}: {runs} runs",
-      "runsNoteEntryHistorical": "{name}: {runs} historical paths"
+      "runsNoteEntryHistorical": "{name}: {runs} historical paths",
+      "flowSwitch": {
+        "on": "included",
+        "off": "switched off",
+        "absent": "not in plan"
+      }
     },
     "toasts": {
       "planCreatedFrom": "Created “{name}” from “{source}” — selected in Compare plans.",
       "switchToPlan": "Switch to it",
       "dismiss": "Dismiss",
-      "compare": "Compare"
+      "compare": "Compare",
+      "draftSavedAsNew": "“{name}” saved. “{source}” is back to its saved state."
     },
     "dirty": {
       "badge": "Unsaved changes",
@@ -2107,7 +2134,8 @@
       "pensionGap": "Statutory pension starts at {age}",
       "expenseCount": "{count, plural, =0 {No entries} =1 {# entry} other {# entries}}",
       "pensions": "Pensions at {age}",
-      "pensionsHint": "{count, plural, =0 {no pension} =1 {# pension} other {# pensions}} · gross per month"
+      "pensionsHint": "{count, plural, =0 {no pension} =1 {# pension} other {# pensions}} · gross per month",
+      "switchedOff": "{count} switched off"
     },
     "reset": {
       "trigger": "Reset to defaults",
@@ -2194,8 +2222,6 @@
     }
   },
   "cashflowSankey": {
-    "title": "Where the money comes from and where it goes",
-    "caption": "{period} · {unit}. Averages across all simulated paths — the same figures as the ledger below. They add up; they are not the median (P50).",
     "periodAge": "Age {age}",
     "periodSum": "Whole retirement, ages {from}–{to} (sum)",
     "unitNominal": "nominal euros",
@@ -2208,11 +2234,6 @@
     "share": "Share of all money in",
     "amount": "Amount",
     "unfundedPart": "Of which unfunded",
-    "showTable": "Show as table",
-    "hideTable": "Hide table",
-    "tableCaption": "Flows in the diagram · {period} · {unit}",
-    "from": "From",
-    "to": "To",
     "wholeRetirement": "Whole retirement (sum)",
     "moneyIn": "Money in",
     "moneyOut": "Money out",
@@ -2246,28 +2267,54 @@
       "reinvested": "{amount} paid into the portfolio"
     },
     "ledger": {
-      "pensionGross": "of which pensions",
-      "otherIncomeGross": "of which other income",
-      "oneOffIncomeGross": "of which one-off income",
-      "baselineSpending": "of which regular spending",
-      "scheduledExpenses": "of which scheduled expenses",
       "edit": "edit in “{section}”",
       "selectRow": "Show age {age} in the diagram",
       "sumHeading": "Ages {from}–{to}, summed",
       "rowHint": "Select a row to show that year in the diagram.",
       "totalTaxSum": "Total taxes deducted across ages {from}–{to}: {amount}. These are already included in the calculation."
+    },
+    "diagramLabel": "Money-flow diagram. Arrow keys move between nodes; Enter opens a category into its items or an item in your plan.",
+    "expandAll": "All items",
+    "collapseAll": "Overview",
+    "more": "{count} more",
+    "unassigned": "Not attributed",
+    "estimated": "pro rata",
+    "estimatedNote": "Pro rata: your withdrawal rule adjusts the budget as a whole, not individual items.",
+    "taxEstimatedNote": "Tax pro rata: income under different tax rules is taxed jointly.",
+    "categoryShare": "Share of “{category}”",
+    "period": "Period",
+    "creditedAt": "credited at {age}",
+    "disabledFlows": "{count, plural, one {# item switched off} other {# items switched off}} – not calculated",
+    "shareOf": "{share} of “{category}”",
+    "taxPart": "incl. {amount} tax",
+    "taxPartEstimated": "incl. {amount} tax (pro rata)",
+    "actions": {
+      "expand": "show items",
+      "showAll": "show all items",
+      "edit": "edit in your plan",
+      "collapseGroup": "{name} – collapse"
+    },
+    "hints": {
+      "click": "Click",
+      "expand": "Click to show the individual items",
+      "showAll": "Click to show all items",
+      "editFlow": "Click to edit this item in your plan"
+    },
+    "table": {
+      "caption": "Breakdown",
+      "item": "Item",
+      "totalIn": "Total money in",
+      "taxes": "Taxes",
+      "net": "Net",
+      "netDetail": "{grossLabel} {gross} − tax {tax}"
     }
   },
   "cashflowResults": {
-    "title": "Where the money goes",
     "age": "Age",
     "nominal": "Annual amounts · nominal euros",
     "real": "Annual amounts · today’s purchasing power",
     "method": "Averages of the actual cash flows across all simulated paths. These figures add up; they are not the median (P50) used in the charts. Rounded amounts may differ by a euro.",
     "missing": "Recalculate the simulation to see the annual cash-flow breakdown.",
-    "incomeTitle": "Income after tax",
-    "withdrawalTitle": "From the portfolio",
-    "budgetTitle": "Spending and funding",
     "incomeGross": "Gross pensions and other income",
     "incomeTax": "Tax on pensions and other income",
     "incomeNet": "Net income",
@@ -2346,7 +2393,8 @@
       "actions": "Plan actions",
       "manage": "Manage plans …",
       "createdToast": "Created “{name}”",
-      "compare": "Compare plans"
+      "compare": "Compare plans",
+      "saveAsNew": "Save changes as new plan …"
     },
     "unsavedShort": "Unsaved",
     "pageTitle": "{plan} – Retirement planner",
@@ -2383,7 +2431,8 @@
       "successShort": "Success",
       "endAssets": "End assets · median",
       "endAssetsShort": "End · median",
-      "deltaAria": "Change against the saved plan: {delta}"
+      "deltaAria": "Change against the saved plan: {delta}",
+      "saveAsNew": "Save as new plan …"
     },
     "verdict": {
       "lead": "of simulated paths fund your budget and legacy goal through age {end}."
@@ -2399,7 +2448,8 @@
     },
     "cards": {
       "person": {
-        "value": "Retire at {age}",
+        "label": "Planned retirement",
+        "value": "At age {age}",
         "detail": "Today {current} · planned to {end}",
         "pension": "State pension from {age}"
       },
@@ -2409,10 +2459,15 @@
       "flows": {
         "value": "{amount} per month",
         "counts": "{pensions, plural, =0 {no pension} one {# pension} other {# pensions}} · {expenses} expense items · {incomes} incomes",
-        "pensions": "Pensions at {age}: {amount} gross/month"
+        "pensions": "Pensions at {age}: {amount} gross/month",
+        "statutoryOff": "Statutory pension switched off",
+        "pensionsOff": "{count, plural, one {Pension switched off} other {All # pensions switched off}}",
+        "switchedOff": "{count} switched off"
       },
       "market": {
-        "value": "{rate} return",
+        "label": "Expected return",
+        "labelHistorical": "Market model",
+        "value": "{rate} a year",
         "valueHistorical": "Historical returns",
         "detail": "Inflation {inflation} · volatility ± {volatility}",
         "detailHistorical": "{from}–{to} · {count} start years",
@@ -2452,7 +2507,23 @@
       "measuring": "Measuring …",
       "waiting": "Re-measured once your inputs settle.",
       "leadsTo": "resulting in",
-      "saveAsPlan": "Save as plan"
+      "saveAsPlan": "Save as plan",
+      "pensionOff": "Statutory pension switched off",
+      "worstDecileUnit": "worst decile",
+      "flows": {
+        "title": "Uncertain items",
+        "description": "One-off, time-limited and extra items. Switch one off to see what your plan achieves without it.",
+        "without": "without: {delta}",
+        "with": "with: {delta}",
+        "withoutAria": "Without “{name}”: {delta}, success rate {value}",
+        "withoutAriaAssets": "Without “{name}”: worst-decile assets {delta}, resulting in {value}",
+        "withAria": "With “{name}”: {delta}, success rate {value}",
+        "withAriaAssets": "With “{name}”: worst-decile assets {delta}, resulting in {value}",
+        "open": "Open “{name}” in “Income & spending”",
+        "empty": "No one-off or time-limited items in the plan.",
+        "emptyAction": "Add an item",
+        "more": "{count, plural, =1 {# more item} other {# more items}} under “Income & spending”"
+      }
     }
   }
 }

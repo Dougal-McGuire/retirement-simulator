@@ -3,6 +3,7 @@ import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
 import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
+import { allPensionsSwitchedOff } from '@/lib/pdf-generator/pensionSwitch'
 import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
 import {
   withdrawalStrategyLabel,
@@ -21,6 +22,8 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
 
   const baseSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
   const pensionAnnual = finances.monthlyPension * 12
+  // Every pension switched off: none is described as paid or taxed.
+  const pensionsOff = allPensionsSwitchedOff(expenses)
   const strategyLabel = withdrawalStrategyLabel(assumptions.withdrawalStrategy, isGerman)
 
   const { person } = profile
@@ -40,7 +43,13 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
     {
       label: isGerman ? 'Gesetzliche Rente' : 'State Pension Age',
       value: person.pensionAge,
-      note: isGerman ? 'Rentenzahlung beginnt' : 'Pension income starts',
+      note: pensionsOff
+        ? isGerman
+          ? 'Rente ausgeschaltet'
+          : 'Pension switched off'
+        : isGerman
+          ? 'Rentenzahlung beginnt'
+          : 'Pension income starts',
     },
     {
       label: isGerman ? 'Planungsende' : 'Planning Horizon',
@@ -100,7 +109,7 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
       value: fmtPercent(assumptions.equityFundExemption, 0, locale),
     })
   }
-  if (assumptions.pensionTaxablePortion > 0 && assumptions.pensionTaxRate > 0) {
+  if (!pensionsOff && assumptions.pensionTaxablePortion > 0 && assumptions.pensionTaxRate > 0) {
     marketRows.push({
       label: isGerman ? 'Rentenbesteuerung' : 'Pension taxation',
       value: `${fmtPercent(assumptions.pensionTaxablePortion, 0, locale)} ${
@@ -139,7 +148,11 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
     {
       phase: isGerman ? 'Rentenphase' : 'Pension phase',
       ages: `${profile.person.pensionAge}–${profile.person.horizonAge}`,
-      income: `${isGerman ? 'Rente' : 'Pension'} ${fmtCurrency(pensionAnnual, locale)}`,
+      income: pensionsOff
+        ? isGerman
+          ? 'keine Rente berücksichtigt'
+          : 'no pension included'
+        : `${isGerman ? 'Rente' : 'Pension'} ${fmtCurrency(pensionAnnual, locale)}`,
       flow: `−${fmtCurrency(Math.max(0, baseSpend - pensionAnnual), locale)}`,
     },
   ]

@@ -1,4 +1,14 @@
 import type { AnnualCashFlow } from '@/types'
+import {
+  isFlowCategory,
+  ledgerParts,
+  type CategoryBreakdown,
+  type FlowBreakdown,
+  type FlowBreakdownItem,
+  type FlowCategory,
+} from '@/lib/simulation/flowBreakdown'
+
+export { ledgerParts, type LedgerParts } from '@/lib/simulation/flowBreakdown'
 
 /**
  * Ledger rows -> Sankey nodes and links.
@@ -18,6 +28,14 @@ import type { AnnualCashFlow } from '@/types'
  *
  * The unfunded gap is not money: it feeds the spending nodes directly and never
  * passes through the "available" hub, so the hub only ever holds real cash.
+ *
+ * **Drill-down.** A category that holds plan flows (pensions, other income,
+ * one-off income, regular spending, scheduled expenses) can be *expanded*: its
+ * node is replaced, in place, by one node per flow from the
+ * {@link FlowBreakdown} — whose items add up to the booked category — so the
+ * expanded diagram balances exactly like the overview. At most
+ * {@link MAX_VISIBLE_ITEMS} nodes per category; the smallest fold into one
+ * "more" node until the category is shown in full.
  */
 
 export type SankeyNodeId =
@@ -41,19 +59,49 @@ export type SankeyNodeId =
 /** 0 = where money comes from, 1 = taxes and the after-tax hub, 2 = where it goes. */
 export type SankeyColumn = 0 | 1 | 2
 
+/** A category as booked, one of its flows, or the flows folded into "more". */
+export type SankeyNodeKind = 'category' | 'item' | 'more'
+
 export interface CashflowSankeyNode {
-  id: SankeyNodeId
+  /**
+   * Category nodes: their {@link SankeyNodeId}. Items: `<category>:<flow id>`;
+   * the folded rest: `<category>:more`.
+   */
+  id: string
+  /** The category the node is (or belongs to). */
+  category: SankeyNodeId
+  kind: SankeyNodeKind
   column: SankeyColumn
   /** Euros through the node (sum of its links on either side). */
   value: number
+  /** Whole euros for the label; a category's items add up to its rounded total. */
+  rounded: number
   /** Spending nodes only: the part fed by the unfunded gap. */
   unfunded?: number
+  /** Income items: the part that went to income tax. */
+  tax?: number
+  /** `item`: the flow's share of its category. */
+  item?: FlowBreakdownItem
+  /** `more`: the items it stands for. */
+  folded?: FlowBreakdownItem[]
 }
 
 export interface CashflowSankeyLink {
-  source: SankeyNodeId
-  target: SankeyNodeId
+  source: string
+  target: string
   value: number
+}
+
+/** An expanded category, as drawn. */
+export interface SankeyGroup {
+  category: FlowCategory
+  column: SankeyColumn
+  /** Booked total of the category. */
+  value: number
+  /** Node ids of its items, in drawing order. */
+  nodeIds: string[]
+  /** True while the smallest items are folded into a "more" node. */
+  folded: boolean
 }
 
 export interface CashflowSankeyModel {
@@ -66,6 +114,10 @@ export interface CashflowSankeyModel {
   totalOut: number
   /** Income tax plus capital gains tax. */
   taxes: number
+  /** Categories drawn as their items. */
+  groups: SankeyGroup[]
+  /** Categories in this row that can be expanded into items. */
+  expandable: FlowCategory[]
 }
 
 /**
@@ -76,7 +128,20 @@ export interface CashflowSankeyModel {
  */
 export const SANKEY_MIN_AMOUNT = 0.5
 
-const TAX_NODES: readonly SankeyNodeId[] = ['incomeTax', 'capitalGainsTax']
+/** Nodes per expanded category before the smallest fold into "more". */
+export const MAX_VISIBLE_ITEMS = 6
+
+/** How far a category is opened: its largest items, or every item. */
+export type ExpansionMode = 'top' | 'all'
+export type Expansion = Partial<Record<FlowCategory, ExpansionMode>>
+
+export interface Drilldown {
+  breakdown: FlowBreakdown
+  expanded: Expansion
+  maxItems?: number
+}
+
+const TAX_NODES: readonly string[] = ['incomeTax', 'capitalGainsTax']
 
 const NODE_ORDER: readonly SankeyNodeId[] = [
   'pension',
@@ -114,84 +179,119 @@ const COLUMN: Record<SankeyNodeId, SankeyColumn> = {
   reinvested: 2,
 }
 
-const positive = (value: number | undefined) =>
-  Number.isFinite(value) && (value as number) > 0 ? (value as number) : 0
+export const itemNodeId = (category: FlowCategory, key: string) => `${category}:${key}`
+export const moreNodeId = (category: FlowCategory) => `${category}:more`
 
-/** The ledger row split into the parts the diagram draws. All values >= 0. */
-export interface LedgerParts {
-  /** Gross amount and tax per income source; `income` only without a breakdown. */
-  incomes: {
-    id: 'pension' | 'otherIncome' | 'income' | 'oneOffIncome'
-    gross: number
-    tax: number
-  }[]
-  savings: number
-  withdrawal: number
-  capitalGainsTax: number
-  shortfall: number
-  /** `spending` only when the row carries no expense breakdown. */
-  expenses: { id: 'baselineSpending' | 'scheduledExpenses' | 'spending'; value: number }[]
-  reinvested: number
+/** The category a node id belongs to (itself for a category node). */
+export const nodeCategory = (id: string): SankeyNodeId => id.split(':')[0] as SankeyNodeId
+
+/**
+ * Which items of a category get their own node: all of them when there are
+ * few or the category is shown in full, else the largest `max - 1` and a
+ * "more" node for the rest. Items too small to draw always fold.
+ */
+export function visibleItems(
+  breakdown: CategoryBreakdown,
+  mode: ExpansionMode,
+  max = MAX_VISIBLE_ITEMS,
+  minAmount = SANKEY_MIN_AMOUNT
+): { shown: FlowBreakdownItem[]; folded: FlowBreakdownItem[] } {
+  const drawable = breakdown.items.filter((item) => item.amount >= minAmount)
+  const tiny = breakdown.items.filter((item) => item.amount < minAmount)
+  if (mode === 'all' || drawable.length <= max) return { shown: drawable, folded: tiny }
+  const keep = Math.max(1, max - 1)
+  return { shown: drawable.slice(0, keep), folded: [...drawable.slice(keep), ...tiny] }
 }
 
-export function ledgerParts(row: AnnualCashFlow): LedgerParts {
-  const incomeGross = positive(row.incomeGross)
-  const incomeTax = positive(row.incomeTax)
-  const hasIncomeDetail = row.pensionGross !== undefined && row.oneOffIncomeGross !== undefined
-  let incomes: LedgerParts['incomes']
-  if (hasIncomeDetail) {
-    const pensionGross = positive(row.pensionGross)
-    const pensionTax = positive(row.pensionTax)
-    const oneOffGross = positive(row.oneOffIncomeGross)
-    const oneOffTax = positive(row.oneOffIncomeTax)
-    // "Other" is whatever the total holds beyond the two booked parts, so the
-    // three always add back up to the ledger's own total.
-    incomes = [
-      { id: 'pension', gross: pensionGross, tax: pensionTax },
-      {
-        id: 'otherIncome',
-        gross: positive(incomeGross - pensionGross - oneOffGross),
-        tax: positive(incomeTax - pensionTax - oneOffTax),
-      },
-      { id: 'oneOffIncome', gross: oneOffGross, tax: oneOffTax },
-    ]
-  } else {
-    incomes = [{ id: 'income', gross: incomeGross, tax: incomeTax }]
-  }
-
-  const expenses = positive(row.expenses)
-  const scheduled = row.scheduledExpenses
-  return {
-    incomes,
-    savings: positive(row.savings),
-    withdrawal: positive(row.portfolioWithdrawal),
-    capitalGainsTax: positive(row.capitalGainsTax),
-    shortfall: Math.min(positive(row.shortfall), expenses),
-    expenses:
-      scheduled === undefined
-        ? [{ id: 'spending', value: expenses }]
-        : [
-            { id: 'baselineSpending', value: positive(expenses - positive(scheduled)) },
-            { id: 'scheduledExpenses', value: Math.min(positive(scheduled), expenses) },
-          ],
-    reinvested: positive(row.portfolioContribution),
-  }
+/** Categories of this breakdown that name at least one plan flow. */
+function expandableCategories(breakdown: FlowBreakdown | undefined): FlowCategory[] {
+  if (!breakdown) return []
+  return (Object.values(breakdown.categories) as CategoryBreakdown[])
+    .filter((entry) => entry.items.some((item) => item.flow !== null))
+    .map((entry) => entry.category)
 }
 
 export function buildCashflowSankey(
   row: AnnualCashFlow,
-  minAmount = SANKEY_MIN_AMOUNT
+  minAmount = SANKEY_MIN_AMOUNT,
+  drilldown?: Drilldown
 ): CashflowSankeyModel {
   const parts = ledgerParts(row)
   const links: CashflowSankeyLink[] = []
-  const add = (source: SankeyNodeId, target: SankeyNodeId, value: number) => {
+  const add = (source: string, target: string, value: number) => {
     if (value >= minAmount) links.push({ source, target, value })
+  }
+
+  const expandable = expandableCategories(drilldown?.breakdown)
+  const groups: SankeyGroup[] = []
+  const itemNodes = new Map<string, Omit<CashflowSankeyNode, 'value'>>()
+  /** The nodes a category is drawn as: itself, or its items and "more". */
+  const expand = (
+    category: SankeyNodeId
+  ): { id: string; share: number; item?: FlowBreakdownItem; folded?: FlowBreakdownItem[] }[] => {
+    const mode = isFlowCategory(category) ? drilldown?.expanded[category] : undefined
+    const entry = isFlowCategory(category) ? drilldown?.breakdown.categories[category] : undefined
+    if (!mode || !entry || !expandable.includes(entry.category) || !(entry.total > 0)) {
+      return [{ id: category, share: 1 }]
+    }
+    const { shown, folded } = visibleItems(entry, mode, drilldown?.maxItems, minAmount)
+    const nodes: {
+      id: string
+      share: number
+      item?: FlowBreakdownItem
+      folded?: FlowBreakdownItem[]
+    }[] = shown.map((item) => ({
+      id: itemNodeId(entry.category, item.key),
+      share: item.share,
+      item,
+    }))
+    const rest = folded.reduce((sum, item) => sum + item.amount, 0)
+    if (folded.length > 0 && rest >= minAmount) {
+      nodes.push({ id: moreNodeId(entry.category), share: rest / entry.total, folded })
+    }
+    for (const node of nodes) {
+      itemNodes.set(node.id, {
+        id: node.id,
+        category,
+        kind: node.item ? 'item' : 'more',
+        column: COLUMN[category],
+        rounded: node.item
+          ? node.item.rounded
+          : (node.folded ?? []).reduce((sum, item) => sum + item.rounded, 0),
+        ...(node.item ? { item: node.item } : {}),
+        ...(node.folded ? { folded: node.folded } : {}),
+      })
+    }
+    groups.push({
+      category: entry.category,
+      column: COLUMN[category],
+      value: entry.total,
+      nodeIds: nodes.map((node) => node.id),
+      folded: nodes.some((node) => node.id === moreNodeId(entry.category)),
+    })
+    return nodes
   }
 
   for (const income of parts.incomes) {
     const tax = Math.min(income.tax, income.gross)
-    add(income.id, 'incomeTax', tax)
-    add(income.id, 'available', income.gross - tax)
+    const drawn = expand(income.id)
+    for (const node of drawn) {
+      if (!node.item && !node.folded) {
+        add(node.id, 'incomeTax', tax)
+        add(node.id, 'available', income.gross - tax)
+        continue
+      }
+      const members = node.item ? [node.item] : (node.folded ?? [])
+      const amount = members.reduce((sum, item) => sum + item.amount, 0)
+      const itemTax = Math.min(
+        amount,
+        members.reduce((sum, item) => sum + item.tax, 0)
+      )
+      const itemNode = itemNodes.get(node.id)
+      if (itemNode) itemNode.tax = itemTax
+      add(node.id, 'incomeTax', itemTax)
+      add(node.id, 'available', amount - itemTax)
+    }
   }
   add('savings', 'available', parts.savings)
   const saleTax = Math.min(parts.capitalGainsTax, parts.withdrawal)
@@ -201,31 +301,58 @@ export function buildCashflowSankey(
   // The engine books one unfunded amount per year, not per expense; spread it
   // in proportion to what each part asked for rather than guessing an order.
   const requested = parts.expenses.reduce((sum, part) => sum + part.value, 0)
-  const unfunded = new Map<SankeyNodeId, number>()
+  const unfunded = new Map<string, number>()
   for (const part of parts.expenses) {
     const gap = requested > 0 ? (parts.shortfall * part.value) / requested : 0
-    unfunded.set(part.id, gap)
-    add('shortfall', part.id, gap)
-    add('available', part.id, part.value - gap)
+    for (const node of expand(part.id)) {
+      const members = node.item ? [node.item] : (node.folded ?? [])
+      const value =
+        node.item || node.folded ? members.reduce((sum, item) => sum + item.amount, 0) : part.value
+      const share = part.value > 0 ? value / part.value : 0
+      unfunded.set(node.id, gap * share)
+      add('shortfall', node.id, gap * share)
+      add('available', node.id, value - gap * share)
+    }
   }
   add('available', 'reinvested', parts.reinvested)
 
-  const inflow = new Map<SankeyNodeId, number>()
-  const outflow = new Map<SankeyNodeId, number>()
+  const inflow = new Map<string, number>()
+  const outflow = new Map<string, number>()
   for (const link of links) {
     outflow.set(link.source, (outflow.get(link.source) ?? 0) + link.value)
     inflow.set(link.target, (inflow.get(link.target) ?? 0) + link.value)
   }
 
   const nodes: CashflowSankeyNode[] = []
-  for (const id of NODE_ORDER) {
-    const value = Math.max(inflow.get(id) ?? 0, outflow.get(id) ?? 0)
-    if (value <= 0) continue
-    const node: CashflowSankeyNode = { id, column: COLUMN[id], value }
-    const gap = unfunded.get(id)
+  const pushNode = (base: Omit<CashflowSankeyNode, 'value'>) => {
+    const value = Math.max(inflow.get(base.id) ?? 0, outflow.get(base.id) ?? 0)
+    if (value <= 0) return
+    const node: CashflowSankeyNode = { ...base, value }
+    const gap = unfunded.get(base.id)
     if (gap !== undefined && gap >= minAmount) node.unfunded = gap
     nodes.push(node)
   }
+  for (const id of NODE_ORDER) {
+    const group = groups.find((entry) => entry.category === id)
+    if (group) {
+      for (const nodeId of group.nodeIds) {
+        const base = itemNodes.get(nodeId)
+        if (base) pushNode(base)
+      }
+      continue
+    }
+    pushNode({ id, category: id, kind: 'category', column: COLUMN[id], rounded: 0 })
+  }
+  for (const node of nodes) {
+    if (node.kind === 'category') node.rounded = Math.round(node.value)
+  }
+  // A group whose items all fell below the threshold is not drawn.
+  const drawnGroups = groups
+    .map((group) => ({
+      ...group,
+      nodeIds: group.nodeIds.filter((id) => nodes.some((node) => node.id === id)),
+    }))
+    .filter((group) => group.nodeIds.length > 0)
 
   const totalIn = nodes
     .filter((node) => node.column === 0)
@@ -236,7 +363,15 @@ export function buildCashflowSankey(
     .filter((node) => TAX_NODES.includes(node.id))
     .reduce((sum, node) => sum + node.value, 0)
 
-  return { nodes, links, totalIn, totalOut, taxes }
+  return {
+    nodes,
+    links,
+    totalIn,
+    totalOut,
+    taxes,
+    groups: drawnGroups,
+    expandable: expandable.filter((category) => nodes.some((node) => node.category === category)),
+  }
 }
 
 /** What the year selector can point at: one age, or every retirement year summed. */

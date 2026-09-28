@@ -13,14 +13,18 @@
  * gesture is the result bar's numerals.
  *
  * Breakpoints: ≥1280 docked panel · ≥1024 left rail · 761–1023 chip row under
- * the bar · ≤760 fixed bottom bar and bottom sheet.
+ * the bar · ≤760 fixed bottom bar and bottom sheet. While the docked panel is
+ * open the rail collapses to its icons, so the panel can take the room.
  */
 
 .ws-page {
   --ws-bar-bottom: var(--ui-bar-height);
   --ws-sticky-top: var(--ui-bar-height);
-  --ws-panel-width: var(--ui-panel-width);
-  --ws-section-gap: var(--ui-space-16);
+  --ws-rail-width: var(--ui-rail-width);
+  /* ≈486 at 1280, ≈520 at 1366, 560 from ~1474: wide enough for the cash-flow
+     list's names, while the page column keeps ≥720px at 1280. */
+  --ws-panel-width: clamp(var(--ui-panel-width), 38vw, 560px);
+  --ws-section-gap: var(--ui-space-8);
   /* Aliases kept for the section lanes; new rules read the tokens directly. */
   --ws-motion-fast: var(--motion-fast);
   --ws-motion-base: var(--motion-base);
@@ -29,7 +33,7 @@
   position: relative;
   display: grid;
   min-height: 100dvh;
-  grid-template-columns: var(--ui-rail-width) minmax(0, 1fr) auto;
+  grid-template-columns: var(--ws-rail-width) minmax(0, 1fr) auto;
   grid-template-rows: auto 1fr;
   grid-template-areas:
     'rail bar bar'
@@ -85,6 +89,86 @@
   flex: 1 1 auto;
   min-width: 0;
   padding-inline: var(--ui-space-1);
+}
+.ws-rail-mark,
+.ws-index-tip {
+  display: none;
+}
+
+/* Compact rail (docked panel open, 1280–1799): the rail gives its width to
+   the panel. Icons only, with the accent marker; each label stays its link's
+   accessible name and returns as a tooltip on hover and keyboard focus. The
+   app mark stands in for the name, and the € switch moves to the Menu. The
+   column snaps (no width animation: the charts would re-measure every
+   frame); the index keeps its vertical position, so nothing jumps. From
+   1800px the full rail, the page column at its 1104px maximum and the 560px
+   panel fit side by side, so the rail stays as it is. */
+@media (max-width: 1799px) {
+  .ws-page[data-panel-mode='docked'][data-panel-open] {
+    --ws-rail-width: 64px;
+  }
+  .ws-page[data-panel-mode='docked'][data-panel-open] .ws-rail {
+    /* Tooltips reach past the rail's edge, over the page column. */
+    z-index: 44;
+    overflow: visible;
+    padding-inline: var(--ui-space-2);
+  }
+  .ws-page[data-panel-mode='docked'][data-panel-open] :is(.workspace-brand, .ws-rail-footer) {
+    display: none;
+  }
+  .ws-page[data-panel-mode='docked'][data-panel-open] .ws-rail-mark {
+    display: block;
+    flex: none;
+    width: 22px;
+    height: 22px;
+    /* Brand line (24 + 18) plus its 32px gap: the index starts where it did. */
+    margin: -2px auto 30px;
+    background-color: var(--ui-muted);
+  }
+  .ws-page[data-panel-mode='docked'][data-panel-open] .ws-index a {
+    position: relative;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+  }
+  .ws-page[data-panel-mode='docked'][data-panel-open] .ws-index-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .ws-page[data-panel-mode='docked'][data-panel-open] .ws-index-tip {
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 10px);
+    padding: 4px var(--ui-space-2);
+    font-size: var(--ui-font-small);
+    font-weight: 500;
+    line-height: 16px;
+    color: var(--ui-text);
+    white-space: nowrap;
+    background: var(--surface-raised);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  .ws-page[data-panel-mode='docked'][data-panel-open]
+    .ws-index
+    a:is(:hover, :focus-visible)
+    .ws-index-tip {
+    display: block;
+    animation: ws-fade-in var(--motion-fast) var(--motion-ease);
+  }
+}
+/* Back to the full rail: the names fade in rather than pop. */
+@media (min-width: 1280px) and (max-width: 1799px) {
+  .ws-page:not([data-panel-open]) :is(.ws-rail .workspace-brand, .ws-index-label) {
+    animation: ws-fade-in var(--motion-base) var(--motion-ease);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -186,8 +270,11 @@
   display: grid;
   /* The plan picker is the column that gives way (down to 120px) before
      anything overflows; the empty spacer absorbs the draft cluster, so the
-     KPIs never move when the plan becomes dirty. */
-  grid-template-columns: auto minmax(0, 1fr) auto minmax(120px, max-content) auto;
+     KPIs never move when the plan becomes dirty. KPIs, draft cluster and Menu
+     keep their content width: a long plan name takes only what is left. */
+  grid-template-columns:
+    max-content minmax(0, 1fr) max-content minmax(120px, max-content)
+    max-content;
   grid-template-areas: 'kpis spacer draft plan menu';
   align-items: center;
   column-gap: var(--ui-space-3);
@@ -208,7 +295,12 @@
 .ws-bar .workspace-plan-trigger {
   width: 100%;
   min-width: 0;
-  max-width: 220px;
+  /* A long plan name uses the bar's free room before it truncates. The cap
+     only bounds how wide it grows into the spacer: where the bar is tight
+     (dirty at 1024–1440) the grid track still shrinks it first, down to
+     120px, so it never pushes into the draft cluster or the KPIs. Names are
+     at most 60 characters. */
+  max-width: min(520px, 40vw);
 }
 .ws-bar .workspace-plan-menu {
   left: auto;
@@ -438,7 +530,7 @@
   width: 100%;
   min-width: 0;
   max-width: calc(1040px + 2 * var(--ui-space-8));
-  padding: var(--ui-space-8) var(--ui-space-8) var(--ui-space-12);
+  padding: var(--ui-space-6) var(--ui-space-8) var(--ui-space-12);
   scroll-margin-top: var(--ws-sticky-top);
 }
 .ws-scroll-sentinel {
@@ -462,7 +554,7 @@
   scroll-margin-top: calc(var(--ws-sticky-top) + 16px);
 }
 /* "Ruled ledger": every section but the first starts with a hairline; the
-   heading sits 24px below it. */
+   heading sits 24px below it, 32px of air above it. */
 .ws-section + .ws-section {
   padding-top: var(--ui-space-6);
   border-top: 1px solid var(--ui-border);
@@ -472,7 +564,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   column-gap: var(--ui-space-6);
   align-items: baseline;
-  margin-bottom: var(--ui-space-6);
+  margin-bottom: var(--ui-space-4);
 }
 .ws-section-header h2 {
   grid-column: 1;
@@ -490,7 +582,8 @@
 }
 .ws-section-header > p {
   grid-column: 1 / -1;
-  max-width: 64ch;
+  max-width: 80ch;
+  text-wrap: pretty;
   margin: var(--ui-space-1) 0 0;
   font-size: var(--ui-font-body);
   line-height: 1.5;
@@ -609,12 +702,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--skeleton-sheen) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg, transparent 0%, var(--skeleton-sheen) 50%, transparent 100%);
   transform: translateX(-100%);
   animation: ws-sheen 1.2s linear infinite;
 }
@@ -642,10 +730,12 @@
 /* ---- Ergebnis ------------------------------------------------------ */
 
 .ws-verdict {
-  margin-bottom: var(--ui-space-8);
+  margin-bottom: var(--ui-space-6);
 }
+/* One line where the column allows it (the lead ends on "bis Alter 90."). */
 .ws-verdict-statement {
-  max-width: 60ch;
+  max-width: 80ch;
+  text-wrap: pretty;
   margin: 0;
   color: var(--ui-text);
   font-size: var(--ui-font-lead);
@@ -669,7 +759,7 @@
 .ws-facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0 0 var(--ui-space-8);
+  margin: 0 0 var(--ui-space-6);
   border-top: 1px solid var(--ui-border);
   border-bottom: 1px solid var(--ui-border);
 }
@@ -707,7 +797,7 @@
 }
 .ws-chart-card {
   min-width: 0;
-  margin-bottom: var(--ui-space-8);
+  margin-bottom: var(--ui-space-6);
   padding: var(--ui-space-6);
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
@@ -719,7 +809,8 @@
   line-height: 1.3;
 }
 .ws-chart-card > p {
-  max-width: 64ch;
+  max-width: 80ch;
+  text-wrap: pretty;
   margin: var(--ui-space-1) 0 var(--ui-space-4);
   color: var(--ui-muted);
 }
@@ -733,7 +824,7 @@
 .ws-life-stages {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin: 0 0 var(--ui-space-8);
+  margin: 0 0 var(--ui-space-6);
   padding: 0;
   list-style: none;
 }
@@ -877,7 +968,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: var(--ui-space-6);
+  padding: var(--ui-space-4) calc(var(--ui-space-4) + var(--ui-space-1));
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius);
@@ -897,59 +988,51 @@
   outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
+.ws-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+  margin-bottom: var(--ui-space-2);
+}
 .ws-card h3 {
-  margin: 0 0 var(--ui-space-4);
+  min-width: 0;
+  margin: 0;
   font-size: var(--ui-font-lead);
   font-weight: 600;
   line-height: 1.4;
 }
 .ws-card-label {
-  margin: 0 0 2px;
+  margin: 0;
   font-size: var(--ui-font-small);
   font-weight: 500;
   line-height: 1.4;
   color: var(--ui-muted);
 }
 .ws-card-value {
-  margin: 0 0 var(--ui-space-2);
+  margin: 0 0 2px;
   color: var(--ui-text);
   font-size: var(--ui-font-kpi);
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.005em;
 }
-/* Side by side, cards without a label line keep their key figure on the
-   same baseline as their neighbours'. */
-@container (min-width: 640px) {
-  .ws-card h3 + .ws-card-value {
-    margin-top: calc(var(--ui-font-small) * 1.4 + 2px);
-  }
-}
 .ws-card-detail {
   margin: 0;
-  line-height: 1.6;
+  line-height: 1.5;
   color: var(--ui-muted);
 }
+/* A quiet text action at the end of the title row. */
 .ws-card-edit {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  gap: var(--ui-space-1);
-  /* Pinned to the card's foot, so the four cards' actions line up. */
-  margin-top: auto;
-  padding: var(--ui-space-4) 0 0;
+  flex: none;
+  padding: 0;
   font: inherit;
+  font-size: var(--ui-font-body);
   font-weight: 500;
   color: var(--ui-accent);
   background: none;
   border: 0;
   cursor: pointer;
-}
-.ws-card-edit svg {
-  transition: transform var(--motion-fast) var(--motion-ease);
-}
-.ws-card:hover .ws-card-edit svg {
-  transform: translateX(2px);
 }
 /* The whole card is the button's hit area. */
 .ws-card-edit::after {
@@ -1000,26 +1083,21 @@
   min-width: 0;
   scroll-margin-top: calc(var(--ws-sticky-top) + 16px);
 }
-.ws-cashflow-head {
+/* One control row: year · which euros · (right) the Sankey's table toggle. */
+.ws-cashflow-controls {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--ui-space-3) var(--ui-space-6);
+  align-items: center;
+  gap: var(--ui-space-2) var(--ui-space-6);
 }
-.ws-cashflow-head h3 {
-  margin: 0;
-  font-size: var(--ui-font-section);
-  line-height: 1.3;
-}
-.ws-cashflow-head p,
-.ws-cashflow-method {
-  margin: var(--ui-space-1) 0 0;
+.ws-cashflow-unit {
+  font-size: var(--ui-font-small);
   color: var(--ui-muted);
 }
 .ws-cashflow-method {
   max-width: 72ch;
-  margin-top: var(--ui-space-4);
+  margin: var(--ui-space-4) 0 0;
+  color: var(--ui-muted);
 }
 .ws-cashflow-year {
   display: flex;
@@ -1032,87 +1110,32 @@
   min-height: var(--ui-control-height);
   font-size: var(--ui-font-body);
 }
-/* The Sankey is the section's one surface block (a chart). */
+/* The Sankey is the section's one surface block (a chart): the sentence that
+   reads it, the diagram, and one small note on what the amounts are. */
 .ws-sankey {
-  margin: var(--ui-space-6) 0 0;
-  padding: var(--ui-space-6);
+  margin: var(--ui-space-3) 0 0;
+  padding: var(--ui-space-4) var(--ui-space-6);
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius);
 }
-.ws-sankey-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--ui-space-2) var(--ui-space-4);
-}
-.ws-sankey-head h4 {
+.ws-sankey-summary {
+  max-width: 80ch;
   margin: 0;
-  font-size: var(--ui-font-lead);
-  font-weight: 600;
-  line-height: 1.4;
+  color: var(--ui-text);
+  line-height: 1.55;
 }
-.ws-sankey figcaption {
-  margin-top: var(--ui-space-1);
+.ws-sankey-note {
+  max-width: 100ch;
+  margin: var(--ui-space-2) 0 0;
   font-size: var(--ui-font-small);
   line-height: 1.5;
   color: var(--ui-muted);
 }
-.ws-sankey-summary {
-  max-width: 72ch;
-  margin: var(--ui-space-3) 0 0;
-  color: var(--ui-text);
-  line-height: 1.55;
-}
-.ws-sankey .workspace-text-button {
+.ws-cashflow-controls .workspace-text-button {
   min-height: 36px;
   padding: 0;
   font-weight: 500;
-}
-.ws-cashflow-sum {
-  margin: var(--ui-space-8) 0 0;
-  color: var(--ui-text);
-  font-size: var(--ui-font-lead);
-  font-weight: 600;
-}
-/* The ledger: three flat columns split by hairlines (stacked when narrow). */
-.ws-ledger {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: var(--ui-space-8);
-  border-top: 1px solid var(--ui-border);
-}
-.ws-ledger > div {
-  min-width: 0;
-  padding: var(--ui-space-4) var(--ui-space-6) var(--ui-space-2);
-}
-.ws-ledger > div:first-child {
-  padding-left: 0;
-}
-.ws-ledger > div:last-child {
-  padding-right: 0;
-}
-.ws-ledger > div + div {
-  border-left: 1px solid var(--ui-border);
-}
-@container (max-width: 719px) {
-  .ws-ledger {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .ws-ledger > div {
-    padding-inline: 0;
-  }
-  .ws-ledger > div + div {
-    border-top: 1px solid var(--ui-border);
-    border-left: 0;
-  }
-}
-.ws-ledger h4 {
-  margin: 0 0 var(--ui-space-1);
-  font-size: var(--ui-font-body);
-  font-weight: 600;
-  line-height: 1.4;
 }
 .ws-ledger-line {
   display: flex;
@@ -1544,7 +1567,9 @@
   right: 0;
   bottom: 0;
   z-index: 42;
-  width: min(var(--ui-sheet-width), 100vw - 48px);
+  /* 480 at 761–960, growing with the viewport to 520 from 1040: room for
+     the cash-flow names and a one-row footer. */
+  width: min(clamp(var(--ui-sheet-width), 50vw, 520px), 100vw - 48px);
   border-left: 1px solid var(--ui-border);
   box-shadow: var(--shadow-sheet);
   animation: ws-panel-in-right var(--motion-slow) var(--motion-ease);
@@ -1580,23 +1605,24 @@
 }
 .ws-panel-header {
   flex: none;
-  padding: var(--ui-space-4) var(--ui-space-6);
+  padding: var(--ui-space-3) var(--ui-space-6);
   background: inherit;
   border-bottom: 1px solid var(--ui-border);
   border-radius: inherit;
 }
+/* Title row: the close button keeps its 40px target but gives back its
+   extra height, so the row is as tall as the title. */
 .ws-panel-heading {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--ui-space-3);
 }
 .ws-panel-header h2 {
   margin: 0;
-  padding-top: 6px;
   font-size: var(--ui-font-section);
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.35;
 }
 .ws-panel-header h2:focus {
   outline: none;
@@ -1607,7 +1633,7 @@
   place-items: center;
   width: var(--ui-control-height);
   height: var(--ui-control-height);
-  margin-right: calc(-1 * var(--ui-space-2));
+  margin: -8px calc(-1 * var(--ui-space-2)) -8px 0;
   color: var(--ui-muted);
   background: transparent;
   border: 0;
@@ -1622,8 +1648,8 @@
   background: var(--ui-subtle);
 }
 .ws-panel-description {
-  max-width: 48ch;
   margin: 2px 0 0;
+  line-height: 1.45;
   color: var(--ui-muted);
 }
 .ws-panel-body {
@@ -1631,7 +1657,7 @@
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: var(--ui-space-6);
+  padding: var(--ui-space-4) var(--ui-space-6) var(--ui-space-6);
 }
 .ws-panel-loading {
   display: flex;
@@ -1641,22 +1667,28 @@
 .ws-panel-footer {
   display: flex;
   flex: none;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: var(--ui-space-2);
-  padding: var(--ui-space-3) var(--ui-space-6) calc(var(--ui-space-3) + env(safe-area-inset-bottom));
+  padding: var(--ui-space-2) var(--ui-space-6) calc(var(--ui-space-2) + env(safe-area-inset-bottom));
   background: inherit;
   border-top: 1px solid var(--ui-border);
 }
+/* One row: ‹ previous · next › … Fertig. Where the two names do not fit
+   beside Fertig (the phone sheet), they wrap onto a second line. The first
+   button sits flush with the panel's text edge. */
 .ws-panel-walk {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--ui-space-1);
   min-width: 0;
+  margin-left: calc(-1 * var(--ui-space-2));
 }
 .ws-panel-walk .workspace-button {
   justify-content: flex-start;
+  gap: var(--ui-space-1);
   max-width: 100%;
   min-height: 36px;
   padding-inline: var(--ui-space-2);
@@ -1700,9 +1732,10 @@
   line-height: 16px;
   transition: opacity var(--motion-fast) var(--motion-ease);
 }
-.ws-panel-mini[data-running] .ws-panel-mini-rate,
-.ws-panel-mini [data-pending] {
-  opacity: 0.55;
+/* Running: the figure fades a little (still well above 3:1 for its size);
+   the spinner says the rest. The pending delta keeps full contrast. */
+.ws-panel-mini[data-running] .ws-panel-mini-rate {
+  opacity: 0.72;
 }
 .ws-spin {
   align-self: center;
@@ -2036,9 +2069,6 @@
   }
 }
 @media (min-width: 1440px) {
-  .ws-page {
-    --ws-panel-width: var(--ui-sheet-width);
-  }
   .ws-bar-marker-long {
     display: inline;
   }
@@ -2061,7 +2091,7 @@
 /* Tablets: the index becomes a sticky chip row under the bar. */
 @media (max-width: 1023px) {
   .ws-page {
-    --ws-section-gap: var(--ui-space-12);
+    --ws-section-gap: var(--ui-space-8);
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto 1fr;
     grid-template-areas:
@@ -2120,16 +2150,24 @@
   /* The Menu carries the € switch below 1024px. */
   body:has(.ws-page) .workspace-menu-display {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    font-size: var(--ui-font-small);
-    font-weight: 500;
-    color: var(--ui-muted);
   }
-  body:has(.ws-page) .workspace-menu-display .workspace-euro button {
-    font-size: var(--ui-font-body);
+}
+/* …and beside the compact rail, which has no room for it. */
+@media (max-width: 1799px) {
+  body:has(.ws-page[data-panel-mode='docked'][data-panel-open]) .workspace-menu-display {
+    display: flex;
   }
+}
+body:has(.ws-page) .workspace-menu-display {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--ui-font-small);
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+body:has(.ws-page) .workspace-menu-display .workspace-euro button {
+  font-size: var(--ui-font-body);
 }
 @media (min-width: 761px) and (max-width: 1023px) {
   .ws-bar-label-long {
@@ -2160,7 +2198,7 @@
    row (with Menü) and the draft row stay pinned — plus a fixed bottom index. */
 @media (max-width: 760px) {
   .ws-page {
-    --ws-section-gap: var(--ui-space-10);
+    --ws-section-gap: var(--ui-space-8);
     grid-template-rows: auto 1fr;
     grid-template-areas:
       'bar'
@@ -2345,9 +2383,6 @@
   .ws-cards {
     gap: var(--ui-space-3);
   }
-  .ws-card h3 {
-    margin-bottom: var(--ui-space-3);
-  }
   .ws-life-stages {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     row-gap: var(--ui-space-3);
@@ -2426,7 +2461,10 @@
   .ws-spin,
   .ws-bar-delta,
   .ws-bar-draft > *,
-  .ws-skeleton::after {
+  .ws-skeleton::after,
+  .ws-index-tip,
+  .ws-index-label,
+  .ws-rail .workspace-brand {
     animation: none !important;
   }
   .ws-page *,
@@ -2439,4 +2477,28 @@
     outline: 2px solid var(--ui-accent);
     outline-offset: 4px;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Flow switches: "Als neuen Plan speichern" beside Save. Only where the */
+/* bar has room (≥1600); below that it is the plan menu's first item.   */
+/* ------------------------------------------------------------------ */
+
+.ws-bar .ws-bar-save-as {
+  display: none;
+}
+@media (min-width: 1600px) {
+  .ws-bar .ws-bar-save-as {
+    display: inline-flex;
+    min-width: var(--ui-control-height);
+    padding-inline: var(--ui-space-2);
+  }
+}
+/* At the plan limit: stays in place, dimmed, its title says why. */
+.ws-bar .ws-bar-save-as[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}
+.ws-bar .ws-bar-save-as[aria-disabled='true']:hover {
+  color: var(--ui-muted);
 }

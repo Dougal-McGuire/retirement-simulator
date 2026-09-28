@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import type { SimulationResults } from '@/types'
+import { useEffect, useRef, useState, type RefObject } from 'react'
+import type { SimulationParams, SimulationResults } from '@/types'
 import { simulationFingerprint } from '@/lib/simulation/context'
 import {
   areSimulationParamsEqual,
@@ -102,38 +102,56 @@ export function sortLeverResults(levers: LeverResult[], saturated: boolean): Lev
   )
 }
 
-export interface LeverMeasurementsState {
-  /** The last complete measurement (possibly for an older draft). */
-  measurement: LeverMeasurement | null
-  /** `measurement` describes the current draft: its actions are safe to use. */
-  fresh: boolean
-  /** Lever runs are on the worker right now. */
-  measuring: boolean
+/**
+ * One background job on the shared worker at a time, across every list that
+ * measures in the background (stress levers, uncertain items). The worker
+ * runs jobs in order, so this is what bounds the wait of the result bar's
+ * next run to a single background job. `wanted` is checked once the slot is
+ * free: a job whose gate closed while it waited is never sent.
+ */
+let backgroundTail: Promise<unknown> = Promise.resolve()
+
+export function runInBackgroundSlot(
+  params: SimulationParams,
+  wanted: () => boolean
+): Promise<SimulationResults | null> {
+  const job = backgroundTail.then(async () => {
+    if (!wanted()) return null
+    const { runSimulationInClient } = await import('@/lib/simulation/workerClient')
+    if (!wanted()) return null
+    return runSimulationInClient(params)
+  })
+  backgroundTail = job.catch(() => null)
+  return job
+}
+
+export interface SettledBase {
+  /** `shouldMeasureLevers` for the current page state. */
+  gateOpen: boolean
+  /** The gate, readable from async code. */
+  gateRef: RefObject<boolean>
+  /**
+   * Results that have stood for `LEVER_SETTLE_MS` with the gate open — the
+   * base every background measurement is taken against.
+   */
+  settled: SimulationResults | null
 }
 
 /**
- * Measures the three stress levers against the hero's result — at the hero's
- * run count over the same common random numbers, so the baseline is literally
- * the result bar's figure.
- *
- * Runs only when `shouldMeasureLevers` allows it and the inputs have settled
- * for `LEVER_SETTLE_MS`. The runs go to the worker one at a time and each is
- * re-checked against the gate before it is sent, so the moment the reader
- * touches something at most one lever run is still ahead of the main run.
- * Finished runs are cached by fingerprint, so an interrupted measurement
- * resumes instead of starting over, and a re-opened gate with nothing changed
- * measures nothing.
+ * The gate and settle timer every background measurement shares: the list is
+ * near the screen, no panel is open, nothing is running or held, and the
+ * shown results describe the current draft — for `LEVER_SETTLE_MS`.
  */
-export function useLeverMeasurements({
+export function useSettledBase({
   near,
   holding,
 }: {
   near: boolean
   holding: boolean
-}): LeverMeasurementsState {
+}): SettledBase {
   const { editor, mode } = useWorkspace()
   // Deferred inside the page's results scope: a landing run reaches the list
-  // after the result bar. The settle timer and the `getState()` checks below
+  // after the result bar. The settle timer and the `getState()` checks
   // compare against the store, so a superseded result is never measured.
   const results = useSimulationResults()
   // Narrow selectors: while a slider is scrubbed these flip a few times, and
@@ -167,13 +185,46 @@ export function useLeverMeasurements({
     gateRef.current = gateOpen
   }, [gateOpen])
 
-  // Settle: the results must have stood for LEVER_SETTLE_MS with the gate open.
   const [settled, setSettled] = useState<SimulationResults | null>(null)
   useEffect(() => {
     if (!gateOpen || !results || settled === results) return
     const timer = setTimeout(() => setSettled(results), LEVER_SETTLE_MS)
     return () => clearTimeout(timer)
   }, [gateOpen, results, settled])
+
+  return { gateOpen, gateRef, settled }
+}
+
+export interface LeverMeasurementsState {
+  /** The last complete measurement (possibly for an older draft). */
+  measurement: LeverMeasurement | null
+  /** `measurement` describes the current draft: its actions are safe to use. */
+  fresh: boolean
+  /** Lever runs are on the worker right now. */
+  measuring: boolean
+}
+
+/**
+ * Measures the three stress levers against the hero's result — at the hero's
+ * run count over the same common random numbers, so the baseline is literally
+ * the result bar's figure.
+ *
+ * Runs only when `shouldMeasureLevers` allows it and the inputs have settled
+ * for `LEVER_SETTLE_MS`. The runs go to the worker one at a time and each is
+ * re-checked against the gate before it is sent, so the moment the reader
+ * touches something at most one lever run is still ahead of the main run.
+ * Finished runs are cached by fingerprint, so an interrupted measurement
+ * resumes instead of starting over, and a re-opened gate with nothing changed
+ * measures nothing.
+ */
+export function useLeverMeasurements({
+  near,
+  holding,
+}: {
+  near: boolean
+  holding: boolean
+}): LeverMeasurementsState {
+  const { gateOpen, gateRef, settled } = useSettledBase({ near, holding })
 
   const [measurement, setMeasurement] = useState<LeverMeasurement | null>(null)
   const [measuring, setMeasuring] = useState(false)
@@ -199,11 +250,11 @@ export function useLeverMeasurements({
     const run = async () => {
       setMeasuring(true)
       try {
-        const { runSimulationInClient } = await import('@/lib/simulation/workerClient')
         for (const scenario of buildScenarioParams(settled.params)) {
           if (cache.byId.has(scenario.id)) continue
           if (!wanted()) return
-          const scenarioResults = await runSimulationInClient(scenario.params)
+          const scenarioResults = await runInBackgroundSlot(scenario.params, wanted)
+          if (!scenarioResults) return
           // Valid for this fingerprint even if the gate closed meanwhile.
           cache.byId.set(scenario.id, measureLever(scenario.id, settled, scenarioResults))
         }
@@ -227,7 +278,7 @@ export function useLeverMeasurements({
       cancelled = true
       setMeasuring(false)
     }
-  }, [settled, gateOpen, measuredFingerprint])
+  }, [settled, gateOpen, gateRef, measuredFingerprint])
 
   const fresh = useSimulationStore(
     (state) =>

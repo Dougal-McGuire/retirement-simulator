@@ -65,6 +65,32 @@ const DEFAULT_NAMES_EN: Record<DefaultCashFlowNameKey, string> = {
   demoCare: 'Care costs',
 }
 
+/**
+ * The English names the app seeded before flows carried a `nameKey`: the
+ * labels of the pre-v3 expense migration and of the first default plans.
+ * Plans saved back then still hold them without a key, so a German user read
+ * "Groceries" and "Health Insurance" among their own German entries.
+ */
+const LEGACY_SEEDED_EXPENSE_NAMES: ReadonlyMap<string, DefaultCashFlowNameKey> = new Map([
+  ['health insurance', 'health'],
+  ['groceries', 'food'],
+  ['entertainment', 'entertainment'],
+  ['shopping', 'shopping'],
+  ['utilities', 'utilities'],
+  ['vacations', 'vacations'],
+  ['home repairs', 'repairs'],
+  ['car maintenance', 'carMaintenance'],
+])
+
+/**
+ * The key a seeded expense lost, recognised by its exact English name
+ * (ignoring case). A name the user typed never matches unless it *is* the
+ * seeded label, and then following the UI language is what they'd expect.
+ */
+export function legacySeededExpenseNameKey(name: string): DefaultCashFlowNameKey | undefined {
+  return LEGACY_SEEDED_EXPENSE_NAMES.get(name.trim().toLowerCase())
+}
+
 type NamedFlow = Pick<CashFlow, 'name' | 'nameKey'> | Pick<CustomExpense, 'name' | 'nameKey'>
 
 /**
