@@ -3,7 +3,7 @@
 - Node.js 24.14.0, pnpm 10, TypeScript 5
 - Next.js 16 (App Router) with Turbopack
 - Tailwind CSS 4 + shadcn/ui
-- zod, react-hook-form
+- zod
 - React PDF (`@react-pdf/renderer`) for report generation
 - Jest + ts-jest for unit tests; Playwright for E2E
 

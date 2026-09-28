@@ -9,7 +9,6 @@ turbopack
 tailwindcss 4
 shadcn/ui
 zod
-react-hook-form
 recharts
 react-pdf for PDF generation
 playwright for e2e testing with an auto-started local app
