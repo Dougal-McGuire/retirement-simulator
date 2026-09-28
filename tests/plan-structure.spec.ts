@@ -1,17 +1,17 @@
-import { expect, test } from '@playwright/test'
+import { expect, gotoWorkspace, openPanel, test } from './helpers/workspace'
 
 /**
- * The four structural fixes from the UX audit: inline validation instead of
- * silent clamping, a navigable/collapsible Plan tab, a live readout in the
- * wizard, and a gauge that says what its percentage is a percentage of.
+ * The structural fixes from the UX audit: inline validation instead of silent
+ * clamping, an assumption editor you can walk (now the edit panel), and a live
+ * readout in the wizard.
  */
 
 test.describe('inline validation instead of silent clamping', () => {
   test('keeps an out-of-range age on screen, explains it, and never commits it', async ({
     page,
   }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
+    await gotoWorkspace(page)
+    await openPanel(page, 'person')
 
     const age = page.locator('#editor-currentAge')
     await expect(age).toHaveValue('55')
@@ -44,8 +44,8 @@ test.describe('inline validation instead of silent clamping', () => {
   })
 
   test('calls out ages that contradict each other', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
+    await gotoWorkspace(page)
+    await openPanel(page, 'person')
 
     // Valid on its own, impossible next to a retirement age of 60.
     await page.locator('#editor-currentAge').fill('66')
@@ -78,44 +78,49 @@ test.describe('inline validation instead of silent clamping', () => {
   })
 })
 
-test.describe('plan tab sections', () => {
-  test('shows one section at a time and remembers the open one', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-
-    const nav = page.getByTestId('plan-section-nav')
-    await expect(nav).toBeVisible()
-    await expect(nav.getByRole('tab')).toHaveCount(5)
-
-    // Personal opens by default; nothing else is mounted.
+test.describe('edit panel', () => {
+  test('shows one panel at a time, walks them, and restores the open one from the hash', async ({
+    page,
+  }) => {
+    await gotoWorkspace(page)
+    const panel = await openPanel(page, 'person')
     await expect(page.locator('#plan-editor-personal')).toBeVisible()
-    await expect(page.getByTestId('withdrawal-planner')).toHaveCount(0)
+    // The Entnahme rule is edited in its own section, never in the panel.
+    await expect(panel.getByTestId('withdrawal-planner')).toHaveCount(0)
 
-    await page.getByTestId('plan-section-pill-withdrawal').click()
-    await expect(page.getByTestId('plan-section-pill-withdrawal')).toHaveAttribute(
-      'data-state',
-      'active'
-    )
-    await expect(page.getByTestId('withdrawal-planner')).toBeVisible()
-    await expect(page.locator('#plan-editor-personal')).toHaveCount(0)
-
-    // The footer walks backwards through the plan…
-    await expect(page.getByTestId('plan-section-next')).toHaveCount(0)
-    await page.getByTestId('plan-section-previous').click()
+    // The footer walks forward through the four panels…
+    for (const next of ['savings', 'flows', 'market']) {
+      await page.getByTestId('edit-panel-next').click()
+      await expect(panel).toHaveAttribute('data-panel', next)
+    }
     await expect(page.locator('#plan-editor-market')).toBeVisible()
+    for (const other of ['personal', 'income', 'expenses']) {
+      await expect(page.locator(`#plan-editor-${other}`)).toHaveCount(0)
+    }
+    await expect(page.getByTestId('edit-panel-next')).toHaveCount(0)
 
-    // …and the open page survives a reload.
-    await page.reload()
-    await page.getByTestId('tab-plan').click()
+    // …and backwards.
+    await page.getByTestId('edit-panel-previous').click()
+    await expect(panel).toHaveAttribute('data-panel', 'flows')
+    await expect(page.locator('#plan-editor-expenses')).toBeVisible()
+    await expect(page.locator('#plan-editor-market')).toHaveCount(0)
+
+    // The open panel lives in the URL, so a reload restores it.
+    await gotoWorkspace(page, '/en/simulation#assumptions:market')
+    await expect(page.getByTestId('edit-panel')).toHaveAttribute('data-panel', 'market')
     await expect(page.locator('#plan-editor-market')).toBeVisible()
-    await expect(page.getByTestId('plan-section-pill-market')).toHaveAttribute(
-      'data-state',
-      'active'
-    )
+    await expect(page.getByTestId('edit-market')).toHaveAttribute('aria-expanded', 'true')
+
+    // Escape closes it and puts focus on the card that edits it.
+    await expect(page.getByTestId('edit-panel-title')).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('edit-panel')).toHaveCount(0)
+    await expect(page.getByTestId('edit-market')).toBeFocused()
+    await expect(page).toHaveURL(/#assumptions$/)
   })
 
-  // The hero's edit-shortcut pencils and the scenarios-tab withdrawal pointer
-  // were dashboard chrome the compact redesign removed; their tests went too.
+  // The persisted "open plan section" (displayStore.planSection) was dropped
+  // (spec §1.4 #34): the URL hash restores an open panel instead, as above.
 })
 
 test.describe('wizard live preview', () => {

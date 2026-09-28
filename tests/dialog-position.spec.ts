@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test'
 import { stubSignedIn } from './helpers/auth'
+import { expect, gotoWorkspace, test } from './helpers/workspace'
 
 for (const viewport of [
   { width: 1366, height: 900 },
@@ -8,9 +8,9 @@ for (const viewport of [
   test(`menu stays inside the viewport at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport)
     await stubSignedIn(page)
-    await page.goto('/de/simulation')
+    await gotoWorkspace(page, '/de/simulation')
     await page.getByTestId('dashboard-tools').click()
-    const dialog = page.getByRole('dialog', { name: 'Pläne und Werkzeuge' })
+    const dialog = page.getByRole('dialog', { name: 'Bericht und Einstellungen' })
     await expect(dialog).toBeVisible()
     await expect(dialog).toHaveCSS('position', 'fixed')
     const box = await dialog.boundingBox()

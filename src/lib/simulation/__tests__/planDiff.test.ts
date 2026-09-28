@@ -381,7 +381,7 @@ describe('assumption rows are translatable', () => {
   })
 
   /**
-   * Two dashboard surfaces explain the active rule in prose, keyed by the
+   * The Entnahme section explains the active rule in prose, keyed by the
    * strategy id. A missing entry there renders the raw key, which is the exact
    * failure mode a new strategy invites.
    */
@@ -389,24 +389,24 @@ describe('assumption rows are translatable', () => {
     '%s explains every strategy on the spending surfaces',
     (_locale, messages) => {
       const chart = messages.spendingChart.explanation.strategies as Record<string, string>
-      const table = messages.simulationChart.spendingTable.note as Record<string, string>
 
       for (const strategy of WITHDRAWAL_STRATEGIES) {
         expect(chart[strategy]).toBeTruthy()
-        expect(table[strategy]).toBeTruthy()
       }
     }
   )
 
   it.each(catalogues)('%s labels the whole withdrawal planner', (_locale, messages) => {
     const planner = messages.withdrawalPlanner as unknown as {
-      title: string
+      steps: Record<string, string>
       corridor: { legend: Record<string, string>; tooltip: Record<string, string> }
       compare: { columns: Record<string, string> }
       stats: Record<string, string>
     }
 
-    expect(planner.title).toBeTruthy()
+    for (const key of ['choose', 'tune', 'effect', 'compare']) {
+      expect(planner.steps[key]).toBeTruthy()
+    }
     for (const key of ['band', 'median', 'floor', 'ceiling']) {
       expect(planner.corridor.legend[key]).toBeTruthy()
     }

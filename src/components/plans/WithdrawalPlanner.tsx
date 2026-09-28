@@ -1,22 +1,30 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
-import { Wallet } from 'lucide-react'
 import { WITHDRAWAL_STRATEGIES, type SimulationParams, type WithdrawalStrategy } from '@/types'
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/info-tip'
-import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
+import { Slider } from '@/components/ui/slider'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
 import { SpendingCorridorChart } from '@/components/charts/SpendingCorridorChart'
-import { useChartFormatters } from '@/components/charts/useChartData'
+import { useChartFormatters } from '@/components/charts/useChartFormatters'
+import { AnimatedNumber } from '@/components/workspace/AnimatedNumber'
+import { LazyMount } from '@/components/workspace/LazyMount'
+import { Skeleton } from '@/components/workspace/Skeleton'
+import { useNearViewport } from '@/components/workspace/useNearViewport'
+import { useRunStatus } from '@/components/workspace/useRunStatus'
+import { useWorkspace } from '@/components/workspace/WorkspaceProvider'
 import {
+  bestStrategyValues,
   buildSpendingCorridor,
   corridorReferenceAge,
+  isBestValue,
   summarizeStrategyOutcome,
   type StrategyOutcomeMetrics,
 } from '@/lib/simulation/spendingCorridor'
 import { comparisonFingerprint } from '@/lib/simulation/planDiff'
+import { areSimulationParamsEqual } from '@/lib/simulation/planInsights'
 import { useDisplayReal } from '@/lib/stores/displayStore'
 import {
   useSimulationParams,
@@ -35,6 +43,15 @@ import { cn } from '@/lib/utils'
  */
 const STRATEGY_COMPARE_RUNS = 1200
 
+/**
+ * The comparison shares the one simulation worker with the result bar. After
+ * anything closed the gate (an edit, a run, an open panel), the next strategy
+ * run waits until the plan has been quiet this long — the same settle the
+ * lever measurements use.
+ */
+const COMPARE_SETTLE_MS = 800
+const GATE_POLL_MS = 120
+
 interface StrategySnapshot extends StrategyOutcomeMetrics {
   strategy: WithdrawalStrategy
 }
@@ -42,72 +59,53 @@ interface StrategySnapshot extends StrategyOutcomeMetrics {
 interface StatItem {
   key: string
   label: string
-  value: string
+  /** The readout; `null` shows `placeholder` ("None", or "—" before a run). */
+  value: number | null
+  format: (value: number) => string
+  placeholder: string
   hint: string
+  /** Fine print folded into an ⓘ beside the label. */
+  tip?: string
 }
 
-function StatStrip({ items }: { items: StatItem[] }) {
-  return (
-    <dl className="grid grid-cols-2 gap-2 lg:grid-cols-4" data-testid="withdrawal-planner-stats">
-      {items.map((item) => (
-        <div
-          key={item.key}
-          className="rounded-sm border-2 border-border bg-background px-3 py-2"
-          data-testid={`withdrawal-stat-${item.key}`}
-        >
-          <dt className="text-xs font-bold   text-muted-foreground">{item.label}</dt>
-          <dd className="mt-0.5 text-sm font-semibold tabular-nums text-ink">{item.value}</dd>
-          <dd className="mt-0.5 text-xs font-medium leading-tight text-muted-foreground">
-            {item.hint}
-          </dd>
-        </div>
-      ))}
-    </dl>
-  )
-}
+/** Scroll-into-view distance at which the comparison may use the worker. */
+const COMPARE_NEAR_MARGIN = '200px 0px'
 
 /**
- * The Dynamic Spending Planner.
+ * Entnahme: how the plan turns a portfolio into an income.
  *
- * Three bare number fields used to be the whole withdrawal story. This card is
- * the same model with the consequences made visible: pick a rule, see what it
- * promises (the corridor), see what it costs (success rate), and — the point of
- * the whole surface — run the *same* plan under all four rules over the same
- * market paths, so the stability↔survival trade-off is a table rather than a
- * hunch.
+ * Cause next to effect: pick a rule and tune it on one side; the readouts and
+ * the spending corridor answer on the other, live. Underneath, the same plan
+ * runs under all four rules over the same market paths, so the
+ * stability ↔ survival trade-off is a table rather than a hunch.
  *
- * Every edit goes through `updateParams`, i.e. into the plan's working copy,
- * exactly like the rest of the editor. Nothing here writes to a stored plan.
+ * The corridor is the section's only spending chart. It carries what the old
+ * "spending strategy in detail" chart added (the mean withdrawal rate in its
+ * tooltip, the reading guide, the legend note); the rule explanation sits
+ * under the settings as "How your rule behaves".
+ *
+ * Every edit goes through `updateParams`, i.e. into the plan's working copy.
+ * Nothing here writes to a stored plan.
  */
-interface WithdrawalPlannerProps {
-  className?: string
-}
-
-export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
+export function WithdrawalPlanner() {
   const t = useTranslations('withdrawalPlanner')
   const tControls = useTranslations('parameterControls')
+  const tSpending = useTranslations('spendingChart')
   const tSetup = useTranslations('setup')
   const format = useFormatter()
 
   const params = useSimulationParams()
   const results = useSimulationResults()
   const updateParams = useUpdateParams()
-
   const displayReal = useDisplayReal()
-
   const { formatCurrency, formatCurrencyShort } = useChartFormatters()
-
-  const [snapshots, setSnapshots] = useState<StrategySnapshot[]>([])
-  const [comparedFingerprint, setComparedFingerprint] = useState<string | null>(null)
-  const [status, setStatus] = useState<'idle' | 'running' | 'ready' | 'error'>('idle')
-  const runIdRef = useRef(0)
+  const rootRef = useRef<HTMLDivElement>(null)
 
   const formatPercent = useCallback(
     (value: number, maximumFractionDigits = 1) =>
       format.number(value, { style: 'percent', minimumFractionDigits: 0, maximumFractionDigits }),
     [format]
   )
-
   const formatRatio = useCallback(
     (value: number) =>
       `${format.number(value, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}×`,
@@ -115,6 +113,7 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
   )
 
   const referenceAge = corridorReferenceAge(params)
+  const strategy = params.withdrawalStrategy
 
   // The corridor always follows the *results'* own parameter set: drawing the
   // floor of the strategy the user just picked over a band produced by the
@@ -124,7 +123,6 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
     () => (results ? buildSpendingCorridor(results.params, results, displayReal) : null),
     [results, displayReal]
   )
-
   const metrics = useMemo(
     () => (results ? summarizeStrategyOutcome(results.params, results) : null),
     [results]
@@ -132,35 +130,46 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
 
   const stats = useMemo<StatItem[]>(() => {
     const none = t('stats.none')
+    const pending = t('compare.none')
     const unit = t('stats.unit')
+    const monthly = (value: number) => `${formatCurrency(Math.round(value))}${unit}`
+    const floor =
+      metrics?.guaranteedFloor != null && metrics.guaranteedFloor > 0
+        ? Math.round(metrics.guaranteedFloor)
+        : null
     return [
       {
         key: 'firstYear',
         label: t('stats.firstYear'),
-        value: metrics
-          ? `${formatCurrency(Math.round(metrics.firstYearMonthlySpending))}${unit}`
-          : none,
+        value: metrics ? Math.round(metrics.firstYearMonthlySpending) : null,
+        format: monthly,
+        placeholder: pending,
         hint: t('stats.firstYearHint', { age: Math.max(params.currentAge, params.retirementAge) }),
       },
       {
         key: 'floor',
         label: t('stats.floor'),
-        value:
-          metrics && metrics.guaranteedFloor !== null && metrics.guaranteedFloor > 0
-            ? `${formatCurrency(Math.round(metrics.guaranteedFloor))}${unit}`
-            : none,
+        value: floor,
+        format: monthly,
+        placeholder: metrics ? none : pending,
         hint: t('stats.floorHint', { age: referenceAge }),
+        // A floor is paid from the portfolio: say so wherever one is promised.
+        tip: floor !== null ? t('corridor.caveat') : undefined,
       },
       {
         key: 'volatility',
         label: t('stats.volatility'),
-        value: metrics?.volatilityRatio ? formatRatio(metrics.volatilityRatio) : none,
+        value: metrics?.volatilityRatio || null,
+        format: formatRatio,
+        placeholder: metrics ? none : pending,
         hint: t('stats.volatilityHint', { age: referenceAge }),
       },
       {
         key: 'success',
         label: t('stats.success'),
-        value: metrics ? formatPercent(metrics.successRate / 100, 1) : none,
+        value: metrics ? metrics.successRate / 100 : null,
+        format: (value) => formatPercent(value, 1),
+        placeholder: pending,
         hint: t('stats.successHint'),
       },
     ]
@@ -175,84 +184,462 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
     referenceAge,
   ])
 
-  const fingerprint = comparisonFingerprint(params)
-  const isStale = comparedFingerprint !== null && comparedFingerprint !== fingerprint
+  const strategyLabel = useCallback(
+    (value: WithdrawalStrategy) => tControls(`fields.withdrawalStrategy.options.${value}.label`),
+    [tControls]
+  )
+
+  const showRateSlider = strategy !== 'fixedReal'
+  const showGuardrails = strategy === 'vanguardDynamic'
+  const showRealFloor = strategy === 'percentOfPortfolio'
+
+  // "How your rule behaves" follows the settings live, not the last run.
+  const ruleEffect = tSpending(`explanation.strategies.${strategy}`, {
+    withdrawalRate: formatPercent(params.dsWithdrawalRate, 2),
+    ceiling: formatPercent(params.dsCeilingRate, 1),
+    floor: formatPercent(params.dsFloorRate, 1),
+  })
+
+  // Stable, so the memoized chart does not redraw on every planner render.
+  const corridorHeading = useMemo(
+    () => (
+      <div className="ws-withdrawal-heading">
+        <h3 id="withdrawal-corridor-title" className="ws-withdrawal-h3">
+          {t('corridor.title')}
+        </h3>
+        <InfoTip
+          content={tSpending('explanation.reading')}
+          label={tSpending('explanation.readingLabel')}
+          side="bottom"
+        />
+      </div>
+    ),
+    [t, tSpending]
+  )
+
+  const retirementAge = Math.max(
+    results?.params.currentAge ?? 0,
+    results?.params.retirementAge ?? 0
+  )
+
+  return (
+    <div ref={rootRef} className="ws-withdrawal" data-testid="withdrawal-planner">
+      <div className="ws-withdrawal-grid">
+        <div className="ws-withdrawal-cause">
+          <div className="ws-withdrawal-step">
+            <h3 id="withdrawal-choose-title" className="ws-withdrawal-h3">
+              {t('steps.choose')}
+            </h3>
+            <div
+              className="ws-withdrawal-options"
+              role="group"
+              aria-labelledby="withdrawal-choose-title"
+              data-testid="withdrawal-strategy-picker"
+            >
+              {WITHDRAWAL_STRATEGIES.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className="ws-withdrawal-option"
+                  aria-pressed={strategy === option}
+                  data-testid={`withdrawal-strategy-${option}`}
+                  onClick={() => updateParams({ withdrawalStrategy: option })}
+                >
+                  <span className="ws-withdrawal-option-mark" aria-hidden="true" />
+                  <span className="ws-withdrawal-option-text">
+                    <span className="ws-withdrawal-option-label">{strategyLabel(option)}</span>
+                    <span className="ws-withdrawal-option-description">
+                      {tControls(`fields.withdrawalStrategy.options.${option}.description`)}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="ws-withdrawal-step">
+            <div className="ws-withdrawal-heading">
+              <h3 className="ws-withdrawal-h3">{t('steps.tune')}</h3>
+              <InfoTip
+                label={t('steps.tune')}
+                side="bottom"
+                content={
+                  <>
+                    {showRateSlider && <p>{tControls('fields.dsWithdrawalRate.tooltip')}</p>}
+                    <p className={showRateSlider ? 'mt-2' : undefined}>{t('tradeoff')}</p>
+                  </>
+                }
+              />
+            </div>
+
+            {showRateSlider ? (
+              <div className="ws-withdrawal-settings">
+                <RuleSlider
+                  id="planner-dsWithdrawalRate"
+                  label={tControls('fields.dsWithdrawalRate.label')}
+                  value={params.dsWithdrawalRate * 100}
+                  onValueChange={(value) => updateParams({ dsWithdrawalRate: value / 100 })}
+                  min={2}
+                  max={8}
+                  step={0.25}
+                  valueLabel={formatPercent(params.dsWithdrawalRate, 2)}
+                  minLabel={formatPercent(0.02, 0)}
+                  maxLabel={formatPercent(0.08, 0)}
+                />
+                {showGuardrails && (
+                  <>
+                    <RuleSlider
+                      id="planner-dsCeilingRate"
+                      label={tControls('fields.dsCeilingRate.label')}
+                      value={params.dsCeilingRate * 100}
+                      onValueChange={(value) => updateParams({ dsCeilingRate: value / 100 })}
+                      min={0}
+                      max={15}
+                      step={0.5}
+                      valueLabel={formatPercent(params.dsCeilingRate, 1)}
+                      minLabel={formatPercent(0, 0)}
+                      maxLabel={formatPercent(0.15, 0)}
+                    />
+                    <RuleSlider
+                      id="planner-dsFloorRate"
+                      label={tControls('fields.dsFloorRate.label')}
+                      value={params.dsFloorRate * 100}
+                      onValueChange={(value) => updateParams({ dsFloorRate: value / 100 })}
+                      min={-15}
+                      max={0}
+                      step={0.5}
+                      valueLabel={formatPercent(params.dsFloorRate, 1)}
+                      minLabel={formatPercent(-0.15, 0)}
+                      maxLabel={formatPercent(0, 0)}
+                    />
+                  </>
+                )}
+                {showRealFloor && (
+                  <LabeledNumberInput
+                    id="planner-spendingFloorReal"
+                    label={tControls('fields.spendingFloorReal.label')}
+                    value={params.spendingFloorReal}
+                    onChange={(value) => updateParams({ spendingFloorReal: value })}
+                    helpText={tControls('fields.spendingFloorReal.tooltip')}
+                    helpPlacement="tooltip"
+                    className="w-full"
+                    unit={tSetup('units.currency')}
+                    groupThousands
+                    min={0}
+                    max={500000}
+                    rangeMessage={tSetup('validation.range', {
+                      min: format.number(0),
+                      max: format.number(500000),
+                    })}
+                    invalidMessage={tSetup('validation.notANumber')}
+                  />
+                )}
+              </div>
+            ) : (
+              <p className="ws-withdrawal-muted">{t('noParams')}</p>
+            )}
+
+            <div className="ws-withdrawal-effect" data-testid="withdrawal-rule-effect">
+              <h4>{t('steps.effect')}</h4>
+              <p>{ruleEffect}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="ws-withdrawal-outcome">
+          <dl className="ws-withdrawal-stats" data-testid="withdrawal-planner-stats">
+            {stats.map((item) => (
+              <div key={item.key} data-testid={`withdrawal-stat-${item.key}`}>
+                <dt>
+                  {item.label}
+                  {item.tip && <InfoTip content={item.tip} label={item.label} side="bottom" />}
+                </dt>
+                <dd className="ws-withdrawal-stat-value">
+                  <AnimatedNumber
+                    value={item.value}
+                    format={item.format}
+                    placeholder={item.placeholder}
+                  />
+                </dd>
+                <dd className="ws-withdrawal-stat-hint">{item.hint}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <section className="ws-withdrawal-card" aria-labelledby="withdrawal-corridor-title">
+            <LazyMount
+              minHeight="var(--ws-withdrawal-chart-reserve)"
+              fallback={
+                <div className="ws-withdrawal-chart">
+                  {corridorHeading}
+                  <Skeleton
+                    variant="chart"
+                    height="calc(var(--ws-withdrawal-chart-h) + 64px)"
+                    className="ws-withdrawal-chart-placeholder"
+                  />
+                </div>
+              }
+            >
+              {corridor ? (
+                <SpendingCorridorChart
+                  title={corridorHeading}
+                  points={corridor.points}
+                  retirementAge={retirementAge}
+                  legalRetirementAge={results?.params.legalRetirementAge ?? 0}
+                  hasFloor={corridor.paths.hasFloor}
+                  hasCeiling={corridor.paths.hasCeiling}
+                  formatCurrency={formatCurrency}
+                  formatCurrencyShort={formatCurrencyShort}
+                />
+              ) : (
+                <div className="ws-withdrawal-chart">
+                  {corridorHeading}
+                  <div className="ws-skeleton ws-withdrawal-chart-placeholder">
+                    <span>{t('corridor.empty')}</span>
+                  </div>
+                </div>
+              )}
+            </LazyMount>
+          </section>
+        </div>
+      </div>
+
+      <StrategyCompare
+        areaRef={rootRef}
+        params={params}
+        referenceAge={referenceAge}
+        strategyLabel={strategyLabel}
+        onApply={(next) => updateParams({ withdrawalStrategy: next })}
+        formatPercent={formatPercent}
+        formatRatio={formatRatio}
+        formatCurrency={formatCurrency}
+        formatCurrencyShort={formatCurrencyShort}
+      />
+    </div>
+  )
+}
+
+interface RuleSliderProps {
+  id: string
+  label: string
+  value: number
+  onValueChange: (value: number) => void
+  min: number
+  max: number
+  step: number
+  valueLabel: string
+  minLabel: string
+  maxLabel: string
+}
+
+/**
+ * A rule parameter: label and live readout on one line, the slider, its
+ * bounds. The id sits on the slider root (deep links and tests address
+ * `#planner-… [role="slider"]`); the thumb is named by the visible label and
+ * reads the formatted value.
+ */
+function RuleSlider({
+  id,
+  label,
+  value,
+  onValueChange,
+  min,
+  max,
+  step,
+  valueLabel,
+  minLabel,
+  maxLabel,
+}: RuleSliderProps) {
+  return (
+    <div className="ws-withdrawal-slider">
+      <div className="ws-withdrawal-slider-head">
+        <label id={`${id}-label`} htmlFor={id}>
+          {label}
+        </label>
+        <output htmlFor={id} aria-live="off" className="ws-withdrawal-readout">
+          {valueLabel}
+        </output>
+      </div>
+      <Slider
+        id={id}
+        value={[value]}
+        onValueChange={([next]) => onValueChange(next)}
+        min={min}
+        max={max}
+        step={step}
+        aria-labelledby={`${id}-label`}
+        aria-valuetext={valueLabel}
+      />
+      <div className="ws-withdrawal-slider-range" aria-hidden="true">
+        <span>{minLabel}</span>
+        <span>{maxLabel}</span>
+      </div>
+    </div>
+  )
+}
+
+type CompareStatus = 'idle' | 'running' | 'ready' | 'error'
+
+interface StrategyCompareProps {
+  areaRef: RefObject<HTMLDivElement | null>
+  params: SimulationParams
+  referenceAge: number
+  strategyLabel: (strategy: WithdrawalStrategy) => string
+  onApply: (strategy: WithdrawalStrategy) => void
+  formatPercent: (value: number, maximumFractionDigits?: number) => string
+  formatRatio: (value: number) => string
+  formatCurrency: (value: number) => string
+  formatCurrencyShort: (value: number) => string
+}
+
+/**
+ * "Compare all four rules": the same plan under every strategy, over the same
+ * market paths. On demand only, and polite about the shared worker: each of
+ * the four runs waits until the section is near the viewport, no edit panel is
+ * open and the plan's own result is current and settled, so the result bar is
+ * never queued behind a comparison. A plan edited mid-way restarts the
+ * comparison on the new plan instead of finishing one that would be stale.
+ */
+function StrategyCompare({
+  areaRef,
+  params,
+  referenceAge,
+  strategyLabel,
+  onApply,
+  formatPercent,
+  formatRatio,
+  formatCurrency,
+  formatCurrencyShort,
+}: StrategyCompareProps) {
+  const t = useTranslations('withdrawalPlanner')
+  const format = useFormatter()
+  const results = useSimulationResults()
+  const { editor } = useWorkspace()
+  const { busy } = useRunStatus()
+  const near = useNearViewport(areaRef, COMPARE_NEAR_MARGIN, { once: false })
+
+  const [snapshots, setSnapshots] = useState<StrategySnapshot[]>([])
+  const [comparedFingerprint, setComparedFingerprint] = useState<string | null>(null)
+  const [comparedRuns, setComparedRuns] = useState(0)
+  const [status, setStatus] = useState<CompareStatus>('idle')
+  const [progress, setProgress] = useState(0)
+  const [waiting, setWaiting] = useState(false)
+  const runIdRef = useRef(0)
+
+  const current = results !== null && areSimulationParamsEqual(params, results.params)
+  const gateOpen = near && editor === null && !busy && current
+
+  // The async loop reads the latest plan and gate through refs.
+  const paramsRef = useRef(params)
+  const gateRef = useRef<{ open: boolean; since: number | null }>({ open: false, since: null })
+  useEffect(() => {
+    paramsRef.current = params
+  }, [params])
+  useEffect(() => {
+    const gate = gateRef.current
+    if (gateOpen && gate.since === null) gate.since = performance.now()
+    if (!gateOpen) gate.since = null
+    gate.open = gateOpen
+  }, [gateOpen])
+  useEffect(
+    () => () => {
+      // Unmounting abandons a running comparison.
+      runIdRef.current += 1
+    },
+    []
+  )
+
+  /** Resolves true once the worker is ours to use, false if this run was superseded. */
+  const waitForGate = useCallback(
+    (runId: number, startNow: boolean) =>
+      new Promise<boolean>((resolve) => {
+        let first = true
+        const check = () => {
+          if (runIdRef.current !== runId) return resolve(false)
+          const { open, since } = gateRef.current
+          const quietFor = since === null ? 0 : performance.now() - since
+          if (open && ((startNow && first) || quietFor >= COMPARE_SETTLE_MS)) {
+            setWaiting(false)
+            return resolve(true)
+          }
+          first = false
+          setWaiting(!open)
+          window.setTimeout(check, GATE_POLL_MS)
+        }
+        check()
+      }),
+    []
+  )
 
   const runComparison = async () => {
     const runId = runIdRef.current + 1
     runIdRef.current = runId
     setStatus('running')
+    setProgress(0)
+    setWaiting(false)
 
     try {
       const { runSimulationInClient } = await import('@/lib/simulation/workerClient')
-      const runs = Math.min(params.simulationRuns, STRATEGY_COMPARE_RUNS)
-      const next: StrategySnapshot[] = []
+      let base = paramsRef.current
+      let baseFingerprint = comparisonFingerprint(base)
+      let next: StrategySnapshot[] = []
+      let first = true
 
-      for (const strategy of WITHDRAWAL_STRATEGIES) {
-        const strategyParams: SimulationParams = {
-          ...params,
-          withdrawalStrategy: strategy,
-          simulationRuns: runs,
+      while (next.length < WITHDRAWAL_STRATEGIES.length) {
+        if (!(await waitForGate(runId, first))) return
+        first = false
+        const latest = paramsRef.current
+        const latestFingerprint = comparisonFingerprint(latest)
+        if (latestFingerprint !== baseFingerprint) {
+          base = latest
+          baseFingerprint = latestFingerprint
+          next = []
+          setProgress(0)
         }
-        const strategyResults = await runSimulationInClient(strategyParams)
-        next.push({
-          strategy,
-          ...summarizeStrategyOutcome(strategyResults.params, strategyResults),
+        const strategy = WITHDRAWAL_STRATEGIES[next.length]
+        const strategyResults = await runSimulationInClient({
+          ...base,
+          withdrawalStrategy: strategy,
+          simulationRuns: Math.min(base.simulationRuns, STRATEGY_COMPARE_RUNS),
         })
+        if (runIdRef.current !== runId) return
+        next = [
+          ...next,
+          { strategy, ...summarizeStrategyOutcome(strategyResults.params, strategyResults) },
+        ]
+        setProgress(next.length)
       }
 
-      if (runIdRef.current !== runId) return
       setSnapshots(next)
-      setComparedFingerprint(fingerprint)
+      setComparedFingerprint(baseFingerprint)
+      setComparedRuns(Math.min(base.simulationRuns, STRATEGY_COMPARE_RUNS))
       setStatus('ready')
     } catch (error) {
       console.error('Strategy comparison failed:', error)
       if (runIdRef.current !== runId) return
       setSnapshots([])
       setStatus('error')
+    } finally {
+      if (runIdRef.current === runId) setWaiting(false)
     }
   }
 
-  /** Highest value wins, except for the spread where lowest wins. */
-  const bestValues = useMemo(() => {
-    if (snapshots.length === 0) return null
-    const finite = (values: Array<number | null>) =>
-      values.filter((value): value is number => value !== null && Number.isFinite(value))
-    const successes = finite(snapshots.map((s) => s.successRate))
-    const spending = finite(snapshots.map((s) => s.medianLifetimeSpending))
-    const floors = finite(snapshots.map((s) => s.guaranteedFloor))
-    const spreads = finite(snapshots.map((s) => s.volatilityRatio))
-    return {
-      successRate: successes.length ? Math.max(...successes) : null,
-      medianLifetimeSpending: spending.length ? Math.max(...spending) : null,
-      guaranteedFloor: floors.length ? Math.max(...floors) : null,
-      volatilityRatio: spreads.length ? Math.min(...spreads) : null,
-    }
-  }, [snapshots])
+  const running = status === 'running'
+  const fingerprint = useMemo(() => comparisonFingerprint(params), [params])
+  const isStale = comparedFingerprint !== null && comparedFingerprint !== fingerprint
+  const best = useMemo(() => bestStrategyValues(snapshots), [snapshots])
+  const total = WITHDRAWAL_STRATEGIES.length
 
-  const isBest = (value: number | null, best: number | null | undefined) =>
-    value !== null && best !== null && best !== undefined && Math.abs(value - best) < 1e-9
-
-  const strategyLabel = (strategy: WithdrawalStrategy) =>
-    tControls(`fields.withdrawalStrategy.options.${strategy}.label`)
-
-  const renderBest = (show: boolean) =>
-    show ? (
-      <span className="rounded-sm ml-1.5 border border-border bg-amber px-1 py-px text-xs font-semibold   text-ink">
-        {t('compare.best')}
-      </span>
-    ) : null
-
-  const compareCells = (snapshot: StrategySnapshot) => [
+  const cells = (snapshot: StrategySnapshot) => [
     {
       key: 'success',
       value: formatPercent(snapshot.successRate / 100, 1),
-      best: isBest(snapshot.successRate, bestValues?.successRate),
+      best: isBestValue(snapshot.successRate, best?.successRate),
     },
     {
       key: 'lifetimeSpending',
       value: formatCurrencyShort(Math.round(snapshot.medianLifetimeSpending)),
-      best: isBest(snapshot.medianLifetimeSpending, bestValues?.medianLifetimeSpending),
+      best: isBestValue(snapshot.medianLifetimeSpending, best?.medianLifetimeSpending),
     },
     {
       key: 'floor',
@@ -260,361 +647,177 @@ export function WithdrawalPlanner({ className }: WithdrawalPlannerProps) {
         snapshot.guaranteedFloor && snapshot.guaranteedFloor > 0
           ? `${formatCurrency(Math.round(snapshot.guaranteedFloor))}${t('stats.unit')}`
           : t('compare.none'),
-      best: isBest(snapshot.guaranteedFloor, bestValues?.guaranteedFloor),
+      best: isBestValue(snapshot.guaranteedFloor, best?.guaranteedFloor),
     },
     {
       key: 'volatility',
       value: snapshot.volatilityRatio ? formatRatio(snapshot.volatilityRatio) : t('compare.none'),
-      best: isBest(snapshot.volatilityRatio, bestValues?.volatilityRatio),
+      best: isBestValue(snapshot.volatilityRatio, best?.volatilityRatio),
     },
   ]
 
-  const showRateSlider = params.withdrawalStrategy !== 'fixedReal'
-  const showGuardrails = params.withdrawalStrategy === 'vanguardDynamic'
-  const showRealFloor = params.withdrawalStrategy === 'percentOfPortfolio'
+  const bestTag = (show: boolean) =>
+    show ? <span className="ws-withdrawal-best">{t('compare.best')}</span> : null
+
+  const rowAction = (snapshot: StrategySnapshot, withTestId: boolean) =>
+    snapshot.strategy === params.withdrawalStrategy ? (
+      <span className="ws-withdrawal-active">{t('compare.active')}</span>
+    ) : (
+      <button
+        type="button"
+        className="ws-withdrawal-apply"
+        onClick={() => onApply(snapshot.strategy)}
+        data-testid={withTestId ? `strategy-compare-apply-${snapshot.strategy}` : undefined}
+      >
+        {t('compare.apply')}
+      </button>
+    )
+
+  const statusText = running
+    ? waiting
+      ? t('compare.waiting')
+      : `${t('compare.running')} ${t('compare.progress', { done: progress, total })}`
+    : ''
 
   return (
-    <section
-      id="plan-editor-withdrawal"
-      data-testid="withdrawal-planner"
-      className={cn(
-        'rounded-sm theme-panel-card flex scroll-mt-32 flex-col gap-5 border border-border bg-card p-5 shadow-sm',
-        className
+    <div className="ws-withdrawal-compare">
+      <div className="ws-withdrawal-compare-head">
+        <div>
+          <h3 className="ws-withdrawal-h3">{t('steps.compare')}</h3>
+          <p className="ws-withdrawal-muted">{t('compare.subtitle')}</p>
+        </div>
+        <Button
+          variant="outline"
+          className="ws-withdrawal-compare-run"
+          onClick={() => void runComparison()}
+          disabled={running}
+          data-testid="strategy-compare-run"
+        >
+          {running
+            ? t('compare.running')
+            : snapshots.length > 0
+              ? t('compare.rerun')
+              : t('compare.run')}
+        </Button>
+      </div>
+
+      <p className="ws-withdrawal-status" role="status" aria-live="polite">
+        {statusText}
+      </p>
+
+      {status === 'error' && (
+        <p className="ws-withdrawal-callout" data-tone="danger">
+          {t('compare.error')}
+        </p>
       )}
-    >
-      <header className="flex flex-col gap-3 border-b-2 border-border pb-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <Wallet className="mt-0.5 h-5 w-5 shrink-0 text-viz-purple" aria-hidden="true" />
-          <div className="flex min-w-0 items-center gap-2">
-            <h3 className="text-sm font-semibold   text-ink">{t('title')}</h3>
-            <InfoTip content={t('description')} label={t('title')} side="bottom" />
-          </div>
+
+      {running && snapshots.length === 0 && (
+        <div className="ws-withdrawal-compare-skeleton" aria-hidden="true">
+          {WITHDRAWAL_STRATEGIES.map((key, index) => (
+            <div key={key} className="ws-skeleton" data-done={index < progress || undefined} />
+          ))}
         </div>
-      </header>
+      )}
 
-      <StatStrip items={stats} />
-
-      <div id="plan-editor-withdrawal-body" className="flex flex-col gap-5">
-        <div className="space-y-3" data-testid="withdrawal-strategy-picker">
-          <span className="text-xs font-semibold   text-ink">{t('strategyLabel')}</span>
-          <div className="grid gap-2 sm:grid-cols-2" role="group">
-            {WITHDRAWAL_STRATEGIES.map((strategy) => {
-              const isSelected = params.withdrawalStrategy === strategy
-              return (
-                <button
-                  key={strategy}
-                  type="button"
-                  aria-pressed={isSelected}
-                  data-testid={`withdrawal-strategy-${strategy}`}
-                  onClick={() => updateParams({ withdrawalStrategy: strategy })}
-                  className={cn(
-                    'rounded-sm flex flex-col items-start gap-1 border-2 border-border px-3 py-2.5 text-left transition-colors',
-                    isSelected
-                      ? 'bg-action text-action-foreground shadow-sm'
-                      : 'bg-card text-ink hover:bg-accent/10'
-                  )}
-                >
-                  <span className="text-xs font-semibold  ">{strategyLabel(strategy)}</span>
-                  <span className="text-xs font-medium leading-snug opacity-90">
-                    {tControls(`fields.withdrawalStrategy.options.${strategy}.description`)}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {corridor ? (
-          <SpendingCorridorChart
-            points={corridor.points}
-            retirementAge={Math.max(
-              results?.params.currentAge ?? 0,
-              results?.params.retirementAge ?? 0
-            )}
-            legalRetirementAge={results?.params.legalRetirementAge ?? 0}
-            hasFloor={corridor.paths.hasFloor}
-            hasCeiling={corridor.paths.hasCeiling}
-            formatCurrency={formatCurrency}
-            formatCurrencyShort={formatCurrencyShort}
-          />
-        ) : (
-          <p className="rounded-sm border-2 border-dashed border-ink/30 px-4 py-6 text-center text-xs font-medium text-muted-foreground">
-            {t('corridor.empty')}
-          </p>
-        )}
-
-        <div className="rounded-sm space-y-4 border-2 border-border bg-background px-4 py-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold   text-ink">{t('paramsLabel')}</span>
-            <InfoTip
-              label={t('paramsLabel')}
-              side="bottom"
-              content={
-                <>
-                  {showRateSlider && <p>{tControls('fields.dsWithdrawalRate.tooltip')}</p>}
-                  <p className={showRateSlider ? 'mt-2' : undefined}>{t('tradeoff')}</p>
-                </>
-              }
-            />
-          </div>
-
-          {!showRateSlider && (
-            <p className="text-xs font-medium leading-snug text-muted-foreground">
-              {t('noParams')}
-            </p>
-          )}
-
-          {showRateSlider && (
-            <div
-              className={cn(
-                'grid gap-x-5 gap-y-6',
-                // Three sliders fit one row; a rate plus a euro field reads
-                // better as two wider columns.
-                showGuardrails ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
-              )}
+      {snapshots.length > 0 && (
+        <>
+          {isStale && !running && (
+            <p
+              className="ws-withdrawal-callout"
+              data-tone="warn"
+              data-testid="strategy-compare-stale"
             >
-              <WizardSliderField
-                id="planner-dsWithdrawalRate"
-                label={tControls('fields.dsWithdrawalRate.label')}
-                value={params.dsWithdrawalRate * 100}
-                onValueChange={(value) => updateParams({ dsWithdrawalRate: value / 100 })}
-                min={2}
-                max={8}
-                step={0.25}
-                valueLabel={formatPercent(params.dsWithdrawalRate, 2)}
-                minLabel={formatPercent(0.02, 0)}
-                maxLabel={formatPercent(0.08, 0)}
-              />
-
-              {showGuardrails && (
-                <>
-                  <WizardSliderField
-                    id="planner-dsCeilingRate"
-                    label={tControls('fields.dsCeilingRate.label')}
-                    value={params.dsCeilingRate * 100}
-                    onValueChange={(value) => updateParams({ dsCeilingRate: value / 100 })}
-                    min={0}
-                    max={15}
-                    step={0.5}
-                    valueLabel={formatPercent(params.dsCeilingRate, 1)}
-                    minLabel={formatPercent(0, 0)}
-                    maxLabel={formatPercent(0.15, 0)}
-                  />
-                  <WizardSliderField
-                    id="planner-dsFloorRate"
-                    label={tControls('fields.dsFloorRate.label')}
-                    value={params.dsFloorRate * 100}
-                    onValueChange={(value) => updateParams({ dsFloorRate: value / 100 })}
-                    min={-15}
-                    max={0}
-                    step={0.5}
-                    valueLabel={formatPercent(params.dsFloorRate, 1)}
-                    minLabel={formatPercent(-0.15, 0)}
-                    maxLabel={formatPercent(0, 0)}
-                  />
-                </>
-              )}
-
-              {showRealFloor && (
-                <LabeledNumberInput
-                  id="planner-spendingFloorReal"
-                  label={tControls('fields.spendingFloorReal.label')}
-                  value={params.spendingFloorReal}
-                  onChange={(value) => updateParams({ spendingFloorReal: value })}
-                  helpText={tControls('fields.spendingFloorReal.tooltip')}
-                  className="w-full"
-                  unit={tSetup('units.currency')}
-                  groupThousands
-                  min={0}
-                  max={500000}
-                  rangeMessage={tSetup('validation.range', {
-                    min: format.number(0),
-                    max: format.number(500000),
-                  })}
-                  invalidMessage={tSetup('validation.notANumber')}
-                />
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-sm space-y-4 border border-border bg-card p-4 shadow-sm">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex min-w-0 items-center gap-2">
-              <h4 className="text-sm font-semibold   text-ink">{t('compare.title')}</h4>
-              <InfoTip content={t('compare.subtitle')} label={t('compare.title')} side="bottom" />
-            </div>
-            <Button
-              size="sm"
-              className="shrink-0"
-              onClick={() => void runComparison()}
-              disabled={status === 'running'}
-              data-testid="strategy-compare-run"
-            >
-              {status === 'running'
-                ? t('compare.running')
-                : snapshots.length > 0
-                  ? t('compare.rerun')
-                  : t('compare.run')}
-            </Button>
-          </div>
-
-          {status === 'error' && (
-            <p className="rounded-sm border-2 border-danger bg-[var(--red-50)] px-3 py-2 text-xs font-semibold text-danger">
-              {t('compare.error')}
+              {t('compare.stale')}
             </p>
           )}
 
-          {snapshots.length === 0 ? (
-            <p className="rounded-sm border-2 border-dashed border-ink/30 px-4 py-5 text-center text-xs font-medium text-muted-foreground">
-              {status === 'running' ? t('compare.running') : t('compare.empty')}
-            </p>
-          ) : (
-            <>
-              {isStale && (
-                <p
-                  className="rounded-sm border-2 border-warning-600 bg-warning-50 px-3 py-2 text-xs font-semibold   text-warning-700"
-                  data-testid="strategy-compare-stale"
-                >
-                  {t('compare.stale')}
-                </p>
-              )}
-
-              {/* Desktop: one row per strategy. */}
-              <div className={cn('hidden overflow-x-auto md:block', isStale && 'opacity-50')}>
-                <table
-                  className="w-full min-w-[34rem] border-collapse text-left"
-                  data-testid="strategy-compare-table"
-                >
-                  <thead>
-                    <tr className="border-b-2 border-border text-xs font-semibold   text-muted-foreground">
-                      <th scope="col" className="py-2 pr-3">
-                        {t('compare.columns.strategy')}
-                      </th>
-                      {(['success', 'lifetimeSpending', 'floor', 'volatility'] as const).map(
-                        (column) => (
-                          <th key={column} scope="col" className="py-2 pr-3 text-right">
-                            {t(`compare.columns.${column}`)}
-                          </th>
-                        )
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {snapshots.map((snapshot) => {
-                      const active = snapshot.strategy === params.withdrawalStrategy
-                      return (
-                        <tr
-                          key={snapshot.strategy}
-                          data-testid="strategy-compare-row"
-                          data-strategy={snapshot.strategy}
-                          className={cn(
-                            'border-b border-ink/15 text-xs font-semibold text-ink',
-                            active && 'bg-amber/15'
-                          )}
-                        >
-                          <th scope="row" className="py-3 pr-3 font-semibold">
-                            <span className="flex flex-wrap items-center gap-2">
-                              {strategyLabel(snapshot.strategy)}
-                              {active && (
-                                <span className="text-xs font-semibold   text-accent">
-                                  {t('compare.active')}
-                                </span>
-                              )}
-                              {!active && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    updateParams({ withdrawalStrategy: snapshot.strategy })
-                                  }
-                                  data-testid={`strategy-compare-apply-${snapshot.strategy}`}
-                                  className="rounded-sm border border-border px-1.5 py-px text-xs font-semibold   text-muted-foreground transition-colors hover:bg-action hover:text-action-foreground"
-                                >
-                                  {t('compare.apply')}
-                                </button>
-                              )}
-                            </span>
-                          </th>
-                          {compareCells(snapshot).map((cell) => (
-                            <td
-                              key={cell.key}
-                              className="py-3 pr-3 text-right tabular-nums"
-                              data-testid={`strategy-compare-${cell.key}`}
-                            >
-                              {cell.value}
-                              {renderBest(cell.best)}
-                            </td>
-                          ))}
-                        </tr>
+          <div className="ws-withdrawal-compare-body" data-dim={isStale || running || undefined}>
+            {/* Wide: one row per strategy. */}
+            <div className="ws-withdrawal-table-frame">
+              <table className="ws-withdrawal-compare-table" data-testid="strategy-compare-table">
+                <thead>
+                  <tr>
+                    <th scope="col">{t('compare.columns.strategy')}</th>
+                    {(['success', 'lifetimeSpending', 'floor', 'volatility'] as const).map(
+                      (column) => (
+                        <th key={column} scope="col" className="ws-withdrawal-num">
+                          {t(`compare.columns.${column}`)}
+                        </th>
                       )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile: the same four numbers per strategy, nothing clipped. */}
-              <ul className={cn('space-y-3 md:hidden', isStale && 'opacity-50')}>
-                {snapshots.map((snapshot) => {
-                  const active = snapshot.strategy === params.withdrawalStrategy
-                  return (
-                    <li
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshots.map((snapshot) => (
+                    <tr
                       key={snapshot.strategy}
-                      data-testid="strategy-compare-card"
+                      data-testid="strategy-compare-row"
                       data-strategy={snapshot.strategy}
-                      className={cn(
-                        'rounded-sm border-2 border-border bg-card px-4 py-3',
-                        active && 'bg-amber/15'
-                      )}
+                      data-active={snapshot.strategy === params.withdrawalStrategy || undefined}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-ink">
+                      <th scope="row">
+                        <span className="ws-withdrawal-row-name">
                           {strategyLabel(snapshot.strategy)}
                         </span>
-                        {active ? (
-                          <span className="shrink-0 text-xs font-semibold   text-accent">
-                            {t('compare.active')}
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => updateParams({ withdrawalStrategy: snapshot.strategy })}
-                            className="rounded-sm shrink-0 border border-border px-1.5 py-px text-xs font-semibold   text-muted-foreground"
-                          >
-                            {t('compare.apply')}
-                          </button>
-                        )}
-                      </div>
-                      <dl className="mt-2 divide-y divide-ink/10 text-xs">
-                        {compareCells(snapshot).map((cell) => (
-                          <div
-                            key={cell.key}
-                            className="flex items-baseline justify-between gap-3 py-1.5"
-                          >
-                            <dt className="font-semibold   text-muted-foreground">
-                              {t(`compare.columns.${cell.key}`)}
-                            </dt>
-                            <dd className="shrink-0 text-right font-semibold tabular-nums">
-                              {cell.value}
-                              {renderBest(cell.best)}
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                    </li>
-                  )
-                })}
-              </ul>
+                        {rowAction(snapshot, true)}
+                      </th>
+                      {cells(snapshot).map((cell) => (
+                        <td
+                          key={cell.key}
+                          className={cn('ws-withdrawal-num', cell.best && 'ws-withdrawal-strong')}
+                          data-testid={`strategy-compare-${cell.key}`}
+                        >
+                          {cell.value}
+                          {bestTag(cell.best)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-              <p className="text-xs font-medium leading-snug text-muted-foreground">
-                {t('compare.runsNote', {
-                  runs: format.number(Math.min(params.simulationRuns, STRATEGY_COMPARE_RUNS)),
-                  age: referenceAge,
-                })}
-              </p>
-            </>
-          )}
-        </div>
-      </div>
-    </section>
+            {/* Narrow: the same four numbers per strategy, nothing clipped. */}
+            <ul className="ws-withdrawal-compare-list">
+              {snapshots.map((snapshot) => (
+                <li
+                  key={snapshot.strategy}
+                  data-testid="strategy-compare-card"
+                  data-strategy={snapshot.strategy}
+                  data-active={snapshot.strategy === params.withdrawalStrategy || undefined}
+                >
+                  <div className="ws-withdrawal-compare-list-head">
+                    <span className="ws-withdrawal-row-name">
+                      {strategyLabel(snapshot.strategy)}
+                    </span>
+                    {rowAction(snapshot, false)}
+                  </div>
+                  <dl>
+                    {cells(snapshot).map((cell) => (
+                      <div key={cell.key}>
+                        <dt>{t(`compare.columns.${cell.key}`)}</dt>
+                        <dd className={cn(cell.best && 'ws-withdrawal-strong')}>
+                          {cell.value}
+                          {bestTag(cell.best)}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <p className="ws-withdrawal-caption">
+            {t('compare.runsNote', {
+              runs: format.number(
+                comparedRuns || Math.min(params.simulationRuns, STRATEGY_COMPARE_RUNS)
+              ),
+              age: referenceAge,
+            })}
+          </p>
+        </>
+      )}
+    </div>
   )
 }

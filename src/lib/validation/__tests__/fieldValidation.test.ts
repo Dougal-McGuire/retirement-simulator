@@ -7,7 +7,6 @@ import {
   timelineIssues,
 } from '@/lib/validation/fieldValidation'
 import { DEFAULT_PARAMS } from '@/types'
-import { adjacentSections, sectionForField } from '@/components/plans/planSections'
 
 describe('parseNumericDraft', () => {
   it.each(['', '   ', '-', '.', ',', '-.', '+'])('treats %p as still being typed', (raw) => {
@@ -124,25 +123,5 @@ describe('timelineIssues', () => {
 
   it('passes the shipped defaults', () => {
     expect(timelineIssues(DEFAULT_PARAMS)).toEqual([])
-  })
-})
-
-describe('plan section lookup', () => {
-  it('knows which page each editor field lives on', () => {
-    expect(sectionForField('editor-retirementAge')).toBe('personal')
-    expect(sectionForField('editor-currentAssets')).toBe('income')
-    expect(sectionForField('planner-dsWithdrawalRate')).toBe('withdrawal')
-    expect(sectionForField('cashflow-name-new')).toBe('cashFlows')
-    expect(sectionForField('glide-path-toggle')).toBe('market')
-  })
-
-  it('stays put for a field it does not know', () => {
-    expect(sectionForField('something-else')).toBeUndefined()
-  })
-
-  it('walks the sections in order with no wrap-around', () => {
-    expect(adjacentSections('personal')).toEqual({ previous: undefined, next: 'income' })
-    expect(adjacentSections('market')).toEqual({ previous: 'cashFlows', next: 'withdrawal' })
-    expect(adjacentSections('withdrawal')).toEqual({ previous: 'market', next: undefined })
   })
 })

@@ -214,6 +214,39 @@
   --ui-font-body: 14px;
   --ui-font-section: 18px;
   --ui-font-title: 24px;
+  /* Type roles above body size: card titles and the verdict lead; the result
+     bar and card key figures; the verdict numeral. */
+  --ui-font-lead: 16px;
+  --ui-font-kpi: 20px;
+  --ui-font-display: 32px;
+  --ui-space-10: 40px;
+  --ui-space-12: 48px;
+  --ui-space-16: 64px;
+  /* Workspace layout: result bar, section rail, docked edit panel, overlay sheet. */
+  --ui-bar-height: 56px;
+  --ui-rail-width: 184px;
+  --ui-panel-width: 400px;
+  --ui-sheet-width: 440px;
+  /* Motion. Everything that uses these is switched off under
+     prefers-reduced-motion by the component styles. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 280ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  /* Tinted backgrounds for status callouts and selected options (§6.4): a
+     wash of the hue on the surface, no border. Text on them stays --ui-text.
+     Derived from other tokens, so they follow the colour scheme by themselves. */
+  --ui-tint-accent: color-mix(in srgb, var(--ui-accent) 8%, var(--ui-surface));
+  --ui-tint-warn: color-mix(in srgb, var(--warn) 8%, var(--ui-surface));
+  --ui-tint-danger: color-mix(in srgb, var(--danger) 8%, var(--ui-surface));
+  /* Elevation and overlays: only things that float get a shadow (the result
+     bar once the page scrolls, the overlay and bottom sheets). */
+  --shadow-bar: 0 1px 0 var(--ui-border), 0 8px 24px -18px rgb(15 20 27 / 0.35);
+  --shadow-sheet: -16px 0 48px -24px rgb(15 20 27 / 0.35);
+  --shadow-sheet-up: 0 -16px 48px -24px rgb(15 20 27 / 0.35);
+  --scrim: rgb(15 20 27 / 0.18);
+  --skeleton-base: var(--ui-subtle);
+  --skeleton-sheen: rgb(255 255 255 / 0.6);
 }
 
 /* ---------------------------------------------------------------- */
@@ -327,6 +360,12 @@
     --viz-seq-3: #3a6892;
     --viz-seq-4: #5b8fc0;
     --viz-seq-5: #8cbde8;
+    /* Elevation and overlays: deeper shadows, a darker scrim, a faint sheen. */
+    --shadow-bar: 0 1px 0 var(--ui-border), 0 8px 24px -16px rgb(0 0 0 / 0.7);
+    --shadow-sheet: -16px 0 48px -24px rgb(0 0 0 / 0.75);
+    --shadow-sheet-up: 0 -16px 48px -24px rgb(0 0 0 / 0.75);
+    --scrim: rgb(4 7 10 / 0.45);
+    --skeleton-sheen: rgb(227 232 238 / 0.06);
   }
 }
 :root[data-color-scheme='dark'] {
@@ -436,6 +475,12 @@
   --viz-seq-3: #3a6892;
   --viz-seq-4: #5b8fc0;
   --viz-seq-5: #8cbde8;
+  /* Elevation and overlays: deeper shadows, a darker scrim, a faint sheen. */
+  --shadow-bar: 0 1px 0 var(--ui-border), 0 8px 24px -16px rgb(0 0 0 / 0.7);
+  --shadow-sheet: -16px 0 48px -24px rgb(0 0 0 / 0.75);
+  --shadow-sheet-up: 0 -16px 48px -24px rgb(0 0 0 / 0.75);
+  --scrim: rgb(4 7 10 / 0.45);
+  --skeleton-sheen: rgb(227 232 238 / 0.06);
 }
 
 html body {
@@ -452,7 +497,7 @@ html body {
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
-html body:not(:has(.retirement-workspace)) {
+html body:not(:has(.retirement-workspace, .ws-page)) {
   padding-bottom: env(safe-area-inset-bottom);
 }
 html :is(h1, h2, h3, h4, h5, h6, strong) {

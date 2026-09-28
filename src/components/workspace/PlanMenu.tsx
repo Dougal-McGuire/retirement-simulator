@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { Check, ChevronDown, Copy, FolderCog, Pencil, Plus } from 'lucide-react'
+import { ArrowLeftRight, Check, ChevronDown, Copy, FolderCog, Pencil, Plus } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { MAX_PLANS } from '@/types'
 import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
@@ -33,9 +33,15 @@ const ITEM_SELECTOR = '[role="menuitem"], [role="menuitemradio"]'
  */
 export function PlanMenu({
   onManage,
+  onCompare,
 }: {
   /** Opens the plan manager; receives the trigger so focus can come back to it. */
   onManage: (trigger: HTMLButtonElement | null) => void
+  /**
+   * Enters plan comparison. Receives the trigger: the menu item unmounts with
+   * the menu, so the trigger is what focus returns to on exit.
+   */
+  onCompare?: (trigger: HTMLButtonElement | null) => void
 }) {
   const t = useTranslations('workspace.planMenu')
   const tp = useTranslations('plans')
@@ -137,10 +143,14 @@ export function PlanMenu({
     else setActivePlan(id)
   }
 
-  const runAction = (action: 'new' | 'duplicate' | 'rename' | 'manage', disabled = false) => {
+  const runAction = (
+    action: 'new' | 'duplicate' | 'rename' | 'compare' | 'manage',
+    disabled = false
+  ) => {
     if (disabled) return
     close()
     if (action === 'manage') onManage(triggerRef.current)
+    else if (action === 'compare') onCompare?.(triggerRef.current)
     else setDialog(action)
   }
 
@@ -240,6 +250,16 @@ export function PlanMenu({
                   disabled: atLimit,
                 },
                 { action: 'rename', icon: Pencil, label: tp('actions.rename'), disabled: false },
+                ...(onCompare
+                  ? ([
+                      {
+                        action: 'compare',
+                        icon: ArrowLeftRight,
+                        label: t('compare'),
+                        disabled: false,
+                      },
+                    ] as const)
+                  : []),
                 { action: 'manage', icon: FolderCog, label: t('manage'), disabled: false },
               ] as const
             ).map(({ action, icon: Icon, label, disabled }) => (

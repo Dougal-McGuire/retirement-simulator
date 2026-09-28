@@ -84,35 +84,22 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
   const euro = (value: number) =>
     format.number(value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
 
+  const inspectX = inspectIndex == null ? 0 : geometry.x(inspectIndex) / FAN_W
+
   return (
-    <div className="ds-card" style={{ padding: '10px 12px 8px' }} data-testid="compare-fan-chart">
-      <div
-        style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}
-      >
-        <div
-          role="group"
-          aria-label={tAssets('scale.label')}
-          style={{
-            display: 'inline-flex',
-            border: '1px solid var(--line-strong)',
-            borderRadius: 'var(--radius-full)',
-            overflow: 'hidden',
-          }}
-        >
+    <div
+      className="ds-card ws-fan"
+      style={{ padding: '16px 16px 12px' }}
+      data-testid="compare-fan-chart"
+    >
+      <div className="ws-chart-toolbar">
+        <div role="group" aria-label={tAssets('scale.label')} className="ws-segmented">
           {(['focus', 'full'] as const).map((mode) => (
             <button
               key={mode}
               type="button"
               aria-pressed={scaleMode === mode}
               onClick={() => setScaleMode(mode)}
-              className="ds-btn ds-btn--sm"
-              style={{
-                border: 0,
-                borderRadius: 0,
-                minHeight: 'var(--ui-control-height)',
-                background: scaleMode === mode ? 'var(--ui-subtle)' : 'var(--surface)',
-                color: scaleMode === mode ? 'var(--text)' : 'var(--text-label)',
-              }}
             >
               {tAssets(`scale.${mode}`)}
             </button>
@@ -120,29 +107,25 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
         </div>
         <button
           type="button"
-          className="ds-btn ds-btn--outline ds-btn--sm"
+          className="ws-chart-button"
           onClick={() => setRange({ startIndex: 0, endIndex: Math.max(0, length - 1) })}
           disabled={!isZoomed}
         >
           {tAssets('reset')}
         </button>
-        <span className="ds-meta" style={{ marginLeft: 'auto' }}>
+        <span className="ws-chart-meta">
           {firstAge}–{lastAge}
         </span>
       </div>
 
       <div
-        style={{ position: 'relative', height: 266, touchAction: 'pan-y' }}
+        className="ws-chart-plot"
+        style={{ height: 266 }}
         onPointerMove={(event) => handlePointer(event.clientX, event.currentTarget)}
         onPointerDown={(event) => handlePointer(event.clientX, event.currentTarget)}
         onPointerLeave={() => setInspectIndex(null)}
       >
-        <svg
-          viewBox={`0 0 ${FAN_W} ${FAN_H}`}
-          preserveAspectRatio="none"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-          aria-hidden="true"
-        >
+        <svg viewBox={`0 0 ${FAN_W} ${FAN_H}`} preserveAspectRatio="none" aria-hidden="true">
           {geometry.gridLines.map((grid) => (
             <line
               key={grid.value}
@@ -199,41 +182,16 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
           )}
         </svg>
         {geometry.gridLines.map((grid) => (
-          <span
-            key={grid.value}
-            className="ds-meta"
-            style={{
-              position: 'absolute',
-              left: 4,
-              top: grid.topPct,
-              transform: 'translateY(-110%)',
-              background: 'color-mix(in srgb, var(--surface) 78%, transparent)',
-              padding: '0 3px',
-              borderRadius: 2,
-            }}
-          >
+          <span key={grid.value} className="ws-chart-ylabel" style={{ top: grid.topPct }}>
             {formatAxisEuro(grid.value, locale)}
           </span>
         ))}
-        <div
-          style={{
-            position: 'absolute',
-            top: 4,
-            right: 6,
-            display: 'flex',
-            gap: 10,
-            flexWrap: 'wrap',
-            fontSize: 11,
-            background: 'color-mix(in srgb, var(--surface) 88%, transparent)',
-            padding: '2px 6px',
-            borderRadius: 'var(--radius)',
-          }}
-        >
+        <div className="ws-chart-legend" style={{ color: 'var(--ui-text)' }}>
           {visible.map((entry, index) => (
-            <span key={entry.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span key={entry.id}>
               <span
                 style={{
-                  width: 12,
+                  width: 14,
                   borderTop: `${entry.base ? '2px solid' : index === 1 ? '2px dashed' : '2px dotted'} ${entry.color}`,
                 }}
               />
@@ -243,36 +201,16 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
         </div>
         {inspectIndex != null && (
           <div
-            style={{
-              position: 'absolute',
-              left:
-                geometry.x(inspectIndex) / FAN_W < 0.68
-                  ? `calc(${(geometry.x(inspectIndex) / FAN_W) * 100}% + 10px)`
-                  : 'auto',
-              right:
-                geometry.x(inspectIndex) / FAN_W >= 0.68
-                  ? `calc(${100 - (geometry.x(inspectIndex) / FAN_W) * 100}% + 10px)`
-                  : 'auto',
-              bottom: 8,
-              minWidth: 190,
-              padding: '7px 9px',
-              background: 'color-mix(in srgb, var(--surface) 96%, transparent)',
-              border: '1px solid var(--line-strong)',
-              borderRadius: 'var(--radius)',
-              boxShadow: 'var(--shadow-sm)',
-              pointerEvents: 'none',
-              zIndex: 2,
-            }}
+            className="ws-chart-tooltip"
+            style={
+              inspectX < 0.68
+                ? { left: `calc(${inspectX * 100}% + 10px)`, minWidth: 190 }
+                : { right: `calc(${100 - inspectX * 100}% + 10px)`, minWidth: 190 }
+            }
           >
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>
-              {tUi('ageLabel', { age: visibleBase.ages[inspectIndex] })}
-            </div>
+            <div>{tUi('ageLabel', { age: visibleBase.ages[inspectIndex] })}</div>
             {visible.map((entry) => (
-              <div
-                key={entry.id}
-                className="ds-meta"
-                style={{ display: 'flex', justifyContent: 'space-between', gap: 14 }}
-              >
+              <div key={entry.id}>
                 <span>{entry.name}</span>
                 <strong style={{ color: entry.color }}>{euro(entry.p50[inspectIndex])}</strong>
               </div>
@@ -280,20 +218,16 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
           </div>
         )}
       </div>
-      <div style={{ position: 'relative', height: 14, marginTop: 2 }}>
+      <div className="ws-chart-axis" aria-hidden="true">
         {geometry.axisTicks.map((tick) => (
-          <span
-            key={tick.age}
-            className="ds-meta"
-            style={{ position: 'absolute', left: tick.leftPct, transform: 'translateX(-50%)' }}
-          >
+          <span key={tick.age} style={{ left: tick.leftPct }}>
             {tick.age}
           </span>
         ))}
       </div>
 
       {length > 1 && (
-        <div style={{ marginTop: 8, display: 'grid', gap: 3 }}>
+        <div className="ws-chart-brush">
           <input
             type="range"
             min={0}
@@ -306,7 +240,6 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
                 endIndex: safeRange.endIndex,
               })
             }
-            style={{ width: '100%', accentColor: 'var(--accent)' }}
           />
           <input
             type="range"
@@ -320,19 +253,14 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
                 endIndex: Math.max(Number(event.target.value), safeRange.startIndex),
               })
             }
-            style={{ width: '100%', accentColor: 'var(--accent)' }}
           />
         </div>
       )}
 
-      <details style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 8 }}>
-        <summary
-          style={{ cursor: 'pointer', fontSize: 12, fontWeight: 650, color: 'var(--accent)' }}
-        >
-          {tTable('toggle')}
-        </summary>
-        <div style={{ overflowX: 'auto', marginTop: 8 }}>
-          <table className="ds-table" style={{ width: '100%' }}>
+      <details className="ws-chart-details">
+        <summary>{tTable('toggle')}</summary>
+        <div className="ws-chart-table">
+          <table>
             <thead>
               <tr>
                 <th>{tUi('age')}</th>

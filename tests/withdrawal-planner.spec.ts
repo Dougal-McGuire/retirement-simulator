@@ -1,17 +1,16 @@
-import { expect, test } from '@playwright/test'
+import { expect, gotoWorkspace, sectionHeading, test } from './helpers/workspace'
 
 /**
- * The Dynamic Spending Planner.
+ * The Entnahme section (`#withdrawal`): the Dynamic Spending Planner merged
+ * with the spending analysis into one chart, edited inline on the page.
  *
- * The plan editor is not force-mounted, so every test opens the Plan tab first.
- * Strategy comparison runs four full simulations and is given a generous
- * timeout for the same reason the plan comparison is.
+ * Every test lands on the section through its URL hash. Strategy comparison
+ * runs four full simulations and is given a generous timeout for the same
+ * reason the plan comparison is.
  */
 test.describe('withdrawal planner', () => {
   test('offers four strategies and reacts to the withdrawal rate', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-withdrawal').click()
+    await gotoWorkspace(page, '/en/simulation#withdrawal')
 
     const planner = page.getByTestId('withdrawal-planner')
     await expect(planner).toBeVisible()
@@ -70,9 +69,7 @@ test.describe('withdrawal planner', () => {
   })
 
   test('swaps the strategy parameters when the rule changes', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-withdrawal').click()
+    await gotoWorkspace(page, '/en/simulation#withdrawal')
 
     const planner = page.getByTestId('withdrawal-planner')
     await expect(planner.locator('#planner-dsCeilingRate')).toBeVisible()
@@ -98,9 +95,7 @@ test.describe('withdrawal planner', () => {
   })
 
   test('compares all four strategies over the same market paths', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-withdrawal').click()
+    await gotoWorkspace(page, '/en/simulation#withdrawal')
 
     const planner = page.getByTestId('withdrawal-planner')
     await planner.getByTestId('strategy-compare-run').click()
@@ -120,14 +115,44 @@ test.describe('withdrawal planner', () => {
   })
 
   test('renders the planner in German', async ({ page }) => {
-    await page.goto('/de/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-withdrawal').click()
+    await gotoWorkspace(page, '/de/simulation#withdrawal')
 
+    // The section heading replaces the planner's own "Entnahmeplaner" card title.
+    await expect(sectionHeading(page, 'withdrawal')).toHaveText('Entnahme')
     const planner = page.getByTestId('withdrawal-planner')
-    await expect(planner).toContainText('Entnahmeplaner')
     await expect(planner).toContainText('Prozent vom Depot')
     await expect(planner).toContainText('Guyton-Klinger-Leitplanken')
     await expect(planner.getByTestId('spending-corridor-chart')).toBeVisible()
+  })
+
+  test('merges the spending analysis into the corridor: one chart, the rule explained', async ({
+    page,
+  }) => {
+    await gotoWorkspace(page, '/en/simulation#withdrawal')
+    const section = page.locator('#withdrawal')
+    const planner = section.getByTestId('withdrawal-planner')
+    await expect(planner).toBeVisible()
+
+    // "How your rule behaves" sits under the rule's settings.
+    await expect(planner.getByTestId('withdrawal-rule-effect')).toBeVisible()
+    await expect(planner.getByTestId('withdrawal-rule-effect')).not.toBeEmpty()
+
+    // One spending chart on the page: the corridor. The old spending chart
+    // (and its "Ausgabenstrategie im Detail" disclosure) is gone.
+    const corridor = section.getByTestId('spending-corridor-chart')
+    await expect(corridor).toHaveCount(1)
+    await expect(corridor).toBeVisible()
+    await expect(page.locator('#spending-chart-title')).toHaveCount(0)
+
+    // The corridor's tooltip carries the old chart's withdrawal-rate row.
+    await corridor.scrollIntoViewIfNeeded()
+    const box = (await corridor.boundingBox())!
+    await expect(async () => {
+      await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.5)
+      await page.mouse.move(box.x + box.width * 0.45, box.y + box.height * 0.5, { steps: 4 })
+      await expect(page.getByText('Mean gross draw / mean opening portfolio')).toBeVisible({
+        timeout: 1000,
+      })
+    }).toPass({ timeout: 10000 })
   })
 })

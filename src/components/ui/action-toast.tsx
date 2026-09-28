@@ -28,8 +28,10 @@ interface ActionToastProps {
  */
 export function ActionToast({ message, actions, testId }: ActionToastProps) {
   return (
-    <div className="flex min-w-0 flex-col gap-2" data-testid={testId}>
-      <p className="text-[0.72rem] font-semibold leading-snug text-ink">{message}</p>
+    <div className="flex min-w-0 flex-col gap-3" data-testid={testId}>
+      <p className="m-0 text-sm font-medium leading-snug text-[color:var(--ui-text)]">
+        {message}
+      </p>
       <div className="flex flex-wrap gap-2">
         {actions.map((action) => (
           <button
@@ -38,8 +40,10 @@ export function ActionToast({ message, actions, testId }: ActionToastProps) {
             data-testid={action.testId}
             onClick={action.onClick}
             className={cn(
-              'rounded-sm border-2 border-border px-2.5 py-1 text-[0.62rem] font-extrabold   transition-colors hover:-translate-y-[1px]',
-              action.tone === 'primary' ? 'bg-amber text-ink' : 'bg-card text-ink'
+              'inline-flex min-h-9 items-center rounded-[var(--ui-radius)] border px-3 text-sm font-medium transition-colors motion-reduce:transition-none',
+              action.tone === 'primary'
+                ? 'border-[color:var(--action)] bg-[color:var(--action)] text-[color:var(--on-action)] hover:border-[color:var(--action-hover)] hover:bg-[color:var(--action-hover)]'
+                : 'border-[color:var(--ui-border)] bg-[color:var(--ui-surface)] text-[color:var(--ui-text)] hover:bg-[color:var(--ui-subtle)]'
             )}
           >
             {action.label}

@@ -1,28 +1,16 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, gotoWorkspace, openSection, readPersistedState, test } from './helpers/workspace'
 
-const readPersistedState = (page: Page) =>
-  page.evaluate(() => {
-    const raw = window.localStorage.getItem('retirement-simulator-store')
-    if (!raw) return null
-    const state = JSON.parse(raw).state
-    const plan = state.plans?.find(
-      (candidate: { id: string }) => candidate.id === state.activePlanId
-    )
-    return {
-      working: state.draftParams ?? state.params,
-      storedPlan: plan?.params,
-    }
-  })
+test.describe('quick levers', () => {
+  test('keeps commands and quick levers in separate accessible regions', async ({ page }) => {
+    await gotoWorkspace(page)
+    await openSection(page, 'levers')
 
-test.describe('quick access command bar', () => {
-  test('keeps commands and quick levers in separate accessible rows', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByText('What if …?', { exact: true }).click()
-
-    const primary = page.locator('.workspace-toolbar')
-    const quick = page.getByTestId('command-quick-row')
-    await expect(primary).toBeVisible()
+    // Commands stay in the result bar; the levers live in Stellschrauben.
+    const bar = page.getByTestId('result-bar')
+    const quick = page.locator('#levers').getByTestId('quick-levers')
+    await expect(bar).toBeVisible()
     await expect(quick).toBeVisible()
+    await expect(bar.getByRole('slider')).toHaveCount(0)
 
     for (const name of [
       'Retirement age',
@@ -30,7 +18,7 @@ test.describe('quick access command bar', () => {
       'Monthly spending',
       'Expected return',
     ]) {
-      await expect(quick.getByRole('slider', { name })).toBeVisible()
+      await expect(quick.getByRole('slider', { name, exact: true })).toBeVisible()
     }
 
     const display = page.getByTestId('display-toggle')
@@ -42,14 +30,16 @@ test.describe('quick access command bar', () => {
   })
 
   test('resets a quick annual-savings what-if to the stored plan value', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByText('What if …?', { exact: true }).click()
-    const slider = page.getByRole('slider', { name: 'Annual savings' })
+    await gotoWorkspace(page)
+    await openSection(page, 'levers')
+    const quick = page.getByTestId('quick-levers')
+    const slider = quick.getByRole('slider', { name: 'Annual savings', exact: true })
 
     await slider.focus()
     await slider.press('ArrowRight')
 
-    const reset = page.getByRole('button', { name: 'Reset Annual savings' })
+    // The reset label comes from i18n (it used to be hard-coded English).
+    const reset = quick.getByRole('button', { name: 'Reset Annual savings' })
     await expect(reset).toBeVisible()
 
     const changed = await readPersistedState(page)
@@ -66,14 +56,15 @@ test.describe('quick access command bar', () => {
   })
 
   test('resets spending by restoring the plan expense streams exactly', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByText('What if …?', { exact: true }).click()
-    const slider = page.getByRole('slider', { name: 'Monthly spending' })
+    await gotoWorkspace(page)
+    await openSection(page, 'levers')
+    const quick = page.getByTestId('quick-levers')
+    const slider = quick.getByRole('slider', { name: 'Monthly spending', exact: true })
 
     await slider.focus()
     await slider.press('ArrowLeft')
 
-    const reset = page.getByRole('button', { name: 'Reset Monthly spending' })
+    const reset = quick.getByRole('button', { name: 'Reset Monthly spending' })
     await expect(reset).toBeVisible()
 
     const changed = await readPersistedState(page)
@@ -93,5 +84,17 @@ test.describe('quick access command bar', () => {
       .poll(async () => (await readPersistedState(page))?.working?.cashFlows)
       .toEqual(baselineFlows)
     await expect(reset).toHaveCount(0)
+  })
+
+  test('localises the reset labels in German', async ({ page }) => {
+    await gotoWorkspace(page, '/de/simulation')
+    await openSection(page, 'levers')
+    const quick = page.getByTestId('quick-levers')
+    const slider = quick.getByRole('slider', { name: 'Jährliche Sparrate', exact: true })
+    await slider.focus()
+    await slider.press('ArrowRight')
+    await expect(
+      quick.getByRole('button', { name: 'Jährliche Sparrate zurücksetzen' })
+    ).toBeVisible()
   })
 })

@@ -19,26 +19,28 @@ type WorkerResponse =
     }
 
 let worker: Worker | null = null
+let workerLoading: Promise<Worker> | null = null
 let nextRequestId = 0
 
-const canUseWorker = () =>
+export const canUseWorker = () =>
   typeof window !== 'undefined' && typeof Worker !== 'undefined' && process.env.NODE_ENV !== 'test'
 
-const getWorker = async () => {
-  if (!worker) {
-    const { createSimulationWorker } = await import('./createSimulationWorker')
-    worker ??= createSimulationWorker()
-  }
-
-  return worker
+const getWorker = (): Promise<Worker> => {
+  workerLoading ??= import('./createSimulationWorker').then(
+    ({ createSimulationWorker }) => {
+      worker ??= createSimulationWorker()
+      return worker
+    },
+    (error: unknown) => {
+      // A failed chunk load is retried by the next run.
+      workerLoading = null
+      throw error
+    }
+  )
+  return workerLoading
 }
 
-export async function runSimulationInClient(params: SimulationParams): Promise<SimulationResults> {
-  if (!canUseWorker()) {
-    return runMonteCarloSimulation(params)
-  }
-
-  const simulationWorker = await getWorker()
+function post(simulationWorker: Worker, params: SimulationParams): Promise<SimulationResults> {
   const id = nextRequestId++
 
   return new Promise<SimulationResults>((resolve, reject) => {
@@ -68,4 +70,26 @@ export async function runSimulationInClient(params: SimulationParams): Promise<S
     simulationWorker.addEventListener('error', handleError)
     simulationWorker.postMessage({ id, params } satisfies WorkerRequest)
   })
+}
+
+/**
+ * Runs one simulation on the shared worker (FIFO), or on the main thread where
+ * there is no worker (server, tests).
+ *
+ * Once the worker exists the request is posted *synchronously*, inside this
+ * call: a caller that updates React state right after calling (the store sets
+ * `isLoading`) no longer makes the job wait for that render — the worker
+ * computes while the main thread renders.
+ */
+export function runSimulationInClient(params: SimulationParams): Promise<SimulationResults> {
+  if (!canUseWorker()) {
+    try {
+      return Promise.resolve(runMonteCarloSimulation(params))
+    } catch (error) {
+      return Promise.reject(error)
+    }
+  }
+
+  if (worker) return post(worker, params)
+  return getWorker().then((ready) => post(ready, params))
 }

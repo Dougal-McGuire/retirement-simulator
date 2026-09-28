@@ -180,8 +180,6 @@
   "ui": {
     "close": "Close",
     "closeDialog": "Close dialog",
-    "increaseValue": "Increase value",
-    "decreaseValue": "Decrease value",
     "age": "Age",
     "ageLabel": "Age {age}",
     "fieldHelp": "Help: {label}"
@@ -258,8 +256,8 @@
         "description": "Current assets and savings plan"
       },
       "expenses": {
-        "title": "Cash flows",
-        "description": "Spending, and any income beyond your pension"
+        "title": "Income & spending",
+        "description": "Pensions, other income and spending"
       },
       "market": {
         "title": "Market Assumptions",
@@ -472,7 +470,7 @@
         }
       },
       "actions": {
-        "add": "Add cash flow",
+        "add": "Add item",
         "save": "Save",
         "cancel": "Cancel",
         "edit": "Edit",
@@ -483,12 +481,12 @@
         "hide": "Hide advanced options"
       },
       "timeline": {
-        "title": "When each flow applies",
+        "title": "When each item applies",
         "retirement": "Retirement {age}"
       },
       "empty": {
-        "title": "No cash flows yet",
-        "hint": "Start from a template below, or add your own"
+        "title": "No income or spending planned yet",
+        "hint": "Start from a template above, or add your own"
       },
       "summary": {
         "income": "Recurring income per year",
@@ -543,89 +541,27 @@
     }
   },
   "simulation": {
-    "header": {
-      "title": "Retirement Simulation",
-      "subtitle": "Build, adjust, and monitor retirement plans with live Monte Carlo confidence.",
-      "setupLink": "Setup",
-      "badges": {
-        "engine": "Live Monte Carlo",
-        "runs": "{count} runs per update",
-        "historical": "Historical · {count} paths",
-        "engineHistorical": "Live backtest"
-      },
-      "confidenceLabel": "Success probability",
-      "confidence": {
-        "high": "Your plan is in great shape. Keep contributions steady and review yearly.",
-        "medium": "A solid outlook with room to improve—tweak spending or asset allocation for more certainty.",
-        "low": "Confidence is strained. Increase savings, revisit expenses, or adjust risk to improve resilience."
-      },
-      "confidenceMeta": "Based on {count} stochastic simulations",
-      "subtitleHistorical": "Build, adjust, and monitor retirement plans against every start year of real market history."
-    },
-    "tabs": {
-      "overview": "Overview",
-      "details": "Cashflow & details",
-      "scenarios": "Scenarios & advice",
-      "plan": "Plan"
-    },
     "display": {
       "label": "Display currency amounts",
       "nominal": "Nominal",
-      "real": "Today's €",
-      "realHint": "Adjusted for inflation — amounts in today's purchasing power"
-    },
-    "withdrawalJump": {
-      "title": "Withdrawal rule: {strategy}. How the portfolio becomes a monthly income is planned in the plan editor.",
-      "action": "Choose a withdrawal strategy"
+      "real": "Today's €"
     }
   },
   "simulationCompact": {
-    "tabs": {
-      "overview": "Overview",
-      "plan": "Edit plan",
-      "cashflow": "Cash flows",
-      "scenarios": "Scenarios"
-    },
-    "compareButton": "Compare",
-    "computing": "Running simulation…",
-    "srComplete": "Simulation complete. Success rate: {rate}.",
-    "meta": {
-      "live": "Live recompute",
-      "runs": "{count} runs",
-      "seconds": "{seconds} s",
-      "plans": "saved {count} / {max} plans"
-    },
     "commandBar": {
-      "planAria": "Plan",
-      "age": "Retirement age",
       "ageAria": "Retirement age",
-      "save": "Savings",
       "saveAria": "Annual savings",
-      "spend": "Monthly budget",
       "spendAria": "Monthly spending",
       "spendValue": "{amount} per month",
-      "roi": "Return",
       "roiAria": "Expected return",
-      "advanced": "Advanced",
-      "setup": "Setup",
-      "run": "Run",
-      "successAria": "Success rate",
-      "unsavedSwitch": "Switch plans and discard unsaved changes?",
       "saveButton": "Save"
     },
     "advanced": {
-      "volatility": "Volatility",
       "volatilityAria": "Return volatility",
-      "inflation": "Inflation",
       "inflationAria": "Average inflation",
-      "pension": "Pension /mo",
       "pensionAria": "Monthly statutory pension",
-      "endAge": "Plan to",
       "endAgeAria": "Plan end age",
-      "runs": "Runs",
-      "runsAria": "Simulation runs",
-      "glidePath": "Glide path {start} → {end}",
-      "editFullPlan": "Edit full plan"
+      "glidePath": "Glide path {start} → {end}"
     },
     "chart": {
       "bandOuter": "P10–90",
@@ -634,27 +570,14 @@
       "nominal": "Nominal",
       "real": "Real"
     },
-    "bottom": {
-      "bridge": "Bridge",
-      "bridgeMeta": "{years} yrs self-funded {from} → {to}, then {pension}/mo pension",
-      "bridgeMetaImmediate": "Pension of {pension}/mo starts at retirement",
-      "recs": "Recs",
-      "recsPending": "measuring…",
-      "recApply": "Apply this change to the working copy",
-      "recRetire": "Retire {age}",
-      "recSpend": "Spend −10 %",
-      "recGlide": "Glide path {start} → {end}",
-      "editFullPlan": "Edit full plan →"
-    },
     "compare": {
       "title": "Compare plans",
       "addPlan": "+ Add plan (max {max})",
       "running": "Re-running…",
       "meta": "{count} plans re-run · {runs} runs each",
       "exit": "Exit compare",
-      "legendBase": "{name} (P20–80 band)",
       "changedRows": "Changed rows highlighted",
-      "openEditor": "Open plan editor →",
+      "openEditor": "Edit assumptions →",
       "perMonth": "{amount}/mo",
       "kpi": {
         "success": "Success rate",
@@ -684,12 +607,10 @@
     "pageTitle": "Retirement planning",
     "error": "The simulation could not be calculated. Please try again.",
     "retry": "Try again",
-    "stale": "The displayed results still belong to the previous calculation.",
     "tools": {
       "button": "Menu",
-      "title": "Plans and tools",
-      "description": "Manage plans, export a report, and change account or language.",
-      "setup": "Setup wizard"
+      "title": "Report and settings",
+      "description": "Export a report and change language, account or appearance."
     }
   },
   "parameterControls": {
@@ -1091,18 +1012,7 @@
     }
   },
   "planDashboard": {
-    "notAvailable": "—",
-    "cashflow": {
-      "title": "Retirement cash flow",
-      "portfolioNeed": "Portfolio-funded first year",
-      "pensionIncome": "Annual pension income",
-      "realReturn": "Expected real return",
-      "horizonMedian": "Median value at horizon"
-    },
     "scenarios": {
-      "title": "Stress-test levers",
-      "loading": "Calculating",
-      "preview": "Estimated impact",
       "items": {
         "laterRetirement": {
           "name": "Retire 2 years later",
@@ -1117,19 +1027,15 @@
           "description": "Reduces every recurring retirement expense item."
         }
       },
-      "saveAsPlan": "Save as new plan",
       "savedHint": "Creates a new plan with these parameters. Your current plan stays active.",
       "deltaPoints": "{value} pts",
-      "saturated": "Success already {rate} — comparing worst-decile end assets instead.",
-      "worstDecile": "Worst-decile end assets",
-      "baseline": "Baseline {rate} — the dashboard figure, measured over {runs} runs. Every effect below is the change against it.",
-      "baselineHistorical": "Baseline {rate} — the dashboard figure, measured over {runs} historical start years. Every effect below is the change against it."
+      "saturated": "Success already {rate} — comparing worst-decile end assets instead."
     }
   },
   "recommendations": {
     "title": "Recommendations",
     "subtitle": "Derived from this plan — each item names the number that triggered it. Estimated uplift is in success-rate points.",
-    "empty": "Run the simulation to see recommendations.",
+    "none": "Nothing to recommend for this plan right now.",
     "uplift": "+{min}–{max} pts",
     "impact": {
       "high": "High impact",
@@ -1161,88 +1067,30 @@
       "retirementFlag": "Retirement"
     },
     "spendingTable": {
-      "toggle": "View spending data table",
-      "caption": "Monthly post-strategy spending projections during retirement by age and percentile",
-      "note": {
-        "fixedReal": "Rows show every retirement year under fixed real spending: the configured expenses rise with simulated inflation and are not adjusted for portfolio performance. The pension offsets how much of the median allowance must come from the portfolio.",
-        "vanguardDynamic": "Rows show every retirement year under the Vanguard guardrails: the first year starts from the plan, then target spending is {withdrawalRate} of the prior year-end portfolio, bounded by the {ceiling} / {floor} guardrails against inflation-adjusted prior spending. The pension does not set the allowance; it offsets how much of it must come from the portfolio.",
-        "guytonKlinger": "Rows show every retirement year under Guyton-Klinger: spending is inflation-linked, cut by 10% whenever the withdrawal rate runs more than 20% above {withdrawalRate} and raised by 10% whenever it runs more than 20% below. The pension offsets how much of the allowance must come from the portfolio.",
-        "percentOfPortfolio": "Rows show every retirement year under percent of portfolio: spending is {withdrawalRate} of the prior year-end portfolio, with no memory of last year. The pension offsets how much of the allowance must come from the portfolio."
-      },
-      "headers": {
-        "age": "Age",
-        "p10": "10th Percentile",
-        "p50": "50th Percentile",
-        "p90": "90th Percentile",
-        "withdrawalRate": "Portfolio-funded withdrawal rate",
-        "pension": "Monthly pension",
-        "portfolioDraw": "Portfolio-funded",
-        "availableCash": "Available cash"
-      }
+      "toggle": "View spending data table"
     }
   },
   "assetsChart": {
-    "title": "Asset Projections Over Time",
-    "liveData": "Live Data",
     "reset": "Reset Zoom",
-    "description": "Projected portfolio value from Monte Carlo simulation. The solid line is the median outcome; the shaded bands show where most simulated futures land.",
-    "axis": {
-      "age": "Age",
-      "assets": "Assets (€)",
-      "monthlySavings": "Monthly Savings (€)"
-    },
-    "legend": {
-      "median": "Median outcome",
-      "likelyRange": "Likely range (P20–P80)",
-      "fullRange": "Full range (P10–P90)",
-      "events": "Plan milestones",
-      "band": "P20–P80 Band",
-      "title": "Chart legend",
-      "p10": "10th Percentile (Pessimistic)",
-      "p20": "20th Percentile",
-      "p50": "50th Percentile (Median)",
-      "p80": "80th Percentile",
-      "p90": "90th Percentile (Optimistic)",
-      "monthlySavings": "Monthly savings"
-    },
     "tooltip": {
       "label": "Age {age}",
       "p90": "90th percentile",
       "p80": "80th percentile",
       "median": "Median",
       "p20": "20th percentile",
-      "p10": "10th percentile",
-      "savings": "Monthly savings"
-    },
-    "markers": {
-      "retirement": "Retirement",
-      "pension": "Pension Starts",
-      "depletionP50": "Median depleted",
-      "depletionP10": "P10 depleted"
-    },
-    "hint": {
-      "dragToZoom": "Drag to zoom",
-      "zoomed": "Zoomed view active"
+      "p10": "10th percentile"
     },
     "scale": {
       "label": "Value axis scale",
       "focus": "Focus median",
-      "full": "Full range",
-      "clipped": "Axis focused on the likely range — the optimistic tail reaches {value}"
+      "full": "Full range"
     },
     "aria": {
-      "description": "Asset projection fan chart: the median outcome is drawn as a solid line, surrounded by a likely range (20th to 80th percentile) and a full range (10th to 90th percentile) band.",
-      "controls": "Use arrow keys to navigate chart data points. Press R to reset zoom. Drag across the chart to zoom into a time range.",
       "brush": "Age range shown, {startAge} to {endAge}. Drag the handles to zoom the chart into part of the timeline."
-    },
-    "descriptionHistorical": "Projected portfolio value from a historical backtest: one path per start year in the return series. The solid line is the median outcome; the shaded bands show where most of those histories land."
+    }
   },
   "spendingChart": {
-    "title": "Spending Patterns During Retirement",
-    "reset": "Reset Zoom",
-    "description": "Estimated monthly spending after retirement across scenarios, including dynamic spending adjustments when enabled.",
     "explanation": {
-      "strategyLabel": "Spending rule",
       "readingLabel": "How to read it",
       "reading": "The solid line is the median monthly allowance after strategy rules; the shaded band spans the 10th to 90th percentile of outcomes. Hover any age to see mean gross withdrawals divided by mean opening assets, including capital gains tax.",
       "strategies": {
@@ -1252,39 +1100,9 @@
         "percentOfPortfolio": "Percent of portfolio spends {withdrawalRate} of the prior year-end portfolio every year. Spending follows the market in both directions; only an explicit floor puts a bottom under it."
       }
     },
-    "axis": {
-      "age": "Age",
-      "spending": "Monthly Spending (€)",
-      "withdrawalRate": "Portfolio-Funded Rate (%)"
-    },
-    "tooltip": {
-      "label": "Age {age}",
-      "p90": "90th percentile",
-      "median": "Median",
-      "p10": "10th percentile"
-    },
     "legend": {
-      "title": "Chart legend",
-      "median": "Median allowance",
-      "band": "Range of outcomes (P10–P90)",
-      "p10": "10th Percentile",
-      "p50": "50th Percentile",
-      "p90": "90th Percentile",
-      "withdrawalRate": "Portfolio-funded withdrawal rate",
       "note": "Spending shows the budget. The tooltip withdrawal rate uses actual gross sales from the simulation and is a ratio of means.",
       "meanWithdrawalRate": "Mean gross draw / mean opening portfolio"
-    },
-    "markers": {
-      "retirement": "Retirement"
-    },
-    "hint": {
-      "dragToZoom": "Drag to zoom",
-      "zoomed": "Zoomed view active"
-    },
-    "aria": {
-      "description": "Monthly spending chart from retirement age {retirementAge} onwards: a solid median line inside a shaded band spanning the 10th to 90th percentile of outcomes.",
-      "controls": "Use arrow keys to navigate spending data. Press R to reset zoom. Drag across the chart to zoom into a time range.",
-      "brush": "Age range shown, {startAge} to {endAge}. Drag the handles to zoom the chart into part of the timeline."
     }
   },
   "pdf": {
@@ -2217,7 +2035,8 @@
     "toasts": {
       "planCreatedFrom": "Created “{name}” from “{source}” — selected in Compare plans.",
       "switchToPlan": "Switch to it",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "compare": "Compare"
     },
     "dirty": {
       "badge": "Unsaved changes",
@@ -2252,35 +2071,28 @@
     "account": "Account"
   },
   "planEditor": {
-    "title": "Plan assumptions",
-    "description": "Every input “{name}” simulates. Edits run live and stay in the working copy until you save them to the plan.",
-    "descriptionGeneric": "Every input this plan simulates. Edits run live and stay in the working copy until you save them to the plan.",
     "groups": {
       "personal": {
         "title": "Personal & timeline",
         "description": "The ages that frame saving and drawdown."
       },
       "income": {
-        "title": "Income & savings",
-        "description": "What flows in before and after you stop working."
-      },
-      "expenses": {
-        "title": "Expenses",
-        "description": "What this plan has to fund, every year."
+        "title": "Assets & savings",
+        "description": "What you have today and put aside until retirement."
       },
       "market": {
-        "title": "Market & rules",
+        "title": "Market & taxes",
         "description": "Return assumptions and German taxes."
       },
       "cashFlows": {
-        "title": "Cash flows",
+        "title": "Income & spending",
         "description": "Everything this plan pays out or takes in, and for how long.",
-        "incomePointer": "{count, plural, =0 {One-off income lives in the Cash flows section} =1 {# one-off income, edited in the Cash flows section} other {# one-off incomes, edited in the Cash flows section}}"
+        "incomePointer": "{count, plural, =0 {One-off income – edited under “Income & spending”} =1 {# one-off income, edited under “Income & spending”} other {# one-off incomes, edited under “Income & spending”}}"
       },
       "withdrawal": {
         "title": "Withdrawal",
         "description": "How the portfolio becomes an income.",
-        "pointer": "Withdrawal rule: {strategy} — planned in the withdrawal planner below"
+        "pointer": "Withdrawal rule: {strategy} — set in the “Withdrawal” section"
       }
     },
     "summary": {
@@ -2289,14 +2101,11 @@
       "years": "{count, plural, =1 {# year} other {# years}}",
       "monthlyTotal": "Monthly expenses",
       "annualExtras": "Annual extras",
-      "combinedAnnual": "Total per year",
       "savingsRate": "Savings rate",
       "savingsRateHint": "Savings ÷ (savings + spending)",
       "realReturn": "Real return after inflation",
       "pensionGap": "Statutory pension starts at {age}",
       "expenseCount": "{count, plural, =0 {No entries} =1 {# entry} other {# entries}}",
-      "scheduledFlows": "Scheduled flows",
-      "scheduledFlowsHint": "Windowed or one-off items",
       "pensions": "Pensions at {age}",
       "pensionsHint": "{count, plural, =0 {no pension} =1 {# pension} other {# pensions}} · gross per month"
     },
@@ -2308,20 +2117,13 @@
       "done": "“{name}” reset to defaults",
       "undone": "Reset undone"
     },
-    "editAria": "Edit {field}",
-    "jump": "Jump to {group}",
     "sections": {
-      "navLabel": "Plan sections",
       "staleStats": "A value below is out of range — these figures still describe the last accepted entry.",
       "previous": "Back: {title}",
       "next": "Next: {title}"
     }
   },
   "withdrawalPlanner": {
-    "title": "Withdrawal planner",
-    "description": "How this plan turns a portfolio into a monthly income — and what that income is allowed to do when markets misbehave.",
-    "strategyLabel": "Strategy",
-    "paramsLabel": "Strategy settings",
     "noParams": "This strategy has no settings: it simply spends the plan’s budget, inflation-linked.",
     "stats": {
       "firstYear": "First retirement year",
@@ -2336,9 +2138,14 @@
       "unit": "/mo"
     },
     "tradeoff": "A lower spread means a more predictable income; a higher success rate means less chance of running out. Move the rate and watch both move.",
+    "steps": {
+      "choose": "Choose a rule",
+      "tune": "Tune the rule",
+      "effect": "How your rule behaves",
+      "compare": "Compare all four rules"
+    },
     "corridor": {
       "title": "Spending corridor",
-      "description": "The shaded band is where 80% of simulated futures land. The dashed lines are not a forecast: they are what the rule itself promises, whatever the market does.",
       "legend": {
         "band": "P10–P90 of futures",
         "median": "Median",
@@ -2358,18 +2165,17 @@
         "pension": "State pension"
       },
       "caveat": "The floor holds as long as the portfolio does — it is a rule, not a guarantee from a third party.",
-      "noFloor": "This strategy promises no floor: set one below to put a hard bottom under your income.",
+      "noFloorHint": "This rule promises no floor. Set a guaranteed floor under “Tune the rule” to put a hard bottom under your income.",
       "empty": "Run the simulation to see the corridor.",
-      "aria": "Spending corridor from age {retirementAge}: median spending with the P10–P90 band and the strategy’s planned floor and ceiling."
+      "aria": "Spending corridor from age {retirementAge}: median spending with the P10–P90 band and the strategy’s planned floor and ceiling.",
+      "keyboardAria": "Values by age – use the arrow keys to step through the years"
     },
     "compare": {
-      "title": "Compare all four strategies",
       "subtitle": "Same plan, same market paths, four withdrawal rules. This is the trade-off, in numbers.",
       "run": "Compare strategies",
       "rerun": "Run again",
       "running": "Running…",
       "error": "The strategy comparison failed. Please try again.",
-      "empty": "Run the comparison to see all four strategies side by side.",
       "stale": "The plan changed since this comparison ran.",
       "columns": {
         "strategy": "Strategy",
@@ -2382,6 +2188,8 @@
       "active": "Active",
       "apply": "Use this strategy",
       "none": "—",
+      "waiting": "Paused while your plan recalculates or is being edited.",
+      "progress": "{done} of {total} rules calculated",
       "runsNote": "Each strategy is run over the same {runs} market paths, so the differences are the rules and nothing else. Lifetime spending is the median path summed in today’s euros; the spread is P90 ÷ P10 at age {age}."
     }
   },
@@ -2481,22 +2289,16 @@
     "allYears": "Show every year",
     "tableNote": "Annual averages; taxes are already deducted from income and gross withdrawals. Do not subtract them again.",
     "assumptionsTitle": "Tax assumptions and payment timing",
-    "assumptions": "Income-tax treatment follows each flow’s settings (2026 tariff for ordinary and one-fifth-rule income). Pension tax uses the configured effective rate on its taxable portion. Capital gains tax applies to realised gains after the selected allowance and fund exemption. This is a planning approximation: wages beyond the savings contribution, deductions, church tax and the income-tax solidarity surcharge are not modelled.",
+    "assumptions": "Income-tax treatment follows each item’s settings (2026 tariff for ordinary and one-fifth-rule income). Pension tax uses the configured effective rate on its taxable portion. Capital gains tax applies to realised gains after the selected allowance and fund exemption. This is a planning approximation: wages beyond the savings contribution, deductions, church tax and the income-tax solidarity surcharge are not modelled.",
     "oneOffTiming": "For compatibility with existing plans, one-off income is credited to the portfolio at the next age after its entered booking age. The table shows the year of the actual credit, including the associated tax."
   },
   "workspace": {
     "brand": "Retirement planner",
-    "navigation": "Retirement planning areas",
-    "activePlan": "Current plan",
+    "navigation": "Sections",
     "saved": "Plan saved",
     "unsaved": "Unsaved changes",
     "calculate": "Recalculate",
     "computing": "Calculating …",
-    "current": "Results from your latest calculation",
-    "empty": "No results yet",
-    "outcome": "Goal completion",
-    "outcomeExplain": "Share of simulated paths that fund your spending and meet your legacy goal through age {end}. A model, not a guarantee.",
-    "successfulPaths": "of paths meet your goal",
     "lastsTo": "Median assets last until age",
     "badPaths": "Weaker 10%: until age {age}",
     "firstDraw": "Monthly portfolio draw at retirement",
@@ -2505,60 +2307,20 @@
     "lowAssets": "Weaker 10%: {amount}",
     "assetTitle": "Asset projection",
     "assetDescription": "The line shows the median; the band shows the range of simulated outcomes. Inspect individual years in the chart.",
-    "planSnapshot": "Plan assumptions",
-    "snapshotHint": "Review and edit starting assumptions.",
-    "followMoney": "View cash flows",
     "retirement": "Retirement",
     "ageValue": "At age {age}",
-    "timelineHint": "Planning from age {current} to {end}",
     "startingAssets": "Assets today",
     "savingsHint": "{amount} saved per year",
     "plannedBudget": "Planned monthly budget",
-    "budgetHint": "Base budget before temporary extra costs",
     "edit": "Edit",
-    "experiment": "What if …?",
-    "experimentHint": "Try a different retirement age, savings rate, budget or return.",
-    "spendingAnalysis": "Spending strategy and projections in detail",
-    "variantMode": "Comparison mode",
-    "exploreVariants": "Explore changes",
-    "comparePlans": "Compare saved plans",
     "footer": "All results depend on your assumptions. Taxes and capital markets are simplified models.",
-    "views": {
-      "overview": {
-        "label": "Overview",
-        "title": "Overview",
-        "description": "Goal completion, assets and key plan assumptions.",
-        "short": "Overview"
-      },
-      "plan": {
-        "label": "My plan",
-        "title": "My plan",
-        "description": "Edit personal details, income, spending and calculation assumptions.",
-        "short": "My plan"
-      },
-      "cashflow": {
-        "label": "Cash flows",
-        "title": "Cash flows",
-        "description": "Income, taxes and spending by year.",
-        "short": "Cash flow"
-      },
-      "scenarios": {
-        "label": "Alternatives",
-        "title": "Alternatives",
-        "description": "Calculate changes and compare saved plans.",
-        "short": "Alternatives"
-      }
-    },
-    "applyChanges": "Try a change in your current plan",
     "today": "Today",
     "firstPension": "First planned pension",
     "noPension": "None entered",
     "horizon": "Planning horizon",
     "whatIf": {
-      "draft": "Draft",
-      "draftAria": "Your working copy differs from the saved plan",
       "note": "Changes here are drafts – they only apply to your plan once you save.",
-      "pending": "Save or discard them at the top of the page."
+      "pending": "Save or discard them in the result bar at the top."
     },
     "compareEntry": {
       "title": "Compare with another plan",
@@ -2583,8 +2345,114 @@
       "active": "Active",
       "actions": "Plan actions",
       "manage": "Manage plans …",
-      "createdToast": "Created “{name}”"
+      "createdToast": "Created “{name}”",
+      "compare": "Compare plans"
     },
-    "unsavedShort": "Unsaved"
+    "unsavedShort": "Unsaved",
+    "pageTitle": "{plan} – Retirement planner",
+    "sections": {
+      "result": {
+        "title": "Result",
+        "short": "Result",
+        "description": "How likely your money is to last, and how your assets may develop."
+      },
+      "assumptions": {
+        "title": "Assumptions",
+        "short": "Inputs",
+        "description": "Your plan's starting values. Changes recalculate instantly and stay a draft until you save."
+      },
+      "cashflow": {
+        "title": "Money flow",
+        "short": "Flows",
+        "description": "Where your money comes from and where it goes – year by year, after tax."
+      },
+      "withdrawal": {
+        "title": "Withdrawal",
+        "short": "Drawdown",
+        "description": "How your portfolio becomes an income – and what it does in weak years."
+      },
+      "levers": {
+        "title": "Levers",
+        "short": "Levers",
+        "description": "Try changes and see what moves the needle most."
+      }
+    },
+    "bar": {
+      "label": "Your plan's result",
+      "success": "Success rate",
+      "successShort": "Success",
+      "endAssets": "End assets · median",
+      "endAssetsShort": "End · median",
+      "deltaAria": "Change against the saved plan: {delta}"
+    },
+    "verdict": {
+      "lead": "of simulated paths fund your budget and legacy goal through age {end}."
+    },
+    "runContext": {
+      "monteCarlo": "Monte Carlo simulation, {runs} runs",
+      "historical": "Historical returns, {runs} start years",
+      "disclaimer": "A model, not a guarantee."
+    },
+    "lifeStages": {
+      "label": "Life stages",
+      "editAria": "{label}: {value} – edit"
+    },
+    "cards": {
+      "person": {
+        "value": "Retire at {age}",
+        "detail": "Today {current} · planned to {end}",
+        "pension": "State pension from {age}"
+      },
+      "savings": {
+        "growth": "{rate} per year · savings rate {share}"
+      },
+      "flows": {
+        "value": "{amount} per month",
+        "counts": "{pensions, plural, =0 {no pension} one {# pension} other {# pensions}} · {expenses} expense items · {incomes} incomes",
+        "pensions": "Pensions at {age}: {amount} gross/month"
+      },
+      "market": {
+        "value": "{rate} return",
+        "valueHistorical": "Historical returns",
+        "detail": "Inflation {inflation} · volatility ± {volatility}",
+        "detailHistorical": "{from}–{to} · {count} start years",
+        "glideOn": "Glide path {start} → {end}",
+        "glideOff": "Glide path off",
+        "tax": "Tax drag ≈ {rate}"
+      },
+      "startingValues": "Starting values in today's euros"
+    },
+    "guidedSetup": "Guided setup",
+    "guidedSetupHint": "Prefer step by step?",
+    "editPanel": {
+      "close": "Close editor",
+      "done": "Done",
+      "navLabel": "Walk through assumptions",
+      "editAria": "Edit {title}",
+      "liveResult": "Success rate now {rate}",
+      "liveDelta": "{delta} against the saved plan",
+      "toFlows": "Go to Income & spending",
+      "toWithdrawal": "Go to Withdrawal"
+    },
+    "planManager": {
+      "title": "Manage plans",
+      "description": "Switch, create, rename, duplicate or delete plans."
+    },
+    "levers": {
+      "quickTitle": "Try quickly",
+      "more": "More sliders",
+      "editMarket": "Edit all market assumptions",
+      "impactTitle": "What moves the needle",
+      "apply": "Apply",
+      "applyAria": "Apply “{name}” to your draft",
+      "appliedToast": "Applied “{name}” – not saved yet.",
+      "reset": "Reset {label}",
+      "baseline": "Baseline {rate} — the figure shown in Result, measured over {runs} runs. Every effect below is the change against it.",
+      "baselineHistorical": "Baseline {rate} — the figure shown in Result, measured over {runs} historical start years. Every effect below is the change against it.",
+      "measuring": "Measuring …",
+      "waiting": "Re-measured once your inputs settle.",
+      "leadsTo": "resulting in",
+      "saveAsPlan": "Save as plan"
+    }
   }
 }

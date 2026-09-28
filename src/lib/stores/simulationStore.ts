@@ -1,3 +1,11 @@
+import {
+  createContext,
+  createElement,
+  useContext,
+  useDeferredValue,
+  useMemo,
+  type ReactNode,
+} from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import {
@@ -10,6 +18,7 @@ import {
   type Plan,
 } from '@/types'
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
+import { canUseWorker, runSimulationInClient } from '@/lib/simulation/workerClient'
 import {
   projectCustomExpenses,
   projectOneTimeIncomes,
@@ -113,17 +122,27 @@ const sanitizePlanSuccessRates = (value: unknown): Record<string, number> => {
   return sanitized
 }
 
-const runSimulationWithBestAvailableRuntime = async (params: SimulationParams) => {
-  if (
-    typeof window === 'undefined' ||
-    typeof Worker === 'undefined' ||
-    process.env.NODE_ENV === 'test'
-  ) {
-    return runMonteCarloSimulation(params)
-  }
+/**
+ * Starts a run and returns its result.
+ *
+ * On the worker the job is posted before this returns, so the `isLoading`
+ * render the caller triggers next overlaps the computation instead of
+ * delaying it (the §7 edit → result-bar budget). Without a worker (server,
+ * tests, old browsers) the engine runs on the main thread after a macrotask,
+ * so the "running" state can paint before the engine blocks.
+ */
+const startSimulation = (params: SimulationParams): Promise<SimulationResults> => {
+  if (canUseWorker()) return runSimulationInClient(params)
 
-  const { runSimulationInClient } = await import('@/lib/simulation/workerClient')
-  return runSimulationInClient(params)
+  return new Promise<SimulationResults>((resolve, reject) => {
+    setTimeout(() => {
+      try {
+        resolve(runMonteCarloSimulation(params))
+      } catch (err) {
+        reject(err)
+      }
+    }, 0)
+  })
 }
 
 export const useSimulationStore = create<SimulationStore>()(
@@ -493,19 +512,13 @@ export const useSimulationStore = create<SimulationStore>()(
           const { params } = get()
           const requestFingerprint = getParamsFingerprint(params)
 
+          // Post first, then flag the run: the worker starts computing while
+          // React renders the loading state.
+          const pendingResults = startSimulation(params)
           set({ isLoading: true, error: null, pendingRun: false })
 
           try {
-            // Run simulation in a setTimeout to allow UI to update
-            const results = await new Promise<SimulationResults>((resolve, reject) => {
-              setTimeout(async () => {
-                try {
-                  resolve(await runSimulationWithBestAvailableRuntime(params))
-                } catch (err) {
-                  reject(err)
-                }
-              }, 0)
-            })
+            const results = await pendingResults
 
             const latestFingerprint = getParamsFingerprint(get().params)
             if (latestFingerprint !== requestFingerprint) {
@@ -774,9 +787,43 @@ export const useSimulationStore = create<SimulationStore>()(
   )
 )
 
+// ---- Results, with an optional deferred scope -------------------------------
+
+const ResultsScopeContext = createContext<{ results: SimulationResults | null } | null>(null)
+
+/**
+ * The results on screen.
+ *
+ * Outside a `DeferredResultsScope` this is a plain store subscription: it
+ * updates in the same (synchronous) render as the run's completion. Inside a
+ * scope it is the scope's deferred copy and there is no store subscription at
+ * all, so a landing run does not re-render the component in that urgent pass;
+ * it re-renders in the interruptible pass that follows. That is how the
+ * result bar (outside every scope) commits first while the charts below it
+ * catch up a frame later (§7 of the one-page workspace spec).
+ */
+export const useSimulationResults = () => {
+  const scope = useContext(ResultsScopeContext)
+  const live = useSimulationStore((state) => (scope ? null : state.results))
+  return scope ? scope.results : live
+}
+
+/**
+ * Hands `useSimulationResults()` a deferred copy of the results to everything
+ * below it. Wrap surfaces that are expensive to render and not the headline
+ * (charts, the Sankey, the withdrawal planner, the lever list). The copy lags
+ * only while a newer result is being rendered; it never shows a result the
+ * store has not had.
+ */
+export function DeferredResultsScope({ children }: { children?: ReactNode }) {
+  const results = useSimulationStore((state) => state.results)
+  const deferred = useDeferredValue(results)
+  const value = useMemo(() => ({ results: deferred }), [deferred])
+  return createElement(ResultsScopeContext.Provider, { value }, children)
+}
+
 // Helper hooks for specific parts of the store
 export const useSimulationParams = () => useSimulationStore((state) => state.params)
-export const useSimulationResults = () => useSimulationStore((state) => state.results)
 export const useSimulationLoading = () => useSimulationStore((state) => state.isLoading)
 export const useSimulationError = () => useSimulationStore((state) => state.error)
 

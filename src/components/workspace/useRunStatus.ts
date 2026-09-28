@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import type { SimulationStore } from '@/types'
 import { areSimulationParamsEqual } from '@/lib/simulation/planInsights'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
 
@@ -36,6 +38,31 @@ export function deriveRunStatus(inputs: RunInputs): { status: RunStatus; needsRu
   return { status, needsRun: !busy && (!hasResults || stale || failed) }
 }
 
+/** Results exist but describe other params than the ones on screen. */
+export const selectResultsStale = (state: SimulationStore): boolean =>
+  state.results !== null && !areSimulationParamsEqual(state.params, state.results.params)
+
+/**
+ * The store fields run status depends on, already reduced: `busy` stays true
+ * across the debounce → worker hand-off (`pendingRun` → `isLoading`), and a
+ * keystroke that leaves results merely stale changes nothing until it flips
+ * `stale`. Use with `useShallow`.
+ */
+export const selectRunState = (state: SimulationStore) => ({
+  busy: isRunBusy({
+    loading: state.isLoading,
+    pending: state.pendingRun,
+    suspended: state.autoRunSuspended,
+    stale: false,
+    hasResults: state.results !== null,
+    error: state.error,
+    holding: false,
+  }),
+  stale: selectResultsStale(state),
+  hasResults: state.results !== null,
+  error: state.error,
+})
+
 /**
  * What the workspace should say about its results.
  *
@@ -49,16 +76,10 @@ export function deriveRunStatus(inputs: RunInputs): { status: RunStatus; needsRu
  * flash unreadably. `status` holds `running` for at least `MIN_RUNNING_MS`.
  */
 export function useRunStatus(): { status: RunStatus; needsRun: boolean; busy: boolean } {
-  const loading = useSimulationStore((state) => state.isLoading)
-  const pending = useSimulationStore((state) => state.pendingRun)
-  const suspended = useSimulationStore((state) => state.autoRunSuspended)
-  const error = useSimulationStore((state) => state.error)
-  const params = useSimulationStore((state) => state.params)
-  const results = useSimulationStore((state) => state.results)
-
-  const stale = results ? !areSimulationParamsEqual(params, results.params) : false
-  const inputs = { loading, pending, suspended, stale, hasResults: Boolean(results), error }
-  const busy = isRunBusy({ ...inputs, holding: false })
+  // One narrow, derived selection: a keystroke (params change), the debounce
+  // handing over to the worker (pendingRun → isLoading) and a landing result
+  // only re-render the caller when busy / stale / hasResults / error flip.
+  const { busy, stale, hasResults, error } = useSimulationStore(useShallow(selectRunState))
 
   const [holding, setHolding] = useState(false)
   const startedAt = useRef(0)
@@ -77,6 +98,14 @@ export function useRunStatus(): { status: RunStatus; needsRun: boolean; busy: bo
     return () => clearTimeout(timer)
   }, [busy])
 
-  const { status, needsRun } = deriveRunStatus({ ...inputs, holding })
+  const { status, needsRun } = deriveRunStatus({
+    loading: busy,
+    pending: false,
+    suspended: false,
+    stale,
+    hasResults,
+    error,
+    holding,
+  })
   return { status, needsRun, busy }
 }

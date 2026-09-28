@@ -29,11 +29,14 @@ test.describe('appearance', () => {
     expect(await page.evaluate(() => document.documentElement.dataset.colorScheme)).toBe('light')
     expect(await scheme(page)).toBe('light')
 
-    await page
-      .getByTestId('appearance-switch')
-      .last()
-      .getByRole('radio', { name: 'System' })
-      .click()
+    // The server renders the switch on "System"; it shows the stored "Light"
+    // only once hydrated. Wait for that, or the click lands on inert markup.
+    const reloaded = page.getByTestId('appearance-switch').last()
+    await expect(reloaded.getByRole('radio', { name: 'Light' })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
+    await reloaded.getByRole('radio', { name: 'System' }).click()
     await expect.poll(() => scheme(page)).toBe('dark')
     expect(
       await page.evaluate(() => document.documentElement.hasAttribute('data-color-scheme'))

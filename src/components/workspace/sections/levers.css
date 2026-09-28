@@ -1,0 +1,525 @@
+/*
+ * Stellschrauben (#levers): quick sliders, measured levers, recommendations.
+ * Lane B's co-located styles — every class is `ws-levers-*` and every colour
+ * is a token from interface.css (motion via the --ws-motion-* aliases that
+ * ws-page.css sets on .ws-page).
+ *
+ * Surfaces: the slider card and the two lists are the only boxed blocks;
+ * rows inside them are split by hairlines. Status colour appears only on the
+ * delta chips (ds-delta) and the saturation note.
+ */
+
+.ws-levers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-8);
+  min-width: 0;
+}
+.ws-levers .ws-skeleton {
+  display: block;
+}
+
+/* ---- Subsection chrome -------------------------------------------- */
+
+.ws-levers-group {
+  min-width: 0;
+  container-type: inline-size;
+}
+.ws-levers-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ui-space-1) var(--ui-space-4);
+  margin-bottom: var(--ui-space-2);
+}
+.ws-levers-title {
+  margin: 0;
+  font-size: var(--ui-font-section);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.ws-levers-group > .ws-levers-title {
+  margin-bottom: var(--ui-space-4);
+}
+.ws-levers-status {
+  margin: 0;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.ws-levers-lede,
+.ws-levers-baseline {
+  max-width: 72ch;
+  margin: 0 0 var(--ui-space-4);
+  color: var(--ui-muted);
+}
+.ws-levers-note {
+  max-width: 72ch;
+  margin: var(--ui-space-3) 0 0;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.ws-levers-note[data-dirty] {
+  color: var(--ui-text);
+}
+.ws-levers-callout {
+  margin: 0 0 var(--ui-space-4);
+  padding: var(--ui-space-2) var(--ui-space-3);
+  color: var(--ui-text);
+  background: color-mix(in srgb, var(--ui-accent) 8%, var(--ui-surface));
+  border-radius: var(--ui-radius);
+}
+.ws-levers-empty {
+  margin: 0;
+  color: var(--ui-muted);
+}
+
+/* ---- Schnell ausprobieren: slider card ---------------------------- */
+
+.ws-levers-card {
+  container-type: inline-size;
+  min-width: 0;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+.ws-levers-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-6) var(--ui-space-8);
+  padding: var(--ui-space-6);
+}
+.ws-levers-more {
+  padding: 0 var(--ui-space-6);
+  border-top: 1px solid var(--ui-border);
+}
+.ws-levers-disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+  min-height: 44px;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--ui-text);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-levers-disclosure svg {
+  color: var(--ui-muted);
+  transition: transform var(--ws-motion-base) var(--ws-motion-ease);
+}
+.ws-levers-disclosure[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+.ws-levers-disclosure:hover {
+  color: var(--ui-accent);
+}
+.ws-levers-disclosure:focus-visible,
+.ws-levers-link:focus-visible,
+.ws-levers-slider-reset:focus-visible,
+.ws-levers-button:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.ws-levers-advanced {
+  border-top: 1px solid var(--ui-border);
+}
+.ws-levers-advanced-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2) var(--ui-space-6);
+  margin-top: calc(-1 * var(--ui-space-2));
+  padding: 0 var(--ui-space-6) var(--ui-space-4);
+}
+.ws-levers-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-height: var(--ui-control-height);
+  cursor: pointer;
+}
+.ws-levers-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--ui-accent);
+  cursor: pointer;
+}
+.ws-levers-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+  min-height: var(--ui-control-height);
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--ui-accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-levers-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---- One slider ----------------------------------------------------- */
+
+.ws-levers-slider {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-1);
+  min-width: 0;
+}
+.ws-levers-slider[data-disabled] {
+  opacity: 0.5;
+}
+.ws-levers-slider-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+  min-height: 28px;
+}
+.ws-levers-slider-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-muted);
+}
+.ws-levers-slider-value {
+  font-size: var(--ui-font-lead, 16px);
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ws-levers-slider-reset {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--ui-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+}
+.ws-levers-slider-reset:hover {
+  color: var(--ui-text);
+  background: var(--ui-subtle);
+}
+.ws-levers-slider-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  touch-action: none;
+  user-select: none;
+  cursor: pointer;
+}
+.ws-levers-slider-control[data-disabled] {
+  cursor: not-allowed;
+}
+.ws-levers-slider-track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  overflow: hidden;
+  background: var(--ui-border);
+  border-radius: 2px;
+}
+.ws-levers-slider-range {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--ui-accent);
+}
+/* The saved plan's value while the draft differs from it. */
+.ws-levers-slider-mark {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 12px;
+  background: var(--ui-muted);
+  border-radius: 1px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+/* 18px: `THUMB_SIZE` in InlineSlider.tsx must match. */
+.ws-levers-slider-thumb {
+  display: block;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  background: var(--ui-surface);
+  border: 2px solid var(--ui-accent);
+  border-radius: 50%;
+  cursor: grab;
+  transition: background-color var(--ws-motion-fast) var(--ws-motion-ease);
+}
+.ws-levers-slider-thumb:hover {
+  background: var(--ui-subtle);
+}
+.ws-levers-slider-thumb:active {
+  cursor: grabbing;
+}
+.ws-levers-slider-thumb:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.ws-levers-slider-thumb[data-disabled] {
+  cursor: not-allowed;
+}
+
+/* ---- Lists (levers, recommendations) ------------------------------- */
+
+.ws-levers-list {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+.ws-levers-list > * + * {
+  border-top: 1px solid var(--ui-border);
+}
+.ws-levers-row-skeleton {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--ui-space-2);
+  min-height: 72px;
+  padding: var(--ui-space-4) var(--ui-space-6);
+}
+.ws-levers-row-skeleton .ws-skeleton {
+  height: 12px;
+}
+
+/* Lever rows: name · effect · actions, the last two columns aligned across
+   rows (subgrid), so the deltas read as one column. */
+.ws-levers-impact {
+  transition: opacity var(--ws-motion-base) var(--ws-motion-ease);
+}
+.ws-levers-impact[data-stale] {
+  opacity: 0.55;
+}
+.ws-levers-impact .ws-levers-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.ws-levers-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: var(--ui-space-6);
+  row-gap: var(--ui-space-3);
+  padding: var(--ui-space-4) var(--ui-space-6);
+}
+@supports (grid-template-columns: subgrid) {
+  .ws-levers-row {
+    grid-template-columns: subgrid;
+  }
+}
+.ws-levers-row-text {
+  grid-column: 1;
+  min-width: 0;
+}
+.ws-levers-row-name {
+  margin: 0;
+  font-weight: 600;
+}
+.ws-levers-row-description {
+  margin: 2px 0 0;
+  color: var(--ui-muted);
+}
+.ws-levers-effect {
+  display: flex;
+  grid-column: 2;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ui-space-2);
+  color: var(--ui-muted);
+  white-space: nowrap;
+}
+.ws-levers-effect .ds-delta {
+  padding: 1px var(--ui-space-2);
+  font-size: var(--ui-font-small);
+}
+.ws-levers-effect-result {
+  min-width: 5ch;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ui-text);
+}
+.ws-levers-effect-skeleton {
+  width: 132px;
+  height: 22px;
+}
+.ws-levers-actions {
+  display: flex;
+  grid-column: 3;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ui-space-2);
+}
+.ws-levers-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ui-space-2);
+  min-height: var(--ui-control-height);
+  padding: var(--ui-space-2) var(--ui-space-4);
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+}
+.ws-levers-button:hover:not(:disabled) {
+  background: var(--ui-subtle);
+}
+.ws-levers-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ws-levers-button-quiet {
+  padding-inline: var(--ui-space-2);
+  color: var(--ui-accent);
+  background: transparent;
+  border-color: transparent;
+}
+.ws-levers-button-quiet:hover:not(:disabled) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: transparent;
+}
+
+/* Recommendation rows. */
+.ws-levers-rec {
+  padding: var(--ui-space-4) var(--ui-space-6);
+}
+.ws-levers-rec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+}
+.ws-levers-rec-uplift {
+  flex: none;
+  padding: 1px var(--ui-space-2);
+  font-size: var(--ui-font-small);
+}
+.ws-levers-rec-body {
+  max-width: 72ch;
+  margin: var(--ui-space-1) 0 0;
+  color: var(--ui-muted);
+}
+.ws-levers-rec-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2) var(--ui-space-4);
+  margin-top: var(--ui-space-2);
+}
+.ws-levers-rec-meta {
+  margin: 0;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+
+/* ---- Narrow containers ---------------------------------------------- */
+
+/* One slider column below 640px of card (spec §5.5). */
+@container (max-width: 639px) {
+  .ws-levers-grid {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--ui-space-4);
+  }
+}
+@container (max-width: 479px) {
+  .ws-levers-grid {
+    padding: var(--ui-space-4);
+  }
+  .ws-levers-more {
+    padding-inline: var(--ui-space-4);
+  }
+  .ws-levers-advanced-foot {
+    padding-inline: var(--ui-space-4);
+  }
+}
+/* Lever rows stack: the text above, effect and actions on one line below. */
+@container (max-width: 719px) {
+  .ws-levers-impact .ws-levers-list {
+    display: block;
+  }
+  .ws-levers-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ws-levers-row-text {
+    grid-column: 1 / -1;
+  }
+  .ws-levers-effect {
+    grid-column: 1;
+    justify-content: flex-start;
+  }
+  .ws-levers-effect-result {
+    min-width: 0;
+    text-align: left;
+  }
+  .ws-levers-actions {
+    grid-column: 2;
+  }
+}
+/* Phones: effect, then the actions on a row of their own. */
+@container (max-width: 479px) {
+  .ws-levers-row,
+  .ws-levers-rec,
+  .ws-levers-row-skeleton {
+    padding: var(--ui-space-4);
+  }
+  .ws-levers-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ws-levers-actions {
+    grid-column: 1;
+    justify-content: flex-start;
+  }
+  /* "Übernehmen" and "Als Plan speichern" share one line down to 320px. */
+  .ws-levers-actions .ws-levers-button {
+    padding-inline: var(--ui-space-3);
+  }
+  .ws-levers-actions .ws-levers-button-quiet {
+    padding-inline: 0;
+  }
+}
+
+@container (max-width: 300px) {
+  .ws-levers-actions .ws-levers-button:not(.ws-levers-button-quiet) {
+    padding-inline: var(--ui-space-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-levers-impact,
+  .ws-levers-disclosure svg,
+  .ws-levers-slider-thumb {
+    transition: none;
+  }
+}

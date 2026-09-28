@@ -1,4 +1,9 @@
-import type { SimulationParams, SimulationResults, WithdrawalStrategy } from '@/types'
+import type {
+  AnnualCashFlow,
+  SimulationParams,
+  SimulationResults,
+  WithdrawalStrategy,
+} from '@/types'
 import { GK_CAPITAL_PRESERVATION_CUT, GK_PROSPERITY_RAISE } from '@/lib/simulation/engine'
 import { buildCashFlowSeries } from '@/lib/simulation/cashFlows'
 
@@ -180,6 +185,23 @@ export interface SpendingCorridorPoint {
   spending_band_height: number
   floor: number | null
   ceiling: number | null
+  /**
+   * Mean gross portfolio withdrawal ÷ mean opening portfolio at this age: what
+   * the rule actually sold, including capital gains tax, relative to what was
+   * there. A ratio of *means* (not a median rate), so it is the same number in
+   * either euro unit. `null` without cash-flow means (results persisted by an
+   * older build) or with an empty portfolio.
+   */
+  withdrawalRateMean: number | null
+}
+
+/** Gross withdrawal ÷ opening assets of one year's mean cash flow, or null if undefined. */
+export function meanWithdrawalRate(
+  cashFlow: Pick<AnnualCashFlow, 'openingAssets' | 'portfolioWithdrawal'> | undefined
+): number | null {
+  if (!cashFlow || !(cashFlow.openingAssets > 0)) return null
+  const rate = cashFlow.portfolioWithdrawal / cashFlow.openingAssets
+  return Number.isFinite(rate) ? rate : null
 }
 
 export interface StrategyOutcomeMetrics {
@@ -264,6 +286,56 @@ export function summarizeStrategyOutcome(
   }
 }
 
+export interface BestStrategyValues {
+  successRate: number | null
+  medianLifetimeSpending: number | null
+  guaranteedFloor: number | null
+  volatilityRatio: number | null
+}
+
+/**
+ * The winning value per column of the four-strategy comparison: the highest
+ * success rate, lifetime spending and floor, and the *lowest* spread (a steadier
+ * income is the better one). Missing and non-finite values never win; a column
+ * nobody can win is `null`.
+ */
+export function bestStrategyValues(
+  outcomes: readonly StrategyOutcomeMetrics[]
+): BestStrategyValues | null {
+  if (outcomes.length === 0) return null
+  const finite = (values: Array<number | null>) =>
+    values.filter((value): value is number => value !== null && Number.isFinite(value))
+  const pick = (values: Array<number | null>, choose: (...v: number[]) => number) => {
+    const usable = finite(values)
+    return usable.length > 0 ? choose(...usable) : null
+  }
+  return {
+    successRate: pick(
+      outcomes.map((o) => o.successRate),
+      Math.max
+    ),
+    medianLifetimeSpending: pick(
+      outcomes.map((o) => o.medianLifetimeSpending),
+      Math.max
+    ),
+    guaranteedFloor: pick(
+      outcomes.map((o) =>
+        o.guaranteedFloor !== null && o.guaranteedFloor > 0 ? o.guaranteedFloor : null
+      ),
+      Math.max
+    ),
+    volatilityRatio: pick(
+      outcomes.map((o) => o.volatilityRatio),
+      Math.min
+    ),
+  }
+}
+
+/** True when `value` is the column's winner (floating-point tolerant). */
+export function isBestValue(value: number | null, best: number | null | undefined): boolean {
+  return value !== null && best != null && Math.abs(value - best) < 1e-9
+}
+
 /**
  * The corridor chart's data: the retirement slice of the spending band with the
  * planned floor/ceiling laid over it, in whichever unit the dashboard shows.
@@ -299,6 +371,7 @@ export function buildSpendingCorridor(
       spending_band_height: Math.max(0, p90 - p10),
       floor: paths.floor[index] ?? null,
       ceiling: paths.ceiling[index] ?? null,
+      withdrawalRateMean: meanWithdrawalRate(results.cashFlowMeans?.[index]),
     })
   })
 

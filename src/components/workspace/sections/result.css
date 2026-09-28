@@ -1,0 +1,64 @@
+/* ---- Ergebnis before the first result ---------------------------------
+
+   The skeleton is Ergebnis' own markup (ws-page.css lays it out), so it only
+   needs two things here: placeholder paint for figures and the sentences
+   that carry them, and the fan chart's reserved height without a JS media
+   query (the server-rendered skeleton must already be the right size). */
+
+/* Real words, painted as bars: each wrapped line of the text becomes one
+   placeholder the width of that line, on the line box the result will use. */
+.ws-ghost {
+  color: transparent;
+  background-color: var(--skeleton-base);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--skeleton-sheen) 50%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 50% 100%;
+  border-radius: 4px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  user-select: none;
+  animation: ws-ghost-sheen 1.2s linear infinite;
+}
+@keyframes ws-ghost-sheen {
+  from {
+    background-position: -100% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ws-ghost {
+    background-image: none;
+    animation: none;
+  }
+}
+
+/* Plot (330, 260 on phones) plus the chart's chrome at that width: toolbar,
+   axis, range brush and table toggle wrap onto more lines as the card
+   narrows. Measured in both languages; below the fold on a phone, so a few
+   pixels either way never shift anything in view. */
+.ws-fan-skeleton {
+  --ws-fan-plot-h: 330px;
+  height: calc(var(--ws-fan-plot-h) + 191px);
+}
+@media (max-width: 760px) {
+  .ws-fan-skeleton {
+    --ws-fan-plot-h: 260px;
+  }
+}
+@media (max-width: 559px) {
+  .ws-fan-skeleton {
+    height: calc(var(--ws-fan-plot-h) + 217px);
+  }
+}
+@media (max-width: 419px) {
+  .ws-fan-skeleton {
+    height: calc(var(--ws-fan-plot-h) + 242px);
+  }
+}

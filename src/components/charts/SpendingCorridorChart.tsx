@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   Area,
   Brush,
@@ -12,10 +12,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { useTranslations } from 'next-intl'
+import { useFormatter, useTranslations } from 'next-intl'
 import type { SpendingCorridorPoint } from '@/lib/simulation/spendingCorridor'
 import { useIsMobile } from '@/lib/hooks/useMediaQuery'
-import { InfoTip } from '@/components/ui/info-tip'
 import {
   axisTick,
   brushChrome,
@@ -39,11 +38,26 @@ interface SpendingCorridorChartProps {
   hasCeiling: boolean
   formatCurrency: (value: number) => string
   formatCurrencyShort: (value: number) => string
+  /** The chart's heading; shares a row with the scale control. */
+  title?: ReactNode
 }
 
 type ScaleMode = 'focus' | 'full'
 
-export function SpendingCorridorChart({
+/** Below this the plot is unreadable; the frame then waits for a real width. */
+const MIN_PLOT_WIDTH = 160
+const MIN_PLOT_HEIGHT = 200
+
+/**
+ * The Entnahme section's one spending chart: the P10–P90 band of simulated
+ * spending, its median, and the floor and ceiling the rule itself promises.
+ * Hovering an age also reads out the mean withdrawal rate (mean gross draw ÷
+ * mean opening portfolio), which the old separate spending chart used to show.
+ *
+ * The plot follows its frame's width exactly, down to the 288px a 320px phone
+ * leaves, so it never pushes the page sideways.
+ */
+export const SpendingCorridorChart = memo(function SpendingCorridorChart({
   points,
   retirementAge,
   legalRetirementAge,
@@ -51,11 +65,14 @@ export function SpendingCorridorChart({
   hasCeiling,
   formatCurrency,
   formatCurrencyShort,
+  title,
 }: SpendingCorridorChartProps) {
   const t = useTranslations('withdrawalPlanner.corridor')
+  const tSpending = useTranslations('spendingChart')
   const tAssets = useTranslations('assetsChart')
   const tTable = useTranslations('simulationChart.spendingTable')
   const tUi = useTranslations('ui')
+  const format = useFormatter()
   const isMobile = useIsMobile()
   const frameRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
@@ -73,11 +90,13 @@ export function SpendingCorridorChart({
     const frame = frameRef.current
     if (!frame) return
 
-    const measure = () =>
-      setSize({
-        width: Math.max(320, Math.floor(frame.clientWidth)),
-        height: Math.max(220, Math.floor(frame.clientHeight)),
-      })
+    const measure = () => {
+      const width = Math.floor(frame.clientWidth)
+      const height = Math.floor(frame.clientHeight)
+      setSize((current) =>
+        current.width === width && current.height === height ? current : { width, height }
+      )
+    }
 
     measure()
     const observer = new ResizeObserver(measure)
@@ -127,6 +146,15 @@ export function SpendingCorridorChart({
     }
     return items
   }, [t, hue.solid, hue.rgb, hasFloor, hasCeiling])
+
+  const formatRate = (value: number | null) =>
+    value == null
+      ? '—'
+      : format.number(value, {
+          style: 'percent',
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        })
 
   const renderTooltip = ({
     active,
@@ -186,6 +214,12 @@ export function SpendingCorridorChart({
         dividerAbove: point.ceiling === null,
       })
     }
+    rows.push({
+      key: 'rate',
+      label: tSpending('legend.meanWithdrawalRate'),
+      value: formatRate(point.withdrawalRateMean),
+      dividerAbove: true,
+    })
 
     return <ChartTooltipCard title={t('tooltip.label', { age: label ?? '' })} rows={rows} />
   }
@@ -193,8 +227,13 @@ export function SpendingCorridorChart({
   const chartMargin = isMobile
     ? { top: 20, right: 8, left: 0, bottom: 4 }
     : { top: 24, right: 16, left: 4, bottom: 4 }
-  const markerFontSize = isMobile ? 9 : 10
+  const markerFontSize = isMobile ? 10 : 11
   const plotRight = size.width - chartMargin.right
+  // Recharts keeps the tooltip inside the plot area, so on a phone it must not
+  // be wider than the plot or it spills off the right edge.
+  const plotWidth = Math.max(0, plotRight - chartMargin.left - axisWidth)
+  const canRender =
+    size.width >= MIN_PLOT_WIDTH && size.height >= MIN_PLOT_HEIGHT && points.length > 0
 
   const showPensionMarker =
     legalRetirementAge > retirementAge && points.some((point) => point.age >= legalRetirementAge)
@@ -202,50 +241,47 @@ export function SpendingCorridorChart({
   const resetZoom = () => setIndexRange({ startIndex: 0, endIndex: Math.max(0, points.length - 1) })
 
   return (
-    <div className="space-y-3" data-testid="spending-corridor-chart">
-      <div className="flex flex-wrap items-center gap-2">
-        <ChartLegend items={legendItems} />
-        {hasFloor && <InfoTip content={t('caveat')} label={t('legend.floor')} side="bottom" />}
-        <div className="ml-auto flex items-center gap-2">
-          <div
-            role="group"
-            aria-label={tAssets('scale.label')}
-            className="rounded-sm flex items-center border-2 border-border bg-card"
-          >
+    <div className="ws-withdrawal-chart" data-testid="spending-corridor-chart">
+      <div className="ws-withdrawal-chart-toolbar">
+        {title}
+        <div className="ws-withdrawal-chart-controls">
+          <div role="group" aria-label={tAssets('scale.label')} className="ws-withdrawal-segmented">
             {(['focus', 'full'] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
                 onClick={() => setScaleMode(mode)}
                 aria-pressed={scaleMode === mode}
-                className={`px-2.5 py-1 text-[0.62rem] font-bold transition-colors ${
-                  scaleMode === mode
-                    ? 'bg-action text-action-foreground'
-                    : 'bg-card text-muted-foreground hover:text-ink'
-                }`}
               >
                 {tAssets(`scale.${mode}`)}
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            className="ds-btn ds-btn--outline ds-btn--sm"
-            onClick={resetZoom}
-            disabled={!isZoomed}
-          >
-            {tAssets('reset')}
-          </button>
+          {isZoomed && (
+            <button type="button" className="ws-withdrawal-quiet-button" onClick={resetZoom}>
+              {tAssets('reset')}
+            </button>
+          )}
         </div>
       </div>
+      <ChartLegend items={legendItems} className="ws-withdrawal-chart-legend" />
+      {/* A group, not an image: the plot (arrow keys step through the ages)
+          and the two zoom handles are keyboard stops, and an image role would
+          hide them from assistive technology. */}
       <div
         ref={frameRef}
-        className="relative h-[17rem] w-full min-w-0 sm:h-[20rem]"
-        role="img"
+        className="ws-withdrawal-chart-frame"
+        role="group"
         aria-label={t('aria', { retirementAge })}
       >
-        {size.width > 0 && points.length > 0 ? (
-          <ComposedChart width={size.width} height={size.height} data={points} margin={chartMargin}>
+        {canRender && (
+          <ComposedChart
+            width={size.width}
+            height={size.height}
+            data={points}
+            margin={chartMargin}
+            aria-label={t('keyboardAria')}
+          >
             <defs>
               <linearGradient id="corridorFan" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={hue.solid} stopOpacity={0.24} />
@@ -294,6 +330,7 @@ export function SpendingCorridorChart({
             <Tooltip
               content={renderTooltip}
               cursor={{ stroke: chartInk.cursor, strokeWidth: 1, strokeDasharray: '3 3' }}
+              wrapperStyle={{ maxWidth: plotWidth }}
             />
             <ReferenceLine
               x={retirementAge}
@@ -327,9 +364,9 @@ export function SpendingCorridorChart({
               type="monotone"
               dataKey="spending_p50"
               stroke={hue.solid}
-              strokeWidth={isMobile ? 2 : 2.5}
+              strokeWidth={2}
               dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--white)', fill: hue.solid }}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--ui-surface)', fill: hue.solid }}
               isAnimationActive={false}
             />
             {hasCeiling && (
@@ -381,39 +418,44 @@ export function SpendingCorridorChart({
               })}
             />
           </ComposedChart>
-        ) : (
-          <div className="rounded-sm flex h-full w-full items-center justify-center border-2 border-dashed border-ink/30 bg-muted/20 text-[0.68rem] font-semibold text-muted-foreground">
-            {t('empty')}
-          </div>
         )}
       </div>
-      {!hasFloor && (
-        <p className="text-[0.62rem] font-medium leading-snug text-muted-foreground">
-          {t('noFloor')}
-        </p>
-      )}
-      <details className="border-t border-border pt-2">
-        <summary className="cursor-pointer text-xs font-bold text-accent">
-          {tTable('toggle')}
-        </summary>
-        <div className="mt-2 overflow-x-auto">
-          <table className="ds-table w-full">
+      {!hasFloor && <p className="ws-withdrawal-caption">{t('noFloorHint')}</p>}
+      <p className="ws-withdrawal-caption">{tSpending('legend.note')}</p>
+      <details className="ws-withdrawal-disclosure">
+        <summary>{tTable('toggle')}</summary>
+        <div className="ws-withdrawal-table-scroll">
+          <table className="ds-table ws-withdrawal-data-table">
             <thead>
               <tr>
-                <th>{tUi('age')}</th>
-                <th className="ds-num">P10</th>
-                <th className="ds-num">P50</th>
-                <th className="ds-num">P90</th>
-                {hasFloor && <th className="ds-num">{t('legend.floor')}</th>}
-                {hasCeiling && <th className="ds-num">{t('legend.ceiling')}</th>}
+                <th scope="col">{tUi('age')}</th>
+                <th scope="col" className="ds-num">
+                  P10
+                </th>
+                <th scope="col" className="ds-num">
+                  P50
+                </th>
+                <th scope="col" className="ds-num">
+                  P90
+                </th>
+                {hasFloor && (
+                  <th scope="col" className="ds-num">
+                    {t('legend.floor')}
+                  </th>
+                )}
+                {hasCeiling && (
+                  <th scope="col" className="ds-num">
+                    {t('legend.ceiling')}
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
               {visiblePoints.map((point) => (
                 <tr key={point.age}>
-                  <td>{point.age}</td>
+                  <th scope="row">{point.age}</th>
                   <td className="ds-num">{formatCurrency(point.spending_p10)}</td>
-                  <td className="ds-num" style={{ fontWeight: 700 }}>
+                  <td className="ds-num ws-withdrawal-strong">
                     {formatCurrency(point.spending_p50)}
                   </td>
                   <td className="ds-num">{formatCurrency(point.spending_p90)}</td>
@@ -435,13 +477,13 @@ export function SpendingCorridorChart({
       </details>
     </div>
   )
-}
+})
 
 /**
  * Label for a vertical age marker. It sits inside the plot, below the top
  * y-axis tick, beside its line (flipped to the left near the right edge),
  * and each marker gets its own row, so two close markers never overlap each
- * other or the axis labels. A halo in the card colour keeps it legible over
+ * other or the axis labels. A halo in the surface colour keeps it legible over
  * the band and lines.
  */
 function MarkerLabel({
@@ -459,8 +501,8 @@ function MarkerLabel({
 }) {
   const lineX = viewBox?.x ?? 0
   const top = viewBox?.y ?? 0
-  // Rough bold-text width; only used to decide which side of the line to use.
-  const estimatedWidth = value.length * fontSize * 0.62
+  // Rough semibold-text width; only used to decide which side of the line to use.
+  const estimatedWidth = value.length * fontSize * 0.6
   const flip = lineX + 4 + estimatedWidth > plotRight
   return (
     <text
@@ -469,8 +511,8 @@ function MarkerLabel({
       textAnchor={flip ? 'end' : 'start'}
       fill={chartInk.tick}
       fontSize={fontSize}
-      fontWeight={700}
-      stroke="hsl(var(--card))"
+      fontWeight={600}
+      stroke="var(--ui-surface)"
       strokeWidth={3}
       strokeLinejoin="round"
       paintOrder="stroke"

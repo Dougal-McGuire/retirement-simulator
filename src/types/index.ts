@@ -528,21 +528,6 @@ export interface CashFlow {
   note?: string
 }
 
-// Chart data interfaces
-export interface ChartDataPoint {
-  age: number
-  assets_p10: number
-  assets_p20: number
-  assets_p50: number
-  assets_p80: number
-  assets_p90: number
-  spending_p10: number
-  spending_p50: number
-  spending_p90: number
-  withdrawal_rate_mean: number | null
-  monthly_savings_p50: number | null
-}
-
 declare global {
   interface Window {
     __APPLY_TOC__?: () => void

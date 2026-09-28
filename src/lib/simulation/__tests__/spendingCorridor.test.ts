@@ -2,11 +2,15 @@ import { DEFAULT_PARAMS, WITHDRAWAL_STRATEGIES, type SimulationParams } from '@/
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 import {
   baselineMonthlySpending,
+  bestStrategyValues,
   buildPlannedSpendingPaths,
   buildSpendingCorridor,
   corridorReferenceAge,
+  isBestValue,
+  meanWithdrawalRate,
   plannedPathsAtDisplayUnit,
   summarizeStrategyOutcome,
+  type StrategyOutcomeMetrics,
 } from '@/lib/simulation/spendingCorridor'
 
 /**
@@ -46,7 +50,14 @@ describe('the plan budget the corridor is anchored to', () => {
           frequency: 'monthly',
           startAge: 80,
         },
-        { id: 'roof', kind: 'expense', name: 'Roof', amount: 30000, frequency: 'once', startAge: 70 },
+        {
+          id: 'roof',
+          kind: 'expense',
+          name: 'Roof',
+          amount: 30000,
+          frequency: 'once',
+          startAge: 70,
+        },
       ],
     })
     expect(baselineMonthlySpending(params)).toBeCloseTo(baselineMonthlySpending(DEFAULT_PARAMS), 6)
@@ -251,5 +262,92 @@ describe('corridor chart data', () => {
     expect(nominal.points[lastIndex].floor as number).toBeGreaterThan(
       real.points[lastIndex].floor as number
     )
+  })
+})
+
+describe('best value per comparison column', () => {
+  const outcome = (overrides: Partial<StrategyOutcomeMetrics>): StrategyOutcomeMetrics => ({
+    successRate: 90,
+    firstYearMonthlySpending: 4000,
+    medianLifetimeSpending: 1_000_000,
+    guaranteedFloor: null,
+    volatilityRatio: 1.5,
+    referenceAge: 80,
+    ...overrides,
+  })
+
+  it('takes the highest success, spending and floor, and the lowest spread', () => {
+    const best = bestStrategyValues([
+      outcome({ successRate: 88, guaranteedFloor: 3000, volatilityRatio: 1 }),
+      outcome({ successRate: 97.5, medianLifetimeSpending: 1_200_000, volatilityRatio: 2.4 }),
+      outcome({ guaranteedFloor: 3600, volatilityRatio: null }),
+    ])
+    expect(best).toEqual({
+      successRate: 97.5,
+      medianLifetimeSpending: 1_200_000,
+      guaranteedFloor: 3600,
+      volatilityRatio: 1,
+    })
+  })
+
+  it('lets nobody win a column without a real value (no floor of zero is "best")', () => {
+    const best = bestStrategyValues([
+      outcome({ guaranteedFloor: 0, volatilityRatio: null }),
+      outcome({ guaranteedFloor: null, volatilityRatio: Number.NaN }),
+    ])
+    expect(best?.guaranteedFloor).toBeNull()
+    expect(best?.volatilityRatio).toBeNull()
+    expect(bestStrategyValues([])).toBeNull()
+  })
+
+  it('matches winners with a floating-point tolerance', () => {
+    expect(isBestValue(0.1 + 0.2, 0.3)).toBe(true)
+    expect(isBestValue(0.31, 0.3)).toBe(false)
+    expect(isBestValue(null, 0.3)).toBe(false)
+    expect(isBestValue(0.3, null)).toBe(false)
+  })
+})
+
+describe('mean withdrawal rate on the corridor', () => {
+  const params = withParams({ withdrawalStrategy: 'vanguardDynamic' })
+  const results = runMonteCarloSimulation(params)
+
+  it('is mean gross withdrawal ÷ mean opening portfolio, age by age', () => {
+    const { points } = buildSpendingCorridor(params, results, true)
+    const means = results.cashFlowMeans!
+
+    points.forEach((point) => {
+      const flow = means[results.ages.indexOf(point.age)]
+      expect(point.withdrawalRateMean).not.toBeNull()
+      expect(point.withdrawalRateMean as number).toBeCloseTo(
+        flow.portfolioWithdrawal / flow.openingAssets,
+        12
+      )
+    })
+    // Retirement is funded from the portfolio: a real, positive rate.
+    expect(points[0].withdrawalRateMean as number).toBeGreaterThan(0)
+    expect(points[0].withdrawalRateMean as number).toBeLessThan(0.5)
+  })
+
+  it('is the same ratio in today’s and in nominal euros', () => {
+    const real = buildSpendingCorridor(params, results, true)
+    const nominal = buildSpendingCorridor(params, results, false)
+    expect(nominal.points.map((point) => point.withdrawalRateMean)).toEqual(
+      real.points.map((point) => point.withdrawalRateMean)
+    )
+  })
+
+  it('is null for results without cash-flow means (persisted by an older build)', () => {
+    const legacy = { ...results, cashFlowMeans: undefined }
+    const { points } = buildSpendingCorridor(params, legacy, true)
+    expect(points.length).toBeGreaterThan(0)
+    points.forEach((point) => expect(point.withdrawalRateMean).toBeNull())
+  })
+
+  it('is null for an empty portfolio instead of dividing by zero', () => {
+    expect(meanWithdrawalRate({ openingAssets: 0, portfolioWithdrawal: 1200 })).toBeNull()
+    expect(meanWithdrawalRate({ openingAssets: -5, portfolioWithdrawal: 0 })).toBeNull()
+    expect(meanWithdrawalRate(undefined)).toBeNull()
+    expect(meanWithdrawalRate({ openingAssets: 400_000, portfolioWithdrawal: 16_000 })).toBe(0.04)
   })
 })

@@ -393,6 +393,9 @@ export function CashFlowList({
 
   const frequencyLabel = (frequency: CashFlowFrequency) => t(`frequency.${frequency}`)
 
+  const signedAmount = (flow: CashFlow) =>
+    `${flow.kind === 'expense' ? '−' : '+'}${formatCurrency(flow.amount)}`
+
   const windowLabel = (flow: CashFlow) => {
     // A pension's unset start means the plan's statutory age — resolve it so
     // every row reads the same way.
@@ -491,8 +494,8 @@ export function CashFlowList({
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="flex flex-col sm:col-span-2">
+      <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
+        <div className="flex flex-col @md:col-span-2">
           <Label htmlFor={`cashflow-name-${id ?? 'new'}`} className="mb-2 text-xs font-semibold  ">
             {t('fields.name')}
           </Label>
@@ -634,7 +637,7 @@ export function CashFlowList({
           {advancedOpen ? t('advanced.hide') : t('advanced.show')}
         </button>
         {advancedOpen && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
             <label className="flex items-start gap-2 text-xs font-semibold leading-snug text-ink">
               <input
                 type="checkbox"
@@ -675,7 +678,7 @@ export function CashFlowList({
               </span>
             </div>
             {state.kind === 'pension' && (
-              <div className="flex flex-col sm:col-span-2">
+              <div className="flex flex-col @md:col-span-2">
                 <Label
                   htmlFor={`cashflow-pension-tax-${id ?? 'new'}`}
                   className="mb-2 text-xs font-semibold  "
@@ -714,7 +717,7 @@ export function CashFlowList({
               </div>
             )}
             {state.kind === 'income' && (
-              <div className="flex flex-col sm:col-span-2">
+              <div className="flex flex-col @md:col-span-2">
                 <Label
                   htmlFor={`cashflow-tax-${id ?? 'new'}`}
                   className="mb-2 text-xs font-semibold  "
@@ -746,7 +749,7 @@ export function CashFlowList({
                 </span>
               </div>
             )}
-            <div className="flex flex-col sm:col-span-2">
+            <div className="flex flex-col @md:col-span-2">
               <Label
                 htmlFor={`cashflow-note-${id ?? 'new'}`}
                 className="mb-2 text-xs font-semibold  "
@@ -823,7 +826,10 @@ export function CashFlowList({
   )
 
   return (
-    <div className="space-y-4" data-testid="cashflow-list">
+    // A query container: the list sits in a 288px phone sheet, a 400px docked
+    // panel and the full-width setup wizard, so its layout follows its own
+    // width rather than the viewport's.
+    <div className="@container space-y-4" data-testid="cashflow-list">
       {!compact && (
         <div className="flex items-center gap-2 text-xs font-semibold   text-muted-foreground">
           <span>{t('listTitle')}</span>
@@ -849,7 +855,7 @@ export function CashFlowList({
                 const geometry = barGeometry(flow)
                 return (
                   <div key={flow.id} className="flex items-center gap-2">
-                    <span className="w-24 shrink-0 truncate text-xs font-bold   text-ink sm:w-32">
+                    <span className="w-24 shrink-0 truncate text-xs font-bold   text-ink @lg:w-32">
                       {displayName(flow)}
                     </span>
                     <span className="rounded-sm relative h-3 flex-1 border-2 border-ink/20 bg-muted/40">
@@ -872,7 +878,7 @@ export function CashFlowList({
               })}
             </div>
             {/* Retirement marker, so a window reads against the plan's phases. */}
-            <div className="relative ml-[6.5rem] h-3 sm:ml-[8.5rem]">
+            <div className="relative ml-[6.5rem] h-3 @lg:ml-[8.5rem]">
               <span
                 className="absolute top-0 -translate-x-1/2 text-xs font-semibold   text-accent"
                 style={{
@@ -884,17 +890,20 @@ export function CashFlowList({
             </div>
           </div>
 
+          {/* Below 32rem the table keeps two columns: each row stacks name,
+              amount and period in the first cell, and the actions stay in
+              view instead of scrolling off the right edge. */}
           <div className="rounded-sm overflow-x-auto border border-border bg-card shadow-sm">
-            <table className="w-full min-w-[17rem]">
+            <table className="w-full min-w-[16rem]">
               <thead className="border-b border-border bg-muted">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-bold   text-muted-foreground">
                     {t('table.item')}
                   </th>
-                  <th className="hidden px-3 py-2 text-left text-xs font-bold   text-muted-foreground sm:table-cell">
+                  <th className="hidden px-3 py-2 text-left text-xs font-bold   text-muted-foreground @lg:table-cell">
                     {t('table.period')}
                   </th>
-                  <th className="px-3 py-2 text-right text-xs font-bold   text-muted-foreground">
+                  <th className="hidden px-3 py-2 text-right text-xs font-bold   text-muted-foreground @lg:table-cell">
                     {t('table.amount')}
                   </th>
                   <th className="w-20 px-2 py-2 text-center text-xs font-bold   text-muted-foreground">
@@ -925,25 +934,35 @@ export function CashFlowList({
                           <span className="flex items-center gap-1.5 text-xs font-bold  ">
                             {flow.kind === 'pension' ? (
                               <Landmark
-                                className="h-3.5 w-3.5 text-accent"
+                                className="h-3.5 w-3.5 shrink-0 text-accent"
                                 aria-label={t('kind.pension')}
                               />
                             ) : flow.kind === 'income' ? (
                               <ArrowUpRight
-                                className="h-3.5 w-3.5 text-ok"
+                                className="h-3.5 w-3.5 shrink-0 text-ok"
                                 aria-label={t('kind.income')}
                               />
                             ) : (
                               <ArrowDownRight
-                                className="h-3.5 w-3.5 text-viz-orange"
+                                className="h-3.5 w-3.5 shrink-0 text-viz-orange"
                                 aria-label={t('kind.expense')}
                               />
                             )}
-                            {displayName(flow)}
+                            <span className="min-w-0 [overflow-wrap:anywhere]">
+                              {displayName(flow)}
+                            </span>
+                          </span>
+                          {/* Narrow containers fold the amount and period columns into the row. */}
+                          <span
+                            className={cn(
+                              'mt-0.5 block text-xs font-bold tabular-nums @lg:hidden',
+                              flow.kind === 'expense' ? 'text-ink' : 'text-ok'
+                            )}
+                          >
+                            {signedAmount(flow)}
                           </span>
                           <span className="mt-0.5 block text-xs font-semibold   text-muted-foreground">
-                            {/* Narrow screens fold the period column into this line. */}
-                            <span className="sm:hidden">{windowLabel(flow)} · </span>
+                            <span className="@lg:hidden">{windowLabel(flow)} · </span>
                             {frequencyLabel(flow.frequency)}
                             {flow.inflationLinked === false ? ` · ${t('fields.nominalTag')}` : ''}
                             {flow.growthRate
@@ -968,18 +987,18 @@ export function CashFlowList({
                             </span>
                           )}
                         </td>
-                        <td className="hidden px-3 py-2.5 text-left text-xs font-semibold   text-muted-foreground sm:table-cell">
+                        <td className="hidden px-3 py-2.5 text-left text-xs font-semibold   text-muted-foreground @lg:table-cell">
                           {windowLabel(flow)}
                         </td>
                         <td
                           className={cn(
-                            'px-3 py-2.5 text-right text-xs font-bold tabular-nums',
+                            'hidden px-3 py-2.5 text-right text-xs font-bold tabular-nums @lg:table-cell',
                             flow.kind === 'expense' ? 'text-ink' : 'text-ok'
                           )}
                         >
-                          {`${flow.kind === 'expense' ? '−' : '+'}${formatCurrency(flow.amount)}`}
+                          {signedAmount(flow)}
                         </td>
-                        <td className="w-20 px-2 py-2.5 text-center">
+                        <td className="w-20 px-2 py-2.5 text-center align-top @lg:align-middle">
                           <div className="flex items-center justify-center gap-1">
                             <Button
                               type="button"
@@ -1026,7 +1045,7 @@ export function CashFlowList({
       {availableTemplates.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold   text-muted-foreground">{t('templates.label')}</p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 @md:grid-cols-2">
             {availableTemplates.map((template) => (
               <button
                 key={template.key}
@@ -1074,16 +1093,16 @@ export function CashFlowList({
         {safeFlows.length > 0 && (
           <dl className="mt-4 space-y-1.5 border-t border-dashed border-border pt-3 text-xs font-semibold   text-muted-foreground">
             {totals.pension > 0 && (
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-3">
                 <dt>{t('summary.pension')}</dt>
                 <dd className="tabular-nums text-accent">+{formatCurrency(totals.pension)}</dd>
               </div>
             )}
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-3">
               <dt>{t('summary.income')}</dt>
               <dd className="tabular-nums text-ok">+{formatCurrency(totals.income)}</dd>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-3">
               <dt className="flex items-center gap-1.5">
                 {t('summary.expense')}
                 <InfoTip content={t('summary.note')} label={t('summary.expense')} side="bottom" />

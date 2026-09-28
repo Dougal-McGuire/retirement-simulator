@@ -1,10 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import {
-  DEFAULT_PLAN_SECTION,
-  isPlanSectionGroup,
-  type PlanSectionGroup,
-} from '@/components/plans/planSections'
 
 /**
  * View preferences for the dashboard.
@@ -26,15 +21,6 @@ export type DisplayStore = {
    */
   welcomeDismissed: boolean
   dismissWelcome: () => void
-  /**
-   * Which page of the plan editor is open. The editor shows one section at a
-   * time, and coming back after a reload should land where you left off.
-   *
-   * A view preference like the two above: the open page can never reach the
-   * engine.
-   */
-  planSection: PlanSectionGroup
-  setPlanSection: (section: PlanSectionGroup) => void
 }
 
 export const DISPLAY_STORE_KEY = 'retirement-simulator-display'
@@ -46,24 +32,16 @@ export const useDisplayStore = create<DisplayStore>()(
       setDisplayReal: (displayReal: boolean) => set({ displayReal }),
       welcomeDismissed: false,
       dismissWelcome: () => set({ welcomeDismissed: true }),
-      planSection: DEFAULT_PLAN_SECTION,
-      setPlanSection: (section: PlanSectionGroup) =>
-        set((state) => (state.planSection === section ? state : { planSection: section })),
     }),
     {
       name: DISPLAY_STORE_KEY,
-      // A section name persisted by an older build (or edited by hand) that the
-      // editor no longer has must not leave the plan tab blank.
+      // Keys persisted by older builds that no longer exist are dropped: the
+      // collapsed-sections map, and the plan editor's open page (the URL hash
+      // restores an open panel now).
       merge: (persisted, current) => {
         const stored = (persisted ?? {}) as Partial<DisplayStore> & Record<string, unknown>
-        const { planSectionsCollapsed: _legacy, ...rest } = stored
-        return {
-          ...current,
-          ...rest,
-          planSection: isPlanSectionGroup(rest.planSection)
-            ? rest.planSection
-            : current.planSection,
-        }
+        const { planSectionsCollapsed: _collapsed, planSection: _section, ...rest } = stored
+        return { ...current, ...rest }
       },
     }
   )
@@ -73,5 +51,3 @@ export const useDisplayReal = () => useDisplayStore((state) => state.displayReal
 export const useSetDisplayReal = () => useDisplayStore((state) => state.setDisplayReal)
 export const useWelcomeDismissed = () => useDisplayStore((state) => state.welcomeDismissed)
 export const useDismissWelcome = () => useDisplayStore((state) => state.dismissWelcome)
-export const usePlanSection = () => useDisplayStore((state) => state.planSection)
-export const useSetPlanSection = () => useDisplayStore((state) => state.setPlanSection)

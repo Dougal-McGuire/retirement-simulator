@@ -1,126 +1,153 @@
-import { expect, test, type Page } from '@playwright/test'
+import {
+  SECTIONS,
+  enterCompare,
+  expect,
+  gotoWorkspace,
+  isInViewport,
+  openPanel,
+  openSection,
+  readStoredParams,
+  sectionHeading,
+  test,
+  waitForLeversMeasured,
+  waitForScrollSettled,
+} from './helpers/workspace'
 
 /**
- * The compact simulation dashboard (design handoff screens 1b + 1c): merged
- * command bar with inline sliders, KPI strip, SVG fan chart, bottom strip,
- * and the plan-compare view — plus the plan-editor flows that survive
- * unchanged under the new chrome.
- *
- * The previous dashboard chrome (plan-switcher dialogs, hero gauge, welcome
- * strip, quick-adjust card, overview chart cards) was removed with the
- * redesign, and its tests went with it.
+ * The one-page workspace's result, levers and compare flows, plus the
+ * assumption-editor flows that survive unchanged inside the edit panel
+ * (spec §9.1, dashboard.spec). Default viewport: 1280×720 — rail and docked
+ * panel.
  */
 
-/** The persisted store the dashboard writes through. */
-const readStoredParams = (page: Page) =>
-  page.evaluate(() => {
-    const raw = window.localStorage.getItem('retirement-simulator-store')
-    return raw ? (JSON.parse(raw).state.params as Record<string, unknown>) : null
-  })
+const QUICK_LEVERS = ['Retirement age', 'Annual savings', 'Monthly spending', 'Expected return']
 
-test.describe('compact simulation dashboard', () => {
-  test('shows the result overview and keeps quick levers optional', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
-    await expect(page.getByTestId('kpi-strip')).toContainText('paths meet your goal')
+test.describe('one-page workspace', () => {
+  test('shows the result first and keeps the quick levers further down', async ({ page }) => {
+    await gotoWorkspace(page)
+    await expect(page.getByTestId('verdict')).toContainText('of simulated paths')
     await expect(page.getByTestId('fan-chart')).toBeVisible()
-    const quick = page.getByTestId('command-quick-row')
-    await expect(quick).not.toBeVisible()
-    await page.getByText('What if …?', { exact: true }).click()
-    for (const name of [
-      'Retirement age',
-      'Annual savings',
-      'Monthly spending',
-      'Expected return',
-    ]) {
-      await expect(quick.getByRole('slider', { name })).toBeVisible()
+    expect(await isInViewport(page.getByTestId('quick-levers'))).toBe(false)
+
+    await openSection(page, 'levers')
+    const quick = page.getByTestId('quick-levers')
+    for (const name of QUICK_LEVERS) {
+      await expect(quick.getByRole('slider', { name, exact: true })).toBeVisible()
+    }
+
+    // Stellschrauben reads top to bottom: try quickly → what moves the needle
+    // → recommendations.
+    const levers = page.locator('#levers')
+    let previous = -Infinity
+    for (const block of ['quick-levers', 'lever-list', 'recommendations']) {
+      const box = await levers.getByTestId(block).boundingBox()
+      expect(box, `${block} rendered`).not.toBeNull()
+      expect(box!.y, `${block} below the previous block`).toBeGreaterThan(previous)
+      previous = box!.y
     }
   })
 
-  test('switches tabs under the compact chrome', async ({ page }) => {
-    await page.goto('/en/simulation')
+  test('section index scrolls and marks the current section', async ({ page }) => {
+    await gotoWorkspace(page)
+    await expect(page.getByTestId('section-link-result')).toHaveAttribute(
+      'aria-current',
+      'location'
+    )
 
-    await expect(page.getByTestId('tab-overview')).toHaveAttribute('aria-selected', 'true')
-
-    await page.getByTestId('tab-plan').click()
-    await expect(page.getByTestId('tab-plan')).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByTestId('plan-editor')).toBeVisible()
-
-    await page.getByTestId('tab-cashflow').click()
-    await expect(page.getByTestId('tab-cashflow')).toHaveAttribute('aria-selected', 'true')
-
-    await page.getByTestId('tab-scenarios').click()
-    await expect(page.getByTestId('tab-scenarios')).toHaveAttribute('aria-selected', 'true')
-
-    await page.getByTestId('tab-overview').click()
-    await expect(page.getByTestId('fan-chart')).toBeVisible({ timeout: 30000 })
+    for (const id of [...SECTIONS.slice(1), 'result' as const]) {
+      const link = page.getByTestId(`section-link-${id}`)
+      await link.click()
+      const heading = sectionHeading(page, id)
+      await expect(heading).toBeFocused()
+      await expect(link).toHaveAttribute('aria-current', 'location')
+      await expect(page).toHaveURL(new RegExp(`#${id}$`))
+      await waitForScrollSettled(page)
+      // Still current once the smooth scroll has landed and scroll-spy resumed.
+      await expect(heading).toBeInViewport()
+      await expect(link).toHaveAttribute('aria-current', 'location')
+      await expect(page.locator('[aria-current="location"]')).toHaveCount(1)
+    }
   })
 
   test('scrubbing the age slider recomputes live into the working copy', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
+    await gotoWorkspace(page)
+    await openSection(page, 'levers')
 
-    await page.getByText('What if …?', { exact: true }).click()
-    const slider = page.getByRole('slider', { name: 'Retirement age' })
+    const quick = page.getByTestId('quick-levers')
+    const slider = quick.getByRole('slider', { name: 'Retirement age', exact: true })
     await slider.focus()
     await slider.press('ArrowRight')
     await slider.press('ArrowRight')
 
     // The lever's readout follows immediately…
-    await expect(page.getByTestId('compact-command-bar')).toContainText('62')
+    await expect(slider).toHaveAttribute('aria-valuenow', '62')
+    await expect(quick).toContainText('62')
 
     // …and the debounced auto-run persists the edit into the working copy.
-    await expect(async () => {
-      const params = await readStoredParams(page)
-      expect(params?.retirementAge).toBe(62)
-    }).toPass({ timeout: 10000 })
+    await expect.poll(async () => (await readStoredParams(page))?.retirementAge).toBe(62)
   })
 
-  test('toggles the advanced parameter row', async ({ page }) => {
-    await page.goto('/en/simulation')
+  test('toggles the more-sliders row', async ({ page }) => {
+    await gotoWorkspace(page)
+    await openSection(page, 'levers')
 
+    const toggle = page.getByTestId('more-sliders-toggle')
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
     await expect(page.getByTestId('advanced-params')).toHaveCount(0)
-    await page.getByText('What if …?', { exact: true }).click()
-    await page.getByRole('button', { name: /Advanced/ }).click()
+    await toggle.click()
 
     const advanced = page.getByTestId('advanced-params')
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
     await expect(advanced).toBeVisible()
     await expect(advanced.getByRole('slider', { name: 'Return volatility' })).toBeVisible()
     await expect(advanced.getByRole('checkbox')).toBeVisible()
+    // "Runs" is a precision setting: it stays in the Market & taxes panel only.
+    await expect(advanced.getByRole('slider', { name: 'Simulation runs' })).toHaveCount(0)
 
-    await page.getByRole('button', { name: /Advanced/ }).click()
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
     await expect(page.getByTestId('advanced-params')).toHaveCount(0)
   })
 
-  test('measures the recommendation chips and applies one on click', async ({ page }) => {
-    test.setTimeout(90000) // three extra scenario runs behind a debounce
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-scenarios').click()
-    await expect(page.getByTestId('bottom-strip')).toBeVisible({ timeout: 30000 })
+  test('measures lever effects and applies one as an undoable draft', async ({ page }) => {
+    test.setTimeout(90000) // three extra scenario runs behind a settle delay
+    await gotoWorkspace(page)
+    await openSection(page, 'levers')
 
-    // Chips arrive once the extra scenario runs settle, each with a delta.
-    const strip = page.getByTestId('bottom-strip')
-    const retireChip = strip.getByRole('button', { name: /^Retire 62/ })
-    await expect(retireChip).toBeVisible({ timeout: 45000 })
-    await expect(retireChip).toContainText('pp')
+    // Each lever arrives with its measured delta once the extra runs settle.
+    const list = await waitForLeversMeasured(page)
+    await expect(list.getByTestId('stress-lever')).toHaveCount(3)
+    const lever = list.locator('[data-testid="stress-lever"][data-lever="laterRetirement"]')
+    await expect(lever).toContainText('Retire 2 years later')
+    await expect(lever.getByTestId('stress-lever-delta')).toContainText('pts')
 
-    await retireChip.click()
+    await lever.getByTestId('stress-lever-apply').click()
 
-    // The lever landed in the working copy, same as dragging the slider.
-    await expect(async () => {
-      const params = await readStoredParams(page)
-      expect(params?.retirementAge).toBe(62)
-    }).toPass({ timeout: 10000 })
+    // The lever landed in the working copy (a draft), same as the slider.
+    await expect.poll(async () => (await readStoredParams(page))?.retirementAge).toBe(62)
+    await expect(page.getByTestId('result-bar')).toHaveAttribute('data-dirty', 'true')
+
+    // "Übernehmen" can be undone: only the lever's own keys go back.
+    const applied = page.getByTestId('lever-applied-toast')
+    await expect(applied).toContainText('Applied “Retire 2 years later” – not saved yet.')
+    const before = await readStoredParams(page)
+    await applied.getByTestId('lever-applied-toast-undo').click()
+    await expect.poll(async () => (await readStoredParams(page))?.retirementAge).toBe(60)
+    const after = await readStoredParams(page)
+    expect(after?.annualSavings).toBe(before?.annualSavings)
+    expect(after?.cashFlows).toEqual(before?.cashFlows)
   })
 
-  test('switches every figure between nominal and real from the command bar', async ({ page }) => {
-    await page.goto('/en/simulation')
+  test('switches every figure between nominal and real from the rail', async ({ page }) => {
+    await gotoWorkspace(page)
 
     const chart = page.getByTestId('fan-chart')
     await expect(chart).toBeVisible({ timeout: 30000 })
 
-    // The one display switch lives in the sticky command bar.
+    // At ≥1024 the one display switch sits in the rail footer.
     const toggle = page.getByTestId('display-toggle')
+    await expect(toggle).toBeVisible()
+    expect((await toggle.boundingBox())!.x).toBeLessThan(184)
     const real = toggle.getByRole('radio', { name: "Today's €" })
     const nominal = toggle.getByRole('radio', { name: 'Nominal' })
     await expect(nominal).toHaveAttribute('aria-checked', 'true')
@@ -137,13 +164,9 @@ test.describe('compact simulation dashboard', () => {
 
   test('enters compare, gains a challenger plan and shows delta KPIs', async ({ page }) => {
     test.setTimeout(90000) // both compared plans re-run in full
-    await page.goto('/en/simulation')
-    await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
+    await gotoWorkspace(page)
 
-    await page.getByTestId('tab-scenarios').click()
-    await page.getByTestId('enter-compare').click()
-    const compare = page.getByTestId('compare-view')
-    await expect(compare).toBeVisible()
+    const compare = await enterCompare(page)
 
     // One plan only: "+ Add plan" forks the base so there is a challenger.
     await compare.getByRole('button', { name: /Add plan/ }).click()
@@ -154,7 +177,10 @@ test.describe('compact simulation dashboard', () => {
     await expect(compare.getByRole('table')).toContainText('Retirement age')
     await expect(compare.getByRole('table')).toContainText('Withdrawal rule')
 
-    await compare.getByRole('button', { name: 'Exit compare' }).click()
+    await page.getByTestId('compare-exit').click()
+    await expect(page.getByTestId('compare-view')).toHaveCount(0)
+    await expect(page).not.toHaveURL(/#compare/)
+    await expect(page.locator('#result')).toBeVisible()
     await expect(page.getByTestId('run-button')).toBeVisible()
   })
 
@@ -169,20 +195,22 @@ test.describe('compact simulation dashboard', () => {
   })
 })
 
-test.describe('working copy under the compact chrome', () => {
+test.describe('working copy', () => {
   test('keeps edits in a working copy until they are saved to the plan', async ({ page }) => {
-    await page.goto('/en/simulation')
+    await gotoWorkspace(page)
 
-    // Edit through the full plan editor.
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-income').click()
+    // Edit through the savings panel.
+    await openPanel(page, 'savings')
     const assets = page.locator('#editor-currentAssets')
     await assets.fill('900000')
     await assets.blur()
+    await expect(page.getByTestId('command-discard')).toBeVisible()
 
-    // Revert throws the working copy away and restores the stored plan.
-    await page.getByTestId('plan-editor-revert').click()
+    // The result bar's Discard throws the working copy away and restores the
+    // stored plan (the panel's own "Revert" is gone: one discard path).
+    await page.getByTestId('command-discard').click()
     await expect(assets).toHaveValue(/630/)
+    await expect(page.getByTestId('edit-panel')).toBeVisible()
 
     // Saving writes the working copy into the plan.
     await assets.fill('700000')
@@ -228,9 +256,8 @@ test.describe('working copy under the compact chrome', () => {
 
 test.describe('market model and glide path', () => {
   test('switches to a historical backtest and freezes the inputs it ignores', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-market').click()
+    await gotoWorkspace(page)
+    await openPanel(page, 'market')
 
     await page.getByTestId('market-model-historical').click()
     await expect(page.getByTestId('market-model-historical-notice')).toContainText(
@@ -265,9 +292,8 @@ test.describe('market model and glide path', () => {
   })
 
   test('narrows the outcome band when the glide path is switched on', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-market').click()
+    await gotoWorkspace(page)
+    await openPanel(page, 'market')
 
     const spread = () =>
       page.evaluate(() => {
@@ -290,9 +316,8 @@ test.describe('market model and glide path', () => {
 
 test.describe('unified cash flows', () => {
   test('adds a windowed income and a one-off expense, and moves the plan', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-cashFlows').click()
+    await gotoWorkspace(page)
+    await openPanel(page, 'flows')
 
     const card = page.locator('#plan-editor-expenses')
     await expect(card.getByTestId('cashflow-timeline')).toBeVisible()
@@ -346,9 +371,8 @@ test.describe('unified cash flows', () => {
 
 test.describe('German taxes', () => {
   test('edits German tax assumptions and reports the resulting tax drag', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-market').click()
+    await gotoWorkspace(page)
+    await openPanel(page, 'market')
 
     const tax = page.getByTestId('tax-block')
     await expect(tax).toBeVisible()
@@ -371,9 +395,8 @@ test.describe('cash-flow ergonomics', () => {
   test('adds a second pension with its own start age next to the statutory one', async ({
     page,
   }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-cashFlows').click()
+    await gotoWorkspace(page)
+    await openPanel(page, 'flows')
 
     const card = page.locator('#plan-editor-expenses')
     const list = card.getByTestId('cashflow-list')
@@ -388,6 +411,8 @@ test.describe('cash-flow ergonomics', () => {
     await card.locator('#cashflow-frequency-new').click()
     await expect(page.getByRole('option', { name: 'One-off' })).toHaveCount(0)
     await page.keyboard.press('Escape')
+    // Escape closed only the select, not the panel.
+    await expect(page.getByTestId('edit-panel')).toBeVisible()
 
     await card.locator('#cashflow-name-new').fill('Company pension')
     await card.locator('#cashflow-amount-new').fill('400')
@@ -403,9 +428,8 @@ test.describe('cash-flow ergonomics', () => {
   })
 
   test('taxes a lump sum under the one-fifth rule and shows the net amount', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-cashFlows').click()
+    await gotoWorkspace(page)
+    await openPanel(page, 'flows')
 
     const card = page.locator('#plan-editor-expenses')
     await card.getByTestId('cashflow-kind-income').click()
@@ -413,8 +437,8 @@ test.describe('cash-flow ergonomics', () => {
     await card.locator('#cashflow-amount-new').fill('300000')
     await card.locator('#cashflow-frequency-new').click()
     await page.getByRole('option', { name: 'One-off' }).click()
-    // A calendar month pins the payment to a plan year; age 55 today → 2033
-    // is eight years out, so the row lands at 63.
+    // A calendar month pins the payment to a plan year; age 55 today → eight
+    // years out, so the row lands at 63.
     const year = new Date().getFullYear() + 8
     await card.locator('#cashflow-date-new').fill(`${year}-01`)
     await card.getByRole('button', { name: 'Advanced options' }).click()
@@ -431,9 +455,8 @@ test.describe('cash-flow ergonomics', () => {
   })
 
   test('opens a cash-flow template in edit mode and lets the add be undone', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-cashFlows').click()
+    await gotoWorkspace(page)
+    await openPanel(page, 'flows')
 
     const list = page.getByTestId('cashflow-list')
     const rowsBefore = await list.locator('tbody tr').count()
@@ -458,9 +481,14 @@ test.describe('cash-flow ergonomics', () => {
 
 test.describe('scenario levers', () => {
   test('renders toasts as a fixed overlay rather than inside the page flow', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-scenarios').click()
-    await page.getByTestId('stress-lever-save').first().click()
+    test.setTimeout(90000) // the levers are measured before they can be saved
+    await gotoWorkspace(page)
+    await openSection(page, 'levers')
+
+    const list = await waitForLeversMeasured(page)
+    const lever = list.getByTestId('stress-lever').first()
+    await expect(lever.getByTestId('stress-lever-delta')).toBeVisible()
+    await lever.getByTestId('stress-lever-save').click()
     await page.getByTestId('scenario-plan-dialog').getByTestId('scenario-plan-confirm').click()
 
     const toast = page.getByTestId('plan-created-toast')
@@ -483,5 +511,19 @@ test.describe('scenario levers', () => {
       return false
     })
     expect(positioned).toBe(true)
+
+    // Optional compare entry (§4): the toast lines the new plan up against the
+    // active one.
+    await toast.getByTestId('plan-created-toast-compare').click()
+    await expect(page).toHaveURL(/#compare$/)
+    const compare = page.getByTestId('compare-view')
+    await expect(compare).toBeVisible()
+    await expect(compare.locator('[aria-pressed="true"]')).toHaveCount(2)
   })
 })
+
+// Dropped with the one-page redesign (spec §1.6 #44, §1.4 #32/#34): the
+// Varianten tab's measured recommendation chips ("Retire 62", the glide-path
+// chip — now "Übernehmen" on each lever row and the one glide-path
+// recommendation), the editor's own "Revert" (now the result bar's Discard)
+// and the tab bar itself (now the section index, tested above).

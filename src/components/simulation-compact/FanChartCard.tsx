@@ -114,72 +114,39 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
       maximumFractionDigits: 0,
     })
 
+  const inspectX = inspectIndex == null ? 0 : geometry.x(inspectIndex) / FAN_W
+
   return (
-    <div className="ds-card" style={{ padding: '12px 14px 10px' }} data-testid="fan-chart">
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          flexWrap: 'wrap',
-          marginBottom: 8,
-        }}
-      >
-        <div
-          role="group"
-          aria-label={tAssets('scale.label')}
-          style={{
-            display: 'inline-flex',
-            border: '1px solid var(--line-strong)',
-            borderRadius: 'var(--radius-full)',
-            overflow: 'hidden',
-          }}
-        >
+    <div className="ds-card ws-fan" style={{ padding: '16px 16px 12px' }} data-testid="fan-chart">
+      <div className="ws-chart-toolbar">
+        <div role="group" aria-label={tAssets('scale.label')} className="ws-segmented">
           {(['focus', 'full'] as const).map((mode) => (
             <button
               key={mode}
               type="button"
-              className="ds-btn ds-btn--sm"
               aria-pressed={scaleMode === mode}
               onClick={() => setScaleMode(mode)}
-              style={{
-                border: 0,
-                borderRadius: 0,
-                minHeight: 'var(--ui-control-height)',
-                background: scaleMode === mode ? 'var(--ui-subtle)' : 'var(--surface)',
-                color: scaleMode === mode ? 'var(--text)' : 'var(--text-label)',
-              }}
             >
               {tAssets(`scale.${mode}`)}
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          className="ds-btn ds-btn--outline ds-btn--sm"
-          onClick={resetZoom}
-          disabled={!isZoomed}
-          style={{ minHeight: 'var(--ui-control-height)' }}
-        >
+        <button type="button" className="ws-chart-button" onClick={resetZoom} disabled={!isZoomed}>
           {tAssets('reset')}
         </button>
-        <span className="ds-meta" style={{ marginLeft: 'auto' }}>
+        <span className="ws-chart-meta">
           {format.number(firstAge)}–{format.number(lastAge)}
         </span>
       </div>
 
       <div
-        style={{ position: 'relative', height, touchAction: 'pan-y' }}
+        className="ws-chart-plot"
+        style={{ height }}
         onPointerMove={(event) => handlePointer(event.clientX, event.currentTarget)}
         onPointerDown={(event) => handlePointer(event.clientX, event.currentTarget)}
         onPointerLeave={() => setInspectIndex(null)}
       >
-        <svg
-          viewBox={`0 0 ${FAN_W} ${FAN_H}`}
-          preserveAspectRatio="none"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-          aria-hidden="true"
-        >
+        <svg viewBox={`0 0 ${FAN_W} ${FAN_H}`} preserveAspectRatio="none" aria-hidden="true">
           {geometry.gridLines.map((grid) => (
             <line
               key={grid.value}
@@ -220,7 +187,7 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
               fill="none"
               stroke="var(--gray-500)"
               strokeWidth={0.8}
-              opacity={0.35}
+              opacity={0.3}
               vectorEffect="non-scaling-stroke"
             />
           ))}
@@ -245,114 +212,55 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
           )}
         </svg>
         {geometry.gridLines.map((grid) => (
-          <span
-            key={grid.value}
-            className="ds-meta"
-            style={{
-              position: 'absolute',
-              left: 4,
-              top: grid.topPct,
-              transform: 'translateY(-110%)',
-              background: 'color-mix(in srgb, var(--surface) 78%, transparent)',
-              padding: '0 3px',
-              borderRadius: 2,
-            }}
-          >
+          <span key={grid.value} className="ws-chart-ylabel" style={{ top: grid.topPct }}>
             {formatAxisEuro(grid.value, locale)}
           </span>
         ))}
-        <div
-          style={{
-            position: 'absolute',
-            top: 4,
-            right: 6,
-            display: 'flex',
-            gap: 10,
-            alignItems: 'center',
-            fontSize: 11,
-            color: 'var(--text-label)',
-            background: 'color-mix(in srgb, var(--surface) 86%, transparent)',
-            padding: '2px 6px',
-            borderRadius: 'var(--radius)',
-          }}
-        >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 10, height: 7, background: 'var(--viz-seq-1)' }} />
+        <div className="ws-chart-legend">
+          <span>
+            <span style={{ width: 10, height: 8, background: 'var(--viz-seq-1)' }} />
             {t('bandOuter')}
           </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 10, height: 7, background: 'var(--viz-seq-2)' }} />
+          <span>
+            <span style={{ width: 10, height: 8, background: 'var(--viz-seq-2)' }} />
             {t('bandInner')}
           </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 10, height: 2, background: 'var(--viz-seq-5)' }} />
+          <span>
+            <span style={{ width: 12, height: 2, background: 'var(--viz-seq-5)' }} />
             {t('median')}
           </span>
-          <span
-            style={{
-              borderLeft: '1px solid var(--line)',
-              paddingLeft: 10,
-              fontWeight: 600,
-              color: 'var(--text)',
-            }}
-          >
-            {displayReal ? t('real') : t('nominal')}
-          </span>
+          <span className="ws-chart-legend-unit">{displayReal ? t('real') : t('nominal')}</span>
         </div>
         {inspected && (
           <div
-            style={{
-              position: 'absolute',
-              left:
-                geometry.x(inspectIndex ?? 0) / FAN_W < 0.68
-                  ? `calc(${(geometry.x(inspectIndex ?? 0) / FAN_W) * 100}% + 10px)`
-                  : 'auto',
-              right:
-                geometry.x(inspectIndex ?? 0) / FAN_W >= 0.68
-                  ? `calc(${100 - (geometry.x(inspectIndex ?? 0) / FAN_W) * 100}% + 10px)`
-                  : 'auto',
-              bottom: 8,
-              minWidth: 170,
-              padding: '7px 9px',
-              background: 'color-mix(in srgb, var(--surface) 96%, transparent)',
-              border: '1px solid var(--line-strong)',
-              borderRadius: 'var(--radius)',
-              boxShadow: 'var(--shadow-sm)',
-              pointerEvents: 'none',
-              zIndex: 2,
-            }}
+            className="ws-chart-tooltip"
+            style={
+              inspectX < 0.68
+                ? { left: `calc(${inspectX * 100}% + 10px)` }
+                : { right: `calc(${100 - inspectX * 100}% + 10px)` }
+            }
           >
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>
-              {tAssets('tooltip.label', { age: inspected.age })}
-            </div>
+            <div>{tAssets('tooltip.label', { age: inspected.age })}</div>
             {(['p90', 'p80', 'p50', 'p20', 'p10'] as const).map((key) => (
-              <div
-                key={key}
-                className="ds-meta"
-                style={{ display: 'flex', justifyContent: 'space-between', gap: 14 }}
-              >
+              <div key={key}>
                 <span>{key === 'p50' ? tAssets('tooltip.median') : tAssets(`tooltip.${key}`)}</span>
-                <strong style={{ color: 'var(--text)' }}>{formatCurrency(inspected[key])}</strong>
+                <strong>{formatCurrency(inspected[key])}</strong>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <div style={{ position: 'relative', height: 14, marginTop: 2 }}>
+      <div className="ws-chart-axis" aria-hidden="true">
         {geometry.axisTicks.map((tick) => (
-          <span
-            key={tick.age}
-            className="ds-meta"
-            style={{ position: 'absolute', left: tick.leftPct, transform: 'translateX(-50%)' }}
-          >
+          <span key={tick.age} style={{ left: tick.leftPct }}>
             {format.number(tick.age)}
           </span>
         ))}
       </div>
 
       {maxIndex > 0 && (
-        <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr', gap: 3 }}>
+        <div className="ws-chart-brush">
           <input
             type="range"
             min={0}
@@ -360,7 +268,6 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
             value={start}
             aria-label={tAssets('aria.brush', { startAge: firstAge, endAge: lastAge })}
             onChange={(event) => setStartIndex(Math.min(Number(event.target.value), end - 1))}
-            style={{ width: '100%', accentColor: 'var(--accent)' }}
           />
           <input
             type="range"
@@ -369,38 +276,19 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
             value={end}
             aria-label={tAssets('aria.brush', { startAge: firstAge, endAge: lastAge })}
             onChange={(event) => setEndIndex(Math.max(Number(event.target.value), start + 1))}
-            style={{ width: '100%', accentColor: 'var(--accent)' }}
           />
         </div>
       )}
 
-      <details style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 8 }}>
-        <summary
-          style={{ cursor: 'pointer', fontSize: 12, fontWeight: 650, color: 'var(--accent)' }}
-        >
-          {tSimulation('assetTable.toggle')}
-        </summary>
-        <div style={{ overflowX: 'auto', marginTop: 8 }}>
-          <table
-            style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: 12,
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
+      <details className="ws-chart-details">
+        <summary>{tSimulation('assetTable.toggle')}</summary>
+        <div className="ws-chart-table">
+          <table>
             <caption className="sr-only">{tSimulation('assetTable.caption')}</caption>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--line-strong)' }}>
+              <tr>
                 {['age', 'p10', 'p20', 'p50', 'p80', 'p90'].map((key) => (
-                  <th
-                    key={key}
-                    style={{
-                      padding: '6px 8px',
-                      textAlign: key === 'age' ? 'left' : 'right',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                  <th key={key} className={key === 'age' ? undefined : 'ds-num'}>
                     {key === 'age'
                       ? tSimulation('assetTable.headers.age')
                       : key === 'p50'
@@ -412,23 +300,15 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
             </thead>
             <tbody>
               {visibleAges.map((age, index) => (
-                <tr key={age} style={{ borderBottom: '1px solid var(--line)' }}>
-                  <td style={{ padding: '6px 8px' }}>{format.number(age)}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>
-                    {formatCurrency(visiblePercentiles.p10[index])}
-                  </td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>
-                    {formatCurrency(visiblePercentiles.p20[index])}
-                  </td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700 }}>
+                <tr key={age}>
+                  <td>{format.number(age)}</td>
+                  <td className="ds-num">{formatCurrency(visiblePercentiles.p10[index])}</td>
+                  <td className="ds-num">{formatCurrency(visiblePercentiles.p20[index])}</td>
+                  <td className="ds-num" style={{ fontWeight: 600, color: 'var(--ui-text)' }}>
                     {formatCurrency(visiblePercentiles.p50[index])}
                   </td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>
-                    {formatCurrency(visiblePercentiles.p80[index])}
-                  </td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>
-                    {formatCurrency(visiblePercentiles.p90[index])}
-                  </td>
+                  <td className="ds-num">{formatCurrency(visiblePercentiles.p80[index])}</td>
+                  <td className="ds-num">{formatCurrency(visiblePercentiles.p90[index])}</td>
                 </tr>
               ))}
             </tbody>

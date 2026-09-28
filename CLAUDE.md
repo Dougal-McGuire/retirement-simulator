@@ -62,7 +62,7 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
 
 - `/[locale]/` - Landing page
 - `/[locale]/setup` - Multi-step wizard for parameter input
-- `/[locale]/simulation` - Workspace with four workflows: Überblick (overview), Mein Plan (plan editor), Zahlungsströme (Sankey + ledger), Varianten (strategy and plan comparison); plan menu in the header
+- `/[locale]/simulation` - One-page workspace: sticky result bar (plan menu, success rate, save/discard) over five sections, `#result` (Ergebnis), `#assumptions` (Annahmen), `#cashflow` (Geldfluss), `#withdrawal` (Entnahme), `#levers` (Stellschrauben). Assumptions open in an edit panel (`#<section>:<panel>`, e.g. `#assumptions:market`); `#compare` is plan comparison as a page mode
 - `/api/plans` - Account-scoped plan storage (GET/PUT, needs sign-in and a configured store)
 - `/api/auth/[...nextauth]` - Auth.js handlers
 - `/reports/[id]/print` - Legacy print-optimized report layout
@@ -70,12 +70,12 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
 
 ### Simulation Flow
 
-1. User inputs parameters via the setup wizard or the plan editor (Mein Plan)
+1. User inputs parameters via the setup wizard, the edit panel (Annahmen cards) or the levers (Stellschrauben)
 2. `SimulationStore.updateParams()` triggers auto-run (debounced 100ms)
 3. `runMonteCarloSimulation()` runs N simulations (default: 500) with lognormal market returns
 4. Results include percentile data (P10, P20, P50, P80, P90) and success rate
-5. Charts display asset evolution and spending projections over time
-6. Auto-run can be suspended during interactions (e.g., chart brushing)
+5. The result bar and sections update live; charts show asset evolution, cash flows and the spending corridor
+6. Auto-run can be suspended (the setup wizard does this while it is open)
 
 ### Simulation Phases
 
@@ -88,7 +88,8 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
 - **Plans**: Up to 12 named plans (`MAX_PLANS`); one is active. Edits go to a working copy (`draftParams`, `isDirty`) until `savePlanDraft()` or `revertPlanDraft()`; switching plans with unsaved edits goes through `PlanSwitchGuard`
 - **Cloud Sync**: When signed in and configured, `PlanCloudSync` merges local and remote plans (`src/lib/stores/planSync.ts`)
 - **Auto-run**: Parameter changes trigger simulation after 100ms (debounced)
-- **Suspension**: Auto-run can be suspended (e.g., during chart interactions) with `setAutoRunSuspended()`
+- **Suspension**: Auto-run can be suspended with `setAutoRunSuspended()` (the setup wizard does)
+- **Workspace UI state**: The open panel and compare mode are `WorkspaceProvider` state mirrored to the URL hash (reload and Back restore them), never persisted; `useWorkspaceUiStore` is a small unpersisted store for scroll state (active section, sticky geometry)
 - **Saved Setups**: Legacy `savedSetups` is only a mirror of `plans` so old save/load calls keep working; plans are the source of truth
 
 ### PDF Generation
@@ -107,8 +108,15 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
 ### Component Structure
 
 - **UI Components**: shadcn/ui components in `src/components/ui/`
-- **Workspace**: Shell, header, plan menu and overview in `src/components/workspace/`
-- **Plans**: Plan editor, section nav, switcher, switch guard, withdrawal planner in `src/components/plans/`
+- **Workspace** (`src/components/workspace/`): the one-page `/simulation` UI
+  - `WorkspaceProvider` + `useWorkspace()`: page API (sections, edit panel, compare mode); `useWorkspaceHash` (hash ↔ state, German aliases), `useScrollSpy` + `useWorkspaceUiStore` (active section), `useStickyOffset`, `usePanelMode`; pure rules in `workspaceNav.ts`
+  - `ResultBar` (plan menu, KPIs, run status, save/discard, Cmd/Ctrl+S), `SectionIndex` (rail / chip row / bottom bar by width), `PlanMenu`, `PlanManagerDialog`, `EuroDisplay`
+  - `sections/`: `ResultSection`, `AssumptionsSection`, `CashflowSection`, `WithdrawalSection`, `LeversSection` on a shared `WorkspaceSection`
+  - `edit/`: `EditPanel` (Radix dialog, `modal={false}`: docked ≥1280, overlay 761–1279, bottom sheet on phones), code-split panel bodies, `focusField` for deep links
+  - `levers/`: `QuickLevers`, `LeverImpactList`, `useLeverMeasurements`
+  - Shared: `LazyMount` (mount near the viewport, `data-lazy-state`), `AnimatedNumber` (tweened numbers; tests read `data-value`), `Skeleton`
+- **Plans**: Plan switcher, switch guard, name/scenario dialogs, withdrawal planner and `planSections.ts` (panel ids, field → panel) in `src/components/plans/`; the edit panel bodies are the groups in `src/components/plans/editor/` (`PersonalGroup`, `SavingsGroup`, `FlowsGroup`, `MarketGroup`, `shared.tsx`)
+- **Compare and fan chart**: `CompareView`, `CompareFanChart`, `FanChartCard` and the Menu dialog (`DashboardTools`) in `src/components/simulation-compact/`
 - **Auth**: Account menu, auth provider, cloud sync in `src/components/auth/`
 - **Form Components**: Setup wizard fields and labeled inputs in `src/components/forms/`
 - **Chart Components**: Recharts-based visualizations in `src/components/charts/`

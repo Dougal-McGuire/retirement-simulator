@@ -4,9 +4,9 @@ import { useTranslations } from 'next-intl'
 import { useDisplayReal, useSetDisplayReal } from '@/lib/stores/displayStore'
 
 /**
- * The global nominal / today's-€ switch. Rendered in the sidebar on desktop,
- * in the header row on tablets and inside the Menu dialog on phones — only one
- * instance is visible at a time, so secondary instances pass their own test id.
+ * The global nominal / today's-€ switch. Rendered in the rail footer from
+ * 1024px up and inside the Menu dialog below that — only one instance is
+ * visible at a time, so the secondary instance passes its own test id.
  */
 export function EuroDisplay({ testId = 'display-toggle' }: { testId?: string }) {
   const t = useTranslations('simulation.display')

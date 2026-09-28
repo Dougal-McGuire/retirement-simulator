@@ -1,0 +1,2442 @@
+/*
+ * One-page workspace (/[locale]/simulation). Page layout is scoped under
+ * .ws-page; the edit panel, its scrim and dialogs can be portaled out of it,
+ * so their rules use their own ws- classes. Colours, type, spacing, motion and
+ * elevation come from interface.css tokens only. The setup wizard keeps
+ * .retirement-workspace and workspace.css, which this page still imports for
+ * the plan menu, buttons, the euro switch and .compare-*.
+ *
+ * Visual direction (spec §6): a calm ledger. Structure comes from whitespace
+ * and 1px hairlines; sections sit on --ui-bg; charts, assumption cards and
+ * lever lists are the only --ui-surface blocks, and nothing bordered sits
+ * inside something bordered. Shadows only for what floats. The one bold
+ * gesture is the result bar's numerals.
+ *
+ * Breakpoints: ≥1280 docked panel · ≥1024 left rail · 761–1023 chip row under
+ * the bar · ≤760 fixed bottom bar and bottom sheet.
+ */
+
+.ws-page {
+  --ws-bar-bottom: var(--ui-bar-height);
+  --ws-sticky-top: var(--ui-bar-height);
+  --ws-panel-width: var(--ui-panel-width);
+  --ws-section-gap: var(--ui-space-16);
+  /* Aliases kept for the section lanes; new rules read the tokens directly. */
+  --ws-motion-fast: var(--motion-fast);
+  --ws-motion-base: var(--motion-base);
+  --ws-motion-slow: var(--motion-slow);
+  --ws-motion-ease: var(--motion-ease);
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  grid-template-columns: var(--ui-rail-width) minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'rail bar bar'
+    'rail main panel';
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  font-size: var(--ui-font-body);
+  line-height: 1.5;
+}
+
+/* Figures everywhere on the page line up in columns. */
+.ws-number,
+.ws-page :is(.ws-bar-value, .ws-fact-value, .ws-card-value, .ws-verdict-rate) {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* ------------------------------------------------------------------ */
+/* Rail: brand, section index, € switch (≥1024)                        */
+/* ------------------------------------------------------------------ */
+
+.ws-rail {
+  grid-area: rail;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-width: 0;
+  padding: var(--ui-space-6) var(--ui-space-3) var(--ui-space-4);
+  overflow-y: auto;
+  background: var(--ui-surface);
+  border-right: 1px solid var(--ui-border);
+}
+/* The brand starts on the index track's line; a long single word
+   ("Ruhestandsplanung") may break rather than leave the rail. */
+.ws-rail .workspace-brand {
+  margin: 0 0 var(--ui-space-8);
+  padding: 0;
+  font-size: var(--ui-font-body);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ui-text);
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+.ws-rail-footer {
+  margin-top: auto;
+  padding-top: var(--ui-space-4);
+  border-top: 1px solid var(--ui-border);
+}
+.ws-rail-footer .workspace-euro button {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-inline: var(--ui-space-1);
+}
+
+/* ------------------------------------------------------------------ */
+/* Section index: one <nav>, three presentations                       */
+/* ------------------------------------------------------------------ */
+
+.ws-index {
+  position: relative;
+}
+.ws-index ol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--ui-border);
+}
+.ws-index a {
+  display: flex;
+  align-items: center;
+  /* 10px, not 12: "Stellschrauben" has to fit the 184px rail at 14px. */
+  gap: 10px;
+  height: 40px;
+  padding: 0 10px;
+  color: var(--ui-muted);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: 0 var(--ui-radius) var(--ui-radius) 0;
+  transition:
+    color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease);
+}
+.ws-index a:hover {
+  background: var(--ui-subtle);
+  color: var(--ui-text);
+}
+/* Current: ink colour, accent icon and the marker — no bolder weight, so a
+   long label ("Stellschrauben") keeps its width in the 184px rail. */
+.ws-index a[aria-current='location'] {
+  color: var(--ui-text);
+}
+.ws-index a[aria-current='location'] svg {
+  color: var(--ui-accent);
+}
+.ws-index a:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
+}
+.ws-index svg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+.ws-index-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-index-short {
+  display: none;
+}
+/* The rail's accent marker slides along the 1px track. SectionIndex measures
+   the current link (--ws-index-y / --ws-index-h); before that first
+   measurement it falls back to the item position. */
+.ws-index-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: var(--ws-index-h, 40px);
+  border-radius: 1px;
+  background: var(--ui-accent);
+  transform: translateY(var(--ws-index-y, calc(var(--ws-index-active, 0) * 42px)));
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    height var(--motion-base) var(--motion-ease);
+}
+.ws-index:not([data-has-current]) .ws-index-indicator {
+  display: none;
+}
+/* No slide on the first placement (a deep link lands mid-list). */
+.ws-index:not([data-measured]) .ws-index-indicator {
+  transition: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Result bar                                                          */
+/* ------------------------------------------------------------------ */
+
+.ws-bar {
+  grid-area: bar;
+  position: sticky;
+  top: 0;
+  /* Above the overlay panel, so the plan menu can open over it. */
+  z-index: 43;
+  display: grid;
+  /* The plan picker is the column that gives way (down to 120px) before
+     anything overflows; the empty spacer absorbs the draft cluster, so the
+     KPIs never move when the plan becomes dirty. */
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(120px, max-content) auto;
+  grid-template-areas: 'kpis spacer draft plan menu';
+  align-items: center;
+  column-gap: var(--ui-space-3);
+  min-width: 0;
+  min-height: var(--ui-bar-height);
+  padding: var(--ui-space-2) var(--ui-space-6);
+  background: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-border);
+  transition: box-shadow var(--motion-base) var(--motion-ease);
+}
+.ws-bar[data-scrolled] {
+  box-shadow: var(--shadow-bar);
+}
+.ws-bar-plan {
+  grid-area: plan;
+  min-width: 0;
+}
+.ws-bar .workspace-plan-trigger {
+  width: 100%;
+  min-width: 0;
+  max-width: 220px;
+}
+.ws-bar .workspace-plan-menu {
+  left: auto;
+  right: 0;
+}
+.ws-bar-kpis {
+  grid-area: kpis;
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+.ws-bar-dl {
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+.ws-bar-kpi {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    'label label'
+    'value delta';
+  align-items: baseline;
+  justify-content: start;
+  column-gap: 6px;
+  padding: 0 var(--ui-space-4);
+  min-width: 0;
+}
+.ws-bar-kpi:first-child {
+  padding-left: 0;
+}
+.ws-bar-kpi + .ws-bar-kpi::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 1px;
+  height: 24px;
+  margin-top: -12px;
+  background: var(--ui-border);
+}
+.ws-bar-kpi dt {
+  grid-area: label;
+  font-size: var(--ui-font-small);
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--ui-muted);
+  white-space: nowrap;
+}
+/* The one bold gesture on the page: compact, confident figures. */
+.ws-bar-value {
+  grid-area: value;
+  margin: 0;
+  font-size: var(--ui-font-kpi);
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  color: var(--ui-text);
+  white-space: nowrap;
+  transition: opacity var(--motion-base) var(--motion-ease);
+}
+.ws-bar-value .ws-skeleton {
+  display: inline-block;
+  vertical-align: -3px;
+}
+.ws-bar-kpi[data-kpi='success'] .ws-bar-value {
+  min-inline-size: 6.5ch;
+}
+.ws-bar-kpi[data-kpi='end'] .ws-bar-value {
+  min-inline-size: 8ch;
+}
+.ws-bar[data-running] .ws-bar-value {
+  opacity: 0.55;
+}
+.ws-bar-delta {
+  grid-area: delta;
+  align-self: center;
+  margin: 0;
+  animation: ws-fade-in var(--motion-fast) var(--motion-ease);
+  transition: opacity var(--motion-fast) var(--motion-ease);
+}
+.ws-bar .ws-bar-delta {
+  padding: 1px 6px;
+  font-size: var(--ui-font-small);
+  line-height: 16px;
+}
+.ws-bar-delta[data-pending] {
+  opacity: 0.55;
+}
+.ws-bar-delta-short {
+  display: none;
+}
+.ws-bar-label-short {
+  display: none;
+}
+.ws-bar-run {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+}
+.ws-bar .ws-bar-status {
+  margin: 0;
+  padding: 0 var(--ui-space-1);
+}
+/* With unsaved changes a green check next to Save would read as "saved";
+   the idle "updated" state steps aside (the live region still announces). */
+.ws-bar[data-dirty] .ws-bar-status[data-state='updated'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.ws-bar-run-button {
+  min-width: var(--ui-control-height);
+  padding-inline: var(--ui-space-2);
+}
+.ws-run-label {
+  display: none;
+}
+/* Out-of-date results: Recalculate turns primary and, where there is room
+   (≥1280, and on phones), says so in words; below 1280 it stays an icon (the
+   label is its aria-label and title) and replaces the status icon, which
+   would say the same thing. */
+@media (min-width: 1280px), (max-width: 760px) {
+  .ws-bar-run-button[data-needs-run] .ws-run-label {
+    display: inline;
+  }
+  .ws-bar-run-button[data-needs-run] {
+    padding-inline: var(--ui-space-3);
+  }
+}
+@media (max-width: 1279px) {
+  .ws-bar[data-needs-run] .ws-bar-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+.ws-bar-run-button:disabled {
+  opacity: 0.55;
+}
+.ws-bar-draft {
+  grid-area: draft;
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+/* The draft cluster arrives quietly: a short fade, no movement. */
+.ws-bar-draft > * {
+  animation: ws-fade-in var(--motion-base) var(--motion-ease);
+}
+.ws-bar-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  margin-right: var(--ui-space-1);
+  font-size: var(--ui-font-body);
+  font-weight: 500;
+  color: var(--ui-text);
+  white-space: nowrap;
+}
+.ws-bar-marker-long {
+  display: none;
+}
+.ws-bar-discard {
+  padding-inline: var(--ui-space-3);
+}
+.ws-bar-save {
+  padding-inline: var(--ui-space-4);
+}
+.ws-bar-saved {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+  white-space: nowrap;
+}
+.ws-bar-saved svg {
+  color: var(--ok);
+}
+.ws-bar-menu {
+  grid-area: menu;
+}
+/* Plan picker and Menu read as one quiet pair of outlined controls. */
+.ws-bar [data-testid='dashboard-tools'] {
+  min-height: var(--ui-control-height);
+  padding: var(--ui-space-2) var(--ui-space-4);
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+.ws-bar [data-testid='dashboard-tools']:hover {
+  background: var(--ui-subtle);
+}
+.ws-bar .workspace-button,
+.ws-bar [data-testid='dashboard-tools'] {
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
+}
+/* The bar's controls carry their words in aria-label / title when they
+   collapse to icons. */
+.ws-discard-label {
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Main column and sections                                            */
+/* ------------------------------------------------------------------ */
+
+.ws-main {
+  grid-area: main;
+  justify-self: center;
+  width: 100%;
+  min-width: 0;
+  max-width: calc(1040px + 2 * var(--ui-space-8));
+  padding: var(--ui-space-8) var(--ui-space-8) var(--ui-space-12);
+  scroll-margin-top: var(--ws-sticky-top);
+}
+.ws-scroll-sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+.ws-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-section-gap);
+}
+.ws-sections[hidden] {
+  display: none;
+}
+.ws-section {
+  min-width: 0;
+  scroll-margin-top: calc(var(--ws-sticky-top) + 16px);
+}
+/* "Ruled ledger": every section but the first starts with a hairline; the
+   heading sits 24px below it. */
+.ws-section + .ws-section {
+  padding-top: var(--ui-space-6);
+  border-top: 1px solid var(--ui-border);
+}
+.ws-section-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--ui-space-6);
+  align-items: baseline;
+  margin-bottom: var(--ui-space-6);
+}
+.ws-section-header h2 {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+  font-size: var(--ui-font-title);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+}
+/* Headings take focus programmatically (index clicks, panel opens) so screen
+   readers land in the right place; they are not controls and show no ring. */
+.ws-section-header h2:focus {
+  outline: none;
+}
+.ws-section-header > p {
+  grid-column: 1 / -1;
+  max-width: 64ch;
+  margin: var(--ui-space-1) 0 0;
+  font-size: var(--ui-font-body);
+  line-height: 1.5;
+  color: var(--ui-muted);
+}
+.ws-section-actions {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+}
+/* Subsection headings inside a section (lanes space them 32px apart). */
+.ws-section h3 {
+  margin: 0;
+  font-size: var(--ui-font-section);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.ws-footer {
+  max-width: 72ch;
+  padding-top: var(--ui-space-4);
+  border-top: 1px solid var(--ui-border);
+  font-size: var(--ui-font-small);
+  line-height: 1.5;
+  color: var(--ui-muted);
+}
+.ws-link-button {
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--motion-ease),
+    text-decoration-color var(--motion-fast) var(--motion-ease);
+}
+.ws-link-button:hover {
+  color: var(--ui-accent);
+  text-decoration-color: currentColor;
+}
+.ws-text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+  font-weight: 500;
+  color: var(--ui-accent);
+  text-decoration: none;
+}
+.ws-text-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ws-text-link svg {
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+.ws-text-link:hover svg {
+  transform: translateX(2px);
+}
+
+/* ---- Disclosures: a text summary with a chevron, no border ---------- */
+
+.ws-disclosure {
+  border-top: 1px solid var(--ui-border);
+}
+.ws-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-height: 44px;
+  padding: var(--ui-space-2) 0;
+  font-weight: 500;
+  color: var(--ui-text);
+  list-style: none;
+  cursor: pointer;
+}
+.ws-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+:is(.ws-disclosure, .ws-chart-details) > summary::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin: 0 3px 0 1px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  color: var(--ui-muted);
+  transform: rotate(-45deg);
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+:is(.ws-disclosure, .ws-chart-details)[open] > summary::before {
+  transform: rotate(45deg);
+}
+.ws-disclosure > summary:hover {
+  color: var(--ui-accent);
+}
+.ws-disclosure-body {
+  padding: var(--ui-space-2) 0 var(--ui-space-4);
+}
+
+/* ---- Skeletons -------------------------------------------------------- */
+
+.ws-skeleton {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--ui-radius);
+  background: var(--skeleton-base);
+}
+/* A slow sheen, never a pulse; it stands still under reduced motion. */
+.ws-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--skeleton-sheen) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: ws-sheen 1.2s linear infinite;
+}
+/* A chart's plot area: its final height with three faint gridlines. */
+.ws-skeleton[data-variant='chart'],
+.ws-lazy-skeleton {
+  background-color: var(--skeleton-base);
+  background-image:
+    linear-gradient(var(--ui-border), var(--ui-border)),
+    linear-gradient(var(--ui-border), var(--ui-border)),
+    linear-gradient(var(--ui-border), var(--ui-border));
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
+  background-position:
+    0 25%,
+    0 50%,
+    0 75%;
+}
+.ws-skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-2);
+}
+
+/* ---- Ergebnis ------------------------------------------------------ */
+
+.ws-verdict {
+  margin-bottom: var(--ui-space-8);
+}
+.ws-verdict-statement {
+  max-width: 60ch;
+  margin: 0;
+  color: var(--ui-text);
+  font-size: var(--ui-font-lead);
+  line-height: 1.45;
+}
+.ws-verdict-rate {
+  display: block;
+  margin-bottom: var(--ui-space-1);
+  font-size: var(--ui-font-display);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  transition: opacity var(--motion-base) var(--motion-ease);
+}
+.ws-verdict-context {
+  margin: var(--ui-space-3) 0 0;
+  font-size: var(--ui-font-small);
+  line-height: 1.4;
+  color: var(--ui-muted);
+}
+.ws-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 0 var(--ui-space-8);
+  border-top: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-border);
+}
+.ws-facts > div {
+  min-width: 0;
+  padding: var(--ui-space-4) var(--ui-space-6);
+}
+.ws-facts > div:first-child {
+  padding-left: 0;
+}
+.ws-facts > div + div {
+  border-left: 1px solid var(--ui-border);
+}
+.ws-facts dt {
+  font-size: var(--ui-font-small);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ui-muted);
+}
+.ws-fact-value {
+  margin: var(--ui-space-2) 0 var(--ui-space-1);
+  font-size: var(--ui-font-kpi);
+  font-weight: 600;
+  line-height: 1.2;
+  transition: opacity var(--motion-base) var(--motion-ease);
+}
+.ws-fact-hint {
+  margin: 0;
+  font-size: var(--ui-font-small);
+  line-height: 1.4;
+  color: var(--ui-muted);
+}
+.ws-main[data-run-status='running'] :is(.ws-verdict-rate, .ws-fact-value) {
+  opacity: 0.55;
+}
+.ws-chart-card {
+  min-width: 0;
+  margin-bottom: var(--ui-space-8);
+  padding: var(--ui-space-6);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+.ws-chart-card > h3 {
+  margin: 0;
+  font-size: var(--ui-font-section);
+  line-height: 1.3;
+}
+.ws-chart-card > p {
+  max-width: 64ch;
+  margin: var(--ui-space-1) 0 var(--ui-space-4);
+  color: var(--ui-muted);
+}
+/* The fan chart's own card chrome goes: the section card is its surface. */
+.ws-chart-card [data-testid='fan-chart'] {
+  padding: 0 !important;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.ws-life-stages {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 var(--ui-space-8);
+  padding: 0;
+  list-style: none;
+}
+.ws-life-stages li {
+  position: relative;
+  min-width: 0;
+}
+/* The hairline joining the stops. */
+.ws-life-stages li::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--ui-border);
+}
+.ws-life-stages li:last-child::before {
+  right: auto;
+  width: 0;
+}
+.ws-life-stages button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--ui-space-4) var(--ui-space-2) var(--ui-space-1) 0;
+  font: inherit;
+  text-align: left;
+  color: var(--ui-text);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-life-stages button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  background: var(--ui-bg);
+  border: 2px solid var(--ui-accent);
+  border-radius: 50%;
+  transition: background-color var(--motion-fast) var(--motion-ease);
+}
+.ws-life-stages li:first-child button::before,
+.ws-life-stages button:hover::before {
+  background: var(--ui-accent);
+}
+.ws-life-stages span {
+  font-size: var(--ui-font-small);
+  line-height: 1.4;
+  color: var(--ui-muted);
+}
+.ws-life-stages strong {
+  font-size: var(--ui-font-body);
+  font-weight: 600;
+}
+.ws-life-stages button:hover strong {
+  color: var(--ui-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Compare entry: a quiet ruled row at the end of Ergebnis, not a box. */
+.ws-page .workspace-compare-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-4);
+  width: 100%;
+  min-height: 64px;
+  padding: var(--ui-space-3) var(--ui-space-2) var(--ui-space-3) 0;
+  font: inherit;
+  text-align: left;
+  color: var(--ui-text);
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-border);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--motion-ease);
+}
+.ws-page .workspace-compare-entry:hover {
+  background: color-mix(in srgb, var(--ui-subtle) 60%, transparent);
+}
+.ws-page .workspace-compare-entry > svg {
+  flex-shrink: 0;
+  color: var(--ui-accent);
+}
+.ws-page .workspace-compare-entry > svg:last-child {
+  color: var(--ui-muted);
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+.ws-page .workspace-compare-entry:hover > svg:last-child {
+  color: var(--ui-accent);
+  transform: translateX(2px);
+}
+.ws-page .workspace-compare-entry > span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ws-page .workspace-compare-entry strong {
+  font-weight: 600;
+}
+.ws-page .workspace-compare-entry small {
+  font-size: var(--ui-font-small);
+  line-height: 1.4;
+  color: var(--ui-muted);
+  overflow-wrap: anywhere;
+}
+.ws-page .workspace-compare-entry-quiet strong {
+  font-weight: 500;
+}
+/* ---- Annahmen ------------------------------------------------------ */
+
+.ws-setup-hint {
+  margin: 0;
+  font-size: var(--ui-font-body);
+  color: var(--ui-muted);
+  text-align: right;
+}
+.ws-cards-frame {
+  container-type: inline-size;
+}
+.ws-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-4);
+}
+@container (max-width: 639px) {
+  .ws-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.ws-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--ui-space-6);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease);
+}
+.ws-card:hover {
+  border-color: var(--line-strong);
+}
+/* The open card: an accent edge on the side the panel opens from. */
+.ws-card[data-open] {
+  border-color: var(--line-strong);
+  box-shadow: inset 2px 0 0 var(--ui-accent);
+}
+.ws-card:has(.ws-card-edit:focus-visible) {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.ws-card h3 {
+  margin: 0 0 var(--ui-space-4);
+  font-size: var(--ui-font-lead);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.ws-card-label {
+  margin: 0 0 2px;
+  font-size: var(--ui-font-small);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ui-muted);
+}
+.ws-card-value {
+  margin: 0 0 var(--ui-space-2);
+  color: var(--ui-text);
+  font-size: var(--ui-font-kpi);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+}
+/* Side by side, cards without a label line keep their key figure on the
+   same baseline as their neighbours'. */
+@container (min-width: 640px) {
+  .ws-card h3 + .ws-card-value {
+    margin-top: calc(var(--ui-font-small) * 1.4 + 2px);
+  }
+}
+.ws-card-detail {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--ui-muted);
+}
+.ws-card-edit {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--ui-space-1);
+  /* Pinned to the card's foot, so the four cards' actions line up. */
+  margin-top: auto;
+  padding: var(--ui-space-4) 0 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--ui-accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-card-edit svg {
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+.ws-card:hover .ws-card-edit svg {
+  transform: translateX(2px);
+}
+/* The whole card is the button's hit area. */
+.ws-card-edit::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.ws-card-edit:focus-visible {
+  outline: none;
+}
+.ws-card:hover .ws-card-edit {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ws-section-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2) var(--ui-space-4);
+  margin-top: var(--ui-space-3);
+}
+.ws-footnote {
+  margin: 0;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.ws-reset-button {
+  min-height: var(--ui-control-height);
+  padding: var(--ui-space-2) 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--danger);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-reset-button:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---- Geldfluss (CashflowCard + CashflowSankey) --------------------- */
+
+.ws-cashflow {
+  container-type: inline-size;
+  min-width: 0;
+  scroll-margin-top: calc(var(--ws-sticky-top) + 16px);
+}
+.ws-cashflow-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ui-space-3) var(--ui-space-6);
+}
+.ws-cashflow-head h3 {
+  margin: 0;
+  font-size: var(--ui-font-section);
+  line-height: 1.3;
+}
+.ws-cashflow-head p,
+.ws-cashflow-method {
+  margin: var(--ui-space-1) 0 0;
+  color: var(--ui-muted);
+}
+.ws-cashflow-method {
+  max-width: 72ch;
+  margin-top: var(--ui-space-4);
+}
+.ws-cashflow-year {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-3);
+  font-weight: 500;
+}
+.ws-cashflow-year select {
+  min-width: 11rem;
+  min-height: var(--ui-control-height);
+  font-size: var(--ui-font-body);
+}
+/* The Sankey is the section's one surface block (a chart). */
+.ws-sankey {
+  margin: var(--ui-space-6) 0 0;
+  padding: var(--ui-space-6);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+.ws-sankey-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ui-space-2) var(--ui-space-4);
+}
+.ws-sankey-head h4 {
+  margin: 0;
+  font-size: var(--ui-font-lead);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.ws-sankey figcaption {
+  margin-top: var(--ui-space-1);
+  font-size: var(--ui-font-small);
+  line-height: 1.5;
+  color: var(--ui-muted);
+}
+.ws-sankey-summary {
+  max-width: 72ch;
+  margin: var(--ui-space-3) 0 0;
+  color: var(--ui-text);
+  line-height: 1.55;
+}
+.ws-sankey .workspace-text-button {
+  min-height: 36px;
+  padding: 0;
+  font-weight: 500;
+}
+.ws-cashflow-sum {
+  margin: var(--ui-space-8) 0 0;
+  color: var(--ui-text);
+  font-size: var(--ui-font-lead);
+  font-weight: 600;
+}
+/* The ledger: three flat columns split by hairlines (stacked when narrow). */
+.ws-ledger {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: var(--ui-space-8);
+  border-top: 1px solid var(--ui-border);
+}
+.ws-ledger > div {
+  min-width: 0;
+  padding: var(--ui-space-4) var(--ui-space-6) var(--ui-space-2);
+}
+.ws-ledger > div:first-child {
+  padding-left: 0;
+}
+.ws-ledger > div:last-child {
+  padding-right: 0;
+}
+.ws-ledger > div + div {
+  border-left: 1px solid var(--ui-border);
+}
+@container (max-width: 719px) {
+  .ws-ledger {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ws-ledger > div {
+    padding-inline: 0;
+  }
+  .ws-ledger > div + div {
+    border-top: 1px solid var(--ui-border);
+    border-left: 0;
+  }
+}
+.ws-ledger h4 {
+  margin: 0 0 var(--ui-space-1);
+  font-size: var(--ui-font-body);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.ws-ledger-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ui-space-4);
+  padding: 6px 0;
+  font-size: var(--ui-font-body);
+}
+.ws-ledger-line dt {
+  min-width: 0;
+  color: var(--ui-muted);
+}
+.ws-ledger-line dd {
+  flex-shrink: 0;
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ws-ledger-line[data-detail] {
+  padding: 2px 0 2px var(--ui-space-3);
+  font-size: var(--ui-font-small);
+}
+.ws-ledger-line[data-emphasis] {
+  margin-top: 2px;
+  padding-top: var(--ui-space-2);
+  border-top: 1px solid var(--ui-border);
+  font-weight: 600;
+}
+.ws-ledger-line[data-emphasis] dt {
+  color: var(--ui-text);
+}
+.ws-ledger-edit {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-ledger-edit svg {
+  flex-shrink: 0;
+  align-self: center;
+  opacity: 0.5;
+  transition: opacity var(--motion-fast) var(--motion-ease);
+}
+.ws-ledger-edit:hover {
+  color: var(--ui-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ws-ledger-edit:hover svg {
+  opacity: 1;
+  color: var(--ui-accent);
+}
+.ws-cashflow-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-3);
+  margin: var(--ui-space-6) 0;
+}
+.ws-cashflow-notes > p {
+  margin: 0;
+}
+.ws-cashflow .ws-disclosure + .ws-disclosure {
+  border-top: 1px solid var(--ui-border);
+}
+.ws-cashflow .ws-disclosure:last-child {
+  border-bottom: 1px solid var(--ui-border);
+}
+.ws-cashflow-table {
+  overflow-x: auto;
+}
+.ws-cashflow-table table {
+  min-width: 100%;
+  text-align: right;
+}
+.ws-cashflow-table caption {
+  margin-bottom: var(--ui-space-3);
+  text-align: left;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.ws-cashflow-table :is(th, td) {
+  white-space: nowrap;
+}
+.ws-cashflow-table thead th {
+  min-width: 8rem;
+  font-weight: 500;
+  vertical-align: bottom;
+  white-space: normal;
+}
+.ws-cashflow-table thead th:first-child {
+  min-width: 0;
+  text-align: left;
+}
+.ws-cashflow-table tbody tr {
+  border-top: 1px solid var(--ui-border);
+  cursor: pointer;
+}
+.ws-cashflow-table tbody tr:hover {
+  background: color-mix(in srgb, var(--ui-subtle) 70%, transparent);
+}
+.ws-cashflow-table tbody tr[data-selected] {
+  background: var(--ui-tint-accent);
+}
+.ws-cashflow-table tbody th {
+  padding: 2px var(--ui-space-2);
+  text-align: left;
+}
+
+/* ---- Status callouts: a tinted wash, radius 4, no border ----------- */
+
+.ws-callout {
+  margin: 0;
+  padding: var(--ui-space-3) var(--ui-space-4);
+  font-size: var(--ui-font-body);
+  line-height: 1.5;
+  color: var(--ui-text);
+  background: var(--ui-tint-accent);
+  border-radius: var(--ui-radius);
+}
+.ws-callout[data-tone='warn'] {
+  background: var(--ui-tint-warn);
+}
+.ws-callout[data-tone='danger'] {
+  background: var(--ui-tint-danger);
+}
+.ws-callout-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ui-space-3);
+}
+.ws-callout-row > svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--warn);
+}
+.ws-callout[data-tone='danger'] .ws-callout-row > svg,
+.ws-callout-row[data-tone='danger'] > svg {
+  color: var(--danger);
+}
+.ws-note-danger {
+  margin: 0;
+  font-weight: 500;
+  color: var(--danger);
+}
+
+/* ---- Inputs inside the edit panel: body-size labels ----------------- */
+
+.ws-panel-body label {
+  font-size: var(--ui-font-body);
+  font-weight: 500;
+}
+.ws-panel-body input {
+  min-height: var(--ui-control-height);
+  font-size: var(--ui-font-body);
+}
+
+/* ---- Compare mode --------------------------------------------------- */
+
+/* Sticky under the pinned chrome, so "Vergleich beenden" stays in reach. */
+.ws-page .compare-header {
+  position: sticky;
+  top: var(--ws-sticky-top);
+  z-index: 20;
+}
+/* Phones: the header wraps to ~180px, too tall to pin whole. It slides up
+   behind the bar until only its last row (the exit button) stays, the way the
+   bar keeps its KPI row; --ws-compare-pin is measured by WorkspaceProvider,
+   which also scrolls the hidden rows back when a plan chip takes focus. */
+@media (max-width: 760px) {
+  .ws-page .compare-header {
+    top: calc(var(--ws-sticky-top) - var(--ws-compare-pin, 0px));
+  }
+}
+.ws-page .compare-header h2:focus {
+  outline: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Charts (fan chart, compare chart): toolbar, legend, tooltip, brush   */
+/* ------------------------------------------------------------------ */
+
+.ws-chart-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2);
+  margin-bottom: var(--ui-space-3);
+}
+/* Two-way switches (focus / full range): the app's segmented control — the
+   same outlined group as the appearance and € switches. */
+.ws-segmented {
+  display: inline-flex;
+  overflow: hidden;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+.ws-segmented button {
+  min-height: 38px;
+  padding: 0 var(--ui-space-3);
+  font: inherit;
+  color: var(--ui-muted);
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--ui-border);
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease);
+}
+.ws-segmented button:last-child {
+  border-right: 0;
+}
+.ws-segmented button:hover {
+  color: var(--ui-text);
+  background: var(--ui-subtle);
+}
+.ws-segmented button[aria-pressed='true'] {
+  color: var(--ui-text);
+  font-weight: 600;
+  background: var(--ui-subtle);
+}
+.ws-chart-button {
+  min-height: 40px;
+  padding: 0 var(--ui-space-3);
+  font: inherit;
+  font-weight: 500;
+  color: var(--ui-text);
+  background: transparent;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+}
+.ws-chart-button:hover:not(:disabled) {
+  background: var(--ui-subtle);
+}
+.ws-chart-button:disabled {
+  color: var(--ui-muted);
+  opacity: 0.6;
+  cursor: default;
+}
+.ws-chart-meta {
+  margin-left: auto;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ws-chart-plot {
+  position: relative;
+  touch-action: pan-y;
+}
+.ws-chart-plot > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ws-chart-ylabel {
+  position: absolute;
+  left: 4px;
+  padding: 0 3px;
+  font-size: var(--ui-font-small);
+  line-height: 1.3;
+  color: var(--ui-muted);
+  background: color-mix(in srgb, var(--ui-surface) 80%, transparent);
+  border-radius: 2px;
+  transform: translateY(-110%);
+  font-variant-numeric: tabular-nums;
+}
+.ws-chart-legend {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--ui-space-3);
+  padding: 2px 8px;
+  font-size: var(--ui-font-small);
+  line-height: 1.5;
+  color: var(--ui-muted);
+  background: color-mix(in srgb, var(--ui-surface) 88%, transparent);
+  border-radius: var(--ui-radius);
+}
+.ws-chart-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ws-chart-legend-unit {
+  padding-left: var(--ui-space-3);
+  border-left: 1px solid var(--ui-border);
+  font-weight: 600;
+  color: var(--ui-text);
+}
+.ws-chart-tooltip {
+  position: absolute;
+  bottom: 8px;
+  z-index: 2;
+  min-width: 180px;
+  padding: var(--ui-space-2) var(--ui-space-3);
+  font-size: var(--ui-font-small);
+  line-height: 1.5;
+  color: var(--ui-muted);
+  background: var(--surface-raised);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+.ws-chart-tooltip > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ui-space-4);
+}
+.ws-chart-tooltip > div:first-child {
+  margin-bottom: 2px;
+  font-size: var(--ui-font-body);
+  font-weight: 600;
+  color: var(--ui-text);
+}
+.ws-chart-tooltip strong {
+  font-weight: 600;
+  color: var(--ui-text);
+  font-variant-numeric: tabular-nums;
+}
+.ws-chart-axis {
+  position: relative;
+  height: 16px;
+  margin-top: 4px;
+  font-size: var(--ui-font-small);
+  line-height: 16px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ws-chart-axis > span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+.ws-chart-brush {
+  display: grid;
+  gap: 2px;
+  margin-top: var(--ui-space-3);
+}
+.ws-chart-brush input[type='range'] {
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--ui-accent);
+}
+.ws-chart-details {
+  margin-top: var(--ui-space-3);
+  padding-top: var(--ui-space-2);
+  border-top: 1px solid var(--ui-border);
+}
+.ws-chart-details > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-height: 36px;
+  font-weight: 500;
+  color: var(--ui-accent);
+  list-style: none;
+  cursor: pointer;
+}
+.ws-chart-details > summary::-webkit-details-marker {
+  display: none;
+}
+.ws-chart-details > summary:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ws-chart-table {
+  margin-top: var(--ui-space-2);
+  overflow-x: auto;
+}
+.ws-chart-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ws-chart-table th {
+  white-space: nowrap;
+}
+.ws-chart-table .ds-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ws-chart-table tbody tr {
+  border-top: 1px solid var(--ui-border);
+}
+
+/* ------------------------------------------------------------------ */
+/* Edit panel: docked (≥1280), overlay (761–1279), sheet (≤760)        */
+/* ------------------------------------------------------------------ */
+
+.ws-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  color: var(--ui-text);
+  background: var(--surface-raised);
+  outline: none;
+}
+/* Docked: a column of the page, separated by a hairline; it fades and
+   slides in over 16px. The page column snaps (no width animation — the
+   charts would re-measure every frame). */
+.ws-panel[data-mode='docked'] {
+  grid-area: panel;
+  position: sticky;
+  top: var(--ws-sticky-top);
+  align-self: start;
+  width: var(--ws-panel-width);
+  height: calc(100dvh - var(--ws-sticky-top));
+  background: var(--ui-surface);
+  border-left: 1px solid var(--ui-border);
+  animation: ws-panel-in-docked var(--motion-base) var(--motion-ease);
+}
+.ws-panel[data-mode='overlay'] {
+  position: fixed;
+  top: var(--ws-bar-bottom);
+  right: 0;
+  bottom: 0;
+  z-index: 42;
+  width: min(var(--ui-sheet-width), 100vw - 48px);
+  border-left: 1px solid var(--ui-border);
+  box-shadow: var(--shadow-sheet);
+  animation: ws-panel-in-right var(--motion-slow) var(--motion-ease);
+}
+.ws-panel[data-mode='overlay'][data-state='closed'] {
+  animation: ws-panel-out-right 180ms var(--motion-ease) forwards;
+}
+.ws-panel[data-mode='sheet'] {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 45;
+  height: calc(100dvh - env(safe-area-inset-top, 0px) - 12px);
+  border-top: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius) var(--ui-radius) 0 0;
+  box-shadow: var(--shadow-sheet-up);
+  animation: ws-panel-in-up var(--motion-slow) var(--motion-ease);
+}
+.ws-panel[data-mode='sheet'][data-state='closed'] {
+  animation: ws-panel-out-down 180ms var(--motion-ease) forwards;
+}
+.ws-panel-scrim {
+  position: fixed;
+  inset: var(--ws-bar-bottom) 0 0 0;
+  z-index: 41;
+  background: var(--scrim);
+  animation: ws-fade-in var(--motion-base) var(--motion-ease);
+}
+.ws-panel-scrim[data-mode='sheet'] {
+  inset: 0;
+  z-index: 44;
+}
+.ws-panel-header {
+  flex: none;
+  padding: var(--ui-space-4) var(--ui-space-6);
+  background: inherit;
+  border-bottom: 1px solid var(--ui-border);
+  border-radius: inherit;
+}
+.ws-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+}
+.ws-panel-header h2 {
+  margin: 0;
+  padding-top: 6px;
+  font-size: var(--ui-font-section);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.ws-panel-header h2:focus {
+  outline: none;
+}
+.ws-panel-close {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--ui-control-height);
+  height: var(--ui-control-height);
+  margin-right: calc(-1 * var(--ui-space-2));
+  color: var(--ui-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease);
+}
+.ws-panel-close:hover {
+  color: var(--ui-text);
+  background: var(--ui-subtle);
+}
+.ws-panel-description {
+  max-width: 48ch;
+  margin: 2px 0 0;
+  color: var(--ui-muted);
+}
+.ws-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--ui-space-6);
+}
+.ws-panel-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-4);
+}
+.ws-panel-footer {
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-3) var(--ui-space-6) calc(var(--ui-space-3) + env(safe-area-inset-bottom));
+  background: inherit;
+  border-top: 1px solid var(--ui-border);
+}
+.ws-panel-walk {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.ws-panel-walk .workspace-button {
+  justify-content: flex-start;
+  max-width: 100%;
+  min-height: 36px;
+  padding-inline: var(--ui-space-2);
+  text-align: left;
+}
+.ws-panel-walk .workspace-button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-panel-footer [data-testid='edit-panel-done'] {
+  flex: none;
+}
+/* Phones: the bar is behind the sheet, so the sheet header carries the live
+   result — the same figure, the same tween. */
+.ws-panel-mini {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ui-space-2);
+  margin-top: var(--ui-space-3);
+  padding-top: var(--ui-space-3);
+  border-top: 1px solid var(--ui-border);
+}
+.ws-panel-mini-label {
+  font-size: var(--ui-font-small);
+  font-weight: 500;
+  color: var(--ui-muted);
+}
+.ws-panel-mini-rate {
+  font-size: var(--ui-font-kpi);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  transition: opacity var(--motion-base) var(--motion-ease);
+}
+.ws-panel-mini .ds-delta {
+  align-self: center;
+  padding: 1px 6px;
+  font-size: var(--ui-font-small);
+  line-height: 16px;
+  transition: opacity var(--motion-fast) var(--motion-ease);
+}
+.ws-panel-mini[data-running] .ws-panel-mini-rate,
+.ws-panel-mini [data-pending] {
+  opacity: 0.55;
+}
+.ws-spin {
+  align-self: center;
+  color: var(--ui-accent);
+  animation: workspace-spin 0.9s linear infinite;
+}
+/* Deep-linked field: a short wash that fades. */
+.ws-panel [data-flash] {
+  border-radius: var(--ui-radius);
+  animation: ws-flash 1.2s ease-out;
+}
+
+/* ---- Panel contents (editor groups): one surface, hairline structure -- */
+
+/* Slider fields are shared with the setup wizard, where they sit in a frame.
+   In the panel (already a surface) the frame and the value chip go. */
+.ws-panel-body div:has(> span[data-orientation='horizontal']) {
+  padding: var(--ui-space-2) 0 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.ws-panel-body output {
+  padding: 0;
+  font-size: var(--ui-font-body);
+  font-weight: 600;
+  color: var(--ui-text);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sub-headings under the panel's h2 title are h3 (heading order). */
+.ws-panel-body :is(h3, .ws-group-label) {
+  margin: 0;
+  font-size: var(--ui-font-body);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ui-text);
+}
+.ws-panel-body h3 {
+  font-size: var(--ui-font-lead);
+}
+/* Plan stats: a plain row of figures, columns split by hairlines. */
+.ws-stats {
+  display: flex;
+  margin: 0;
+  padding-bottom: var(--ui-space-4);
+  border-bottom: 1px solid var(--ui-border);
+  transition: opacity var(--motion-base) var(--motion-ease);
+}
+.ws-stats > div {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 var(--ui-space-4);
+}
+.ws-stats > div:first-child {
+  padding-left: 0;
+}
+.ws-stats > div:last-child {
+  padding-right: 0;
+}
+.ws-stats > div + div {
+  border-left: 1px solid var(--ui-border);
+}
+.ws-stats dt {
+  font-size: var(--ui-font-small);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ui-muted);
+}
+.ws-stats dd {
+  margin: 0;
+}
+.ws-stats .ws-stats-value {
+  margin-top: var(--ui-space-1);
+  font-size: var(--ui-font-lead);
+  font-weight: 600;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.ws-stats .ws-stats-hint {
+  margin-top: 2px;
+  font-size: var(--ui-font-small);
+  line-height: 1.35;
+  color: var(--ui-muted);
+}
+.ws-stats[data-stale] {
+  opacity: 0.4;
+}
+/* Choice groups (market model, presets, household): outlined options; the
+   chosen one takes the accent edge and a faint accent wash. */
+.ws-choices {
+  display: grid;
+  gap: var(--ui-space-2);
+}
+@container (min-width: 28rem) {
+  .ws-choices[data-columns='2'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ws-choices[data-columns='3'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.ws-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px var(--ui-space-3);
+  font: inherit;
+  text-align: left;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease);
+}
+.ws-choice:hover:not(:disabled) {
+  border-color: var(--line-strong);
+}
+.ws-choice[aria-pressed='true'] {
+  background: var(--ui-tint-accent);
+  border-color: var(--ui-accent);
+  box-shadow: inset 0 0 0 1px var(--ui-accent);
+}
+.ws-choice:disabled {
+  cursor: default;
+}
+.ws-choice-title {
+  font-weight: 600;
+  line-height: 1.4;
+}
+.ws-choice-detail {
+  font-size: var(--ui-font-small);
+  line-height: 1.45;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ws-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-2);
+}
+.ws-field-group[aria-disabled='true'] {
+  opacity: 0.55;
+}
+/* Former boxes (glide path, taxes): subsections with a hairline on top. */
+.ws-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-4);
+  padding-top: var(--ui-space-6);
+  border-top: 1px solid var(--ui-border);
+}
+.ws-subsection-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+}
+.ws-subsection-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+.ws-subsection .ws-disclosure {
+  border-bottom: 1px solid var(--ui-border);
+}
+.ws-subsection-note {
+  margin: 0;
+  font-size: var(--ui-font-small);
+  line-height: 1.5;
+  color: var(--ui-muted);
+}
+/* On/off switch: a small track and knob beside its word. */
+.ws-switch {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-height: 36px;
+  padding: 0 var(--ui-space-1);
+  font: inherit;
+  font-weight: 500;
+  color: var(--ui-text);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-switch-track {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  background: var(--ui-subtle);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
+}
+.ws-switch-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--ui-muted);
+  border-radius: 50%;
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease);
+}
+.ws-switch[aria-checked='true'] .ws-switch-track {
+  background: var(--action);
+  border-color: var(--action);
+}
+.ws-switch[aria-checked='true'] .ws-switch-track::after {
+  background: var(--on-action);
+  transform: translateX(14px);
+}
+/* Pointers to another panel or section: a quiet ruled row with a link. */
+.ws-pointer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ui-space-1);
+  width: 100%;
+  padding: var(--ui-space-4) 0 0;
+  font: inherit;
+  text-align: left;
+  color: var(--ui-muted);
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--ui-border);
+  cursor: pointer;
+}
+.ws-pointer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+  font-weight: 500;
+  color: var(--ui-accent);
+}
+.ws-pointer:hover .ws-pointer-link {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@keyframes ws-panel-in-docked {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+@keyframes ws-panel-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes ws-panel-out-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes ws-panel-in-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes ws-panel-out-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes ws-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ws-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes ws-flash {
+  from {
+    background: var(--ui-subtle);
+    box-shadow: 0 0 0 8px var(--ui-subtle);
+  }
+  to {
+    background: transparent;
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Breakpoints                                                         */
+/* ------------------------------------------------------------------ */
+
+@media (min-width: 1280px) {
+  .ws-bar-saved {
+    display: inline-flex;
+  }
+}
+@media (max-width: 1439px) {
+  .ws-bar-save svg {
+    display: none;
+  }
+}
+/* 1024–1279: the bar spans the rail column too (the rail starts under it),
+   which is what lets one row hold the KPIs, the draft cluster, the plan
+   picker and the Menu next to a 184px rail. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .ws-page {
+    grid-template-areas:
+      'bar bar bar'
+      'rail main panel';
+  }
+  .ws-rail {
+    top: var(--ws-bar-bottom);
+    height: calc(100dvh - var(--ws-bar-bottom));
+  }
+}
+@media (min-width: 1440px) {
+  .ws-page {
+    --ws-panel-width: var(--ui-sheet-width);
+  }
+  .ws-bar-marker-long {
+    display: inline;
+  }
+  .ws-bar-marker-short {
+    display: none;
+  }
+}
+/* Discard is its undo icon where the bar is tight (label in aria-label/title). */
+@media (min-width: 761px) and (max-width: 1279px) {
+  .ws-discard-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Tablets: the index becomes a sticky chip row under the bar. */
+@media (max-width: 1023px) {
+  .ws-page {
+    --ws-section-gap: var(--ui-space-12);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'bar'
+      'index'
+      'main';
+  }
+  .ws-rail {
+    display: contents;
+  }
+  .ws-rail .workspace-brand,
+  .ws-rail-footer {
+    display: none;
+  }
+  .ws-index {
+    grid-area: index;
+    position: sticky;
+    top: var(--ws-bar-bottom);
+    z-index: 30;
+    min-width: 0;
+    background: var(--ui-surface);
+    border-bottom: 1px solid var(--ui-border);
+  }
+  .ws-index ol {
+    flex-direction: row;
+    gap: var(--ui-space-1);
+    padding: 0 var(--ui-space-4);
+    overflow-x: auto;
+    border-left: 0;
+    scrollbar-width: none;
+  }
+  .ws-index a {
+    gap: var(--ui-space-2);
+    height: 44px;
+    padding: 0 var(--ui-space-3);
+    border-top: 2px solid transparent;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+  }
+  .ws-index a:hover {
+    background: transparent;
+  }
+  .ws-index a[aria-current='location'] {
+    border-bottom-color: var(--ui-accent);
+  }
+  .ws-index svg {
+    width: 16px;
+    height: 16px;
+  }
+  .ws-index-indicator {
+    display: none;
+  }
+  .ws-main {
+    padding: var(--ui-space-6) var(--ui-space-6) var(--ui-space-10);
+  }
+  /* The Menu carries the € switch below 1024px. */
+  body:has(.ws-page) .workspace-menu-display {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: var(--ui-font-small);
+    font-weight: 500;
+    color: var(--ui-muted);
+  }
+  body:has(.ws-page) .workspace-menu-display .workspace-euro button {
+    font-size: var(--ui-font-body);
+  }
+}
+@media (min-width: 761px) and (max-width: 1023px) {
+  .ws-bar-label-long {
+    display: none;
+  }
+  .ws-bar-label-short {
+    display: inline;
+  }
+  /* While dirty the end-assets KPI steps aside (it stays in the Ergebnis facts). */
+  .ws-bar[data-dirty] .ws-bar-kpi[data-kpi='end'] {
+    display: none;
+  }
+  .ws-bar {
+    column-gap: var(--ui-space-2);
+    padding-inline: var(--ui-space-4);
+  }
+  .ws-bar-draft {
+    gap: var(--ui-space-1);
+  }
+  /* While dirty, Recalculate follows the phone rule (only when needed):
+     auto-run keeps results current, and the row needs the room. */
+  .ws-bar[data-dirty] .ws-bar-run-button:not([data-needs-run]) {
+    display: none;
+  }
+}
+
+/* Phones: one sticky bar of three rows — the plan row scrolls away, the KPI
+   row (with Menü) and the draft row stay pinned — plus a fixed bottom index. */
+@media (max-width: 760px) {
+  .ws-page {
+    --ws-section-gap: var(--ui-space-10);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'bar'
+      'main';
+  }
+  .ws-bar {
+    top: calc(env(safe-area-inset-top, 0px) - 52px);
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 52px 52px auto;
+    grid-template-areas:
+      'plan plan'
+      'kpis menu'
+      'draft draft';
+    column-gap: var(--ui-space-2);
+    padding: 0 var(--ui-space-4);
+  }
+  .ws-bar-plan {
+    align-self: center;
+  }
+  .ws-bar .workspace-plan-trigger {
+    width: 100%;
+    max-width: none;
+  }
+  .ws-bar-kpi {
+    grid-template-areas:
+      'label delta'
+      'value value';
+    padding: 0 var(--ui-space-3);
+  }
+  .ws-bar-label-long {
+    display: none;
+  }
+  .ws-bar-label-short {
+    display: inline;
+  }
+  /* The delta joins the short label ("Erfolg · +1,3 Pkt."). */
+  .ws-bar .ws-bar-delta {
+    align-self: baseline;
+    padding: 0;
+    font-size: var(--ui-font-small);
+    line-height: 16px;
+    background: none;
+    border: 0;
+  }
+  .ws-bar-delta::before {
+    content: '· ';
+    color: var(--ui-muted);
+  }
+  /* The label line says "Erfolg · +1,3": the unit is in the accessible text. */
+  .ws-bar-delta-full {
+    display: none;
+  }
+  .ws-bar-delta-short {
+    display: inline;
+  }
+  .ws-bar-run-button:not([data-needs-run]) {
+    display: none;
+  }
+  /* When results are out of date (or not there yet) the end-assets figure
+     has nothing current to say; Recalculate takes its place in the row. */
+  .ws-bar[data-needs-run] .ws-bar-kpi[data-kpi='end'] {
+    display: none;
+  }
+  .ws-bar-menu {
+    justify-self: end;
+  }
+  .ws-bar-draft {
+    justify-self: stretch;
+    min-height: 44px;
+    border-top: 1px solid var(--ui-border);
+  }
+  .ws-bar:not([data-dirty]) .ws-bar-draft {
+    display: none;
+  }
+  .ws-bar-marker {
+    flex-shrink: 0;
+    margin-right: auto;
+  }
+  .ws-bar-draft .workspace-button {
+    flex-shrink: 0;
+    padding-inline: var(--ui-space-3);
+  }
+  .ws-index {
+    grid-area: auto;
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    border-top: 1px solid var(--ui-border);
+    border-bottom: 0;
+  }
+  .ws-index ol {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0;
+    padding: 0;
+    overflow: visible;
+  }
+  .ws-index a {
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    height: 56px;
+    padding: var(--ui-space-1) 0;
+    font-size: var(--ui-font-small);
+    line-height: 1.25;
+    border-top: 2px solid transparent;
+    border-bottom: 0;
+  }
+  .ws-index a:hover {
+    color: var(--ui-muted);
+  }
+  .ws-index a[aria-current='location'] {
+    color: var(--ui-accent);
+    border-top-color: var(--ui-accent);
+  }
+  .ws-index svg {
+    width: 20px;
+    height: 20px;
+  }
+  /* Short labels on the bar; the full name stays the accessible name. */
+  .ws-index-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* Five 64px items at 320px: the longest short label ("Annahmen",
+     "Drawdown") fits with a hair of tracking. */
+  .ws-index-short {
+    display: inline;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  .ws-main {
+    padding: var(--ui-space-4) var(--ui-space-4)
+      calc(var(--ui-space-6) + 56px + env(safe-area-inset-bottom));
+  }
+  body:has(.ws-page) {
+    --toast-bottom: calc(66px + env(safe-area-inset-bottom));
+  }
+  .ws-section-header {
+    grid-template-columns: minmax(0, 1fr);
+    margin-bottom: var(--ui-space-4);
+  }
+  .ws-section-actions {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+    margin-top: var(--ui-space-2);
+  }
+  .ws-setup-hint {
+    text-align: left;
+  }
+  .ws-verdict {
+    margin-bottom: var(--ui-space-6);
+  }
+  .ws-facts {
+    grid-template-columns: minmax(0, 1fr);
+    margin-bottom: var(--ui-space-6);
+  }
+  .ws-facts > div {
+    padding: var(--ui-space-3) 0;
+  }
+  .ws-facts > div + div {
+    border-top: 1px solid var(--ui-border);
+    border-left: 0;
+  }
+  .ws-chart-card,
+  .ws-card,
+  .ws-sankey {
+    padding: var(--ui-space-4);
+  }
+  .ws-chart-card {
+    margin-bottom: var(--ui-space-6);
+  }
+  .ws-cards {
+    gap: var(--ui-space-3);
+  }
+  .ws-card h3 {
+    margin-bottom: var(--ui-space-3);
+  }
+  .ws-life-stages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: var(--ui-space-3);
+    margin-bottom: var(--ui-space-6);
+  }
+  .ws-panel-header,
+  .ws-panel-body {
+    padding-inline: var(--ui-space-4);
+  }
+  .ws-panel-footer {
+    padding-inline: var(--ui-space-4);
+  }
+}
+/* Narrow phones: an out-of-date Recalculate is its icon (label in
+   aria-label); the draft row's buttons drop their icons (the old ≤420 rule),
+   until ≤360 turns Discard into its icon alone. */
+@media (max-width: 419px) {
+  .ws-bar-run-button[data-needs-run] .ws-run-label {
+    display: none;
+  }
+  .ws-bar-draft .workspace-button svg {
+    display: none;
+  }
+  /* The pinned KPI row keeps to the two figures and Menü (wireframe C): the
+     status icon is visually hidden but stays a live region; dimmed values
+     show a run in flight, and stale results bring up Recalculate. */
+  .ws-bar .ws-bar-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+@media (max-width: 360px) {
+  .ws-bar-value {
+    font-size: 18px;
+  }
+  .ws-bar-kpi {
+    padding: 0 var(--ui-space-2);
+  }
+  .ws-bar .ws-bar-value {
+    min-inline-size: 0;
+  }
+  .ws-bar-kpis {
+    gap: var(--ui-space-1);
+  }
+  .ws-bar [data-testid='dashboard-tools'] {
+    padding-inline: var(--ui-space-3);
+  }
+  .ws-bar-draft .workspace-button {
+    padding-inline: var(--ui-space-2);
+  }
+  .ws-bar-draft [data-testid='command-discard'] svg {
+    display: inline;
+  }
+  .ws-discard-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Reduced motion: no transforms, no tweens, no sheen, instant swaps.   */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-panel,
+  .ws-panel[data-state='closed'],
+  .ws-panel-scrim,
+  .ws-spin,
+  .ws-bar-delta,
+  .ws-bar-draft > *,
+  .ws-skeleton::after {
+    animation: none !important;
+  }
+  .ws-page *,
+  .ws-panel,
+  .ws-panel * {
+    transition-duration: 0s !important;
+  }
+  .ws-panel [data-flash] {
+    animation: none;
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 4px;
+  }
+}

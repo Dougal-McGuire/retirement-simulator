@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, gotoWorkspace, openPanel, openSection, test } from './helpers/workspace'
 
 test.describe('i18n routing', () => {
   test('redirects root to default locale landing page', async ({ page }) => {
@@ -10,21 +10,20 @@ test.describe('i18n routing', () => {
   })
 
   test('renders German translations on simulation page', async ({ page }) => {
-    await page.goto('/de/simulation')
-    await page.getByText('Was wäre, wenn …?', { exact: true }).click()
-    // The compact chrome, in German: the run button, a lever label and a tab.
-    await expect(page.getByTestId('run-button')).toContainText('Neu berechnen')
-    await expect(page.getByTestId('tab-overview')).toContainText('Überblick')
+    await gotoWorkspace(page, '/de/simulation')
+    // The workspace in German: the run button, the section index and a lever.
+    await expect(page.getByTestId('run-button')).toHaveAccessibleName('Neu berechnen')
+    await expect(page.getByTestId('section-index')).toContainText('Ergebnis')
+    await expect(page.getByRole('navigation', { name: 'Abschnitte' })).toBeVisible()
+    await openSection(page, 'levers')
     await expect(
-      page.getByTestId('compact-command-bar').getByRole('slider', { name: 'Jährliche Sparrate' })
+      page.getByTestId('quick-levers').getByRole('slider', { name: 'Jährliche Sparrate' })
     ).toBeVisible()
   })
 
   test('localises the seeded cash-flow names in German', async ({ page }) => {
-    await page.goto('/de/simulation')
-    await page.getByText('Was wäre, wenn …?', { exact: true }).click()
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-cashFlows').click()
+    await gotoWorkspace(page, '/de/simulation')
+    await openPanel(page, 'flows')
 
     // The eight default flows carry a `nameKey`, so they follow the UI
     // language instead of rendering the English strings stored in the plan.
@@ -36,9 +35,8 @@ test.describe('i18n routing', () => {
   })
 
   test('keeps a user-renamed flow verbatim in every language', async ({ page }) => {
-    await page.goto('/en/simulation')
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-cashFlows').click()
+    await gotoWorkspace(page)
+    await openPanel(page, 'flows')
 
     const list = page.getByTestId('cashflow-list')
     // The seeded "Groceries" flow keeps the id `food`, so its edit form fields
@@ -51,11 +49,11 @@ test.describe('i18n routing', () => {
 
     // Commit the working copy so the rename survives the reload.
     await page.getByTestId('command-save').click()
+    await expect(page.getByTestId('command-save')).toHaveCount(0)
 
-    await page.goto('/de/simulation')
-    await page.getByText('Was wäre, wenn …?', { exact: true }).click()
-    await page.getByTestId('tab-plan').click()
-    await page.getByTestId('plan-section-pill-cashFlows').click()
+    // The open panel is part of the URL: the German page reopens it.
+    await gotoWorkspace(page, '/de/simulation#assumptions:flows')
+    await expect(page.getByTestId('edit-panel')).toHaveAttribute('data-panel', 'flows')
     // The user's own text wins over the seeded translation.
     await expect(page.getByTestId('cashflow-list')).toContainText('Wocheneinkauf')
     await expect(page.getByTestId('cashflow-list')).not.toContainText('Lebensmittel')

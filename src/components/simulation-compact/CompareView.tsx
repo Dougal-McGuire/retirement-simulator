@@ -18,6 +18,7 @@ import { useComparisonStore, useSetComparisonSelection } from '@/lib/stores/comp
 import { buildCompactKpis, type CompactKpis } from './metrics'
 import { CompareFanChart, type CompareFanSeries } from './CompareFanChart'
 import { formatEuroDelta, formatMillionsEuro, formatPpDelta, formatThousandsEuro } from './format'
+import { Skeleton } from '@/components/workspace/Skeleton'
 
 const ALT_COLORS = ['var(--viz-3)', 'var(--viz-5)'] as const
 
@@ -269,25 +270,9 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
       {/* Layout (wrapping header, KPI grid, chart/table columns that stack
           on narrow screens) lives in workspace.css under .compare-*. */}
       <header className="compare-header">
-        <span
-          aria-hidden="true"
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: 4,
-            background: 'var(--action)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--on-action)',
-            font: '600 10px var(--font-mono)',
-            flex: 'none',
-          }}
-        >
-          R
-        </span>
-        <span style={{ fontWeight: 650, whiteSpace: 'nowrap', fontSize: 13 }}>{t('title')}</span>
-        <div style={{ width: 1, height: 26, background: 'var(--line)', flex: 'none' }} />
+        <h2 id="compare-title" tabIndex={-1} className="compare-title">
+          {t('title')}
+        </h2>
         {plans.map((plan) => {
           const selected = selectedIds.includes(plan.id)
           const isBase = plan.id === activePlanId
@@ -298,24 +283,18 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
             <button
               key={plan.id}
               type="button"
-              className="ds-chip"
+              className="ds-chip compare-chip"
               aria-pressed={selected}
               onClick={() => toggle(plan.id)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                minHeight: 34,
-                ...(altColor
+              style={
+                altColor
                   ? { background: altColor, borderColor: altColor, color: 'var(--on-hue)' }
-                  : {}),
-              }}
+                  : undefined
+              }
             >
               <span
+                className="compare-chip-dot"
                 style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
                   background: selected ? 'currentColor' : 'var(--gray-400)',
                   ...(isBase && selected
                     ? { background: 'var(--viz-1)', outline: '1px solid currentColor' }
@@ -328,22 +307,22 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
         })}
         <button
           type="button"
-          className="ds-btn ds-btn--ghost ds-btn--sm"
-          style={{ whiteSpace: 'nowrap', minHeight: 34 }}
+          className="compare-add"
           onClick={addPlan}
           disabled={selectedIds.length >= MAX_COMPARISON_PLANS}
         >
           {t('addPlan', { max: MAX_COMPARISON_PLANS })}
         </button>
         <div className="compare-header-end">
-          <span className="ds-meta" style={{ whiteSpace: 'nowrap' }}>
+          <span className="compare-meta">
             {running || !runsLabel
               ? t('running')
               : t('meta', { count: ready.length, runs: runsLabel })}
           </span>
           <button
             type="button"
-            className="ds-btn ds-btn--outline ds-btn--sm compare-exit"
+            className="workspace-button compare-exit"
+            data-testid="compare-exit"
             onClick={onExit}
           >
             {t('exit')}
@@ -395,36 +374,13 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
             ] as const
           ).map((cell) => (
             <div key={cell.key} className="compare-kpi">
-              <p className="ds-micro">{cell.label}</p>
-              <div
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'baseline',
-                  gap: 6,
-                  marginTop: 2,
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    fontVariantNumeric: 'tabular-nums',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {cell.baseValue}
+              <p className="compare-kpi-label">{cell.label}</p>
+              <div className="compare-kpi-values">
+                <span className="compare-kpi-value">{cell.baseValue}</span>
+                <span className="compare-kpi-arrow" aria-hidden="true">
+                  →
                 </span>
-                <span className="ds-meta">→</span>
-                <span
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    fontVariantNumeric: 'tabular-nums',
-                    color: ALT_COLORS[0],
-                    whiteSpace: 'nowrap',
-                  }}
-                >
+                <span className="compare-kpi-value" style={{ color: ALT_COLORS[0] }}>
                   {cell.altValue}
                 </span>
                 {deltaBadge(
@@ -442,8 +398,12 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
           {chartSeries.length > 0 ? (
             <CompareFanChart series={chartSeries} />
           ) : (
-            <div className="ds-card" style={{ height: 266, display: 'grid', placeItems: 'center' }}>
-              <span className="ds-meta">{t('running')}</span>
+            <div className="ds-card ws-fan" style={{ padding: 16 }}>
+              <Skeleton height={40} width="16rem" />
+              <Skeleton variant="chart" height={266} style={{ marginTop: 12 }} />
+              <p className="sr-only" role="status">
+                {t('running')}
+              </p>
             </div>
           )}
         </div>
@@ -486,31 +446,9 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
               })}
             </tbody>
           </table>
-          <div
-            style={{
-              padding: '7px 12px',
-              borderTop: '1px solid var(--line)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              background: 'var(--gray-50)',
-            }}
-          >
-            <span className="ds-meta">{t('changedRows')}</span>
-            <button
-              type="button"
-              onClick={onOpenPlanEditor}
-              style={{
-                border: 0,
-                background: 'none',
-                padding: 0,
-                font: 'inherit',
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--link)',
-                textDecoration: 'underline',
-                cursor: 'pointer',
-              }}
-            >
+          <div className="compare-table-foot">
+            <span>{t('changedRows')}</span>
+            <button type="button" className="ws-link-button" onClick={onOpenPlanEditor}>
               {t('openEditor')}
             </button>
           </div>

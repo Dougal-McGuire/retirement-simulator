@@ -1,13 +1,22 @@
 'use client'
 
+import { useRef } from 'react'
 import * as SliderPrimitive from '@radix-ui/react-slider'
+import { RotateCcw } from 'lucide-react'
+
+/** Thumb diameter in px; `.ws-levers-slider-thumb` in levers.css must match. */
+const THUMB_SIZE = 18
 
 /**
- * The command bar's inline what-if lever. It fires on every drag step — the
- * simulation store debounces the recompute, so scrubbing stays live while the
- * larger typography and thumb make it comfortable on touch screens as well.
+ * Where Radix centres the thumb for a value at `percent`: it keeps the thumb
+ * inside the track, shifting it by up to half its width at the ends. The plan
+ * mark uses the same geometry so it sits exactly under the thumb's old spot.
  */
+const thumbCenter = (percent: number) =>
+  `calc(${percent}% + ${(THUMB_SIZE / 2) * (1 - percent / 50)}px)`
+
 interface InlineSliderProps {
+  /** Visible label; the thumb is named by `ariaLabel`. */
   label: string
   ariaLabel: string
   value: number
@@ -16,13 +25,22 @@ interface InlineSliderProps {
   step: number
   formattedValue: string
   valueText?: string
-  width: number
   onChange: (value: number) => void
+  /** Present while the draft differs from the saved plan. */
   onReset?: () => void
+  /** Accessible name and tooltip of the reset button, e.g. "Reset Annual savings". */
+  resetLabel: string
+  /** The saved plan's value: a quiet mark on the track while the draft differs. */
+  planValue?: number
   disabled?: boolean
-  resetLabel?: string
 }
 
+/**
+ * A what-if slider for the Stellschrauben section: label and value on one
+ * line, the track below. It fires on every drag step — the store debounces
+ * the recompute, so scrubbing stays live. Styled by `.ws-levers-slider*` in
+ * `workspace/sections/levers.css`.
+ */
 export function InlineSlider({
   label,
   ariaLabel,
@@ -32,85 +50,74 @@ export function InlineSlider({
   step,
   formattedValue,
   valueText,
-  width,
   onChange,
   onReset,
   resetLabel,
+  planValue,
   disabled = false,
 }: InlineSliderProps) {
+  const thumbRef = useRef<HTMLSpanElement>(null)
+  const span = max - min
+  const markPercent =
+    planValue !== undefined &&
+    planValue !== value &&
+    span > 0 &&
+    planValue >= min &&
+    planValue <= max
+      ? ((planValue - min) / span) * 100
+      : null
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 9,
-        flex: '1 1 auto',
-        maxWidth: width,
-        minWidth: Math.max(190, width - 70),
-        opacity: disabled ? 0.5 : 1,
-      }}
-    >
-      <span
-        style={{
-          fontSize: 13,
-          color: 'var(--text-label)',
-          fontWeight: 600,
-          whiteSpace: 'nowrap',
-        }}
-        aria-hidden="true"
-      >
-        {label}
-      </span>
+    <div className="ws-levers-slider" data-disabled={disabled || undefined}>
+      <div className="ws-levers-slider-head">
+        <span className="ws-levers-slider-label" aria-hidden="true">
+          {label}
+        </span>
+        {onReset && (
+          <button
+            type="button"
+            className="ws-levers-slider-reset"
+            aria-label={resetLabel}
+            title={resetLabel}
+            onClick={() => {
+              onReset()
+              // The button leaves with the difference; keep focus on the lever.
+              thumbRef.current?.focus()
+            }}
+          >
+            <RotateCcw size={14} aria-hidden="true" />
+          </button>
+        )}
+        <span className="ws-levers-slider-value" aria-hidden="true">
+          {formattedValue}
+        </span>
+      </div>
       <SliderPrimitive.Root
-        className="ds-slider"
+        className="ws-levers-slider-control"
         disabled={disabled}
         value={[value]}
         min={min}
         max={max}
         step={step}
         onValueChange={([next]) => onChange(next)}
-        style={{ minHeight: 34, flex: '1 1 90px' }}
       >
-        <SliderPrimitive.Track className="ds-slider-track">
-          <SliderPrimitive.Range className="ds-slider-range" />
+        <SliderPrimitive.Track className="ws-levers-slider-track">
+          <SliderPrimitive.Range className="ws-levers-slider-range" />
         </SliderPrimitive.Track>
+        {markPercent !== null && (
+          <span
+            className="ws-levers-slider-mark"
+            style={{ left: thumbCenter(markPercent) }}
+            aria-hidden="true"
+          />
+        )}
         <SliderPrimitive.Thumb
-          className="ds-slider-thumb"
+          ref={thumbRef}
+          className="ws-levers-slider-thumb"
           aria-label={ariaLabel}
           aria-valuetext={valueText ?? formattedValue}
-          style={{ width: 16, height: 16 }}
         />
       </SliderPrimitive.Root>
-      <span
-        style={{
-          fontSize: 13,
-          fontWeight: 600,
-          fontVariantNumeric: 'tabular-nums',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {formattedValue}
-      </span>
-      {onReset && (
-        <button
-          type="button"
-          className="ds-btn ds-btn--ghost ds-btn--sm"
-          aria-label={resetLabel ?? `Reset ${ariaLabel}`}
-          title={resetLabel ?? `Reset ${ariaLabel}`}
-          onClick={onReset}
-          style={{
-            flex: 'none',
-            width: 32,
-            minWidth: 32,
-            minHeight: 32,
-            padding: 0,
-            fontSize: 17,
-            lineHeight: 1,
-          }}
-        >
-          ↺
-        </button>
-      )}
     </div>
   )
 }

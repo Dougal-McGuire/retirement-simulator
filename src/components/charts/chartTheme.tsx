@@ -72,27 +72,6 @@ export function niceCeil(value: number): number {
   return step * base
 }
 
-/**
- * Pick the upper bound of a fan chart's value axis.
- *
- * `focus` scales the plot to the likely range (P20–P80) plus headroom so the
- * median band fills the frame; otherwise the full P10–P90 range is shown.
- * Returns `undefined` when there is nothing to clamp, letting Recharts decide.
- */
-export function fanDomainMax(
-  medianMax: number,
-  innerMax: number,
-  outerMax: number,
-  focus: boolean
-): number | undefined {
-  if (!Number.isFinite(outerMax) || outerMax <= 0) return undefined
-  if (!focus) return niceCeil(outerMax * 1.02) || undefined
-  // Give the median path roughly the lower two-thirds of the plot and keep at
-  // least part of the P20–P80 band in frame.
-  const target = Math.max(medianMax * 1.55, innerMax * 0.75, outerMax * 0.25)
-  return niceCeil(Math.min(outerMax, target)) || undefined
-}
-
 /** Chrome for the zoom brush: a deliberate range navigator, not a scrollbar. */
 export const brushChrome = (isMobile: boolean) => ({
   height: isMobile ? 26 : 30,

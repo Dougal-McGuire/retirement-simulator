@@ -1,9 +1,15 @@
-import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import {
+  expect,
+  expectNoHorizontalOverflow,
+  gotoWorkspace,
+  openSection,
+  sectionHeading,
+  test,
+} from './helpers/workspace'
 
 test('cash-flow diagram follows the selected year and speaks German', async ({ page }) => {
-  await page.goto('/de/simulation')
-  await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
-  await page.getByTestId('tab-cashflow').click()
+  await gotoWorkspace(page, '/de/simulation#cashflow')
   const sankey = page.getByTestId('cashflow-sankey')
   await expect(sankey).toBeVisible()
   await expect(sankey).toContainText('Woher das Geld kommt')
@@ -51,27 +57,60 @@ test('cash-flow diagram follows the selected year and speaks German', async ({ p
   await expect(caption).toContainText('Alter 70')
 })
 
-test('ledger labels open the matching plan-editor section', async ({ page }) => {
-  await page.goto('/en/simulation')
-  await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
-  await page.getByTestId('tab-cashflow').click()
-  await page.getByRole('button', { name: /Capital gains tax – edit in/ }).click()
-  await expect(page.getByTestId('tab-plan')).toHaveAttribute('aria-selected', 'true')
-  await expect(page.locator('#plan-editor-market')).toBeVisible()
+/** Clicks a ledger ✎ label by its accessible name ("<label> – edit in “<panel>”"). */
+async function editFromLedger(page: Page, label: string) {
+  await page
+    .getByTestId('cashflow-ledger')
+    .getByRole('button', { name: new RegExp(`^${label} – edit in`) })
+    .click()
+}
+
+test('ledger labels open the matching panel and field', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 })
+  await gotoWorkspace(page, '/en/simulation#cashflow')
+  const panel = page.getByTestId('edit-panel')
+  const title = page.getByTestId('edit-panel-title')
+
+  // Field deep links: the panel opens on the field that sets the number.
+  await editFromLedger(page, 'Capital gains tax')
+  await expect(title).toHaveText('Market & taxes')
+  await expect(page.locator('#editor-capitalGainsTax')).toBeFocused()
+
+  // One panel at a time: the next ledger link swaps the content in place.
+  await editFromLedger(page, 'Savings from employment')
+  await expect(panel).toHaveAttribute('data-panel', 'savings')
+  await expect(title).toHaveText('Assets & savings')
+  await expect(page.locator('#editor-annualSavings')).toBeFocused()
+
+  // The pension-tax field lives in a disclosure, which opens for it.
+  await editFromLedger(page, 'Tax on pensions and other income')
+  await expect(panel).toHaveAttribute('data-panel', 'market')
+  await expect(page.locator('#editor-pensionTaxablePortion')).toBeFocused()
+
+  // Panel-only targets focus the panel title.
+  for (const label of ['Gross pensions and other income', 'Spending budget']) {
+    await editFromLedger(page, label)
+    await expect(panel).toHaveAttribute('data-panel', 'flows')
+    await expect(title).toHaveText('Income & spending')
+    await expect(title).toBeFocused()
+  }
+
+  // The withdrawal line has no panel: it closes the editor and goes to Entnahme.
+  await editFromLedger(page, 'Gross portfolio withdrawal')
+  await expect(panel).toHaveCount(0)
+  await expect(sectionHeading(page, 'withdrawal')).toBeInViewport()
+  await expect(
+    page.locator('[data-testid="withdrawal-strategy-picker"] [aria-pressed="true"]')
+  ).toBeFocused()
 })
 
 test('phones get the stacked flows without sideways scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/de/simulation')
-  await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
-  await page.getByTestId('tab-cashflow').click()
+  await gotoWorkspace(page, '/de/simulation')
+  await openSection(page, 'cashflow')
   const sankey = page.getByTestId('cashflow-sankey')
   await expect(sankey.locator('[data-layout]')).toHaveAttribute('data-layout', 'stacked')
   await expect(page.getByTestId('cashflow-sankey-in')).toContainText('Woher')
   await expect(page.getByTestId('cashflow-sankey-out')).toContainText('Wohin')
-  const width = await page.evaluate(() => ({
-    viewport: innerWidth,
-    content: document.documentElement.scrollWidth,
-  }))
-  expect(width.content).toBeLessThanOrEqual(width.viewport + 1)
+  await expectNoHorizontalOverflow(page)
 })

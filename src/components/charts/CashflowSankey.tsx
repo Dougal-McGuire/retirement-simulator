@@ -100,8 +100,15 @@ export function CashflowSankey({ row, period, displayReal }: CashflowSankeyProps
   useEffect(() => {
     const frame = frameRef.current
     if (!frame) return
-    const measure = () =>
-      setSize({ width: Math.floor(frame.clientWidth), height: Math.floor(frame.clientHeight) })
+    // A hidden frame (compare mode hides the sections) measures 0×0; keep the
+    // last real size so the layout does not flip to "stacked" and back, which
+    // would move the page under a restored scroll position.
+    const measure = () => {
+      const width = Math.floor(frame.clientWidth)
+      const height = Math.floor(frame.clientHeight)
+      if (width === 0 && height === 0) return
+      setSize({ width, height })
+    }
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(frame)
@@ -165,12 +172,12 @@ export function CashflowSankey({ row, period, displayReal }: CashflowSankeyProps
   const wide = width >= WIDE_MIN
 
   return (
-    <figure className="mt-5 rounded-lg border border-border p-4" data-testid="cashflow-sankey">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <h3 className="font-semibold">{t('title')}</h3>
+    <figure className="ws-sankey" data-testid="cashflow-sankey">
+      <div className="ws-sankey-head">
+        <h4>{t('title')}</h4>
         <button
           type="button"
-          className="workspace-text-button text-sm"
+          className="workspace-text-button"
           aria-expanded={showTable}
           aria-controls={tableId}
           onClick={() => setShowTable((value) => !value)}
@@ -187,20 +194,17 @@ export function CashflowSankey({ row, period, displayReal }: CashflowSankeyProps
           {t(showTable ? 'hideTable' : 'showTable')}
         </button>
       </div>
-      <figcaption
-        className="mt-1 text-xs leading-relaxed text-muted-foreground"
-        data-testid="cashflow-sankey-caption"
-      >
+      <figcaption data-testid="cashflow-sankey-caption">
         {t('caption', { period: periodText, unit: unitText })}
       </figcaption>
-      <p className="mt-3 max-w-4xl text-sm leading-relaxed" data-testid="cashflow-sankey-summary">
+      <p className="ws-sankey-summary" data-testid="cashflow-sankey-summary">
         {summary}
       </p>
       <div
         ref={frameRef}
         role="img"
         aria-label={summary}
-        className="relative mt-4 w-full"
+        className="relative mt-6 w-full"
         data-layout={wide ? 'sankey' : 'stacked'}
         onMouseLeave={() => setActive(null)}
       >
@@ -253,9 +257,9 @@ export function CashflowSankey({ row, period, displayReal }: CashflowSankeyProps
       </div>
       {/* Disclosure region: always in the DOM so the toggle's aria-controls
           resolves; the table itself is only built while it is shown. */}
-      <div className="mt-4 overflow-x-auto" id={tableId} hidden={!showTable}>
+      <div className="ws-chart-table" id={tableId} hidden={!showTable}>
         {showTable && (
-          <table className="min-w-full text-sm tabular-nums" data-testid="cashflow-sankey-table">
+          <table data-testid="cashflow-sankey-table">
             <caption className="mb-2 text-left text-xs text-muted-foreground">
               {t('tableCaption', { period: periodText, unit: unitText })}
             </caption>

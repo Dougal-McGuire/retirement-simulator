@@ -70,30 +70,25 @@ export function ScenarioPlanDialog({
           <DialogDescription>{td('description', { source: sourceName })}</DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-sm border-2 border-border bg-muted px-3 py-2">
-          <p className="text-[0.58rem] font-extrabold   text-muted-foreground">{td('source')}</p>
-          <p className="mt-1 truncate text-[0.78rem] font-extrabold text-ink">{sourceName}</p>
+        <div className="rounded-sm bg-muted px-3 py-2">
+          <p className="text-xs font-medium text-muted-foreground">{td('source')}</p>
+          <p className="mt-0.5 truncate text-sm font-semibold text-ink">{sourceName}</p>
         </div>
 
         <div>
-          <p className="text-[0.58rem] font-extrabold   text-muted-foreground">{td('changes')}</p>
+          <p className="text-xs font-medium text-muted-foreground">{td('changes')}</p>
           {changes.length === 0 ? (
-            <p className="mt-2 text-[0.72rem] font-medium text-muted-foreground">
-              {td('noChanges')}
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{td('noChanges')}</p>
           ) : (
             <ul className="mt-2 space-y-1.5" data-testid="scenario-plan-changes">
               {changes.map((change) => (
-                <li
-                  key={change.key}
-                  className="flex flex-wrap items-center gap-2 text-[0.72rem] font-semibold text-ink"
-                >
+                <li key={change.key} className="flex flex-wrap items-center gap-2 text-sm text-ink">
                   <span className="text-muted-foreground">{tRows(change.key)}</span>
-                  <span className="tabular-nums line-through opacity-60">
+                  <span className="tabular-nums text-muted-foreground line-through">
                     {formatValue(change.from, change.kind)}
                   </span>
                   <ArrowRight className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
-                  <span className="tabular-nums font-extrabold">
+                  <span className="tabular-nums font-semibold">
                     {formatValue(change.to, change.kind)}
                   </span>
                 </li>
@@ -116,7 +111,7 @@ export function ScenarioPlanDialog({
               if (event.key === 'Enter') confirm()
             }}
             placeholder={td('placeholder')}
-            className="rounded-sm mt-2 h-11 border-2 border-border bg-card px-3 py-2 text-[0.78rem] font-semibold"
+            className="rounded-sm mt-2 h-11 border border-border bg-card px-3 py-2 text-sm"
           />
         </div>
 

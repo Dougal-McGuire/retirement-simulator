@@ -261,3 +261,56 @@ export function buildScenarioParams(params: SimulationParams) {
     },
   ] as const
 }
+
+/** The stress levers `buildScenarioParams` builds, by id. */
+export type ScenarioId = ReturnType<typeof buildScenarioParams>[number]['id']
+
+/**
+ * The parameters each stress lever changes — exactly what "Übernehmen" writes
+ * into the draft, and exactly what its undo puts back. Spending is both legacy
+ * expenses and the flow list: the store folds one into the other, so applying
+ * only one of them would let the other win.
+ */
+export const SCENARIO_APPLY_KEYS = {
+  laterRetirement: ['retirementAge'],
+  moreSavings: ['annualSavings'],
+  lowerSpending: ['customExpenses', 'cashFlows'],
+} as const satisfies Record<ScenarioId, readonly (keyof SimulationParams)[]>
+
+export function isScenarioId(value: unknown): value is ScenarioId {
+  return (
+    typeof value === 'string' && Object.prototype.hasOwnProperty.call(SCENARIO_APPLY_KEYS, value)
+  )
+}
+
+/**
+ * A lever's keys picked out of a parameter set. Read from the lever's scenario
+ * it is the patch to apply; read from the draft just before applying it is
+ * the undo snapshot. Arrays are copied so a later edit can never reach back
+ * into a snapshot.
+ */
+export function pickScenarioKeys(
+  id: ScenarioId,
+  params: SimulationParams
+): Partial<SimulationParams> {
+  const picked: Record<string, unknown> = {}
+  for (const key of SCENARIO_APPLY_KEYS[id]) {
+    const value = params[key]
+    picked[key] = Array.isArray(value) ? value.map((entry) => ({ ...entry })) : value
+  }
+  return picked as Partial<SimulationParams>
+}
+
+/**
+ * What "Übernehmen" on a stress lever writes into the draft: only the keys the
+ * lever changes, taken from the scenario built on `base` (the parameters the
+ * lever was measured against). Anything else the reader has changed since
+ * stays theirs.
+ */
+export function buildScenarioPatch(
+  id: ScenarioId,
+  base: SimulationParams
+): Partial<SimulationParams> {
+  const scenario = buildScenarioParams(base).find((entry) => entry.id === id)
+  return scenario ? pickScenarioKeys(id, scenario.params) : {}
+}

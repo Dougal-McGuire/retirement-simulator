@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useLocale } from 'next-intl'
 import { compactCurrencyOptions } from '@/lib/utils/numberFormat'
 
@@ -10,6 +11,10 @@ import { compactCurrencyOptions } from '@/lib/utils/numberFormat'
  */
 export function useCompactCurrency(currency = 'EUR') {
   const locale = useLocale()
-  return (value: number) =>
-    new Intl.NumberFormat(locale, compactCurrencyOptions(value, locale, currency)).format(value)
+  // Stable across renders, so memoized charts that take it don't redraw.
+  return useCallback(
+    (value: number) =>
+      new Intl.NumberFormat(locale, compactCurrencyOptions(value, locale, currency)).format(value),
+    [locale, currency]
+  )
 }

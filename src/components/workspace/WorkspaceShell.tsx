@@ -17,9 +17,9 @@ import {
 /**
  * Small pieces of the workspace chrome that other routes reuse, so the setup
  * wizard reads as part of the same app instead of carrying a header of its
- * own. The workspace header itself (plan picker, save, run) stays in
- * `WorkspaceHeader`; only the brand mark and the account/language menu are
- * shared here.
+ * own. The workspace's own chrome (plan picker, save, run) is the
+ * `ResultBar`; only the brand mark and the account/language menu are shared
+ * here.
  */
 export function WorkspaceBrand() {
   const t = useTranslations('workspace')

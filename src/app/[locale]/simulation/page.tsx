@@ -1,77 +1,90 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, type ReactNode } from 'react'
+import dynamic from 'next/dynamic'
 import { useTranslations } from 'next-intl'
-import * as Tabs from '@radix-ui/react-tabs'
-import { ArrowLeftRight, ChartNoAxesCombined, SlidersHorizontal, WalletCards } from 'lucide-react'
-import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
-import { areSimulationParamsEqual } from '@/lib/simulation/planInsights'
+import { planDisplayName } from '@/lib/plans/planName'
 import {
+  DeferredResultsScope,
+  useActivePlan,
   useSimulationLoading,
-  useSimulationParams,
-  useSimulationResults,
   useSimulationStore,
 } from '@/lib/stores/simulationStore'
-import { useDisplayReal, useSetPlanSection } from '@/lib/stores/displayStore'
-import type { PlanSectionGroup } from '@/components/plans/planSections'
-import { BottomStrip } from '@/components/simulation-compact/BottomStrip'
-import { CompareView } from '@/components/simulation-compact/CompareView'
-import { buildCompactKpis } from '@/components/simulation-compact/metrics'
-import { PlanEditor } from '@/components/plans/PlanEditor'
-import { SpendingSection } from '@/components/charts/SpendingSection'
-import { CashflowCard } from '@/components/charts/CashflowCard'
-import { ScenarioList } from '@/components/charts/ScenarioList'
-import { RecommendationList } from '@/components/charts/RecommendationList'
-import { WorkspaceHeader, EuroDisplay } from '@/components/workspace/WorkspaceHeader'
-import { Overview, WhatIfStrip } from '@/components/workspace/Overview'
-import { WorkspaceBrand } from '@/components/workspace/WorkspaceShell'
+import { EuroDisplay } from '@/components/workspace/EuroDisplay'
+import { EditPanel } from '@/components/workspace/edit/EditPanel'
+import { ResultBar } from '@/components/workspace/ResultBar'
+import { SectionIndex } from '@/components/workspace/SectionIndex'
 import { useRunStatus } from '@/components/workspace/useRunStatus'
+import { WorkspaceBrand } from '@/components/workspace/WorkspaceShell'
+import {
+  WorkspaceProvider,
+  useWorkspace,
+  useWorkspaceInternals,
+} from '@/components/workspace/WorkspaceProvider'
+import { AssumptionsSection } from '@/components/workspace/sections/AssumptionsSection'
+import { CashflowSection } from '@/components/workspace/sections/CashflowSection'
+import { LeversSection } from '@/components/workspace/sections/LeversSection'
+import { ResultSection } from '@/components/workspace/sections/ResultSection'
+import { WithdrawalSection } from '@/components/workspace/sections/WithdrawalSection'
 import './workspace.css'
+import './ws-page.css'
 
-type View = 'overview' | 'plan' | 'cashflow' | 'scenarios'
-const destinations = [
-  { value: 'overview', icon: ChartNoAxesCombined },
-  { value: 'plan', icon: SlidersHorizontal },
-  { value: 'cashflow', icon: WalletCards },
-  { value: 'scenarios', icon: ArrowLeftRight },
-] as const
+const CompareView = dynamic(
+  () => import('@/components/simulation-compact/CompareView').then((module) => module.CompareView),
+  { ssr: false }
+)
 
-export default function SimulationPage() {
-  const t = useTranslations('workspace')
+function WorkspaceError() {
   const tc = useTranslations('simulationCompact')
-  const params = useSimulationParams()
-  const results = useSimulationResults()
-  const loading = useSimulationLoading()
   const run = useSimulationStore((state) => state.runSimulation)
-  const error = useSimulationStore((state) => state.error)
-  const displayReal = useDisplayReal()
-  const setPlanSection = useSetPlanSection()
-  const sidebarVertical = useMediaQuery('(min-width: 761px)')
-  const editorVertical = useMediaQuery('(min-width: 1101px)')
-  const headingRef = useRef<HTMLHeadingElement>(null)
-  const runStatus = useRunStatus()
-  const [view, setView] = useState<View>('overview')
-  const [compare, setCompare] = useState(false)
-  const stale = results ? !areSimulationParamsEqual(params, results.params) : false
-  const kpis = useMemo(
-    () => (results ? buildCompactKpis(results.params, results, { displayReal }) : null),
-    [results, displayReal]
+  return (
+    <div role="alert" className="workspace-error">
+      {tc('error')}{' '}
+      <button type="button" className="workspace-button" onClick={() => run()}>
+        {tc('retry')}
+      </button>
+    </div>
   )
-  const navigate = (next: View) => {
-    setView(next)
-    window.scrollTo({ top: 0, behavior: 'instant' })
-  }
-  const edit = (section: PlanSectionGroup) => {
-    setPlanSection(section)
-    navigate('plan')
-    headingRef.current?.focus({ preventScroll: true })
-  }
-  /** Overview's compare entry: Alternatives, already in compare mode. */
-  const openCompare = () => {
-    setCompare(true)
-    navigate('scenarios')
-    headingRef.current?.focus({ preventScroll: true })
-  }
+}
+
+/**
+ * `<main>` and its run-state attributes. Only this element re-renders when a
+ * run starts, lands or stops holding "running": the sections arrive as
+ * `children` created by the page, which does not re-render for runs, so React
+ * skips them here (§7 render isolation).
+ */
+function WorkspaceMain({ inert, children }: { inert: boolean; children: ReactNode }) {
+  const loading = useSimulationLoading()
+  const { status } = useRunStatus()
+  return (
+    <main
+      id="main-content"
+      className="ws-main"
+      data-run-status={status}
+      aria-busy={loading}
+      inert={inert}
+    >
+      {children}
+    </main>
+  )
+}
+
+/**
+ * The one-page workspace: a sticky result bar, five sections indexed by one
+ * navigation (rail / chip row / bottom bar, by width), the assumptions in an
+ * edit panel that leaves the results visible, and plan comparison as a mode
+ * of the same page.
+ */
+function WorkspacePage() {
+  const t = useTranslations('workspace')
+  const tp = useTranslations('plans')
+  // Nothing here may subscribe to run state or results: a re-render of the
+  // page is a re-render of every section, the panel and the bar.
+  const error = useSimulationStore((state) => state.error)
+  const run = useSimulationStore((state) => state.runSimulation)
+  const activePlan = useActivePlan()
+  const { mode, panelMode, editor, pageInert, exitCompare } = useWorkspace()
+  const { pageRef } = useWorkspaceInternals()
 
   useEffect(() => {
     const initialize = () => {
@@ -82,6 +95,9 @@ export default function SimulationPage() {
     if (useSimulationStore.persist.hasHydrated()) initialize()
     else return useSimulationStore.persist.onFinishHydration(initialize)
   }, [])
+
+  // `R` recalculates, except while typing or inside a dialog (the edit panel
+  // is a dialog too).
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!['r', 'R'].includes(event.key) || event.metaKey || event.ctrlKey || event.altKey) return
@@ -94,153 +110,56 @@ export default function SimulationPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [run])
 
+  const plan = activePlan ? planDisplayName(activePlan, tp) : t('brand')
   return (
-    <Tabs.Root
-      value={view}
-      onValueChange={(value) => navigate(value as View)}
-      orientation={sidebarVertical ? 'vertical' : 'horizontal'}
-      activationMode="manual"
-      className="retirement-workspace"
+    <div
+      ref={pageRef}
+      className="ws-page"
+      data-mode={mode}
+      data-panel-mode={panelMode}
+      data-panel-open={editor ? 'true' : undefined}
     >
-      <aside className="workspace-sidebar" id="navigation">
+      <aside className="ws-rail" inert={pageInert}>
         <WorkspaceBrand />
-        <Tabs.List className="workspace-navigation" aria-label={t('navigation')}>
-          {destinations.map(({ value, icon: Icon }) => (
-            <Tabs.Trigger key={value} value={value} data-testid={`tab-${value}`}>
-              <Icon size={21} aria-hidden="true" />
-              <span className="workspace-tab-label">{t(`views.${value}.label`)}</span>
-              {/* The phone bottom bar swaps in a short label (CSS). */}
-              <span className="workspace-tab-short">{t(`views.${value}.short`)}</span>
-            </Tabs.Trigger>
-          ))}
-        </Tabs.List>
-        <div className="workspace-display-settings">
+        <SectionIndex />
+        <div className="ws-rail-footer">
           <EuroDisplay />
         </div>
       </aside>
-      <div className="workspace-body">
-        <WorkspaceHeader
-          results={stale ? null : results}
-          loading={loading}
-          onRun={() => run()}
-          status={runStatus.status}
-          needsRun={runStatus.needsRun}
-        />
-        <main
-          id="main-content"
-          className="workspace-main"
-          aria-busy={loading}
-          data-run-status={runStatus.status}
-        >
-          <div className="workspace-page-heading">
-            <div>
-              <h1 ref={headingRef} tabIndex={-1}>
-                {t(`views.${view}.title`)}
-              </h1>
-              <p>{t(`views.${view}.description`)}</p>
-            </div>
-          </div>
-          {error && (
-            <div role="alert" className="workspace-error">
-              {tc('error')}{' '}
-              <button className="workspace-button" onClick={() => run()}>
-                {tc('retry')}
-              </button>
-            </div>
-          )}
-          <Tabs.Content value={view} className="workspace-content">
-            {view === 'overview' && (
-              <>
-                <WhatIfStrip
-                  results={results}
-                  loading={loading}
-                  onRun={() => run()}
-                  onEdit={edit}
-                />
-                {results && kpis ? (
-                  <Overview
-                    results={results}
-                    kpis={kpis}
-                    displayReal={displayReal}
-                    onEdit={edit}
-                    onCashflow={() => navigate('cashflow')}
-                    onCompare={openCompare}
-                  />
-                ) : (
-                  <div className="workspace-panel workspace-empty">{t('computing')}</div>
-                )}
-              </>
-            )}
-            {view === 'plan' && (
-              <PlanEditor
-                className="workspace-editor"
-                navigationOrientation={editorVertical ? 'vertical' : 'horizontal'}
-              />
-            )}
-            {view === 'cashflow' &&
-              (results ? (
-                <div className="workspace-stack">
-                  <CashflowCard params={results.params} results={results} onEdit={edit} />
-                  <details className="workspace-experiment">
-                    <summary>{t('spendingAnalysis')}</summary>
-                    <SpendingSection results={results} />
-                  </details>
-                </div>
-              ) : (
-                <div className="workspace-panel workspace-empty">{t('computing')}</div>
-              ))}
-            {view === 'scenarios' && (
-              <div className="workspace-stack">
-                <div
-                  className="workspace-variant-switch"
-                  role="group"
-                  aria-label={t('variantMode')}
-                >
-                  <button
-                    className="workspace-button"
-                    aria-pressed={!compare}
-                    onClick={() => setCompare(false)}
-                  >
-                    {t('exploreVariants')}
-                  </button>
-                  <button
-                    className="workspace-button"
-                    data-testid="enter-compare"
-                    aria-pressed={compare}
-                    onClick={() => setCompare(true)}
-                  >
-                    {t('comparePlans')}
-                  </button>
-                </div>
-                {compare ? (
-                  <CompareView
-                    onExit={() => setCompare(false)}
-                    onOpenPlanEditor={() => edit('personal')}
-                  />
-                ) : (
-                  <>
-                    {results && kpis && (
-                      <section className="workspace-panel workspace-recommendations">
-                        <h2>{t('applyChanges')}</h2>
-                        <BottomStrip
-                          recommendationsOnly
-                          params={results.params}
-                          results={results}
-                          kpis={kpis}
-                          onOpenFullEditor={() => edit('personal')}
-                        />
-                      </section>
-                    )}
-                    <ScenarioList params={params} results={results} isLoading={loading} />
-                    <RecommendationList params={params} results={results} />
-                  </>
-                )}
-              </div>
-            )}
-          </Tabs.Content>
-          <footer className="workspace-footer">{t('footer')}</footer>
-        </main>
-      </div>
-    </Tabs.Root>
+      <ResultBar />
+      <WorkspaceMain inert={pageInert}>
+        <div className="ws-scroll-sentinel" data-scroll-sentinel aria-hidden="true" />
+        <h1 className="sr-only">{t('pageTitle', { plan })}</h1>
+        {error && <WorkspaceError />}
+        <div className="ws-sections" hidden={mode === 'compare'}>
+          {/* The sections read a deferred copy of the results: when a run
+              lands, the result bar (outside) commits first and the charts
+              below follow in an interruptible render. */}
+          <DeferredResultsScope>
+            <ResultSection />
+            <AssumptionsSection />
+            <CashflowSection />
+            <WithdrawalSection />
+            <LeversSection />
+          </DeferredResultsScope>
+          <footer className="ws-footer">{t('footer')}</footer>
+        </div>
+        {mode === 'compare' && (
+          <CompareView
+            onExit={() => exitCompare()}
+            onOpenPlanEditor={() => exitCompare({ section: 'assumptions', focus: true })}
+          />
+        )}
+      </WorkspaceMain>
+      <EditPanel />
+    </div>
+  )
+}
+
+export default function SimulationPage() {
+  return (
+    <WorkspaceProvider>
+      <WorkspacePage />
+    </WorkspaceProvider>
   )
 }
