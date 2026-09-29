@@ -8,6 +8,7 @@ import type {
 
 import type { WithdrawalStrategy, IncomeTaxTreatment, PensionTaxMode } from '@/types'
 import { localizeCashFlowName } from '@/lib/plans/cashFlowName'
+import { NOMINAL_UNIT, type ReportEuroUnit } from '@/lib/pdf-generator/euroUnit'
 
 export type { ReportLocale } from '@/lib/pdf-generator/schema/reportData'
 
@@ -227,6 +228,11 @@ export interface ReportFinances {
 export interface ReportProjections {
   milestones: Array<Pick<Milestone, 'age' | 'p10' | 'p20' | 'p50' | 'p80' | 'p90'>>
   exhaustionAge?: number
+  /** Unit-free ratios, identical in either euro unit; absent in older payloads. */
+  ratios?: {
+    firstYearWithdrawalRate: number | null
+    bridgeShareOfRetirementAssets: number | null
+  }
 }
 
 export interface ReportExpensesCategory {
@@ -306,6 +312,11 @@ export interface ReportContent {
   expenses: ReportExpenses
   scenarios: ReportScenario[]
   recommendations: ReportRecommendations
+  /**
+   * The euro every projected figure (asset percentiles, bridge need) is
+   * printed in. Nominal for payloads that predate the switch.
+   */
+  units: ReportEuroUnit
   locale: ReportLocale
 }
 
@@ -540,6 +551,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
     projections: {
       milestones: pickMilestones,
       exhaustionAge: pickMilestones.find((m) => m.p10 <= 0)?.age,
+      ...(data.projections.ratios ? { ratios: data.projections.ratios } : {}),
     },
     simulation,
     expenses: {
@@ -577,6 +589,13 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
             }))
           : data.recommendations,
     },
+    units: data.units
+      ? {
+          requested: data.units.requested,
+          applied: data.units.applied,
+          ...(data.units.realMethod ? { realMethod: data.units.realMethod } : {}),
+        }
+      : NOMINAL_UNIT,
     locale,
   }
 }

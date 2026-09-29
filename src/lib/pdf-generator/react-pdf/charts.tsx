@@ -87,6 +87,8 @@ interface ProjectionChartProps {
   pensionAge?: number
   /** Age at which the P10 path first hits zero, marked in red when present. */
   depletionAge?: number
+  /** Which euro the values are in, e.g. "€ · nominal"; printed right of the legend. */
+  unitLabel?: string
 }
 
 export function ProjectionChart({
@@ -97,6 +99,7 @@ export function ProjectionChart({
   retireAge,
   pensionAge,
   depletionAge,
+  unitLabel,
 }: ProjectionChartProps) {
   if (!data || data.length < 2) {
     return (
@@ -338,6 +341,22 @@ export function ProjectionChart({
             })
           })()}
         </G>
+
+        {/* Unit of the y axis, right-aligned on the legend row */}
+        {unitLabel && (
+          <SvgText
+            x={width - margin.right}
+            y={12}
+            style={{
+              fontSize: 6.5,
+              fontWeight: 600,
+              fill: tokens.colors.ink[600],
+              textAnchor: 'end',
+            }}
+          >
+            {unitLabel}
+          </SvgText>
+        )}
       </Svg>
     </View>
   )

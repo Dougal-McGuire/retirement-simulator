@@ -183,6 +183,21 @@ export const MilestoneSchema = z.object({
 export const ProjectionsSchema = z.object({
   milestones: z.array(MilestoneSchema),
   successRatePct: z.number().min(0).max(100),
+  /**
+   * Ratios of a plan amount to projected assets, computed once on today's
+   * euros so the Nominal / Heutige € switch can never change them (a ratio has
+   * no unit; the budget is in today's euros, so the assets must be too).
+   * Optional: older payloads omit it and the report derives the ratios from
+   * `milestones` as before.
+   */
+  ratios: z
+    .object({
+      /** Annual budget ÷ median assets at retirement. */
+      firstYearWithdrawalRate: z.number().nullable(),
+      /** Bridge cash need ÷ median assets at retirement. */
+      bridgeShareOfRetirementAssets: z.number().nullable(),
+    })
+    .optional(),
 })
 
 export const RecommendationSchema = z.object({
@@ -234,6 +249,22 @@ export const SummarySchema = z
   })
   .optional()
 
+/**
+ * The euro the projected figures are printed in — the app's Nominal / Heutige €
+ * switch. Optional: payloads from older clients omit it and stay nominal, which
+ * is what those reports always were.
+ */
+export const EuroUnitSchema = z
+  .object({
+    requested: z.enum(['nominal', 'real']).default('nominal'),
+    applied: z.enum(['nominal', 'real']).default('nominal'),
+    realMethod: z.enum(['perPath', 'medianIndex']).optional(),
+  })
+  .refine((unit) => (unit.applied === 'real') === (unit.realMethod !== undefined), {
+    message: 'realMethod is set exactly when applied is real',
+    path: ['realMethod'],
+  })
+
 export const ReportDataSchema = z.object({
   person: PersonSchema,
   finances: FinancesSchema,
@@ -243,6 +274,7 @@ export const ReportDataSchema = z.object({
   projections: ProjectionsSchema,
   summary: SummarySchema,
   recommendations: z.array(RecommendationSchema),
+  units: EuroUnitSchema.optional(),
   metadata: z
     .object({
       reportId: z.string().default(() => `RPT-${Date.now()}`),
@@ -268,3 +300,4 @@ export type Projections = z.infer<typeof ProjectionsSchema>
 export type Recommendation = z.infer<typeof RecommendationSchema>
 export type ReportData = z.infer<typeof ReportDataSchema>
 export type Summary = z.infer<typeof SummarySchema>
+export type EuroUnitData = z.infer<typeof EuroUnitSchema>

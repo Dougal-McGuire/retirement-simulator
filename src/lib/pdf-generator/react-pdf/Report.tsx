@@ -15,6 +15,7 @@ import {
 } from '@/lib/pdf-generator/formatters'
 import { withdrawalStrategyLabel } from '@/lib/pdf-generator/withdrawalStrategy'
 import { buildMethodologyCopy } from '@/lib/pdf-generator/methodologyCopy'
+import { buildEuroUnitCopy } from '@/lib/pdf-generator/euroUnitCopy'
 import './fonts'
 
 interface RetirementReportProps {
@@ -364,6 +365,8 @@ export function RetirementReport({ content }: RetirementReportProps) {
 
   const milestones = projections.milestones
   const finalMedian = milestones[milestones.length - 1]?.p50 ?? 0
+  // Nominal or today's purchasing power — the app's € switch at export time.
+  const unitCopy = buildEuroUnitCopy(content.units, content.locale)
 
   const sections: ReportSection[] = [
     {
@@ -563,8 +566,8 @@ export function RetirementReport({ content }: RetirementReportProps) {
             label: isGerman ? 'Median am Horizont' : 'Median at Horizon',
             value: fmtCompactCurrency(finalMedian, intlLocale),
             caption: isGerman
-              ? `Alter ${profile.person.horizonAge}`
-              : `Age ${profile.person.horizonAge}`,
+              ? `Alter ${profile.person.horizonAge} · ${unitCopy.short}`
+              : `Age ${profile.person.horizonAge} · ${unitCopy.short}`,
           },
           {
             label: isGerman ? 'Planungshorizont' : 'Planning Horizon',
@@ -589,8 +592,8 @@ export function RetirementReport({ content }: RetirementReportProps) {
         }
         heroCaption={
           isGerman
-            ? `Medianpfad des Vermögens mit P10–P90-Band, Alter ${profile.person.currentAge} bis ${profile.person.horizonAge} · Detailgrafik in Abschnitt 03`
-            : `Median asset path with P10–P90 band, age ${profile.person.currentAge} to ${profile.person.horizonAge} · detailed chart in section 03`
+            ? `Medianpfad des Vermögens mit P10–P90-Band, Alter ${profile.person.currentAge} bis ${profile.person.horizonAge}, ${unitCopy.tag} · Detailgrafik in Abschnitt 03`
+            : `Median asset path with P10–P90 band, age ${profile.person.currentAge} to ${profile.person.horizonAge}, ${unitCopy.tag} · detailed chart in section 03`
         }
         metadata={[
           ...(planName ? [{ label: planLabel, value: planName }] : []),
@@ -605,6 +608,7 @@ export function RetirementReport({ content }: RetirementReportProps) {
             value: metadata.version ?? '1.0.0',
           },
         ]}
+        unitNote={unitCopy.statement}
         disclaimer={
           isGerman
             ? 'Dieser Bericht wurde automatisch aus Ihren Simulationsdaten erstellt. Er dient ausschließlich der Information und stellt keine Anlage-, Steuer- oder Rechtsberatung dar.'

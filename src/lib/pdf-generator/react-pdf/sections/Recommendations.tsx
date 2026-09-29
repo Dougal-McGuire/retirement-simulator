@@ -5,6 +5,7 @@ import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
 import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
 import { allPensionsSwitchedOff } from '@/lib/pdf-generator/pensionSwitch'
+import { buildEuroUnitCopy } from '@/lib/pdf-generator/euroUnitCopy'
 
 interface RecommendationsProps {
   content: ReportContent
@@ -51,6 +52,8 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
 
   const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
   const { person } = profile
+  // The bridge need is derived, so it follows the report's euro unit.
+  const unitCopy = buildEuroUnitCopy(content.units, content.locale)
   const bridgeYears = Math.max(0, person.pensionAge - person.retireAge)
 
   /**
@@ -333,8 +336,8 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
         </Text>
         <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 4 }}>
           {isGerman
-            ? `Direkte Rechnung auf Basis der aktuellen Eingaben — keine erneute Simulation. Ausgangslage: ${fmtCurrency(gapToday, locale)} Lücke pro Jahr, ${fmtCurrency(bridgeNeed, locale)} Überbrückungsbedarf.`
-            : `Direct arithmetic on the current inputs — not a re-run of the simulation. Baseline: ${fmtCurrency(gapToday, locale)} gap per year, ${fmtCurrency(bridgeNeed, locale)} bridge need.`}
+            ? `Direkte Rechnung auf Basis der aktuellen Eingaben — keine erneute Simulation. Ausgangslage: ${fmtCurrency(gapToday, locale)} Lücke pro Jahr, ${fmtCurrency(bridgeNeed, locale)} Überbrückungsbedarf${unitCopy.amountQualifier}.`
+            : `Direct arithmetic on the current inputs — not a re-run of the simulation. Baseline: ${fmtCurrency(gapToday, locale)} gap per year, ${fmtCurrency(bridgeNeed, locale)} bridge need${unitCopy.amountQualifier}.`}
         </Text>
         <Table>
           <TableRow header>

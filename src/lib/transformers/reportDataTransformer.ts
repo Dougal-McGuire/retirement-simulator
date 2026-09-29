@@ -7,6 +7,7 @@ import {
 } from '@/lib/simulation/cashFlows'
 import type { ReportData } from '@/lib/pdf-generator/schema/reportData'
 import { buildSimulationContext } from '@/lib/simulation/context'
+import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { computeBridgeAnalysis } from '@/lib/insights/bridge'
 import { computePlanHealthScore } from '@/lib/insights/planHealth'
 import {
@@ -14,6 +15,16 @@ import {
   generateRecommendations,
   type RecommendationLocale,
 } from '@/lib/insights/recommendations'
+import { assetPercentilesIn, resolveEuroUnit } from '@/lib/pdf-generator/euroUnit'
+
+export type ReportDataOptions = {
+  /**
+   * The dashboard's Nominal / Heutige € switch at the time of export. A view
+   * preference, not a model input: it only picks which pre-computed series the
+   * report prints, so nothing here re-runs the simulation.
+   */
+  displayReal?: boolean
+}
 
 export function transformToReportData(
   params: SimulationParams,
@@ -25,26 +36,55 @@ export function transformToReportData(
    * plan's own figures, so they are written here rather than translated
    * downstream by sentence lookup.
    */
-  locale: RecommendationLocale = 'en'
+  locale: RecommendationLocale = 'en',
+  options: ReportDataOptions = {}
 ): ReportData {
+  // Which euro the projected figures are printed in. Real only when the
+  // results can really be expressed that way; otherwise the report stays
+  // nominal and says so — it never mixes the two.
+  const units = resolveEuroUnit(results, options.displayReal === true)
+  const real = units.applied === 'real'
+  const assets = assetPercentilesIn(results, units)
+
   // Generate milestones from simulation results
   const milestones = results.ages.map((age, index) => ({
     age,
-    p10: results.assetPercentiles.p10[index] || 0,
-    p20: results.assetPercentiles.p20[index] || 0,
-    p50: results.assetPercentiles.p50[index] || 0,
-    p80: results.assetPercentiles.p80[index] || 0,
-    p90: results.assetPercentiles.p90[index] || 0,
+    p10: assets.p10[index] || 0,
+    p20: assets.p20[index] || 0,
+    p50: assets.p50[index] || 0,
+    p80: assets.p80[index] || 0,
+    p90: assets.p90[index] || 0,
   }))
 
   // Plan-derived, already in the report's language.
-  const recommendations = generateRecommendations(params, results, locale)
+  const recommendations = generateRecommendations(params, results, locale, { real })
 
   // Derived figures
   const monthlyExpenses = params.customExpenses.filter((e) => e.interval === 'monthly')
   const annualExpenses = params.customExpenses.filter((e) => e.interval === 'annual')
 
-  const bridge = computeBridgeAnalysis(params)
+  const bridge = computeBridgeAnalysis(params, { real })
+
+  // Ratios have no unit, so the € switch must not move them. The budget is in
+  // today's euros, so they are taken against today's-euro assets whenever the
+  // results allow it — in both modes — and nominal ones only when nothing else
+  // exists (the same basis in both modes then too).
+  const ratioUnit = resolveEuroUnit(results, true)
+  const ratioReal = ratioUnit.applied === 'real'
+  const retirementIndex = results.ages.indexOf(params.retirementAge)
+  const retirementMedian =
+    retirementIndex === -1 ? undefined : assetPercentilesIn(results, ratioUnit).p50[retirementIndex]
+  const ratioOf = (amount: number) =>
+    retirementMedian !== undefined && retirementMedian > 0 ? amount / retirementMedian : null
+  const ratios = {
+    firstYearWithdrawalRate: ratioOf(
+      calculateCombinedExpenses(params.customExpenses).combinedAnnual
+    ),
+    bridgeShareOfRetirementAssets: ratioOf(
+      Math.round(computeBridgeAnalysis(params, { real: ratioReal }).cashNeedEUR)
+    ),
+  }
+  // Unit-free: the score reads the success rate and today's-euro inputs only.
   const health = computePlanHealthScore(params, results)
   // One description of the run, built by the same function the dashboard uses.
   // Everything the report says about run counts, the market model or what
@@ -209,6 +249,7 @@ export function transformToReportData(
     projections: {
       milestones,
       successRatePct: results.successRate,
+      ratios,
     },
     summary: {
       planHealthScore: health.score,
@@ -229,6 +270,7 @@ export function transformToReportData(
       topActionsDetailed: uplifts,
     },
     recommendations,
+    units,
     metadata: {
       reportId: `RPT-${Date.now()}`,
       generatedAt: new Date().toISOString(),

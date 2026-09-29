@@ -147,6 +147,7 @@ const englishReportContent = {
     primary: [],
     uplifts: [],
   },
+  units: { requested: 'nominal', applied: 'nominal' },
   locale: 'en',
 } satisfies ReportContent
 

@@ -10,6 +10,7 @@ import {
   fmtPercent,
   fmtRatioPercent,
 } from '@/lib/pdf-generator/formatters'
+import { buildEuroUnitCopy } from '@/lib/pdf-generator/euroUnitCopy'
 
 interface ResultsProps {
   content: ReportContent
@@ -33,6 +34,8 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
 
   const milestones = projections.milestones
   const { person } = profile
+  // Every euro in this section is a projected asset value: say which euro.
+  const unitCopy = buildEuroUnitCopy(content.units, content.locale)
 
   // Build outcome table: interval ages plus life milestones. The interval is
   // widened for long horizons so the section always fits on a single page.
@@ -75,7 +78,13 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
   const baseSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
   const realReturn = (1 + assumptions.expectedReturn) / (1 + assumptions.inflation) - 1
   const retireMedian = milestones.find((m) => m.age === person.retireAge)?.p50
-  const firstYearWithdrawalRate = retireMedian && retireMedian > 0 ? baseSpend / retireMedian : null
+  // Precomputed on today's euros when the payload carries it, so the rate is
+  // the same whichever euro the report prints; older payloads derive it here.
+  const firstYearWithdrawalRate = projections.ratios
+    ? projections.ratios.firstYearWithdrawalRate
+    : retireMedian && retireMedian > 0
+      ? baseSpend / retireMedian
+      : null
   const bridgeYears = Math.max(0, person.pensionAge - person.retireAge)
   const derived: Array<{ label: string; value: string; note: string }> = [
     {
@@ -120,7 +129,9 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
 
       <View style={[styles.figure, { marginTop: 0, marginBottom: 12 }]}>
         <Text style={[styles.cardTitle, { marginBottom: 2 }]}>
-          {isGerman ? 'Vermögensentwicklung nach Perzentilen' : 'Asset Projection by Percentile'}
+          {isGerman
+            ? `Vermögensentwicklung nach Perzentilen (${unitCopy.tag})`
+            : `Asset Projection by Percentile (${unitCopy.tag})`}
         </Text>
         <ProjectionChart
           data={milestones}
@@ -130,13 +141,16 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
           retireAge={person.retireAge}
           pensionAge={person.pensionAge}
           depletionAge={projections.exhaustionAge}
+          unitLabel={unitCopy.chart}
         />
       </View>
 
       {/* Percentile outcomes table */}
       <View style={[styles.card, { marginBottom: 12 }]}>
         <Text style={styles.cardTitle}>
-          {isGerman ? 'Vermögensstände im Zeitverlauf' : 'Projected Assets Over Time'}
+          {isGerman
+            ? `Vermögensstände im Zeitverlauf (${unitCopy.tag})`
+            : `Projected Assets Over Time (${unitCopy.tag})`}
         </Text>
         <Table>
           <TableRow header>
@@ -226,11 +240,11 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
           <Text style={styles.kpiDescription}>
             {medianGrowth !== null
               ? isGerman
-                ? `Median bis Ruhestand: ${growthLabel(medianGrowth, locale, isGerman)}`
-                : `Median growth to retirement: ${growthLabel(medianGrowth, locale, isGerman)}`
+                ? `Median bis Ruhestand: ${growthLabel(medianGrowth, locale, isGerman)} ${unitCopy.growth}`
+                : `Median growth to retirement: ${growthLabel(medianGrowth, locale, isGerman)} ${unitCopy.growth}`
               : isGerman
-                ? `Alter ${person.horizonAge}`
-                : `Age ${person.horizonAge}`}
+                ? `Alter ${person.horizonAge} · ${unitCopy.tag}`
+                : `Age ${person.horizonAge} · ${unitCopy.tag}`}
           </Text>
         </View>
 

@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils'
 import { FileText, Download, Loader2 } from 'lucide-react'
 import { planDisplayName } from '@/lib/plans/planName'
 import { useActivePlanId, usePlans } from '@/lib/stores/simulationStore'
+import { useDisplayReal } from '@/lib/stores/displayStore'
+import { euroUnitFilenameSuffix, resolveEuroUnit } from '@/lib/pdf-generator/euroUnit'
 import { SimulationResults, SimulationParams } from '@/types'
 
 interface GenerateReportButtonProps {
@@ -53,6 +55,8 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
   const [error, setError] = useState<string | null>(null)
   const plans = usePlans()
   const activePlanId = useActivePlanId()
+  // The report prints its euro figures in the unit the dashboard shows.
+  const displayReal = useDisplayReal()
 
   // The report is about a *named* plan; without this the PDF reads like a
   // generic document and several exports are indistinguishable in a folder.
@@ -80,6 +84,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
           results,
           locale,
           planName: activePlanName,
+          displayReal,
         }),
         signal: controller.signal,
       })
@@ -98,7 +103,12 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
 
       const blob = await response.blob()
       const slug = planFilenameSlug(activePlanName)
-      const filename = `retirement-report${slug ? `-${slug}` : ''}-${
+      // Same decision the server makes, so a report that had to fall back to
+      // nominal (results without real series) is not named as today's euros.
+      const unitSuffix = results
+        ? euroUnitFilenameSuffix(resolveEuroUnit(results, displayReal), locale)
+        : ''
+      const filename = `retirement-report${slug ? `-${slug}` : ''}${unitSuffix}-${
         new Date().toISOString().split('T')[0]
       }.pdf`
 

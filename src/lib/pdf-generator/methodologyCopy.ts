@@ -5,6 +5,7 @@ import {
   withdrawalStrategyLabel,
   withdrawalStrategySummary,
 } from '@/lib/pdf-generator/withdrawalStrategy'
+import { buildEuroUnitCopy } from '@/lib/pdf-generator/euroUnitCopy'
 
 /**
  * Every sentence in the report that describes *how the number was produced*.
@@ -15,8 +16,13 @@ import {
  * while the assumptions table listed them.
  */
 export interface MethodologyCopy {
-  /** The "Methodology" paragraph, describing the model that actually ran. */
+  /**
+   * The "Methodology" paragraph, describing the model that actually ran and
+   * which euro its figures are printed in.
+   */
   methodology: string
+  /** The euro-unit part of `methodology` on its own (nominal vs. deflated). */
+  units: string
   /** Glossary entry for the success rate, matching the success definition. */
   successRate: string
   /** "Limits of the model" bullets, in print order. */
@@ -57,13 +63,18 @@ export function buildMethodologyCopy(content: ReportContent): MethodologyCopy {
    * the engine replays a real series once per available start year, and the
    * ROI / volatility / inflation assumptions printed elsewhere are unused.
    */
-  const methodology = isHistorical
+  const modelText = isHistorical
     ? isGerman
       ? `Die Analyse ist ein historischer Backtest: keine Zufallsziehung, sondern ${runsLabel} Durchläufe der tatsächlichen Marktgeschichte ${simulation.historicalFirstYear}–${simulation.historicalLastYear} — einer je möglichem Startjahr. Jeder Pfad übernimmt Aktien-, Anleihe- und Inflationsentwicklung dieser Jahre in ihrer echten Reihenfolge; die oben genannten Rendite-, Volatilitäts- und Inflationsannahmen werden in diesem Modus nicht verwendet. Das Ergebnis ist deterministisch: dieselben Eingaben liefern denselben Wert. ${strategyClause} Kapitalerträge werden mit ${capGains} besteuert (Details unter „Grenzen des Modells“).`
       : `This analysis is a historical backtest: no random draws, but ${runsLabel} replays of real market history from ${simulation.historicalFirstYear} to ${simulation.historicalLastYear} — one per available start year. Each path takes the equity, bond and inflation outcomes of those years in their actual order; the return, volatility and inflation assumptions quoted elsewhere are not used in this mode. The result is deterministic: identical inputs give an identical figure. ${strategyClause} Capital gains are taxed at ${capGains} (details under "Limits of the Model").`
     : isGerman
       ? `Die Analyse basiert auf einer Monte-Carlo-Simulation mit ${runsLabel} Läufen. Marktrenditen werden als lognormalverteilte Zufallsgrößen mit einem Erwartungswert von ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} p.a. und einer Volatilität von ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)} modelliert; die Inflation folgt einem Erwartungswert von ${fmtPercent(assumptions.inflation, 1, intlLocale)} bei ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)} Volatilität. Die Pfade stammen aus einem festen Zufallsstrom (${simulation.seedLabel || 'fester Startwert'}), damit Parameteränderungen vergleichbar bleiben. ${strategyClause} Kapitalerträge werden mit ${capGains} besteuert (Details unter „Grenzen des Modells“).`
       : `The analysis is based on a Monte Carlo simulation with ${runsLabel} runs. Market returns are modelled as lognormally distributed random variables with an expected value of ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} p.a. and a volatility of ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}; inflation follows an expected value of ${fmtPercent(assumptions.inflation, 1, intlLocale)} with ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)} volatility. Paths come from one fixed random stream (${simulation.seedLabel || 'fixed seed'}) so that parameter changes stay comparable. ${strategyClause} Capital gains are taxed at ${capGains} (details under "Limits of the Model").`
+
+  // How the printed euros relate to the simulated ones — per-path deflation in
+  // real mode, exactly as the app does it.
+  const units = buildEuroUnitCopy(content.units, content.locale).methodology
+  const methodology = `${modelText} ${units}`
 
   /**
    * What the tax model really does. The old wording ("taxes are applied as a
@@ -127,5 +138,5 @@ export function buildMethodologyCopy(content: ReportContent): MethodologyCopy {
         'Spending is indexed with the inflation assumption; care costs and one-off items are only included where they were entered.',
       ]
 
-  return { methodology, successRate, limitations }
+  return { methodology, units, successRate, limitations }
 }

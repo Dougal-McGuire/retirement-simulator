@@ -162,6 +162,56 @@ test.describe('one-page workspace', () => {
     await expect(chart).toContainText('Nominal')
   })
 
+  test('the PDF report follows the € switch', async ({ page }) => {
+    test.setTimeout(90000) // two PDFs render on the dev server
+    await gotoWorkspace(page)
+    await expect(page.getByTestId('fan-chart')).toBeVisible({ timeout: 30000 })
+    const toggle = page.getByTestId('display-toggle')
+    const endAssets = page.getByTestId('end-assets')
+
+    // Generates the report from the Menu and returns what was posted and saved.
+    const generate = async () => {
+      await page.getByTestId('dashboard-tools').click()
+      const menu = page.getByRole('dialog', { name: 'Report and settings' })
+      const requestPromise = page.waitForRequest('**/api/generate-pdf')
+      const responsePromise = page.waitForResponse('**/api/generate-pdf', { timeout: 60000 })
+      const downloadPromise = page.waitForEvent('download', { timeout: 60000 })
+      await menu.getByRole('button', { name: 'Generate Report' }).click()
+      const body = (await requestPromise).postDataJSON() as {
+        displayReal?: boolean
+        results: {
+          assetPercentiles: { p50: number[] }
+          assetPercentilesReal?: { p50: number[] }
+        }
+      }
+      const response = await responsePromise
+      expect(response.status()).toBe(200)
+      expect(response.headers()['content-type']).toBe('application/pdf')
+      const download = await downloadPromise
+      if (await menu.isVisible()) await page.keyboard.press('Escape')
+      return { body, response, filename: download.suggestedFilename() }
+    }
+
+    // Today's €: the request asks for the real report, and the real series it
+    // carries ends on exactly the figure the result bar shows.
+    await toggle.getByRole('radio', { name: "Today's €" }).click()
+    const realEnd = Number(await endAssets.getAttribute('data-value'))
+    const real = await generate()
+    expect(real.body.displayReal).toBe(true)
+    expect(Math.round(real.body.results.assetPercentilesReal!.p50.at(-1)!)).toBe(realEnd)
+    expect(real.response.headers()['content-disposition']).toContain('-todays-euros.pdf')
+    expect(real.filename).toContain('-todays-euros-')
+
+    // Nominal: the same plan, the nominal series, no suffix.
+    await toggle.getByRole('radio', { name: 'Nominal' }).click()
+    const nominalEnd = Number(await endAssets.getAttribute('data-value'))
+    expect(nominalEnd).not.toBe(realEnd)
+    const nominal = await generate()
+    expect(nominal.body.displayReal).toBe(false)
+    expect(Math.round(nominal.body.results.assetPercentiles.p50.at(-1)!)).toBe(nominalEnd)
+    expect(nominal.filename).not.toContain('todays-euros')
+  })
+
   test('enters compare, gains a challenger plan and shows delta KPIs', async ({ page }) => {
     test.setTimeout(90000) // both compared plans re-run in full
     await gotoWorkspace(page)

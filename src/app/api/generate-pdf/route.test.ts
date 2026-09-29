@@ -287,6 +287,102 @@ describe('/api/generate-pdf', () => {
       })
     )
   })
+  describe('displayReal (Nominal / Heutige € switch)', () => {
+    type Captured = {
+      units?: { requested: string; applied: string; realMethod?: string }
+      projections: { milestones: Array<{ p50: number }> }
+    }
+    const lastData = () => (mapReportDataToContent.mock.calls.at(-1) as [Captured])[0]
+
+    function withRealSeries(results: SimulationResults): SimulationResults {
+      const deflate = (values: number[]) => values.map((value, i) => value / (1 + 0.1 * i))
+      const real = (group: SimulationResults['assetPercentiles']) => ({
+        p10: deflate(group.p10),
+        p20: deflate(group.p20),
+        p50: deflate(group.p50),
+        p80: deflate(group.p80),
+        p90: deflate(group.p90),
+      })
+      return {
+        ...results,
+        assetPercentilesReal: real(results.assetPercentiles),
+        spendingPercentilesReal: real(results.spendingPercentiles),
+        inflationIndexP50: results.ages.map((_, i) => 1 + 0.1 * i),
+      }
+    }
+
+    it('defaults to a nominal report when the field is absent', async () => {
+      renderToBuffer.mockResolvedValue(Buffer.from('%PDF-1.4'))
+      const results = withRealSeries(createSimulationResults())
+      const response = await POST(createJsonRequest({ params: DEFAULT_PARAMS, results }))
+      expect(response.status).toBe(200)
+      expect(lastData().units).toEqual({ requested: 'nominal', applied: 'nominal' })
+      expect(lastData().projections.milestones.map((m) => m.p50)).toEqual(
+        results.assetPercentiles.p50
+      )
+      expect(response.headers.get('Content-Disposition')).not.toContain('heutige-euro')
+    })
+
+    it('prints the real series when displayReal is true', async () => {
+      renderToBuffer.mockResolvedValue(Buffer.from('%PDF-1.4'))
+      const results = withRealSeries(createSimulationResults())
+      const response = await POST(
+        createJsonRequest({ params: DEFAULT_PARAMS, results, locale: 'de', displayReal: true })
+      )
+      expect(response.status).toBe(200)
+      expect(lastData().units).toEqual({
+        requested: 'real',
+        applied: 'real',
+        realMethod: 'perPath',
+      })
+      expect(lastData().projections.milestones.map((m) => m.p50)).toEqual(
+        results.assetPercentilesReal!.p50
+      )
+      expect(response.headers.get('Content-Disposition')).toMatch(/-heutige-euro\.pdf"$/)
+    })
+
+    it('falls back to nominal, flagged, when the results carry no real data', async () => {
+      renderToBuffer.mockResolvedValue(Buffer.from('%PDF-1.4'))
+      const results = createSimulationResults()
+      const response = await POST(
+        createJsonRequest({ params: DEFAULT_PARAMS, results, displayReal: true })
+      )
+      expect(response.status).toBe(200)
+      expect(lastData().units).toEqual({ requested: 'real', applied: 'nominal' })
+      expect(lastData().projections.milestones.map((m) => m.p50)).toEqual(
+        results.assetPercentiles.p50
+      )
+    })
+
+    it('rejects a non-boolean displayReal', async () => {
+      const response = await POST(
+        createJsonRequest({
+          params: DEFAULT_PARAMS,
+          results: createSimulationResults(),
+          displayReal: 'yes',
+        })
+      )
+      expect(response.status).toBe(400)
+    })
+
+    it('rejects real series whose length does not match the ages', async () => {
+      const results = withRealSeries(createSimulationResults())
+      const response = await POST(
+        createJsonRequest({
+          params: DEFAULT_PARAMS,
+          results: {
+            ...results,
+            assetPercentilesReal: { ...results.assetPercentilesReal!, p50: [1, 2] },
+          },
+          displayReal: true,
+        })
+      )
+      expect(response.status).toBe(400)
+      const payload = await response.json()
+      expect(payload.details.fieldErrors.assetPercentilesReal).toBeDefined()
+    })
+  })
+
   it('preserves per-flow tax assumptions through export validation', async () => {
     renderToBuffer.mockResolvedValue(Buffer.from('%PDF-1.4'))
     const params: SimulationParams = {

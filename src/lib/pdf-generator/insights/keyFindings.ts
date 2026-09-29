@@ -1,6 +1,7 @@
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
 import { allPensionsSwitchedOff } from '@/lib/pdf-generator/pensionSwitch'
 import { fmtCurrency, fmtNumber, fmtPercent, fmtRatioPercent } from '@/lib/pdf-generator/formatters'
+import { buildEuroUnitCopy } from '@/lib/pdf-generator/euroUnitCopy'
 
 export type FindingTone = 'positive' | 'neutral' | 'risk'
 
@@ -27,6 +28,9 @@ export function deriveKeyFindings(content: ReportContent): KeyFinding[] {
   const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
   const pensionAnnual = finances.monthlyPension * 12
   const money = (value: number) => fmtCurrency(value, locale)
+  // Milestones and the bridge need are in the report's euro unit; the growth
+  // figure says which one instead of always claiming "nominal".
+  const unitCopy = buildEuroUnitCopy(content.units, content.locale)
   const num = (value: number) => fmtNumber(value, { locale })
   // A historical backtest has no "simulation runs" — it has start years. Every
   // count in this list is the context's, and so is the word used for it.
@@ -115,14 +119,19 @@ export function deriveKeyFindings(content: ReportContent): KeyFinding[] {
   const bridgeYears = Math.max(0, person.pensionAge - person.retireAge)
   if (profile.bridge && bridgeYears > 0) {
     const retireAssets = milestones.find((m) => m.age === person.retireAge)?.p50
-    const share =
-      retireAssets && retireAssets > 0 ? profile.bridge.cashNeedEUR / retireAssets : null
+    // Unit-free, so taken from the precomputed ratio when present: the
+    // € switch must not change it. Older payloads derive it here.
+    const share = projections.ratios
+      ? projections.ratios.bridgeShareOfRetirementAssets
+      : retireAssets && retireAssets > 0
+        ? profile.bridge.cashNeedEUR / retireAssets
+        : null
     findings.push({
       id: 'bridge',
       tone: share !== null && share > 0.4 ? 'risk' : 'neutral',
       text: isGerman
-        ? `Zwischen Ruhestand (${person.retireAge}) und Rentenbeginn (${person.pensionAge}) liegen ${num(bridgeYears)} Jahre ohne Rentenzahlung: ${money(profile.bridge.cashNeedEUR)} müssen aus dem Depot kommen${share !== null ? ` (${fmtRatioPercent(share, 0, locale)} des Medianvermögens bei Ruhestandsbeginn)` : ''}.`
-        : `${num(bridgeYears)} years sit between retirement (${person.retireAge}) and the state pension (${person.pensionAge}): ${money(profile.bridge.cashNeedEUR)} has to come from the portfolio${share !== null ? ` (${fmtRatioPercent(share, 0, locale)} of median assets at retirement)` : ''}.`,
+        ? `Zwischen Ruhestand (${person.retireAge}) und Rentenbeginn (${person.pensionAge}) liegen ${num(bridgeYears)} Jahre ohne Rentenzahlung: ${money(profile.bridge.cashNeedEUR)}${unitCopy.amountQualifier} müssen aus dem Depot kommen${share !== null ? ` (${fmtRatioPercent(share, 0, locale)} des Medianvermögens bei Ruhestandsbeginn)` : ''}.`
+        : `${num(bridgeYears)} years sit between retirement (${person.retireAge}) and the state pension (${person.pensionAge}): ${money(profile.bridge.cashNeedEUR)}${unitCopy.amountQualifier} has to come from the portfolio${share !== null ? ` (${fmtRatioPercent(share, 0, locale)} of median assets at retirement)` : ''}.`,
     })
   }
 
@@ -160,11 +169,11 @@ export function deriveKeyFindings(content: ReportContent): KeyFinding[] {
       tone: growth >= 0 ? 'positive' : 'neutral',
       text: isGerman
         ? isHistorical
-          ? `Der Medianpfad entwickelt sich von ${money(startMedian)} heute auf ${money(endMedian)} über die ${num(simulation.effectiveRuns)} historischen Verläufe (${growthPct} nominal).`
-          : `Der Medianpfad entwickelt sich von ${money(startMedian)} heute auf ${money(endMedian)} mit ${fmtPercent(assumptions.expectedReturn, 1, locale)} Renditeerwartung (${growthPct} nominal).`
+          ? `Der Medianpfad entwickelt sich von ${money(startMedian)} heute auf ${money(endMedian)} über die ${num(simulation.effectiveRuns)} historischen Verläufe (${growthPct} ${unitCopy.growth}).`
+          : `Der Medianpfad entwickelt sich von ${money(startMedian)} heute auf ${money(endMedian)} mit ${fmtPercent(assumptions.expectedReturn, 1, locale)} Renditeerwartung (${growthPct} ${unitCopy.growth}).`
         : isHistorical
-          ? `The median path moves from ${money(startMedian)} today to ${money(endMedian)} across the ${num(simulation.effectiveRuns)} historical replays (${growthPct} nominal).`
-          : `The median path moves from ${money(startMedian)} today to ${money(endMedian)} at a ${fmtPercent(assumptions.expectedReturn, 1, locale)} expected return (${growthPct} nominal).`,
+          ? `The median path moves from ${money(startMedian)} today to ${money(endMedian)} across the ${num(simulation.effectiveRuns)} historical replays (${growthPct} ${unitCopy.growth}).`
+          : `The median path moves from ${money(startMedian)} today to ${money(endMedian)} at a ${fmtPercent(assumptions.expectedReturn, 1, locale)} expected return (${growthPct} ${unitCopy.growth}).`,
     })
   }
 

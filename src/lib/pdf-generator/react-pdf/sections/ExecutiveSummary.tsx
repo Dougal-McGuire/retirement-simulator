@@ -6,6 +6,7 @@ import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
 import { deriveKeyFindings, type FindingTone } from '@/lib/pdf-generator/insights/keyFindings'
 import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
 import { allPensionsSwitchedOff } from '@/lib/pdf-generator/pensionSwitch'
+import { buildEuroUnitCopy } from '@/lib/pdf-generator/euroUnitCopy'
 
 interface ExecutiveSummaryProps {
   content: ReportContent
@@ -77,6 +78,7 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
   const confidence = profile.success.successRate
   const confidenceColor = rateColor(confidence)
   const findings = deriveKeyFindings(content)
+  const unitCopy = buildEuroUnitCopy(content.units, content.locale)
 
   const componentLabels: Record<'success' | 'spending' | 'liquidity', string> = {
     success: isGerman ? 'Erfolgsquote' : 'Success rate',
@@ -132,6 +134,18 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
             : 'Compact assessment of your retirement strategy based on the current simulation data.'
         }
       />
+
+      {/* Which euro every projected figure below is in — the app's € switch. */}
+      <Text
+        style={{
+          fontSize: 7.5,
+          color: tokens.colors.ink[600],
+          lineHeight: 1.45,
+          marginBottom: 8,
+        }}
+      >
+        {unitCopy.statement}
+      </Text>
 
       {/* KPI row */}
       <View style={{ flexDirection: 'row', marginBottom: 10 }}>
@@ -410,8 +424,8 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
           </Text>
           <Text style={{ fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
             {isGerman
-              ? `Zwischen Alter ${profile.bridge.startAge} und ${profile.bridge.endAge} entsteht bis zum Rentenbeginn ein Liquiditätsbedarf von ${fmtCurrency(profile.bridge.cashNeedEUR, locale)}. Planen Sie diesen Betrag in liquiden, schwankungsarmen Anlagen ein.`
-              : `Between age ${profile.bridge.startAge} and ${profile.bridge.endAge}, expected bridge liquidity needs are ${fmtCurrency(profile.bridge.cashNeedEUR, locale)} until the state pension begins. Keep this amount in liquid, low-volatility assets.`}
+              ? `Zwischen Alter ${profile.bridge.startAge} und ${profile.bridge.endAge} entsteht bis zum Rentenbeginn ein Liquiditätsbedarf von ${fmtCurrency(profile.bridge.cashNeedEUR, locale)}${unitCopy.amountQualifier}. Planen Sie diesen Betrag in liquiden, schwankungsarmen Anlagen ein.`
+              : `Between age ${profile.bridge.startAge} and ${profile.bridge.endAge}, expected bridge liquidity needs are ${fmtCurrency(profile.bridge.cashNeedEUR, locale)}${unitCopy.amountQualifier} until the state pension begins. Keep this amount in liquid, low-volatility assets.`}
           </Text>
         </View>
       )}

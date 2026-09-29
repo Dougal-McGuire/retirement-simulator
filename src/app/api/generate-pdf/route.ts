@@ -11,6 +11,7 @@ import {
 } from '@/lib/pdf-generator/schema/reportData'
 import { mapReportDataToContent } from '@/lib/pdf-generator/reportTypes'
 import { RetirementReport } from '@/lib/pdf-generator/react-pdf'
+import { euroUnitFilenameSuffix } from '@/lib/pdf-generator/euroUnit'
 import React from 'react'
 import { z, ZodError } from 'zod'
 import {
@@ -29,6 +30,8 @@ export const maxDuration = 30 // Reduced from 60s since react-pdf is much faster
 
 const PERCENTILE_KEYS = ['p10', 'p20', 'p50', 'p80', 'p90'] as const
 const PERCENTILE_GROUPS = ['assetPercentiles', 'spendingPercentiles'] as const
+// Optional real-terms twins: checked the same way whenever a client sends them.
+const OPTIONAL_PERCENTILE_GROUPS = ['assetPercentilesReal', 'spendingPercentilesReal'] as const
 
 const CustomExpenseSchema = z.object({
   id: z.string(),
@@ -129,6 +132,12 @@ const SimulationResultsSchema = z
     // posts neither, and the context falls back to `successRate`.
     depletionSuccessRate: z.number().optional(),
     depletionByAge: z.array(z.number()).optional(),
+    // The real-terms series the dashboard shows under "Heutige €". Optional:
+    // results persisted before they existed lack them, and the report then
+    // falls back to `inflationIndexP50`, or stays nominal and says so.
+    assetPercentilesReal: PercentileDataSchema.optional(),
+    spendingPercentilesReal: PercentileDataSchema.optional(),
+    inflationIndexP50: z.array(z.number()).optional(),
     params: SimulationParamsSchema.optional(),
   })
   .superRefine((results, ctx) => {
@@ -146,6 +155,28 @@ const SimulationResultsSchema = z
         }
       }
     }
+
+    for (const group of OPTIONAL_PERCENTILE_GROUPS) {
+      const series = results[group]
+      if (!series) continue
+      for (const key of PERCENTILE_KEYS) {
+        if (series[key].length !== expectedLength) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [group, key],
+            message: `Expected ${expectedLength} values to match ages, received ${series[key].length}`,
+          })
+        }
+      }
+    }
+
+    if (results.inflationIndexP50 && results.inflationIndexP50.length !== expectedLength) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['inflationIndexP50'],
+        message: `Expected ${expectedLength} values to match ages, received ${results.inflationIndexP50.length}`,
+      })
+    }
   })
 
 const GeneratePdfRequestBodySchema = z
@@ -156,6 +187,9 @@ const GeneratePdfRequestBodySchema = z
     locale: ReportLocaleSchema.optional(),
     // Optional so older clients and the legacy print route keep working.
     planName: z.string().trim().min(1).max(80).optional(),
+    // The dashboard's Nominal / Heutige € switch. Optional and false by
+    // default, so older clients keep getting the nominal report they asked for.
+    displayReal: z.boolean().default(false),
   })
   .passthrough()
 
@@ -224,7 +258,7 @@ export async function POST(req: NextRequest) {
     }
     body = parsedBody.data
 
-    const { params, results, reportData, planName } = body
+    const { params, results, reportData, planName, displayReal } = body
     const requestedLocale = body.locale ?? DEFAULT_REPORT_LOCALE
 
     // Validate input data
@@ -241,7 +275,9 @@ export async function POST(req: NextRequest) {
         planName,
         // Recommendations quote this plan's own numbers, so they are written in
         // the report's language up front instead of being translated by lookup.
-        requestedLocale === 'de' ? 'de' : 'en'
+        requestedLocale === 'de' ? 'de' : 'en',
+        // Picks pre-computed series only; the simulation is never re-run here.
+        { displayReal }
       )
       const parsed = ReportDataSchema.safeParse({ ...generated, locale: requestedLocale })
       if (!parsed.success) {
@@ -249,6 +285,8 @@ export async function POST(req: NextRequest) {
       }
       validated = parsed.data
     } else if (reportData) {
+      // A pre-built payload carries its figures (and `units`) already; there
+      // is no series left to switch, so `displayReal` does not apply here.
       const parsed = ReportDataSchema.safeParse(withLocale(reportData, requestedLocale, planName))
       if (!parsed.success) {
         throw new ClientRequestError('Ungueltige Berichtsdaten', 400, parsed.error.flatten())
@@ -259,6 +297,9 @@ export async function POST(req: NextRequest) {
     }
 
     const reportId = encodeURIComponent(validated.metadata?.reportId ?? `report-${Date.now()}`)
+    const unitSuffix = validated.units
+      ? euroUnitFilenameSuffix(validated.units, requestedLocale)
+      : ''
 
     // Transform to report content format
     const content = mapReportDataToContent(validated)
@@ -281,7 +322,7 @@ export async function POST(req: NextRequest) {
     return new NextResponse(uint8Array, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="rentenplan-${reportId}.pdf"`,
+        'Content-Disposition': `attachment; filename="rentenplan-${reportId}${unitSuffix}.pdf"`,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Content-Length': uint8Array.byteLength.toString(),
       },

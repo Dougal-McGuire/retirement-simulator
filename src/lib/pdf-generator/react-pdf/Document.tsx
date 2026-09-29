@@ -125,6 +125,8 @@ interface CoverPageProps {
   hero?: React.ReactNode
   heroCaption?: string
   metadata?: Array<{ label: string; value: string }>
+  /** Which euro the figures are in; printed above the metadata strip. */
+  unitNote?: string
   disclaimer?: string
 }
 
@@ -147,6 +149,7 @@ export function CoverPage({
   hero,
   heroCaption,
   metadata,
+  unitNote,
   disclaimer,
 }: CoverPageProps) {
   const inset = pageConfig.margin.left
@@ -377,6 +380,19 @@ export function CoverPage({
         )}
 
         <View style={{ flex: 1 }} />
+
+        {unitNote && (
+          <Text
+            style={{
+              fontSize: 7.5,
+              color: tokens.colors.ink[700],
+              lineHeight: 1.45,
+              marginBottom: 10,
+            }}
+          >
+            {unitNote}
+          </Text>
+        )}
 
         {/* Metadata strip */}
         {metadata && metadata.length > 0 && (

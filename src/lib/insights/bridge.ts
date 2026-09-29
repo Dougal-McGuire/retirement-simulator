@@ -9,14 +9,27 @@ export type BridgeAnalysis = {
   yearsInBridge: number
   /** The age the first pension starts — what the bridge has to reach. */
   pensionAge: number
-  /** Inflation-adjusted cash need across the bridge years, unrounded. */
+  /**
+   * Cash need across the bridge years, unrounded. By default the budget is
+   * grown with the inflation assumption from the first bridge year on; with
+   * `{ real: true }` it is the same need in today's purchasing power (the
+   * budget is inflation-linked, so each bridge year costs today's budget).
+   */
   cashNeedEUR: number
   cashBucketYears: number
   cashBucketSharePct: number
   portfolioSharePct: number
 }
 
-export function computeBridgeAnalysis(params: SimulationParams): BridgeAnalysis {
+export type BridgeAnalysisOptions = {
+  /** Express the cash need in today's purchasing power (the PDF's real mode). */
+  real?: boolean
+}
+
+export function computeBridgeAnalysis(
+  params: SimulationParams,
+  options: BridgeAnalysisOptions = {}
+): BridgeAnalysis {
   const totalYearlyExpenses = calculateCombinedExpenses(params.customExpenses).combinedAnnual
   const startAge = Math.max(params.retirementAge, params.currentAge)
   // The bridge ends when the first pension pays, which may be years before
@@ -24,7 +37,7 @@ export function computeBridgeAnalysis(params: SimulationParams): BridgeAnalysis 
   const pensionAge = firstPensionAge(params.cashFlows ?? [], params.legalRetirementAge)
   const endAge = Math.max(pensionAge - 1, startAge - 1)
   const yearsInBridge = Math.max(0, endAge - startAge + 1)
-  const inflation = params.averageInflation
+  const inflation = options.real ? 0 : params.averageInflation
 
   let cashNeedEUR = 0
   for (let i = 0; i < yearsInBridge; i++) {

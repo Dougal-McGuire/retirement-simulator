@@ -85,10 +85,20 @@ const HEADINGS: Record<RecommendationId, Record<RecommendationLocale, [string, s
 
 const localeTag = (locale: RecommendationLocale) => (locale === 'de' ? 'de-DE' : 'en-US')
 
+export type RecommendationOptions = {
+  /**
+   * Quote derived euro amounts (the bridge need) in today's purchasing power —
+   * the report's real mode. Ratios and plan inputs are unit-free or already in
+   * today's euros and read the same either way.
+   */
+  real?: boolean
+}
+
 export function generateRecommendations(
   params: SimulationParams,
   results: SimulationResults,
-  locale: RecommendationLocale = 'en'
+  locale: RecommendationLocale = 'en',
+  options: RecommendationOptions = {}
 ): PlanRecommendation[] {
   const tag = localeTag(locale)
   const de = locale === 'de'
@@ -116,7 +126,14 @@ export function generateRecommendations(
   }
 
   const successRate = results.successRate
-  const bridge = computeBridgeAnalysis(params)
+  const bridge = computeBridgeAnalysis(params, { real: options.real })
+  // Derived amounts say which euro they are in when it is not the default one.
+  const bridgeUnit = options.real
+    ? { en: " in today's euros", de: ' in heutiger Kaufkraft' }
+    : { en: '', de: '' }
+  const bridgeSpendDe = options.real
+    ? `${eur(bridge.cashNeedEUR)} an Ausgaben in heutiger Kaufkraft`
+    : `${eur(bridge.cashNeedEUR)} Ausgaben`
   const accumulationYears = Math.max(0, params.retirementAge - params.currentAge)
 
   // First retirement year: what the portfolio alone has to deliver, over what
@@ -142,8 +159,8 @@ export function generateRecommendations(
 
   if (successRate < 85 && bridge.yearsInBridge > 0) {
     push('delayRetirement', successRate < 70 ? 'High' : 'Medium', {
-      en: `Retiring at ${params.retirementAge} opens a ${bridge.yearsInBridge}-year gap to the first pension at ${bridge.pensionAge}, worth ${eur(bridge.cashNeedEUR)} of spending the portfolio carries alone. Each extra working year shortens that gap and adds a year of contributions.`,
-      de: `Ein Ruhestand mit ${params.retirementAge} öffnet ${bridge.yearsInBridge} Jahre bis zur ersten Rente mit ${bridge.pensionAge} — ${eur(bridge.cashNeedEUR)} Ausgaben, die allein das Depot trägt. Jedes zusätzliche Arbeitsjahr verkürzt die Lücke und bringt ein weiteres Beitragsjahr.`,
+      en: `Retiring at ${params.retirementAge} opens a ${bridge.yearsInBridge}-year gap to the first pension at ${bridge.pensionAge}, worth ${eur(bridge.cashNeedEUR)}${bridgeUnit.en} of spending the portfolio carries alone. Each extra working year shortens that gap and adds a year of contributions.`,
+      de: `Ein Ruhestand mit ${params.retirementAge} öffnet ${bridge.yearsInBridge} Jahre bis zur ersten Rente mit ${bridge.pensionAge} — ${bridgeSpendDe}, die allein das Depot trägt. Jedes zusätzliche Arbeitsjahr verkürzt die Lücke und bringt ein weiteres Beitragsjahr.`,
     })
   }
 
@@ -206,8 +223,8 @@ export function generateRecommendations(
 
   if (bridge.yearsInBridge > 0) {
     push('bridgeLiquidity', bridge.yearsInBridge >= 5 ? 'Medium' : 'Low', {
-      en: `Ages ${bridge.startAge}–${bridge.endAge} run entirely on the portfolio: ${eur(bridge.cashNeedEUR)} before the statutory pension starts. Holding the first of those years in something that cannot fall — call money, short-dated Bundesanleihen — removes the one scenario where a crash forces a sale at the worst moment.`,
-      de: `Die Jahre ${bridge.startAge}–${bridge.endAge} laufen allein über das Depot: ${eur(bridge.cashNeedEUR)} bis zum Beginn der gesetzlichen Rente. Die ersten dieser Jahre schwankungsfrei zu halten — Tagesgeld, kurz laufende Bundesanleihen — nimmt genau das Szenario heraus, in dem ein Crash den Verkauf zum schlechtesten Zeitpunkt erzwingt.`,
+      en: `Ages ${bridge.startAge}–${bridge.endAge} run entirely on the portfolio: ${eur(bridge.cashNeedEUR)}${bridgeUnit.en} before the statutory pension starts. Holding the first of those years in something that cannot fall — call money, short-dated Bundesanleihen — removes the one scenario where a crash forces a sale at the worst moment.`,
+      de: `Die Jahre ${bridge.startAge}–${bridge.endAge} laufen allein über das Depot: ${eur(bridge.cashNeedEUR)}${bridgeUnit.de} bis zum Beginn der gesetzlichen Rente. Die ersten dieser Jahre schwankungsfrei zu halten — Tagesgeld, kurz laufende Bundesanleihen — nimmt genau das Szenario heraus, in dem ein Crash den Verkauf zum schlechtesten Zeitpunkt erzwingt.`,
     })
   }
 
