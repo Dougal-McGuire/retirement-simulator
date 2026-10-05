@@ -21,10 +21,24 @@
  * `plan.updatedAt`. Two devices editing two different plans both keep their
  * work; two devices editing the *same* plan keep the one saved last. There is
  * no field-level merge and no conflict UI.
+ *
+ * SCHEMA GUARD: every request states this build's `PLAN_SCHEMA_VERSION` (see
+ * `src/lib/plans/schemaVersion.ts`). A `409` from the server means this tab and
+ * the account's data disagree on the plan shape; the tab then never syncs again
+ * until it is reloaded (`schemaBlocked`, module scope like the 501 probe), and
+ * the status store asks for a reload. Local edits keep working.
  */
 
 import { create } from 'zustand'
 import { MAX_PLANS, type Plan } from '@/types'
+import {
+  BUILD_ID_HEADER,
+  OUTDATED_CLIENT_ERROR,
+  OUTDATED_SERVER_ERROR,
+  PLAN_SCHEMA_HEADER,
+  PLAN_SCHEMA_VERSION,
+  isDifferentBuild,
+} from '@/lib/plans/schemaVersion'
 
 /** What a device knows about its own plans. */
 export interface PlanSnapshot {
@@ -200,17 +214,22 @@ export function mergePlanSnapshots({ local, remote, localPristine }: MergeInput)
 
 export const PLANS_ENDPOINT = '/api/plans'
 
+/** The server refused this tab's plan schema (`409`): never sync again here. */
+export type OutdatedOutcome = { status: 'outdated' }
+
 export type FetchOutcome =
   | { status: 'ok'; blob: RemoteSnapshot | null }
   | { status: 'unconfigured' }
   | { status: 'unauthorized' }
   | { status: 'error' }
+  | OutdatedOutcome
 
 export type PushOutcome =
   | { status: 'ok'; updatedAt: number }
   | { status: 'unconfigured' }
   | { status: 'unauthorized' }
   | { status: 'error' }
+  | OutdatedOutcome
 
 /**
  * `null` = not probed yet, `false` = this deployment has no store (never ask
@@ -218,13 +237,59 @@ export type PushOutcome =
  */
 let cloudAvailable: boolean | null = null
 
+/**
+ * Set once the server refused this build's schema. A property of the *build*,
+ * not of the account, so it survives namespace switches and only a reload (a
+ * new module instance, ideally a new build) clears it.
+ */
+let schemaBlocked = false
+
 export function cloudProbeState(): boolean | null {
   return cloudAvailable
 }
 
-/** Test seam — resets the once-per-session probe. */
+export function isSchemaBlocked(): boolean {
+  return schemaBlocked
+}
+
+/** Test seam — resets the once-per-session probe and the schema block. */
 export function resetCloudProbe(): void {
   cloudAvailable = null
+  schemaBlocked = false
+}
+
+/** Headers every `/api/plans` request carries. */
+const schemaHeaders = (): Record<string, string> => ({
+  [PLAN_SCHEMA_HEADER]: String(PLAN_SCHEMA_VERSION),
+})
+
+/** A newer deployment is serving the API: offer a reload, keep syncing. */
+function noteServerBuild(response: Response): void {
+  const serverBuild = response.headers?.get?.(BUILD_ID_HEADER) ?? null
+  if (isDifferentBuild(serverBuild)) usePlanSyncStore.getState().requestReload('suggested')
+}
+
+/**
+ * Whether a `409` is the schema guard. Any other `409` stays a plain error, so
+ * an unrelated conflict can never switch sync off for good.
+ */
+async function isSchemaConflict(response: Response): Promise<boolean> {
+  if (response.status !== 409) return false
+  try {
+    const payload = (await response.json()) as unknown
+    return (
+      isRecord(payload) &&
+      (payload.error === OUTDATED_CLIENT_ERROR || payload.error === OUTDATED_SERVER_ERROR)
+    )
+  } catch {
+    return false
+  }
+}
+
+function blockSchema(): OutdatedOutcome {
+  schemaBlocked = true
+  usePlanSyncStore.getState().requestReload('required')
+  return { status: 'outdated' }
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -251,15 +316,18 @@ function toRemoteSnapshot(value: unknown): RemoteSnapshot | null {
 
 /** Reads the account's blob. `blob: null` means "this account is empty". */
 export async function fetchRemoteSnapshot(): Promise<FetchOutcome> {
+  if (schemaBlocked) return { status: 'outdated' }
   if (cloudAvailable === false) return { status: 'unconfigured' }
 
   try {
     const response = await fetch(PLANS_ENDPOINT, {
       method: 'GET',
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json', ...schemaHeaders() },
       cache: 'no-store',
     })
 
+    noteServerBuild(response)
+    if (await isSchemaConflict(response)) return blockSchema()
     if (response.status === 501) {
       cloudAvailable = false
       return { status: 'unconfigured' }
@@ -279,21 +347,25 @@ export async function fetchRemoteSnapshot(): Promise<FetchOutcome> {
 
 /** Upserts the account's blob. */
 export async function pushSnapshot(snapshot: PlanSnapshot): Promise<PushOutcome> {
+  if (schemaBlocked) return { status: 'outdated' }
   if (cloudAvailable === false) return { status: 'unconfigured' }
 
   try {
     const response = await fetch(PLANS_ENDPOINT, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...schemaHeaders() },
       cache: 'no-store',
       body: JSON.stringify({
-        schemaVersion: 1,
+        // Informational: the server trusts the header, and stamps the blob.
+        schemaVersion: PLAN_SCHEMA_VERSION,
         updatedAt: Date.now(),
         plans: snapshot.plans,
         activePlanId: snapshot.activePlanId,
       }),
     })
 
+    noteServerBuild(response)
+    if (await isSchemaConflict(response)) return blockSchema()
     if (response.status === 501) {
       cloudAvailable = false
       return { status: 'unconfigured' }
@@ -323,10 +395,19 @@ export type SyncPhase =
   | 'synced'
   /** Reachable in principle, but the last attempt failed. */
   | 'offline'
+  /** The server refused this build's plan schema: paused until a reload. */
+  | 'outdated'
+
+/**
+ * Whether the user should reload: `required` — this tab stopped syncing (schema
+ * guard); `suggested` — a newer build serves the API but sync still works.
+ */
+export type ReloadNotice = 'required' | 'suggested' | null
 
 interface PlanSyncState {
   phase: SyncPhase
   lastSyncedAt: number | null
+  reloadNotice: ReloadNotice
   /**
    * Account whose namespace the store is currently pointed at, published by
    * `AuthStorageSync` once the switch (and any migration prompt) has settled.
@@ -337,11 +418,14 @@ interface PlanSyncState {
   namespaceReady: boolean
   setPhase: (phase: SyncPhase, lastSyncedAt?: number | null) => void
   setNamespace: (userId: string | null) => void
+  /** Raises the reload notice; it only ever escalates (`suggested` → `required`). */
+  requestReload: (notice: Exclude<ReloadNotice, null>) => void
 }
 
 export const usePlanSyncStore = create<PlanSyncState>()((set) => ({
   phase: 'disabled',
   lastSyncedAt: null,
+  reloadNotice: null,
   namespaceUserId: null,
   namespaceReady: false,
   setPhase: (phase, lastSyncedAt) =>
@@ -358,6 +442,12 @@ export const usePlanSyncStore = create<PlanSyncState>()((set) => ({
       phase: userId === null ? 'disabled' : state.phase,
       lastSyncedAt: userId === null ? null : state.lastSyncedAt,
     })),
+  requestReload: (notice) =>
+    set((state) =>
+      state.reloadNotice === 'required' || state.reloadNotice === notice
+        ? state
+        : { reloadNotice: notice }
+    ),
 }))
 
 /**

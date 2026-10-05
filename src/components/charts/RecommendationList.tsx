@@ -13,6 +13,8 @@ import {
   useSimulationStore,
   useUpdateParams,
 } from '@/lib/stores/simulationStore'
+import { useDisplayReal } from '@/lib/stores/displayStore'
+import { resolveEuroUnit } from '@/lib/pdf-generator/euroUnit'
 
 /**
  * "Empfehlungen" in the Stellschrauben section: advice derived from this plan,
@@ -26,6 +28,7 @@ export const RecommendationList = memo(function RecommendationList() {
   const locale = useLocale()
   const updateParams = useUpdateParams()
   const results = useSimulationResults()
+  const displayReal = useDisplayReal()
   const glidePathEnabled = useSimulationStore((state) => state.params.glidePathEnabled)
 
   /**
@@ -61,15 +64,15 @@ export const RecommendationList = memo(function RecommendationList() {
 
   // Bodies quote this plan's own figures, so they are produced in the reader's
   // language rather than looked up by sentence — see `generateRecommendations`.
-  const recommendations = useMemo(
-    () =>
-      results
-        ? generateRecommendations(results.params, results, locale === 'de' ? 'de' : 'en').map(
-            (rec) => ({ rec, uplift: estimateRecommendationUplift(rec, results.params, results) })
-          )
-        : [],
-    [results, locale]
-  )
+  // The derived bridge need follows the Nominal / Heutige € switch, resolved
+  // exactly as the PDF export resolves it.
+  const recommendations = useMemo(() => {
+    if (!results) return []
+    const unit = resolveEuroUnit(results, displayReal).applied
+    return generateRecommendations(results.params, results, locale === 'de' ? 'de' : 'en', {
+      unit,
+    }).map((rec) => ({ rec, uplift: estimateRecommendationUplift(rec, results.params, results) }))
+  }, [results, locale, displayReal])
 
   return (
     <section

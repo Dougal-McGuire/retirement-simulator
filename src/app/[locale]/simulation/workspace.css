@@ -586,12 +586,32 @@
   min-width: 0;
 }
 .compare-table {
+  position: relative; /* keeps the cells' sr-only text inside the scroller */
   align-self: start;
   min-width: 0;
   overflow-x: auto;
 }
 .compare-table .ds-row--behind {
   background: var(--ui-tint-accent);
+}
+/* A flow's side of a row: the amount, and under it when it applies. The
+   euro figure never breaks (its space is non-breaking), the words around it
+   may, so a 390px column stays narrow. */
+.compare-flow-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.compare-flow-period {
+  font-weight: 400;
+  color: var(--ui-muted);
+}
+/* Phones: three columns of single long words ("Renteneintrittsalter",
+   "ausgeschaltet") only fit 390px with tighter cell padding. */
+@media (max-width: 480px) {
+  html .compare-table .ds-table :is(th, td) {
+    padding-inline: var(--ui-space-2);
+  }
 }
 .compare-table-foot {
   display: flex;

@@ -2,10 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
-import type { Plan, SimulationParams, SimulationResults } from '@/types'
+import type { CashFlow, Plan, SimulationParams, SimulationResults } from '@/types'
 import { MAX_COMPARISON_PLANS } from '@/types'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
-import { buildFlowSwitchRows, comparisonFingerprint } from '@/lib/simulation/planDiff'
+import {
+  buildFlowDiffRows,
+  comparisonFingerprint,
+  type FlowDiffRow,
+} from '@/lib/simulation/planDiff'
+import { isCashFlowEnabled } from '@/lib/simulation/cashFlows'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import { effectiveRunCount } from '@/lib/simulation/context'
 import { planDisplayName } from '@/lib/plans/planName'
@@ -22,6 +27,9 @@ import { formatEuroDelta, formatMillionsEuro, formatPpDelta, formatThousandsEuro
 import { Skeleton } from '@/components/workspace/Skeleton'
 
 const ALT_COLORS = ['var(--viz-3)', 'var(--viz-5)'] as const
+
+/** Flow rows shown before "Show n more items". */
+const MAX_FLOW_ROWS = 8
 
 interface CompareViewProps {
   onExit: () => void
@@ -246,15 +254,55 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
         label: t('rows.pension', { age: format.number(ready[0].params.legalRetirementAge) }),
         values: ready.map((run) => t('perMonth', { amount: euro(run.params.monthlyPension) })),
       },
-      // A flow switched on in one plan and off in another: the scenario
-      // question itself ("Erbschaft: berücksichtigt → ausgeschaltet").
-      ...buildFlowSwitchRows(ready.map((run) => run.params)).map((row) => ({
-        key: `flow:${row.id}`,
-        label: cashFlowDisplayName(row, (key) => tFlows(`defaults.${key}`)),
-        values: row.values.map((value) => tSwitch(value)),
-      })),
     ]
-  }, [ready, t, tSwitch, tFlows, format])
+  }, [ready, t, format])
+
+  // Flows that set the plans apart: a switch flip ("Erbschaft: berücksichtigt
+  // → ausgeschaltet"), a flow only some plans have, or one whose amount or
+  // window differs — matched by id, then by kind and name.
+  const flowRows = useMemo(() => buildFlowDiffRows(ready.map((run) => run.params)), [ready])
+  const [showAllFlows, setShowAllFlows] = useState(false)
+  const visibleFlowRows = showAllFlows ? flowRows : flowRows.slice(0, MAX_FLOW_ROWS)
+  const hiddenFlowRows = flowRows.length - MAX_FLOW_ROWS
+
+  const flowPeriod = (flow: CashFlow, params: SimulationParams) => {
+    if (flow.frequency === 'once') {
+      return tFlows('window.at', { age: flow.startAge ?? params.currentAge })
+    }
+    const from = flow.startAge ?? (flow.kind === 'pension' ? params.legalRetirementAge : undefined)
+    if (from !== undefined && flow.endAge !== undefined) {
+      return tFlows('window.range', { from, to: flow.endAge })
+    }
+    if (from !== undefined) return tFlows('window.from', { age: from })
+    if (flow.endAge !== undefined) return tFlows('window.until', { age: flow.endAge })
+    return tFlows('window.lifetime')
+  }
+
+  const flowCell = (row: FlowDiffRow, index: number) => {
+    const flow = row.flows[index]
+    if (!flow) {
+      return (
+        <>
+          <span aria-hidden="true">—</span>
+          <span className="sr-only">{tSwitch('absent')}</span>
+        </>
+      )
+    }
+    // Same amount and window, only the switch differs: say just that.
+    if (row.change === 'switch' && !row.termsDiffer) return tSwitch(row.values[index])
+    const off = !isCashFlowEnabled(flow)
+    return (
+      <span className="compare-flow-cell">
+        <span className="compare-flow-amount">
+          {t(`flow.${flow.frequency}`, { amount: euro(flow.amount) })}
+        </span>
+        <span className="compare-flow-period">
+          {flowPeriod(flow, ready[index].params)}
+          {off && ` · ${tSwitch('off')}`}
+        </span>
+      </span>
+    )
+  }
 
   const chartSeries = useMemo<CompareFanSeries[]>(() => {
     if (!base) return []
@@ -454,6 +502,40 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
                   </tr>
                 )
               })}
+              {visibleFlowRows.map((row) => (
+                <tr
+                  key={row.key}
+                  className="ds-row--behind"
+                  data-testid="compare-flow-row"
+                  data-flow-change={row.change}
+                >
+                  <td>{cashFlowDisplayName(row, (key) => tFlows(`defaults.${key}`))}</td>
+                  {row.flows.map((_, index) => (
+                    <td
+                      key={index}
+                      className="ds-num"
+                      style={index > 0 ? { fontWeight: 600 } : undefined}
+                    >
+                      {flowCell(row, index)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {hiddenFlowRows > 0 && (
+                <tr>
+                  <td colSpan={ready.length + 1}>
+                    <button
+                      type="button"
+                      className="ws-link-button"
+                      data-testid="compare-flow-more"
+                      aria-expanded={showAllFlows}
+                      onClick={() => setShowAllFlows((open) => !open)}
+                    >
+                      {showAllFlows ? t('flow.less') : t('flow.more', { count: hiddenFlowRows })}
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
           <div className="compare-table-foot">

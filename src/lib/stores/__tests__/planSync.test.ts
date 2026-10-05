@@ -1,9 +1,11 @@
 import { DEFAULT_PARAMS, MAX_PLANS, type Plan, type SimulationParams } from '@/types'
 import { makePlan } from '@/lib/stores/plans'
+import { PLAN_SCHEMA_HEADER, PLAN_SCHEMA_VERSION } from '@/lib/plans/schemaVersion'
 import {
   cloudProbeState,
   fetchRemoteSnapshot,
   mergePlanSnapshots,
+  isSchemaBlocked,
   pushSnapshot,
   resetCloudProbe,
   snapshotSignature,
@@ -360,5 +362,95 @@ describe('namespace signal', () => {
     expect(usePlanSyncStore.getState().namespaceUserId).toBeNull()
     expect(usePlanSyncStore.getState().phase).toBe('disabled')
     expect(usePlanSyncStore.getState().lastSyncedAt).toBeNull()
+  })
+})
+
+describe('schema guard transport', () => {
+  const originalFetch = global.fetch
+
+  const respond = (status: number, body: unknown, headers: Record<string, string> = {}) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json', ...headers },
+    })
+
+  beforeEach(() => {
+    resetCloudProbe()
+    usePlanSyncStore.setState({ phase: 'disabled', reloadNotice: null })
+  })
+
+  afterEach(() => {
+    global.fetch = originalFetch
+  })
+
+  it('sends the plan schema version on every GET and PUT', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockImplementation(async () => respond(200, { configured: true, blob: null, updatedAt: 1 }))
+    global.fetch = fetchMock as unknown as typeof fetch
+
+    await fetchRemoteSnapshot()
+    await pushSnapshot({ plans: [plan('a', 1)], activePlanId: 'a' })
+
+    for (const [, init] of fetchMock.mock.calls as [string, RequestInit][]) {
+      expect((init.headers as Record<string, string>)[PLAN_SCHEMA_HEADER]).toBe(
+        String(PLAN_SCHEMA_VERSION)
+      )
+    }
+    const [, putInit] = fetchMock.mock.calls[1] as [string, RequestInit]
+    expect((JSON.parse(String(putInit.body)) as { schemaVersion: number }).schemaVersion).toBe(
+      PLAN_SCHEMA_VERSION
+    )
+  })
+
+  it.each(['outdated-client', 'outdated-server'])(
+    'turns a 409 %s into "outdated", asks for a reload and never calls again',
+    async (error) => {
+      const fetchMock = jest.fn().mockImplementation(async () => respond(409, { error }))
+      global.fetch = fetchMock as unknown as typeof fetch
+
+      await expect(pushSnapshot({ plans: [plan('a', 1)], activePlanId: 'a' })).resolves.toEqual({
+        status: 'outdated',
+      })
+      expect(isSchemaBlocked()).toBe(true)
+      expect(usePlanSyncStore.getState().reloadNotice).toBe('required')
+
+      // Sticky for the page life: no request reaches the server any more.
+      await expect(fetchRemoteSnapshot()).resolves.toEqual({ status: 'outdated' })
+      await expect(pushSnapshot({ plans: [plan('a', 2)], activePlanId: 'a' })).resolves.toEqual({
+        status: 'outdated',
+      })
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it('treats a 409 from the GET the same way', async () => {
+    global.fetch = jest
+      .fn()
+      .mockImplementation(async () =>
+        respond(409, { error: 'outdated-client', schemaVersion: PLAN_SCHEMA_VERSION + 1 })
+      ) as unknown as typeof fetch
+
+    await expect(fetchRemoteSnapshot()).resolves.toEqual({ status: 'outdated' })
+    expect(isSchemaBlocked()).toBe(true)
+  })
+
+  it('keeps any other 409 a plain, retryable error', async () => {
+    global.fetch = jest
+      .fn()
+      .mockImplementation(async () => respond(409, { error: 'something-else' })) as unknown as typeof fetch
+
+    await expect(fetchRemoteSnapshot()).resolves.toEqual({ status: 'error' })
+    expect(isSchemaBlocked()).toBe(false)
+    expect(usePlanSyncStore.getState().reloadNotice).toBeNull()
+  })
+
+  it('only escalates the reload notice', () => {
+    const { requestReload } = usePlanSyncStore.getState()
+    requestReload('suggested')
+    expect(usePlanSyncStore.getState().reloadNotice).toBe('suggested')
+    requestReload('required')
+    requestReload('suggested')
+    expect(usePlanSyncStore.getState().reloadNotice).toBe('required')
   })
 })

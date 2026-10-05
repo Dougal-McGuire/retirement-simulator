@@ -46,142 +46,183 @@ const localIsPristine = (): boolean => {
  *      and a throttled pull whenever the tab regains focus.
  *
  * Every failure path degrades to local-only and stays silent; the status line
- * in the account menu is the only thing the user sees.
+ * in the account menu is the only thing the user sees — except the schema
+ * guard: a `409` from `/api/plans` stops this tab for good (`'outdated'`) and
+ * raises the reload notice (`SyncReloadNotice`).
  */
 export function usePlanCloudSync(): void {
   const namespaceUserId = usePlanSyncStore((state) => state.namespaceUserId)
   const namespaceReady = usePlanSyncStore((state) => state.namespaceReady)
 
   useEffect(() => {
-    const { setPhase } = usePlanSyncStore.getState()
-
     // Signed out, or the namespace has not settled yet: nothing to sync.
     if (!namespaceReady || !namespaceUserId) {
-      setPhase('disabled', null)
+      usePlanSyncStore.getState().setPhase('disabled', null)
+      return
+    }
+    return startPlanCloudSync()
+  }, [namespaceReady, namespaceUserId])
+}
+
+/**
+ * One sync session for the namespace currently in the store; returns its
+ * teardown. Plain function (no React) so the loop is unit-testable.
+ */
+export function startPlanCloudSync(): () => void {
+  const { setPhase } = usePlanSyncStore.getState()
+
+  let cancelled = false
+  let stopped = false
+  let lastPushedSignature: string | null = null
+  let lastPullAt = 0
+  let pushTimer: ReturnType<typeof setTimeout> | null = null
+  let unsubscribe: (() => void) | null = null
+
+  const halt = () => {
+    stopped = true
+    if (pushTimer) clearTimeout(pushTimer)
+    pushTimer = null
+    unsubscribe?.()
+    unsubscribe = null
+  }
+
+  /** Turns the store off for this session: no store here, or no session. */
+  const disable = () => {
+    halt()
+    setPhase('disabled', null)
+  }
+
+  /**
+   * The server refused this build's plan schema. Nothing is pushed or pulled
+   * again in this tab — local edits keep working, the cloud copy stays as the
+   * newer build left it — and the notice asks for a reload.
+   */
+  const pauseOutdated = () => {
+    halt()
+    setPhase('outdated')
+  }
+
+  const push = async (snapshot: PlanSnapshot): Promise<void> => {
+    if (stopped) return
+    const signature = snapshotSignature(snapshot)
+    setPhase('syncing')
+
+    const result = await pushSnapshot(snapshot)
+    if (cancelled) return
+
+    if (result.status === 'ok') {
+      lastPushedSignature = signature
+      setPhase('synced', Date.now())
+      return
+    }
+    if (result.status === 'error') {
+      setPhase('offline')
+      return
+    }
+    if (result.status === 'outdated') {
+      pauseOutdated()
+      return
+    }
+    disable()
+  }
+
+  const reconcile = async (): Promise<void> => {
+    if (stopped) return
+    lastPullAt = Date.now()
+    setPhase('syncing')
+
+    const remote = await fetchRemoteSnapshot()
+    if (cancelled) return
+
+    if (remote.status === 'outdated') {
+      // Never merge, never apply: an outdated build must not even ingest
+      // newer-shaped data into its own normalizers and localStorage.
+      pauseOutdated()
+      return
+    }
+    if (remote.status === 'unconfigured' || remote.status === 'unauthorized') {
+      disable()
+      return
+    }
+    if (remote.status === 'error') {
+      setPhase('offline')
       return
     }
 
-    let cancelled = false
-    let stopped = false
-    let lastPushedSignature: string | null = null
-    let lastPullAt = 0
-    let pushTimer: ReturnType<typeof setTimeout> | null = null
+    const merged = mergePlanSnapshots({
+      local: readSnapshot(),
+      remote: remote.blob,
+      localPristine: localIsPristine(),
+    })
 
-    /** Turns the store off for this session: no store here, or no session. */
-    const disable = () => {
-      stopped = true
-      setPhase('disabled', null)
+    if (merged.shouldApply) {
+      useSimulationStore
+        .getState()
+        .applySyncedPlans(merged.plans, merged.activePlanId)
     }
 
-    const push = async (snapshot: PlanSnapshot): Promise<void> => {
+    if (merged.shouldPush) {
+      // `applySyncedPlans` may pin the active plan (unsaved edits win), so the
+      // authoritative snapshot is what the store ended up with.
+      await push(merged.shouldApply ? readSnapshot() : merged)
+      return
+    }
+
+    lastPushedSignature = snapshotSignature(readSnapshot())
+    setPhase('synced', Date.now())
+  }
+
+  const schedulePush = () => {
+    if (pushTimer) clearTimeout(pushTimer)
+    pushTimer = setTimeout(() => {
+      pushTimer = null
+      void push(readSnapshot())
+    }, PUSH_DEBOUNCE_MS)
+  }
+
+  const startWatching = () => {
+    if (cancelled || stopped) return
+
+    // Only plan-shaped state is compared, so a simulation finishing, a
+    // comparison recomputing or a chart brushing never causes a write —
+    // while a saved parameter change does, because params live in plans.
+    unsubscribe = useSimulationStore.subscribe((state) => {
       if (stopped) return
-      const signature = snapshotSignature(snapshot)
-      setPhase('syncing')
-
-      const result = await pushSnapshot(snapshot)
-      if (cancelled) return
-
-      if (result.status === 'ok') {
-        lastPushedSignature = signature
-        setPhase('synced', Date.now())
-        return
-      }
-      if (result.status === 'error') {
-        setPhase('offline')
-        return
-      }
-      disable()
-    }
-
-    const reconcile = async (): Promise<void> => {
-      if (stopped) return
-      lastPullAt = Date.now()
-      setPhase('syncing')
-
-      const remote = await fetchRemoteSnapshot()
-      if (cancelled) return
-
-      if (remote.status === 'unconfigured' || remote.status === 'unauthorized') {
-        disable()
-        return
-      }
-      if (remote.status === 'error') {
-        setPhase('offline')
-        return
-      }
-
-      const merged = mergePlanSnapshots({
-        local: readSnapshot(),
-        remote: remote.blob,
-        localPristine: localIsPristine(),
+      const signature = snapshotSignature({
+        plans: state.plans,
+        activePlanId: state.activePlanId,
       })
+      if (signature === lastPushedSignature) return
+      schedulePush()
+    })
+  }
 
-      if (merged.shouldApply) {
-        useSimulationStore
-          .getState()
-          .applySyncedPlans(merged.plans, merged.activePlanId)
-      }
+  const onFocus = () => {
+    if (stopped || cancelled) return
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+    if (Date.now() - lastPullAt < PULL_THROTTLE_MS) return
+    // The merge is a no-op when the account has not moved on, so an
+    // unnecessary pull costs one request and changes nothing.
+    void reconcile()
+  }
 
-      if (merged.shouldPush) {
-        // `applySyncedPlans` may pin the active plan (unsaved edits win), so the
-        // authoritative snapshot is what the store ended up with.
-        await push(merged.shouldApply ? readSnapshot() : merged)
-        return
-      }
+  void reconcile().finally(startWatching)
 
-      lastPushedSignature = snapshotSignature(readSnapshot())
-      setPhase('synced', Date.now())
-    }
-
-    const schedulePush = () => {
-      if (pushTimer) clearTimeout(pushTimer)
-      pushTimer = setTimeout(() => {
-        pushTimer = null
-        void push(readSnapshot())
-      }, PUSH_DEBOUNCE_MS)
-    }
-
-    let unsubscribe: (() => void) | null = null
-
-    const startWatching = () => {
-      if (cancelled || stopped) return
-
-      // Only plan-shaped state is compared, so a simulation finishing, a
-      // comparison recomputing or a chart brushing never causes a write —
-      // while a saved parameter change does, because params live in plans.
-      unsubscribe = useSimulationStore.subscribe((state) => {
-        if (stopped) return
-        const signature = snapshotSignature({
-          plans: state.plans,
-          activePlanId: state.activePlanId,
-        })
-        if (signature === lastPushedSignature) return
-        schedulePush()
-      })
-    }
-
-    const onFocus = () => {
-      if (stopped || cancelled) return
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
-      if (Date.now() - lastPullAt < PULL_THROTTLE_MS) return
-      // The merge is a no-op when the account has not moved on, so an
-      // unnecessary pull costs one request and changes nothing.
-      void reconcile()
-    }
-
-    void reconcile().finally(startWatching)
-
+  const hasDom = typeof window !== 'undefined' && typeof document !== 'undefined'
+  if (hasDom) {
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onFocus)
+  }
 
-    return () => {
-      cancelled = true
-      if (pushTimer) clearTimeout(pushTimer)
-      unsubscribe?.()
+  return () => {
+    cancelled = true
+    if (pushTimer) clearTimeout(pushTimer)
+    unsubscribe?.()
+    if (hasDom) {
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onFocus)
     }
-  }, [namespaceReady, namespaceUserId])
+  }
 }
 
 /** Mount-only companion to `AuthStorageSync`; renders nothing. */

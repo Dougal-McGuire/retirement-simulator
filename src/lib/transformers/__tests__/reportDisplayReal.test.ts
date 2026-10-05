@@ -129,9 +129,10 @@ describe('report euro unit — fallbacks for results without real series', () =>
     const { data, content } = build(bare, true)
     expect(data.units).toEqual({ requested: 'real', applied: 'nominal' })
     expect(data.projections.milestones.map((m) => m.p50)).toEqual(results.assetPercentiles.p50)
-    // Nothing derived switches either: the bridge stays in the nominal basis.
+    // Nothing derived switches either: the bridge stays nominal, priced with
+    // the plan's inflation compounded from today since no index exists.
     expect(data.summary?.bridge.cashNeedEUR).toBe(
-      Math.round(computeBridgeAnalysis(params).cashNeedEUR)
+      Math.round(computeBridgeAnalysis(params, { unit: 'nominal' }).cashNeedEUR)
     )
     const copy = buildEuroUnitCopy(content.units, 'de')
     expect(copy.statement).toContain('keine inflationsbereinigten Werte')
@@ -148,16 +149,32 @@ describe('report euro unit — fallbacks for results without real series', () =>
 describe('report euro unit — derived amounts', () => {
   it('states the bridge need in today’s purchasing power in real mode', () => {
     const annual = calculateCombinedExpenses(params.customExpenses).combinedAnnual
-    const bridge = computeBridgeAnalysis(params, { real: true })
+    const bridge = computeBridgeAnalysis(params, { unit: 'real' })
     expect(bridge.yearsInBridge).toBeGreaterThan(0)
     expect(bridge.cashNeedEUR).toBeCloseTo(annual * bridge.yearsInBridge, 6)
 
     const { data } = build(results, true)
     expect(data.summary?.bridge.cashNeedEUR).toBe(Math.round(bridge.cashNeedEUR))
-    // The default basis grows the budget with inflation and is left as it was.
-    expect(build(results, false).data.summary?.bridge.cashNeedEUR).toBe(
-      Math.round(computeBridgeAnalysis(params).cashNeedEUR)
-    )
+  })
+
+  it('states the nominal bridge need at the run’s median price level of each year', () => {
+    // Default plan: 62.900 € a year, bridge ages 60–66, five years from today.
+    const annual = calculateCombinedExpenses(params.customExpenses).combinedAnnual
+    const index = results.inflationIndexP50!
+    let expected = 0
+    for (let age = 60; age <= 66; age++) {
+      expected += annual * index[results.ages.indexOf(age)]
+    }
+    const { data } = build(results, false)
+    expect(data.summary?.bridge.cashNeedEUR).toBe(Math.round(expected))
+    // The median index sits close to 2,5 % compounded from today, not from 60.
+    const compounded = computeBridgeAnalysis(params, { unit: 'nominal' }).cashNeedEUR
+    let fromToday = 0
+    for (let age = 60; age <= 66; age++) fromToday += annual * 1.025 ** (age - params.currentAge)
+    expect(compounded).toBeCloseTo(fromToday, 6)
+    expect(Math.abs(expected / compounded - 1)).toBeLessThan(0.02)
+    // Nominal is never below today's purchasing power at positive inflation.
+    expect(expected).toBeGreaterThan(annual * 7)
   })
 
   it('quotes the real bridge need, labelled, in the recommendation texts', () => {
@@ -166,14 +183,20 @@ describe('report euro unit — derived amounts', () => {
       style: 'currency',
       currency: 'EUR',
       maximumFractionDigits: 0,
-    }).format(Math.round(computeBridgeAnalysis(params, { real: true }).cashNeedEUR))
+    }).format(Math.round(computeBridgeAnalysis(params, { unit: 'real' }).cashNeedEUR))
     const bridgeRec = data.recommendations.find((rec) => rec.id === 'bridgeLiquidity')
     expect(bridgeRec?.body).toContain(`${amount} in heutiger Kaufkraft`)
 
-    const nominalRec = build(results, false).data.recommendations.find(
-      (rec) => rec.id === 'bridgeLiquidity'
-    )
+    const nominal = build(results, false).data
+    const nominalRec = nominal.recommendations.find((rec) => rec.id === 'bridgeLiquidity')
     expect(nominalRec?.body).not.toContain('Kaufkraft')
+    // The nominal amount is the summary's figure and is labelled as nominal.
+    const nominalAmount = new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR',
+      maximumFractionDigits: 0,
+    }).format(nominal.summary!.bridge.cashNeedEUR)
+    expect(nominalRec?.body).toContain(`${nominalAmount} in nominalen Euro`)
   })
 })
 

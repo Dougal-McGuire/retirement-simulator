@@ -102,8 +102,8 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
       what: isGerman ? 'Liquiditätspuffer festlegen' : 'Set the cash buffer',
       detail: profile.bridge
         ? isGerman
-          ? `${fmtCurrency(profile.bridge.cashNeedEUR, locale)} für ${fmtNumber(bridgeYears, { locale })} Überbrückungsjahre einplanen; die ersten ${fmtNumber(profile.bridge.cashBucketYears ?? 2, { locale })} Jahre schwankungsarm halten.`
-          : `Earmark ${fmtCurrency(profile.bridge.cashNeedEUR, locale)} for ${fmtNumber(bridgeYears, { locale })} bridge years; hold the first ${fmtNumber(profile.bridge.cashBucketYears ?? 2, { locale })} years in low-volatility assets.`
+          ? `${fmtCurrency(profile.bridge.cashNeedEUR, locale)}${unitCopy.amountQualifier} für ${fmtNumber(bridgeYears, { locale })} Überbrückungsjahre einplanen; die ersten ${fmtNumber(profile.bridge.cashBucketYears ?? 2, { locale })} Jahre schwankungsarm halten.`
+          : `Earmark ${fmtCurrency(profile.bridge.cashNeedEUR, locale)}${unitCopy.amountQualifier} for ${fmtNumber(bridgeYears, { locale })} bridge years; hold the first ${fmtNumber(profile.bridge.cashBucketYears ?? 2, { locale })} years in low-volatility assets.`
         : isGerman
           ? `Zwölf Monatsausgaben (${fmtCurrency(annualSpend, locale)} p.a.) als Puffer bereitstellen.`
           : `Hold twelve months of spending (${fmtCurrency(annualSpend, locale)} p.a.) as a buffer.`,

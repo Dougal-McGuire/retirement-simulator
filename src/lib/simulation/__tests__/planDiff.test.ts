@@ -9,9 +9,13 @@ import de from '@/i18n/messages/de.json'
 import {
   buildAssumptionGroups,
   buildAssumptionRows,
+  buildFlowDiffRows,
   comparisonFingerprint,
   diffParams,
+  matchFlowsAcrossPlans,
 } from '../planDiff'
+import { applyCashFlows, withCashFlowEnabled } from '../cashFlows'
+import type { CashFlow } from '@/types'
 
 const withParams = (overrides: Partial<SimulationParams>): SimulationParams => ({
   ...DEFAULT_PARAMS,
@@ -416,5 +420,246 @@ describe('assumption rows are translatable', () => {
     for (const key of ['firstYear', 'floor', 'volatility', 'success']) {
       expect(planner.stats[key]).toBeTruthy()
     }
+  })
+})
+
+describe('flow rows in the comparison', () => {
+  const inheritance: CashFlow = {
+    id: 'inheritance',
+    kind: 'income',
+    name: 'Erbschaft',
+    amount: 80000,
+    frequency: 'once',
+    startAge: 62,
+  }
+  const care: CashFlow = {
+    id: 'care',
+    kind: 'expense',
+    name: 'Pflege',
+    amount: 2200,
+    frequency: 'monthly',
+    startAge: 82,
+    endAge: 90,
+  }
+  // Flows-first, as the store writes them: projections follow the flows.
+  const plan = (...extra: CashFlow[]) =>
+    applyCashFlows(withParams({ cashFlows: [...DEFAULT_PARAMS.cashFlows, ...extra] }))
+  const summary = (rows: ReturnType<typeof buildFlowDiffRows>) =>
+    rows.map((row) => ({
+      key: row.key,
+      change: row.change,
+      values: row.values,
+      termsDiffer: row.termsDiffer,
+    }))
+
+  it('is empty for identical plans and for a single plan', () => {
+    expect(buildFlowDiffRows([plan(inheritance, care), plan(inheritance, care)])).toEqual([])
+    expect(buildFlowDiffRows([plan(inheritance)])).toEqual([])
+  })
+
+  it('lists a flow that only one plan has, on either side', () => {
+    const rows = buildFlowDiffRows([plan(inheritance), plan(care)])
+    expect(summary(rows)).toEqual([
+      { key: 'flow:inheritance', change: 'presence', values: ['on', 'absent'], termsDiffer: false },
+      { key: 'flow:care', change: 'presence', values: ['absent', 'on'], termsDiffer: false },
+    ])
+    expect(rows[0].flows[0]).toEqual(inheritance)
+    expect(rows[0].flows[1]).toBeNull()
+    expect(rows[1].name).toBe('Pflege')
+  })
+
+  it('lists a flow present but switched off in one plan as missing from the other', () => {
+    const rows = buildFlowDiffRows([plan(), plan(withCashFlowEnabled(inheritance, false))])
+    expect(summary(rows)).toEqual([
+      {
+        key: 'flow:inheritance',
+        change: 'presence',
+        values: ['absent', 'off'],
+        termsDiffer: false,
+      },
+    ])
+  })
+
+  it('keeps the switch row for a flow on in one plan and off in the other', () => {
+    const rows = buildFlowDiffRows([
+      plan(inheritance),
+      plan(withCashFlowEnabled(inheritance, false)),
+    ])
+    expect(summary(rows)).toEqual([
+      { key: 'flow:inheritance', change: 'switch', values: ['on', 'off'], termsDiffer: false },
+    ])
+  })
+
+  it('lists a flow whose amount, frequency or window differ', () => {
+    const rows = buildFlowDiffRows([
+      plan(inheritance, care),
+      plan({ ...inheritance, amount: 50000 }, { ...care, endAge: 95 }),
+    ])
+    expect(summary(rows)).toEqual([
+      { key: 'flow:inheritance', change: 'terms', values: ['on', 'on'], termsDiffer: true },
+      { key: 'flow:care', change: 'terms', values: ['on', 'on'], termsDiffer: true },
+    ])
+    expect(rows[0].flows.map((flow) => flow?.amount)).toEqual([80000, 50000])
+  })
+
+  it('marks a switch row whose terms differ too', () => {
+    const rows = buildFlowDiffRows([
+      plan(inheritance),
+      plan(withCashFlowEnabled({ ...inheritance, amount: 50000 }, false)),
+    ])
+    expect(summary(rows)).toEqual([
+      { key: 'flow:inheritance', change: 'switch', values: ['on', 'off'], termsDiffer: true },
+    ])
+  })
+
+  it('reads an unset window as the plan default, so an explicit default is no change', () => {
+    const lifelong: CashFlow = { ...care, id: 'rent', kind: 'income', name: 'Miete' }
+    delete lifelong.startAge
+    delete lifelong.endAge
+    const explicit = {
+      ...lifelong,
+      startAge: DEFAULT_PARAMS.currentAge,
+      endAge: DEFAULT_PARAMS.endAge,
+    }
+    expect(buildFlowDiffRows([plan(lifelong), plan(explicit)])).toEqual([])
+  })
+
+  it('leaves amount changes the aggregate rows already show to them', () => {
+    // A lifetime budget item moves the monthly budget row; the statutory
+    // pension has its own row.
+    const base = plan()
+    const changed = applyCashFlows({
+      ...base,
+      cashFlows: base.cashFlows.map((flow) =>
+        flow.id === 'pension-statutory' || flow.id === base.customExpenses[0].id
+          ? { ...flow, amount: flow.amount + 100 }
+          : flow
+      ),
+    })
+    expect(buildFlowDiffRows([base, changed])).toEqual([])
+    expect(
+      buildAssumptionRows([base, changed])
+        .filter((row) => row.differs)
+        .map((row) => row.key)
+    ).toEqual(expect.arrayContaining(['monthlyPension', 'monthlySpending']))
+
+    // ...but a budget item added in one plan is named, and so is one that
+    // became a windowed flow (which leaves the budget row).
+    const budgetItem: CashFlow = {
+      id: 'hobby',
+      kind: 'expense',
+      name: 'Hobby',
+      amount: 200,
+      frequency: 'monthly',
+    }
+    expect(summary(buildFlowDiffRows([plan(), plan(budgetItem)]))).toEqual([
+      { key: 'flow:hobby', change: 'presence', values: ['absent', 'on'], termsDiffer: false },
+    ])
+    expect(
+      summary(buildFlowDiffRows([plan(budgetItem), plan({ ...budgetItem, endAge: 75 })]))
+    ).toEqual([{ key: 'flow:hobby', change: 'terms', values: ['on', 'on'], termsDiffer: true }])
+  })
+
+  it('never names the statutory pension as missing (its row shows 0 €)', () => {
+    const base = plan()
+    const without = applyCashFlows({
+      ...base,
+      cashFlows: base.cashFlows.filter((flow) => flow.id !== 'pension-statutory'),
+    })
+    expect(buildFlowDiffRows([base, without])).toEqual([])
+  })
+
+  it('makes no row for a flow switched off in every plan with the same terms', () => {
+    const off = withCashFlowEnabled(inheritance, false)
+    expect(buildFlowDiffRows([plan(off), plan({ ...off, amount: 1 })])).toEqual([])
+  })
+
+  it('orders switch flips first, then missing flows, then changed terms', () => {
+    const rows = buildFlowDiffRows([
+      plan({ ...care, amount: 100 }, inheritance),
+      plan(care, withCashFlowEnabled(inheritance, false), {
+        ...inheritance,
+        id: 'bonus',
+        name: 'Bonus',
+      }),
+    ])
+    expect(rows.map((row) => `${row.change}:${row.key}`)).toEqual([
+      'switch:flow:inheritance',
+      'presence:flow:bonus',
+      'terms:flow:care',
+    ])
+  })
+
+  it('compares three plans at once', () => {
+    const rows = buildFlowDiffRows([plan(inheritance), plan(), plan(inheritance)])
+    expect(summary(rows)).toEqual([
+      {
+        key: 'flow:inheritance',
+        change: 'presence',
+        values: ['on', 'absent', 'on'],
+        termsDiffer: false,
+      },
+    ])
+  })
+
+  describe('matching', () => {
+    it('matches by id first, so a renamed flow is the same flow', () => {
+      const rows = buildFlowDiffRows([
+        plan(inheritance),
+        plan({ ...inheritance, name: 'Erbe Tante', amount: 90000 }),
+      ])
+      expect(summary(rows)).toEqual([
+        { key: 'flow:inheritance', change: 'terms', values: ['on', 'on'], termsDiffer: true },
+      ])
+      expect(rows[0].name).toBe('Erbschaft')
+    })
+
+    it('falls back to kind and name for flows whose ids were issued per plan', () => {
+      // Two plans migrated separately from legacy arrays: positional ids,
+      // swapped between the plans.
+      const a = { ...inheritance, id: 'income-0' }
+      const b = { ...inheritance, id: 'income-1', name: 'Bonus', amount: 20000 }
+      const first = plan(a, b)
+      const second = plan(
+        { ...b, id: 'income-0' },
+        withCashFlowEnabled({ ...a, id: 'income-1' }, false)
+      )
+      const matched = matchFlowsAcrossPlans([first, second]).filter((item) =>
+        item.some((flow) => flow?.kind === 'income')
+      )
+      expect(matched.map((item) => item.map((flow) => flow?.name))).toEqual([
+        ['Erbschaft', 'Erbschaft'],
+        ['Bonus', 'Bonus'],
+      ])
+      expect(summary(buildFlowDiffRows([first, second]))).toEqual([
+        { key: 'flow:income-0', change: 'switch', values: ['on', 'off'], termsDiffer: false },
+      ])
+    })
+
+    it('never pairs flows of different kinds that share an id', () => {
+      const income = { ...inheritance, id: 'flow-3' }
+      const expense: CashFlow = { ...care, id: 'flow-3' }
+      const rows = buildFlowDiffRows([plan(income), plan(expense)])
+      expect(rows.map((row) => `${row.change}:${row.kind}`)).toEqual([
+        'presence:income',
+        'presence:expense',
+      ])
+      // Still one row each, under keys of their own.
+      expect(rows.map((row) => row.key)).toEqual(['flow:flow-3', 'flow:flow-3~2'])
+    })
+
+    it('matches a seeded flow by its name key across languages', () => {
+      const seeded: CashFlow = {
+        ...inheritance,
+        id: 'a',
+        name: 'Inheritance',
+        nameKey: 'demoInheritance',
+      }
+      const rows = buildFlowDiffRows([
+        plan(seeded),
+        plan({ ...seeded, id: 'b', name: 'Erbschaft', amount: 1 }),
+      ])
+      expect(rows.map((row) => row.change)).toEqual(['terms'])
+    })
   })
 })

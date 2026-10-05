@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { OneTimeIncome } from '@/types'
 import { useGroupedNumber } from './useGroupedNumber'
+import { FlowOffTag, FlowSwitch } from './FlowSwitch'
+import type { OneOffIncomeEntry } from './oneOffIncomeFlows'
 import { cn } from '@/lib/utils'
 
 interface OneTimeIncomeListStrings {
@@ -25,6 +27,10 @@ interface OneTimeIncomeListStrings {
   summaryLabel: string
   /** Hint explaining why the add button is disabled. */
   addHint?: string
+  /** Screen-reader header of the switch column. */
+  switchColumn?: string
+  /** "1 Posten ausgeschaltet – in keiner Summe", when any is. */
+  switchedOffSummary?: string
   tableHeaders: {
     name: string
     age: string
@@ -34,14 +40,20 @@ interface OneTimeIncomeListStrings {
 }
 
 interface OneTimeIncomeListProps {
-  incomes: OneTimeIncome[]
+  /**
+   * Every one-off income flow, switched on or off (read from `cashFlows`,
+   * not from the legacy projection, which omits switched-off ones).
+   */
+  incomes: OneOffIncomeEntry[]
   minAge: number
   maxAge: number
   defaultAge: number
   strings: OneTimeIncomeListStrings
   onAdd: (income: OneTimeIncome) => void
-  onUpdate?: (index: number, income: OneTimeIncome) => void
-  onRemove: (index: number) => void
+  onUpdate?: (id: string, income: OneTimeIncome) => void
+  onRemove: (id: string) => void
+  /** Flips the flow's switch; without it the list shows no switches. */
+  onToggle?: (id: string) => void
   formatCurrency: (value: number) => string
 }
 
@@ -56,12 +68,13 @@ export function OneTimeIncomeList({
   onAdd,
   onUpdate,
   onRemove,
+  onToggle,
   formatCurrency,
 }: OneTimeIncomeListProps) {
   const [draftName, setDraftName] = useState<string>('')
   const [draftAge, setDraftAge] = useState<string>(String(defaultAge))
   const [draftAmount, setDraftAmount] = useState<string>('')
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState<string>('')
   const [editAge, setEditAge] = useState<string>(String(defaultAge))
   const [editAmount, setEditAmount] = useState<string>('')
@@ -74,23 +87,23 @@ export function OneTimeIncomeList({
 
   const orderedIncomes = useMemo(
     () =>
-      incomes
-        .map((income, index) => ({ ...income, index }))
-        .sort((a, b) => {
-          // Sort by age first, then by name if ages are equal
-          if (a.age !== b.age) return a.age - b.age
-          // Handle cases where name might not exist (legacy data)
-          const nameA = a.name || ''
-          const nameB = b.name || ''
-          return nameA.localeCompare(nameB)
-        }),
+      [...incomes].sort((a, b) => {
+        // Sort by age first, then by name if ages are equal
+        if (a.age !== b.age) return a.age - b.age
+        // Handle cases where name might not exist (legacy data)
+        const nameA = a.name || ''
+        const nameB = b.name || ''
+        return nameA.localeCompare(nameB)
+      }),
     [incomes]
   )
 
+  // A switched-off income stays listed but counts in no total.
   const totalAmount = useMemo(
-    () => incomes.reduce((sum, income) => sum + income.amount, 0),
+    () => incomes.reduce((sum, income) => (income.enabled ? sum + income.amount : sum), 0),
     [incomes]
   )
+  const hasSwitchedOff = incomes.some((income) => !income.enabled)
   const isEmpty = orderedIncomes.length === 0
   const trimmedDraftName = draftName.trim()
   const parsedDraftAmount = draftAmountField.parse(draftAmount)
@@ -116,15 +129,15 @@ export function OneTimeIncomeList({
     setDraftAmount('')
   }
 
-  const handleStartEdit = (income: OneTimeIncome & { index: number }) => {
-    setEditingIndex(income.index)
+  const handleStartEdit = (income: OneOffIncomeEntry) => {
+    setEditingId(income.id)
     setEditName(income.name)
     setEditAge(String(income.age))
     setEditAmount(editAmountField.format(income.amount))
   }
 
   const handleSaveEdit = () => {
-    if (editingIndex === null || !onUpdate) return
+    if (editingId === null || !onUpdate) return
     const trimmedName = editName.trim()
     if (!trimmedName) return // Name is required
 
@@ -135,17 +148,17 @@ export function OneTimeIncomeList({
     if (!Number.isFinite(nextAge) || !Number.isFinite(nextAmount)) return
     if (nextAmount === 0) return
 
-    onUpdate(editingIndex, {
+    onUpdate(editingId, {
       name: trimmedName,
       age: nextAge,
       amount: nextAmount,
     })
 
-    setEditingIndex(null)
+    setEditingId(null)
   }
 
   const handleCancelEdit = () => {
-    setEditingIndex(null)
+    setEditingId(null)
   }
 
   const handleDraftSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -162,13 +175,15 @@ export function OneTimeIncomeList({
   const getIncomeControlLabel = (label: string, income: OneTimeIncome) =>
     `${label}: ${getIncomeContext(income)}`
 
-  const renderIncomeRow = (income: OneTimeIncome & { index: number }) => {
-    const isEditing = editingIndex === income.index
+  const renderIncomeRow = (income: OneOffIncomeEntry) => {
+    const isEditing = editingId === income.id
+    const on = income.enabled
 
     if (isEditing) {
       return (
-        <tr key={`edit-${income.index}`} className="bg-accent/5">
-          <td className="px-4 py-3">
+        <tr key={`edit-${income.id}`} className="bg-accent/5">
+          {onToggle && <td className="w-px py-2 pl-1 pr-0 sm:pl-2" />}
+          <td className="px-2 py-2 sm:px-3">
             <div className="flex flex-col gap-2">
               <Input
                 type="text"
@@ -196,7 +211,7 @@ export function OneTimeIncomeList({
               />
             </div>
           </td>
-          <td className="px-4 py-3">
+          <td className="px-2 py-2 sm:px-3">
             <Input
               ref={editAmountField.inputRef}
               type="text"
@@ -217,8 +232,8 @@ export function OneTimeIncomeList({
               aria-label={getIncomeControlLabel(strings.amountLabel, income)}
             />
           </td>
-          <td className="w-20 px-2 py-3 text-center">
-            <div className="flex items-center justify-center gap-1">
+          <td className="w-20 px-1 py-2 text-center sm:px-2">
+            <div className="flex items-center justify-center gap-0 sm:gap-1">
               <Button
                 type="button"
                 variant="ghost"
@@ -246,22 +261,43 @@ export function OneTimeIncomeList({
     }
 
     return (
-      <tr key={`view-${income.index}`}>
-        <td className="px-4 py-3 text-left">
+      <tr
+        key={`view-${income.id}`}
+        data-testid={`one-time-income-row-${income.id}`}
+        data-enabled={on ? 'true' : 'false'}
+        className={on ? undefined : 'bg-muted/30'}
+      >
+        {onToggle && (
+          <td className="w-px py-2 pl-1 pr-0 sm:pl-2 align-middle">
+            <FlowSwitch
+              id={`one-time-income-switch-${income.id}`}
+              name={getIncomeName(income)}
+              on={on}
+              onToggle={() => onToggle(income.id)}
+            />
+          </td>
+        )}
+        <td className="px-2 py-2 text-left sm:px-3">
           <div className="flex flex-col gap-0.5">
-            <span className="text-[0.74rem] font-bold  ">
-              {income.name || `${strings.agePrefix} ${income.age}`}
+            <span className={cn('text-[0.74rem] font-bold', !on && 'text-muted-foreground')}>
+              {getIncomeName(income)}
+              {!on && <FlowOffTag testId={`one-time-income-off-${income.id}`} />}
             </span>
             <span className="text-[0.62rem] font-semibold   text-muted-foreground">
               {strings.agePrefix} {income.age}
             </span>
           </div>
         </td>
-        <td className="px-4 py-3 text-right text-[0.74rem] font-bold  ">
+        <td
+          className={cn(
+            'px-2 py-2 text-right text-[0.74rem] font-bold sm:px-3',
+            !on && 'text-muted-foreground'
+          )}
+        >
           {formatCurrency(income.amount)}
         </td>
-        <td className="w-20 px-2 py-3 text-center">
-          <div className="flex items-center justify-center gap-1">
+        <td className="w-20 px-1 py-2 text-center sm:px-2">
+          <div className="flex items-center justify-center gap-0 sm:gap-1">
             {onUpdate && (
               <Button
                 type="button"
@@ -278,7 +314,7 @@ export function OneTimeIncomeList({
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => onRemove(income.index)}
+              onClick={() => onRemove(income.id)}
               className="h-8 w-8 text-ink hover:bg-danger hover:text-muted-foreground"
               aria-label={getIncomeControlLabel(strings.remove, income)}
             >
@@ -294,16 +330,23 @@ export function OneTimeIncomeList({
     <div className="space-y-4">
       {!isEmpty && (
         <div className="rounded-sm overflow-hidden border border-border bg-card shadow-sm">
-          <table className="w-full">
+          {/* Own cell padding (not the global table padding): with the switch
+              column, four columns only fit a phone with tighter cells. */}
+          <table className="table-own-padding w-full">
             <thead className="border-b border-border bg-muted">
               <tr>
-                <th className="whitespace-nowrap px-4 py-3 text-left text-[0.65rem] font-bold   text-muted-foreground">
+                {onToggle && (
+                  <th className="w-px py-2 pl-1 pr-0 sm:pl-2">
+                    <span className="sr-only">{strings.switchColumn}</span>
+                  </th>
+                )}
+                <th className="whitespace-nowrap px-2 py-2 sm:px-3 text-left text-[0.65rem] font-bold   text-muted-foreground">
                   {strings.tableHeaders.name}
                 </th>
-                <th className="whitespace-nowrap px-4 py-3 text-right text-[0.65rem] font-bold   text-muted-foreground">
+                <th className="whitespace-nowrap px-2 py-2 sm:px-3 text-right text-[0.65rem] font-bold   text-muted-foreground">
                   {strings.tableHeaders.amount}
                 </th>
-                <th className="w-20 whitespace-nowrap px-2 py-3 text-center text-[0.65rem] font-bold   text-muted-foreground">
+                <th className="w-20 whitespace-nowrap px-1 py-2 text-center sm:px-2 text-[0.65rem] font-bold   text-muted-foreground">
                   {strings.tableHeaders.actions}
                 </th>
               </tr>
@@ -432,6 +475,11 @@ export function OneTimeIncomeList({
         </form>
         <div className="mt-4 border-t border-dashed border-border pt-4 text-[0.65rem] font-semibold   text-muted-foreground">
           {strings.summaryLabel}: {formatCurrency(totalAmount)}
+          {hasSwitchedOff && strings.switchedOffSummary && (
+            <p className="mt-1" data-testid="one-time-income-switched-off-summary">
+              {strings.switchedOffSummary}
+            </p>
+          )}
         </div>
       </div>
     </div>

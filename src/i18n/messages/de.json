@@ -24,7 +24,13 @@
       "hours": "vor {count} Std.",
       "offline": "Offline (auf diesem Gerät gespeichert)",
       "hint": "Deine Pläne werden in deinem Google-Konto gespeichert und stehen auf jedem Gerät zur Verfügung, auf dem du dich anmeldest.",
-      "offlineHint": "Die Cloud-Synchronisierung ist gerade nicht erreichbar. Deine Pläne bleiben auf diesem Gerät und werden automatisch wieder synchronisiert."
+      "offlineHint": "Die Cloud-Synchronisierung ist gerade nicht erreichbar. Deine Pläne bleiben auf diesem Gerät und werden automatisch wieder synchronisiert.",
+      "outdated": "Synchronisierung pausiert – neu laden",
+      "outdatedHint": "Eine neuere Version der App ist im Einsatz. Deine Pläne bleiben auf diesem Gerät; lade die Seite neu, dann wird wieder synchronisiert.",
+      "reloadRequired": "Neue Version verfügbar – bitte neu laden, damit deine Pläne weiter synchronisiert werden.",
+      "reloadSuggested": "Neue Version verfügbar – lade neu, um sie zu nutzen.",
+      "reload": "Neu laden",
+      "later": "Später"
     }
   },
   "landing": {
@@ -588,6 +594,13 @@
       "changedRows": "Geänderte Zeilen hervorgehoben",
       "openEditor": "Annahmen bearbeiten →",
       "perMonth": "{amount}/Mon.",
+      "flow": {
+        "monthly": "{amount}/Mon.",
+        "annual": "{amount}/Jahr",
+        "once": "{amount} einmalig",
+        "more": "{count, plural, =1 {# weiteren Posten zeigen} other {# weitere Posten zeigen}}",
+        "less": "Weniger Posten zeigen"
+      },
       "kpi": {
         "success": "Erfolgsquote",
         "lastsTo": "Vermögen reicht bis",

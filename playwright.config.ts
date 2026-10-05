@@ -20,6 +20,9 @@ export default defineConfig({
       GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? 'playwright-client-id',
       GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ?? 'playwright-client-secret',
       AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST ?? 'true',
+      // A build id, so the "newer build on the server" hint is testable
+      // (`tests/cloud-sync-guard.spec.ts`).
+      NEXT_PUBLIC_BUILD_ID: process.env.NEXT_PUBLIC_BUILD_ID ?? 'playwright-build',
     },
   },
   use: {

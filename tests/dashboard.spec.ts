@@ -162,6 +162,24 @@ test.describe('one-page workspace', () => {
     await expect(chart).toContainText('Nominal')
   })
 
+  test('the bridge recommendation quotes its amount in the switch’s unit', async ({ page }) => {
+    await gotoWorkspace(page)
+    await openSection(page, 'levers')
+    const bridge = page
+      .getByTestId('recommendations')
+      .locator('[data-recommendation="bridgeLiquidity"]')
+    // Default plan: 62,900 € a year over the seven years 60–66.
+    await expect(bridge).toContainText(/€[\d,]+ in nominal euros/)
+    const nominal = Number(
+      (await bridge.innerText()).match(/€([\d,]+) in nominal euros/)![1].replace(/,/g, '')
+    )
+    // Each year at its price level relative to today, so above budget × years.
+    expect(nominal).toBeGreaterThan(62_900 * 7)
+
+    await page.getByTestId('display-toggle').getByRole('radio', { name: "Today's €" }).click()
+    await expect(bridge).toContainText("€440,300 in today's euros")
+  })
+
   test('the PDF report follows the € switch', async ({ page }) => {
     test.setTimeout(90000) // two PDFs render on the dev server
     await gotoWorkspace(page)

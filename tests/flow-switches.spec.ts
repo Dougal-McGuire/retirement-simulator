@@ -486,3 +486,198 @@ test.describe('accessibility', () => {
     }
   }
 })
+
+test.describe('the setup wizard one-off list', () => {
+  test('keeps a switched-off one-off listed, dimmed, with the same switch', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 890 })
+    await openDemoPlan(page)
+    await page.goto('/de/setup')
+    // Hydrated: the live preview has computed.
+    await expect(page.getByTestId('wizard-live-result')).not.toHaveAttribute(
+      'data-success-rate',
+      '',
+      { timeout: 20000 }
+    )
+
+    // Switched off in the cash-flow step …
+    await page.getByRole('button', { name: /Einnahmen & Ausgaben/ }).click()
+    const flowToggle = page.getByTestId('cashflow-switch-demo-inheritance')
+    await flowToggle.click()
+    await expect(flowToggle).toHaveAttribute('aria-checked', 'false')
+
+    // … it stays in the one-off list: muted, tagged, with its switch.
+    await page.getByRole('button', { name: /Vermögen & Einkommen/ }).click()
+    const row = page.getByTestId('one-time-income-row-demo-inheritance')
+    await expect(row).toHaveAttribute('data-enabled', 'false')
+    await expect(row).toContainText('Erbschaft')
+    await expect(row.getByTestId('one-time-income-off-demo-inheritance')).toHaveText('Aus')
+    await expect(page.getByTestId('one-time-income-switched-off-summary')).toContainText(
+      '1 Posten ausgeschaltet'
+    )
+    const toggle = row.getByRole('switch', { name: '„Erbschaft“ in der Berechnung' })
+    await expect(toggle).toHaveAttribute('aria-checked', 'false')
+    // The switch is the row's first control, as in the flow list.
+    const first = await row.evaluate(
+      (element) => element.querySelector('button, input, select, a[href]')?.id ?? null
+    )
+    expect(first).toBe('one-time-income-switch-demo-inheritance')
+
+    // Editing a switched-off one-off keeps it switched off (and keeps the flow).
+    await row.getByRole('button', { name: /^Einnahme bearbeiten/ }).click()
+    const amount = page.getByRole('textbox', { name: /^Betrag \(€\): Erbschaft/ })
+    await amount.fill('90000')
+    await page.getByRole('button', { name: /^Änderungen speichern: Erbschaft/ }).click()
+    await expect(row).toHaveAttribute('data-enabled', 'false')
+    expect(await storedFlow(page, 'demo-inheritance')).toMatchObject({
+      enabled: false,
+      amount: 90000,
+      nameKey: 'demoInheritance',
+      startAge: 70,
+    })
+
+    // Switched back on from the one-off list.
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-checked', 'true')
+    await expect(row).toHaveAttribute('data-enabled', 'true')
+    await expect(row.getByTestId('one-time-income-off-demo-inheritance')).toHaveCount(0)
+    await expect(page.getByTestId('one-time-income-switched-off-summary')).toHaveCount(0)
+    const stored = await storedFlow(page, 'demo-inheritance')
+    expect(stored).toMatchObject({ amount: 90000 })
+    expect(stored?.enabled).toBeUndefined()
+    const state = await readPersistedState(page)
+    expect(state?.working?.oneTimeIncomes).toEqual([
+      { name: 'Inheritance', age: 70, amount: 90000 },
+    ])
+    // One flow, never a re-added duplicate.
+    const flows = (state?.working?.cashFlows ?? []) as Array<{ kind: string; frequency: string }>
+    expect(
+      flows.filter((flow) => flow.kind === 'income' && flow.frequency === 'once')
+    ).toHaveLength(1)
+
+    // The extra switch column still fits a phone: nothing clipped.
+    await toggle.click()
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(row).toHaveAttribute('data-enabled', 'false')
+    const [tableWidth, frameWidth] = await row
+      .locator('xpath=ancestor::table[1]')
+      .evaluate((element) => [element.scrollWidth, element.parentElement!.clientWidth])
+    expect(tableWidth).toBeLessThanOrEqual(frameWidth)
+    await expectNoHorizontalOverflow(page)
+  })
+})
+
+/**
+ * A copy of the example plan that differs in flows: the inheritance switched
+ * off, the roof gone, care dearer, a boat sale and eight one-off extras added.
+ */
+async function seedFlowVariant(page: Page) {
+  await page.evaluate(() => {
+    const key = 'retirement-simulator-store'
+    const parsed = JSON.parse(window.localStorage.getItem(key)!)
+    const state = parsed.state
+    const base = state.plans.find((plan: { id: string }) => plan.id === state.activePlanId)
+    type Flow = { id: string; amount: number; enabled?: boolean } & Record<string, unknown>
+    const cashFlows: Flow[] = (base.params.cashFlows as Flow[])
+      .filter((flow) => flow.id !== 'demo-roof')
+      .map((flow) =>
+        flow.id === 'demo-inheritance'
+          ? { ...flow, enabled: false }
+          : flow.id === 'demo-care'
+            ? { ...flow, amount: 2500 }
+            : flow
+      )
+    cashFlows.push({
+      id: 'variant-boat',
+      kind: 'income',
+      name: 'Bootsverkauf',
+      amount: 15000,
+      frequency: 'once',
+      startAge: 75,
+    })
+    for (let index = 1; index <= 8; index++) {
+      cashFlows.push({
+        id: `variant-extra-${index}`,
+        kind: 'expense',
+        name: `Extra ${index}`,
+        amount: 1000 * index,
+        frequency: 'once',
+        startAge: 70 + index,
+      })
+    }
+    const { nameKey: _nameKey, ...plan } = base
+    void _nameKey
+    state.plans.push({
+      ...plan,
+      id: 'flow-variant',
+      name: 'Variante',
+      // The legacy projection, in step with the flows (the boat sale is the
+      // only switched-on one-off income left).
+      params: {
+        ...base.params,
+        cashFlows,
+        oneTimeIncomes: [{ name: 'Bootsverkauf', age: 75, amount: 15000 }],
+      },
+    })
+    window.localStorage.setItem(key, JSON.stringify(parsed))
+  })
+}
+
+test.describe('compare: flows that set two plans apart', () => {
+  test('lists flows only one plan has and changed amounts, capped', async ({ page }) => {
+    test.setTimeout(90000)
+    await page.setViewportSize({ width: 1366, height: 890 })
+    await openDemoPlan(page)
+    await seedFlowVariant(page)
+    await page.goto('/de/simulation#compare')
+    await page.reload()
+    const view = page.getByTestId('compare-view')
+    // Line up the example against the variant only.
+    const variant = view.getByRole('button', { name: 'Variante' })
+    await variant.click()
+    await expect(variant).toHaveAttribute('aria-pressed', 'true')
+    const other = view.getByRole('button', { name: 'Basisplan' })
+    if ((await other.getAttribute('aria-pressed')) === 'true') await other.click()
+    await expect(other).toHaveAttribute('aria-pressed', 'false')
+    const rows = view.getByTestId('compare-flow-row')
+    await expect(rows.first()).toBeVisible({ timeout: 45000 })
+
+    // Eight rows, the switch flip first; the rest behind a button.
+    await expect(rows).toHaveCount(8)
+    const inheritance = view.getByRole('row', { name: /^Erbschaft/ })
+    await expect(inheritance).toHaveAttribute('data-flow-change', 'switch')
+    await expect(inheritance).toContainText('berücksichtigt')
+    await expect(inheritance).toContainText('ausgeschaltet')
+
+    // Only in the base plan: amount and when, "—" (nicht im Plan) on the other side.
+    const roof = view.getByRole('row', { name: /^Dachsanierung/ })
+    await expect(roof).toHaveAttribute('data-flow-change', 'presence')
+    await expect(roof).toContainText(/28\.000\s€ einmalig/)
+    await expect(roof).toContainText('Mit 64')
+    await expect(roof).toContainText('nicht im Plan')
+    // Only in the variant.
+    const boat = view.getByRole('row', { name: /^Bootsverkauf/ })
+    await expect(boat).toContainText(/15\.000\s€ einmalig/)
+    await expect(boat.locator('td').nth(1)).toContainText('—')
+
+    const more = view.getByTestId('compare-flow-more')
+    await expect(more).toHaveText('4 weitere Posten zeigen')
+    await more.click()
+    await expect(rows).toHaveCount(12)
+    // Same flow, other amount: both sides, with the window.
+    const care = view.getByRole('row', { name: /^Pflegekosten/ })
+    await expect(care).toHaveAttribute('data-flow-change', 'terms')
+    await expect(care).toContainText(/2\.200\s€\/Mon\./)
+    await expect(care).toContainText(/2\.500\s€\/Mon\./)
+    await expect(care).toContainText('Alter 82–90')
+    await expect(more).toHaveText('Weniger Posten zeigen')
+
+    // Readable on a phone: nothing spills out of the page or the table.
+    await page.setViewportSize({ width: 390, height: 844 })
+    await care.scrollIntoViewIfNeeded()
+    await expectNoHorizontalOverflow(page)
+    const fits = await view
+      .locator('.compare-table')
+      .evaluate((element) => element.scrollWidth <= element.clientWidth + 1)
+    expect(fits).toBe(true)
+  })
+})

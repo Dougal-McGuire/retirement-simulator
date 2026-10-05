@@ -29,8 +29,9 @@ import {
 } from '@/components/ui/select'
 import { toast, TOAST_DURATION } from '@/components/ui/toast'
 import { ActionToast } from '@/components/ui/action-toast'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useGroupedNumber } from './useGroupedNumber'
+import { FlowOffTag, FlowSwitch } from './FlowSwitch'
+import { createFlowId } from './oneOffIncomeFlows'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import {
   buildCashFlowSeries,
@@ -162,8 +163,6 @@ const parseAge = (value: string): number | undefined => {
   const parsed = Number(trimmed)
   return Number.isFinite(parsed) ? Math.round(parsed) : undefined
 }
-
-const createId = () => `flow-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
 
 export function CashFlowList({
   flows,
@@ -304,7 +303,7 @@ export function CashFlowList({
     const keepsKey = state.nameKey !== undefined && name === state.nameSeed.trim()
 
     const flow: CashFlow = {
-      id: id ?? createId(),
+      id: id ?? createFlowId(),
       kind: state.kind,
       name: keepsKey ? state.storedName : name,
       ...(keepsKey ? { nameKey: state.nameKey } : {}),
@@ -363,7 +362,7 @@ export function CashFlowList({
   const handleAddTemplate = (template: CashFlowTemplate) => {
     const previous = safeFlows
     const flow: CashFlow = {
-      id: createId(),
+      id: createFlowId(),
       kind: template.kind,
       name: template.name,
       amount: template.amount,
@@ -1016,41 +1015,12 @@ export function CashFlowList({
                           className={on ? undefined : 'bg-muted/30'}
                         >
                           <td className="w-px py-1.5 pl-2 pr-0 align-top @xl:align-middle">
-                            <Tooltip delayDuration={400}>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  role="switch"
-                                  id={`cashflow-switch-${flow.id}`}
-                                  aria-checked={on}
-                                  aria-label={t('switch.aria', { name: displayName(flow) })}
-                                  data-testid={`cashflow-switch-${flow.id}`}
-                                  onClick={() => handleToggle(flow.id)}
-                                  className="group rounded-sm inline-flex h-7 w-10 items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
-                                >
-                                  <span
-                                    aria-hidden="true"
-                                    className={cn(
-                                      'relative h-[18px] w-8 rounded-full border transition-colors motion-reduce:transition-none',
-                                      on ? 'border-action bg-action' : 'border-ink/50 bg-muted'
-                                    )}
-                                  >
-                                    <span
-                                      className={cn(
-                                        'absolute left-[2px] top-[2px] h-3 w-3 rounded-full transition-transform motion-reduce:transition-none',
-                                        on ? 'translate-x-[14px] bg-action-foreground' : 'bg-ink/60'
-                                      )}
-                                    />
-                                  </span>
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent
-                                side="top"
-                                className="rounded-sm border border-border bg-card px-2 py-1 text-xs font-medium text-ink shadow-sm"
-                              >
-                                {on ? t('switch.label') : t('switch.offHint')}
-                              </TooltipContent>
-                            </Tooltip>
+                            <FlowSwitch
+                              id={`cashflow-switch-${flow.id}`}
+                              name={displayName(flow)}
+                              on={on}
+                              onToggle={() => handleToggle(flow.id)}
+                            />
                           </td>
                           {/* The name cell takes whatever the switch and the actions
                             leave: its text wraps between words (hyphenated where the
@@ -1096,14 +1066,7 @@ export function CashFlowList({
                                 )}
                                 <span className="min-w-0" data-testid={`cashflow-name-${flow.id}`}>
                                   {displayName(flow)}
-                                  {!on && (
-                                    <span
-                                      className="rounded-sm ml-1.5 inline-block border border-border bg-card px-1 align-[1px] text-[11px] font-semibold leading-4 text-muted-foreground"
-                                      data-testid={`cashflow-off-${flow.id}`}
-                                    >
-                                      {t('switch.off')}
-                                    </span>
-                                  )}
+                                  {!on && <FlowOffTag testId={`cashflow-off-${flow.id}`} />}
                                 </span>
                               </span>
                               <span

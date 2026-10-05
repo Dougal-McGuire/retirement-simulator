@@ -56,6 +56,7 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
 - **Internationalization**: next-intl with locale routing (`/[locale]/...`), translations in `src/i18n/messages/{en,de}.json`
 - **Reports**: `/api/generate-pdf` validates report data and renders PDFs with React PDF; the legacy `/reports/[id]/print` HTML route remains in the tree but is not the primary generation path
 - **Auth & Cloud Sync**: Google sign-in (`src/auth.ts`, `src/lib/auth/env.ts`) and `/api/plans` (`src/lib/server/planStore.ts`, Upstash via `KV_REST_API_*` or `UPSTASH_REDIS_REST_*`) are both optional: without credentials the auth UI hides, `/api/plans` answers 501 and plans stay in localStorage
+- **Plan schema guard**: every `/api/plans` request sends `x-plan-schema: PLAN_SCHEMA_VERSION` (`src/lib/plans/schemaVersion.ts`; no header = 1). A different version, or a stored blob newer than the server, gets `409 { error: 'outdated-client' | 'outdated-server' }` and nothing is read or written; the tab stops syncing (phase `outdated`) and `SyncReloadNotice` asks for a reload, while local edits keep working. The blob's `schemaVersion` is the highest version that wrote it. **Bump `PLAN_SCHEMA_VERSION` whenever the persisted plan shape gains a field (or meaning) that older code would misread, rewrite or drop** — e.g. `CashFlow.enabled` made it 2. Responses also carry `x-build-id` (`NEXT_PUBLIC_BUILD_ID` / `VERCEL_GIT_COMMIT_SHA`, inlined by `next.config.ts`); a different build only *suggests* a reload
 - **Dark Mode**: `prefers-color-scheme` by default; an explicit choice sets `<html data-color-scheme>` before first paint. PDFs and the print route force light
 
 ### Key Routes
@@ -86,7 +87,7 @@ This is a Next.js 16 retirement planning simulator using React 19, TypeScript, a
 
 - **Persistence**: Zustand middleware persists `plans`, `activePlanId`, `params`, `draftParams` and results to localStorage
 - **Plans**: Up to 12 named plans (`MAX_PLANS`); one is active. Edits go to a working copy (`draftParams`, `isDirty`) until `savePlanDraft()` or `revertPlanDraft()`; switching plans with unsaved edits goes through `PlanSwitchGuard`
-- **Cloud Sync**: When signed in and configured, `PlanCloudSync` merges local and remote plans (`src/lib/stores/planSync.ts`)
+- **Cloud Sync**: When signed in and configured, `PlanCloudSync` merges local and remote plans (`src/lib/stores/planSync.ts`); a 409 from the schema guard stops sync for the page life (see "Plan schema guard")
 - **Auto-run**: Parameter changes trigger simulation after 100ms (debounced)
 - **Suspension**: Auto-run can be suspended with `setAutoRunSuspended()` (the setup wizard does)
 - **Workspace UI state**: The open panel and compare mode are `WorkspaceProvider` state mirrored to the URL hash (reload and Back restore them), never persisted; `useWorkspaceUiStore` is a small unpersisted store for scroll state (active section, sticky geometry)

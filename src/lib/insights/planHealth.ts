@@ -60,7 +60,8 @@ export function computePlanHealthScore(
         ? 'Moderate'
         : 'Needs Attention'
 
-  const bridge = computeBridgeAnalysis(params)
+  // Weighed against today's assets, so in today's purchasing power too.
+  const bridge = computeBridgeAnalysis(params, { unit: 'real' })
   const whyBits: string[] = []
   if (spendingScore >= 85) whyBits.push('solid savings rate')
   if (bridge.yearsInBridge <= 6 && bridge.cashNeedEUR <= params.currentAssets * 0.3)

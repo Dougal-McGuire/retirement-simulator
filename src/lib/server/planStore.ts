@@ -15,6 +15,10 @@
  *
  *   plans:v1:<hashUserId(accountId)>  ->  { schemaVersion, updatedAt, plans, activePlanId }
  *
+ * `schemaVersion` is the highest `PLAN_SCHEMA_VERSION` that ever wrote the blob
+ * (see `src/lib/plans/schemaVersion.ts`); `/api/plans` refuses to serve or
+ * overwrite a blob newer than its own version.
+ *
  * The account id is hashed with the same non-reversible helper the browser uses
  * for its storage namespace, so no e-mail address ever becomes a Redis key.
  */
@@ -23,9 +27,7 @@ import { MAX_PLANS, type Plan } from '@/types'
 import { hashUserId } from '@/lib/stores/persistenceKey'
 import { normalizePlans } from '@/lib/stores/plans'
 import { normalizePersistedParams } from '@/lib/stores/normalizeParams'
-
-/** Version of the *blob* envelope (independent of the client's STORE_VERSION). */
-export const CLOUD_SCHEMA_VERSION = 1
+import { PLAN_SCHEMA_VERSION, parsePlanSchemaVersion } from '@/lib/plans/schemaVersion'
 
 /** Refuse anything larger; 12 plans of realistic size stay far below this. */
 export const MAX_BLOB_BYTES = 256 * 1024
@@ -34,6 +36,7 @@ export const MAX_BLOB_BYTES = 256 * 1024
 export const PLAN_KEY_PREFIX = 'plans:v1:'
 
 export interface CloudPlanBlob {
+  /** Highest plan schema version that wrote this blob (legacy blobs: 1). */
   schemaVersion: number
   /** Server clock at the moment of the write; drives pull-on-focus. */
   updatedAt: number
@@ -118,7 +121,7 @@ export function sanitizeCloudBlob(value: unknown): CloudPlanBlob | null {
       : Date.now()
 
   return {
-    schemaVersion: CLOUD_SCHEMA_VERSION,
+    schemaVersion: parsePlanSchemaVersion(value.schemaVersion),
     updatedAt,
     plans: plans.slice(0, MAX_PLANS),
     activePlanId,
@@ -177,14 +180,52 @@ export async function readPlanBlob(accountId: string): Promise<CloudPlanBlob | n
   }
 }
 
+export type StoredVersionResult =
+  /** `version: null` = nothing (usable) stored for this account yet. */
+  | { ok: true; version: number | null }
+  | { ok: false }
+
+/**
+ * Reads only the `schemaVersion` of `accountId`'s stored blob — the guard a
+ * write runs first, so an older deployment never overwrites a newer blob.
+ *
+ * Unlike `readPlanBlob`, an unreachable store is reported (`ok: false`) rather
+ * than read as "empty": a guard that cannot see the data must not wave a
+ * write through.
+ */
+export async function readStoredSchemaVersion(accountId: string): Promise<StoredVersionResult> {
+  const config = getCloudStoreConfig()
+  if (!config) return { ok: false }
+
+  let raw: unknown
+  try {
+    const payload = await upstash(config, `get/${encodeURIComponent(planStoreKey(accountId))}`)
+    raw = isRecord(payload) ? payload.result : null
+  } catch (error) {
+    console.error('[planStore] version read failed:', error)
+    return { ok: false }
+  }
+
+  if (typeof raw !== 'string' || raw.trim() === '') return { ok: true, version: null }
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    return { ok: true, version: isRecord(parsed) ? parsePlanSchemaVersion(parsed.schemaVersion) : null }
+  } catch {
+    // Corrupt JSON reads as empty everywhere else too; overwriting it is fine.
+    return { ok: true, version: null }
+  }
+}
+
 /**
  * Upserts `accountId`'s blob. The value is sanitized and re-stamped with the
  * server clock, so a client cannot store a future `updatedAt` and win every
- * later merge.
+ * later merge, and with `schemaVersion` — the version the caller verified (the
+ * route passes the highest of the writer's and the stored blob's).
  */
 export async function writePlanBlob(
   accountId: string,
-  blob: unknown
+  blob: unknown,
+  schemaVersion: number = PLAN_SCHEMA_VERSION
 ): Promise<WriteResult> {
   const config = getCloudStoreConfig()
   if (!config) return { ok: false, reason: 'unconfigured' }
@@ -193,7 +234,11 @@ export async function writePlanBlob(
   if (!sanitized) return { ok: false, reason: 'error' }
 
   const updatedAt = Date.now()
-  const serialized = JSON.stringify({ ...sanitized, updatedAt })
+  const serialized = JSON.stringify({
+    ...sanitized,
+    schemaVersion: parsePlanSchemaVersion(schemaVersion),
+    updatedAt,
+  })
 
   if (byteLength(serialized) > MAX_BLOB_BYTES) return { ok: false, reason: 'too-large' }
 

@@ -264,12 +264,13 @@ describe('the statutory pension switch', () => {
     // With the company pension off too the bridge runs to the statutory age.
     const none = switchOff(flows, 'company')
     expect(firstPensionAge(none, 67)).toBe(67)
-    expect(computeBridgeAnalysis(plan(none)).endAge).toBe(
+    expect(computeBridgeAnalysis(plan(none), { unit: 'real' }).endAge).toBe(
       computeBridgeAnalysis(
         plan(
           none.filter((flow) => flow.kind !== 'pension'),
           { monthlyPension: 0 }
-        )
+        ),
+        { unit: 'real' }
       ).endAge
     )
   })

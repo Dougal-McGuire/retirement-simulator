@@ -30,7 +30,7 @@ A unit test runs every flow kind through the engine switched off and deleted, wi
 - A projection never contains it, and reconcile carries it through untouched, like a windowed flow. Round trips (`withCashFlowProjections`, `normalizePersistedParams`, the engine's normalization) are the identity, for every flow kind.
 - A legacy write, such as a stress lever or the quick spending slider rewriting `customExpenses`, cannot drop, edit or re-enable it.
 - An **expense** entry that still carries a switched-off flow's id is absorbed, not appended as a switched-on duplicate. This happens with a stale projection or with the quick slider's plan-anchored fallback.
-- An **income** entry equal in value to a switched-off income is a _new_ switched-on income. Value is not identity, and the setup wizard's one-off list, which only shows switched-on incomes, can legitimately add the same windfall again.
+- An **income** entry equal in value to a switched-off income is a _new_ switched-on income. Value is not identity: a legacy writer can legitimately add the same windfall again. (The setup wizard's one-off list no longer writes the legacy array: it reads every one-off income from `cashFlows`, switched-off ones dimmed with the same switch and an **Aus** tag, and writes flows-first through `components/forms/fields/oneOffIncomeFlows.ts`.)
 
 ### Statutory pension
 
@@ -78,7 +78,8 @@ Measured with the button added, the bar overflowed at 1280 px and filled 1366 px
 
 ## 5. Compare
 
-- `planDiff.buildFlowSwitchRows(paramsList)` matches flows by id. A row exists only where a flow is on in one compared plan and off in another. `CompareView` renders it as "Erbschaft | berücksichtigt | ausgeschaltet" (`plans.comparison.flowSwitch.*`).
+- `planDiff.buildFlowSwitchRows(paramsList)` matches flows by id. A row exists only where a flow is on in one compared plan and off in another. It feeds the save-draft dialog.
+- `CompareView` renders `planDiff.buildFlowDiffRows(paramsList)`: switch flips first ("Erbschaft | berücksichtigt | ausgeschaltet", `plans.comparison.flowSwitch.*`), then flows missing from a plan ("—", read as "nicht im Plan", against amount and window), then flows in every plan whose amount, frequency or window differ. Flows are lined up by `matchFlowsAcrossPlans`: id + kind + name, then kind + name (plans whose ids were issued separately), then id + kind (a renamed copy). Lifetime budget items get no amount row (the monthly budget row shows them) and the statutory pension none at all (its own row). At most 8 rows; "n weitere Posten zeigen" (`compare-flow-more`) shows the rest. Rows carry `data-testid="compare-flow-row"` and `data-flow-change`.
 - `diffFlowSwitches(base, next)` feeds the save-draft dialog.
 
 ## 6. Stellschrauben: "Unsichere Posten"

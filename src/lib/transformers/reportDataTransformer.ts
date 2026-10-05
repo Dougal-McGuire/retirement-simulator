@@ -43,7 +43,6 @@ export function transformToReportData(
   // results can really be expressed that way; otherwise the report stays
   // nominal and says so — it never mixes the two.
   const units = resolveEuroUnit(results, options.displayReal === true)
-  const real = units.applied === 'real'
   const assets = assetPercentilesIn(results, units)
 
   // Generate milestones from simulation results
@@ -57,20 +56,21 @@ export function transformToReportData(
   }))
 
   // Plan-derived, already in the report's language.
-  const recommendations = generateRecommendations(params, results, locale, { real })
+  const recommendations = generateRecommendations(params, results, locale, { unit: units.applied })
 
   // Derived figures
   const monthlyExpenses = params.customExpenses.filter((e) => e.interval === 'monthly')
   const annualExpenses = params.customExpenses.filter((e) => e.interval === 'annual')
 
-  const bridge = computeBridgeAnalysis(params, { real })
+  // Nominal: each bridge year priced at the run's median price level, like the
+  // nominal charts. Real: today's budget per year.
+  const bridge = computeBridgeAnalysis(params, { unit: units.applied, results })
 
   // Ratios have no unit, so the € switch must not move them. The budget is in
   // today's euros, so they are taken against today's-euro assets whenever the
   // results allow it — in both modes — and nominal ones only when nothing else
   // exists (the same basis in both modes then too).
   const ratioUnit = resolveEuroUnit(results, true)
-  const ratioReal = ratioUnit.applied === 'real'
   const retirementIndex = results.ages.indexOf(params.retirementAge)
   const retirementMedian =
     retirementIndex === -1 ? undefined : assetPercentilesIn(results, ratioUnit).p50[retirementIndex]
@@ -81,7 +81,7 @@ export function transformToReportData(
       calculateCombinedExpenses(params.customExpenses).combinedAnnual
     ),
     bridgeShareOfRetirementAssets: ratioOf(
-      Math.round(computeBridgeAnalysis(params, { real: ratioReal }).cashNeedEUR)
+      Math.round(computeBridgeAnalysis(params, { unit: ratioUnit.applied, results }).cashNeedEUR)
     ),
   }
   // Unit-free: the score reads the success rate and today's-euro inputs only.

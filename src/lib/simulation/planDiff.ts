@@ -1,10 +1,12 @@
-import type { SimulationParams } from '@/types'
+import type { CashFlow, SimulationParams } from '@/types'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import {
+  STATUTORY_PENSION_FLOW_ID,
   applyCashFlows,
   buildCashFlowSeries,
   cashFlowSignature,
   enabledCashFlows,
+  hasLifetimeExpenseShape,
   isCashFlowEnabled,
   withCashFlowEnabled,
   isLifetimeExpenseFlow,
@@ -155,6 +157,181 @@ export function buildFlowSwitchRows(paramsList: SimulationParams[]): FlowSwitchR
     }
   }
   return rows
+}
+
+/**
+ * Lines one plan's flows up with each other plan's: `result[i][p]` is the
+ * flow standing for item `i` in plan `p`, or null where plan `p` has none.
+ * Items keep the order in which the plans first list them.
+ *
+ * A duplicated plan keeps its flows' ids, so the id is the identity. Plans
+ * duplicated before ids were stable (legacy positional ids such as
+ * `income-0`, re-issued per plan) are lined up by kind and name instead:
+ * first id + kind + name, then kind + name, then id + kind alone (a flow
+ * renamed in a copy). Kind always has to agree, so two unrelated flows that
+ * happen to share a positional id never pair up across income and expense.
+ */
+export function matchFlowsAcrossPlans(
+  paramsList: SimulationParams[]
+): Array<Array<CashFlow | null>> {
+  const items: Array<Array<CashFlow | null>> = []
+  const nameOf = (flow: CashFlow) =>
+    flow.nameKey !== undefined ? `key:${flow.nameKey}` : `name:${flow.name.trim().toLowerCase()}`
+
+  paramsList.forEach((params, planIndex) => {
+    const pending = [...(params.cashFlows ?? [])]
+    const claim = (match: (item: Array<CashFlow | null>, flow: CashFlow) => boolean) => {
+      for (let index = 0; index < pending.length; ) {
+        const flow = pending[index]
+        const item = items.find(
+          (candidate) => candidate[planIndex] === null && match(candidate, flow)
+        )
+        if (item) {
+          item[planIndex] = flow
+          pending.splice(index, 1)
+        } else {
+          index += 1
+        }
+      }
+    }
+    // The flow an item was first listed with is its reference.
+    const reference = (item: Array<CashFlow | null>) => item.find((entry) => entry !== null)!
+    claim((item, flow) => {
+      const ref = reference(item)
+      return ref.id === flow.id && ref.kind === flow.kind && nameOf(ref) === nameOf(flow)
+    })
+    claim((item, flow) => {
+      const ref = reference(item)
+      return ref.kind === flow.kind && nameOf(ref) === nameOf(flow)
+    })
+    claim((item, flow) => {
+      const ref = reference(item)
+      return ref.id === flow.id && ref.kind === flow.kind
+    })
+    for (const flow of pending) {
+      const item: Array<CashFlow | null> = paramsList.map(() => null)
+      item[planIndex] = flow
+      items.push(item)
+    }
+  })
+
+  return items
+}
+
+/** Why a flow has a row in the comparison. */
+export type FlowDiffChange =
+  /** In every plan, switched on in one and off in another. */
+  | 'switch'
+  /** Missing from at least one plan. */
+  | 'presence'
+  /** In every plan with the same switch, but amount, frequency or window differ. */
+  | 'terms'
+
+export interface FlowDiffRow {
+  /**
+   * Stable, unique row key: `flow:` + the id of the first plan's flow (with a
+   * suffix when two unmatched flows of different kinds share that id).
+   */
+  key: string
+  change: FlowDiffChange
+  /** Name and key from the first plan that has the flow, for display. */
+  name: string
+  nameKey?: string
+  kind: CashFlow['kind']
+  /** One entry per compared plan: the matched flow, or null where it is missing. */
+  flows: Array<CashFlow | null>
+  /** One entry per compared plan. */
+  values: FlowSwitchState[]
+  /** Amount, frequency or window differ between the plans that have the flow. */
+  termsDiffer: boolean
+}
+
+/** What a flow pays and when — the part a comparison row has to show. */
+const flowTerms = (flow: CashFlow, params: SimulationParams) => {
+  // A pension without a start age follows the plan's statutory retirement age.
+  const start =
+    flow.startAge ?? (flow.kind === 'pension' ? params.legalRetirementAge : params.currentAge)
+  return [
+    flow.amount,
+    flow.frequency,
+    start,
+    flow.frequency === 'once' ? '' : (flow.endAge ?? params.endAge),
+  ].join('|')
+}
+
+/**
+ * Flows the comparison's aggregate rows already speak for. The statutory
+ * pension has its own row; a lifetime recurring expense is part of the
+ * monthly budget row — an amount change there would be listed twice.
+ */
+const coveredByAggregateRow = (flow: CashFlow) =>
+  flow.id === STATUTORY_PENSION_FLOW_ID || hasLifetimeExpenseShape(flow)
+
+/**
+ * The flow rows of a plan comparison, in display order: switch flips first
+ * (the scenario question itself), then flows missing from a plan, then flows
+ * whose amount, frequency or window differ.
+ *
+ * - A flow in every plan but switched off in all of them makes no row: no
+ *   figure sees it. A flow missing from a plan always does, switched off or
+ *   not — it is a difference in what the plans hold.
+ * - The statutory pension never gets a presence or terms row (its own row
+ *   shows the amount), and a lifetime expense gets no terms row while it is
+ *   one in every plan (the monthly budget row shows it).
+ */
+export function buildFlowDiffRows(paramsList: SimulationParams[]): FlowDiffRow[] {
+  if (paramsList.length < 2) return []
+  const switches: FlowDiffRow[] = []
+  const presence: FlowDiffRow[] = []
+  const terms: FlowDiffRow[] = []
+
+  const usedKeys = new Set<string>()
+  const uniqueKey = (id: string) => {
+    let key = `flow:${id}`
+    for (let suffix = 2; usedKeys.has(key); suffix += 1) key = `flow:${id}~${suffix}`
+    usedKeys.add(key)
+    return key
+  }
+
+  for (const flows of matchFlowsAcrossPlans(paramsList)) {
+    const reference = flows.find((flow): flow is CashFlow => flow !== null)!
+    const key = uniqueKey(reference.id)
+    const values = flows.map(
+      (flow): FlowSwitchState => (flow === null ? 'absent' : isCashFlowEnabled(flow) ? 'on' : 'off')
+    )
+    const present = flows.flatMap((flow, index) =>
+      flow === null ? [] : [{ flow, params: paramsList[index] }]
+    )
+    const termsDiffer = new Set(present.map(({ flow, params }) => flowTerms(flow, params))).size > 1
+    const row = (change: FlowDiffChange): FlowDiffRow => ({
+      key,
+      change,
+      name: reference.name,
+      ...(reference.nameKey !== undefined ? { nameKey: reference.nameKey } : {}),
+      kind: reference.kind,
+      flows,
+      values,
+      termsDiffer,
+    })
+
+    if (present.length < flows.length) {
+      if (reference.id !== STATUTORY_PENSION_FLOW_ID) presence.push(row('presence'))
+      continue
+    }
+    if (values.includes('on') && values.includes('off')) {
+      switches.push(row('switch'))
+      continue
+    }
+    if (
+      termsDiffer &&
+      values.includes('on') &&
+      !present.every(({ flow }) => coveredByAggregateRow(flow))
+    ) {
+      terms.push(row('terms'))
+    }
+  }
+
+  return [...switches, ...presence, ...terms]
 }
 
 interface RowSpec {

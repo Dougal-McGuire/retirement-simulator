@@ -46,17 +46,26 @@ export function AccountStatusLine() {
       ? t('sync.syncing')
       : phase === 'offline'
         ? t('sync.offline')
-        : phase === 'synced' && relative
-          ? t('sync.synced', { when: relative })
-          : null
+        : phase === 'outdated'
+          ? t('sync.outdated')
+          : phase === 'synced' && relative
+            ? t('sync.synced', { when: relative })
+            : null
 
   const isSynced = phase === 'synced'
-  const tooltip = label === null ? t('localOnly') : isSynced ? t('sync.hint') : t('sync.offlineHint')
+  const tooltip =
+    label === null
+      ? t('localOnly')
+      : isSynced
+        ? t('sync.hint')
+        : phase === 'outdated'
+          ? t('sync.outdatedHint')
+          : t('sync.offlineHint')
 
   const dotClass =
     phase === 'syncing'
       ? 'bg-accent animate-pulse'
-      : phase === 'offline'
+      : phase === 'offline' || phase === 'outdated'
         ? 'bg-viz-orange'
         : isSynced
           ? 'bg-ok'

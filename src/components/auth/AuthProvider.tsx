@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from 'react'
 import { SessionProvider } from 'next-auth/react'
 import { AuthStorageSync } from './AuthStorageSync'
 import { PlanCloudSync } from './PlanCloudSync'
+import { SyncReloadNotice } from './SyncReloadNotice'
 
 /**
  * Whether this deployment has Google OAuth credentials. Resolved on the server
@@ -48,6 +49,7 @@ export function AuthProvider({ enabled, cloudSync = false, children }: AuthProvi
           {/* Runs only once `AuthStorageSync` has settled the namespace, and only
               for a signed-in account — see `usePlanCloudSync`. */}
           <PlanCloudSync />
+          <SyncReloadNotice />
           {children}
         </SessionProvider>
       </CloudSyncEnabledContext.Provider>

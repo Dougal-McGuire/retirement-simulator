@@ -13,6 +13,15 @@ import { timelineIssues } from '@/lib/validation/fieldValidation'
 import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
 import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
 import { CashFlowList } from '@/components/forms/fields/CashFlowList'
+import {
+  addOneOffIncome,
+  createFlowId,
+  oneOffIncomeEntries,
+  removeFlow,
+  toggleFlow,
+  updateOneOffIncome,
+} from '@/components/forms/fields/oneOffIncomeFlows'
+import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import { buildCashFlowTemplates } from '@/components/forms/fields/cashFlowTemplates'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
 import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
@@ -27,7 +36,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { OneTimeIncome } from '@/types'
+import type { CashFlow, OneTimeIncome } from '@/types'
 import { WorkspaceAccountMenu, WorkspaceBrand } from '@/components/workspace/WorkspaceShell'
 import { InfoTip } from '@/components/ui/info-tip'
 import { cn } from '@/lib/utils'
@@ -222,38 +231,38 @@ export default function SetupPage() {
     return Math.max(params.currentAge, Math.min(params.endAge, rounded))
   }
 
+  // The one-off list reads and writes the flow list itself (flows-first, as
+  // the flow list does): the legacy `oneTimeIncomes` projection omits
+  // switched-off incomes, which made them vanish here with no way back.
+  const oneOffName = (flow: CashFlow) =>
+    cashFlowDisplayName(flow, (key) => t(`cashFlows.defaults.${key}`))
+  const oneOffIncomes = oneOffIncomeEntries(params.cashFlows, params.currentAge, oneOffName)
+  const switchedOffOneOffs = oneOffIncomes.filter((income) => !income.enabled).length
+
+  const sanitizeOneOff = (income: OneTimeIncome): OneTimeIncome => ({
+    age: clampIncomeAge(income.age),
+    amount: Math.max(0, Math.round(income.amount)),
+    name: income.name || '',
+  })
+
   const handleAddOneTimeIncome = (income: OneTimeIncome) => {
-    const nextAge = clampIncomeAge(income.age)
-    const nextAmount = Math.max(0, Math.round(income.amount))
     updateParams({
-      oneTimeIncomes: [
-        ...params.oneTimeIncomes,
-        {
-          age: nextAge,
-          amount: nextAmount,
-          name: income.name || '',
-        },
-      ],
+      cashFlows: addOneOffIncome(params.cashFlows, sanitizeOneOff(income), createFlowId()),
     })
   }
 
-  const handleUpdateOneTimeIncome = (index: number, income: OneTimeIncome) => {
-    const nextIncomes = params.oneTimeIncomes.map((existing, existingIndex) =>
-      existingIndex === index
-        ? {
-            age: clampIncomeAge(income.age),
-            amount: Math.max(0, Math.round(income.amount)),
-            name: income.name || '',
-          }
-        : existing
-    )
-    updateParams({ oneTimeIncomes: nextIncomes })
+  const handleUpdateOneTimeIncome = (id: string, income: OneTimeIncome) => {
+    updateParams({
+      cashFlows: updateOneOffIncome(params.cashFlows, id, sanitizeOneOff(income), oneOffName),
+    })
   }
 
-  const handleRemoveOneTimeIncome = (index: number) => {
-    updateParams({
-      oneTimeIncomes: params.oneTimeIncomes.filter((_, incomeIndex) => incomeIndex !== index),
-    })
+  const handleRemoveOneTimeIncome = (id: string) => {
+    updateParams({ cashFlows: removeFlow(params.cashFlows, id) })
+  }
+
+  const handleToggleOneTimeIncome = (id: string) => {
+    updateParams({ cashFlows: toggleFlow(params.cashFlows, id) })
   }
 
   const workingYears = Math.max(0, params.retirementAge - params.currentAge)
@@ -487,7 +496,7 @@ export default function SetupPage() {
                 />
               </div>
               <OneTimeIncomeList
-                incomes={params.oneTimeIncomes}
+                incomes={oneOffIncomes}
                 minAge={params.currentAge}
                 maxAge={params.endAge}
                 defaultAge={Math.max(params.retirementAge, params.currentAge + 1)}
@@ -512,10 +521,16 @@ export default function SetupPage() {
                     actions: t('assets.oneTimeIncomes.table.actions'),
                   },
                   summaryLabel: t('assets.oneTimeIncomes.summary'),
+                  switchColumn: t('cashFlows.switch.label'),
+                  switchedOffSummary:
+                    switchedOffOneOffs > 0
+                      ? t('cashFlows.summary.switchedOff', { count: switchedOffOneOffs })
+                      : undefined,
                 }}
                 onAdd={handleAddOneTimeIncome}
                 onUpdate={handleUpdateOneTimeIncome}
                 onRemove={handleRemoveOneTimeIncome}
+                onToggle={handleToggleOneTimeIncome}
                 formatCurrency={(value) =>
                   format.number(value, {
                     style: 'currency',

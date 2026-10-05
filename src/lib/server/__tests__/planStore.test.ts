@@ -1,13 +1,14 @@
 import { DEFAULT_PARAMS, MAX_PLANS, type Plan } from '@/types'
 import { makePlan } from '@/lib/stores/plans'
 import { hashUserId } from '@/lib/stores/persistenceKey'
+import { PLAN_SCHEMA_VERSION } from '@/lib/plans/schemaVersion'
 import {
-  CLOUD_SCHEMA_VERSION,
   MAX_BLOB_BYTES,
   getCloudStoreConfig,
   isCloudStoreConfigured,
   planStoreKey,
   readPlanBlob,
+  readStoredSchemaVersion,
   sanitizeCloudBlob,
   writePlanBlob,
 } from '@/lib/server/planStore'
@@ -100,11 +101,22 @@ describe('sanitizeCloudBlob', () => {
     })
 
     expect(blob).not.toBeNull()
-    expect(blob?.schemaVersion).toBe(CLOUD_SCHEMA_VERSION)
+    // No version stated: a blob from before the schema guard.
+    expect(blob?.schemaVersion).toBe(1)
     expect(blob?.activePlanId).toBe('a')
     // Persisted strings become numbers and missing fields get defaults.
     expect(blob?.plans[0].params.currentAge).toBe(41)
     expect(blob?.plans[0].params.endAge).toBe(DEFAULT_PARAMS.endAge)
+  })
+
+  it('keeps a valid schemaVersion and reads anything else as legacy (1)', () => {
+    const base = { plans: [plan('a')], activePlanId: 'a' }
+    expect(sanitizeCloudBlob({ ...base, schemaVersion: 2 })?.schemaVersion).toBe(2)
+    // A newer version survives, so the route can refuse it instead of serving it.
+    expect(sanitizeCloudBlob({ ...base, schemaVersion: 7 })?.schemaVersion).toBe(7)
+    expect(sanitizeCloudBlob({ ...base, schemaVersion: 0 })?.schemaVersion).toBe(1)
+    expect(sanitizeCloudBlob({ ...base, schemaVersion: 2.5 })?.schemaVersion).toBe(1)
+    expect(sanitizeCloudBlob({ ...base, schemaVersion: '<script>' })?.schemaVersion).toBe(1)
   })
 
   it('rejects a blob with nothing usable in it', () => {
@@ -215,6 +227,17 @@ describe('writePlanBlob', () => {
     expect(result.ok && result.updatedAt).toBe(written.updatedAt)
   })
 
+  it('stamps the given schema version, never the one in the body', async () => {
+    configure()
+    const fetchMock = mockFetch(jest.fn().mockResolvedValue(jsonResponse({ result: 'OK' })))
+
+    await writePlanBlob('user-1', { schemaVersion: 99, plans: [plan('a')], activePlanId: 'a' })
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect((JSON.parse(String(init.body)) as { schemaVersion: number }).schemaVersion).toBe(
+      PLAN_SCHEMA_VERSION
+    )
+  })
+
   it('rejects an unusable blob without touching the network', async () => {
     configure()
     const fetchMock = mockFetch(jest.fn())
@@ -255,6 +278,39 @@ describe('writePlanBlob', () => {
     await expect(writePlanBlob('user-1', { plans: [plan('a')], activePlanId: 'a' })).resolves.toEqual(
       { ok: false, reason: 'error' }
     )
+  })
+})
+
+describe('readStoredSchemaVersion', () => {
+  it('reads the stored version without sanitizing the plans', async () => {
+    configure()
+    mockFetch(
+      jest
+        .fn()
+        .mockResolvedValue(jsonResponse({ result: JSON.stringify({ schemaVersion: 5, plans: 'junk' }) }))
+    )
+    await expect(readStoredSchemaVersion('user-1')).resolves.toEqual({ ok: true, version: 5 })
+  })
+
+  it('reads a legacy blob as 1 and a missing or corrupt one as empty', async () => {
+    configure()
+    mockFetch(jest.fn().mockResolvedValue(jsonResponse({ result: JSON.stringify({ plans: [] }) })))
+    await expect(readStoredSchemaVersion('user-1')).resolves.toEqual({ ok: true, version: 1 })
+
+    mockFetch(jest.fn().mockResolvedValue(jsonResponse({ result: null })))
+    await expect(readStoredSchemaVersion('user-1')).resolves.toEqual({ ok: true, version: null })
+
+    mockFetch(jest.fn().mockResolvedValue(jsonResponse({ result: '{{{' })))
+    await expect(readStoredSchemaVersion('user-1')).resolves.toEqual({ ok: true, version: null })
+  })
+
+  it('reports an unreachable store instead of reading it as empty', async () => {
+    configure()
+    mockFetch(jest.fn().mockRejectedValue(new Error('ECONNREFUSED')))
+    await expect(readStoredSchemaVersion('user-1')).resolves.toEqual({ ok: false })
+
+    clearEnv()
+    await expect(readStoredSchemaVersion('user-1')).resolves.toEqual({ ok: false })
   })
 })
 

@@ -2,7 +2,7 @@ import type { SimulationParams, SimulationResults } from '@/types'
 import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
 import type { Recommendation } from '@/lib/pdf-generator/schema/reportData'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
-import { computeBridgeAnalysis } from '@/lib/insights/bridge'
+import { computeBridgeAnalysis, type BridgeUnit } from '@/lib/insights/bridge'
 
 /**
  * Plan-derived recommendations for a **German** retirement plan.
@@ -87,11 +87,12 @@ const localeTag = (locale: RecommendationLocale) => (locale === 'de' ? 'de-DE' :
 
 export type RecommendationOptions = {
   /**
-   * Quote derived euro amounts (the bridge need) in today's purchasing power —
-   * the report's real mode. Ratios and plan inputs are unit-free or already in
-   * today's euros and read the same either way.
+   * Which euro derived amounts (the bridge need) are quoted in: the
+   * dashboard's / report's Nominal / Heutige € choice. Ratios and plan inputs
+   * are unit-free or already in today's euros and read the same either way.
+   * Defaults to nominal, like the switch.
    */
-  real?: boolean
+  unit?: BridgeUnit
 }
 
 export function generateRecommendations(
@@ -126,14 +127,15 @@ export function generateRecommendations(
   }
 
   const successRate = results.successRate
-  const bridge = computeBridgeAnalysis(params, { real: options.real })
-  // Derived amounts say which euro they are in when it is not the default one.
-  const bridgeUnit = options.real
-    ? { en: " in today's euros", de: ' in heutiger Kaufkraft' }
-    : { en: '', de: '' }
-  const bridgeSpendDe = options.real
-    ? `${eur(bridge.cashNeedEUR)} an Ausgaben in heutiger Kaufkraft`
-    : `${eur(bridge.cashNeedEUR)} Ausgaben`
+  const unit: BridgeUnit = options.unit ?? 'nominal'
+  const bridge = computeBridgeAnalysis(params, { unit, results })
+  // The bridge need is the one derived amount quoted next to today's-euro
+  // inputs, so it always says which euro it is in — the same words as the
+  // unit captions on the dashboard.
+  const bridgeUnit =
+    unit === 'real'
+      ? { en: " in today's euros", de: ' in heutiger Kaufkraft' }
+      : { en: ' in nominal euros', de: ' in nominalen Euro' }
   const accumulationYears = Math.max(0, params.retirementAge - params.currentAge)
 
   // First retirement year: what the portfolio alone has to deliver, over what
@@ -160,7 +162,7 @@ export function generateRecommendations(
   if (successRate < 85 && bridge.yearsInBridge > 0) {
     push('delayRetirement', successRate < 70 ? 'High' : 'Medium', {
       en: `Retiring at ${params.retirementAge} opens a ${bridge.yearsInBridge}-year gap to the first pension at ${bridge.pensionAge}, worth ${eur(bridge.cashNeedEUR)}${bridgeUnit.en} of spending the portfolio carries alone. Each extra working year shortens that gap and adds a year of contributions.`,
-      de: `Ein Ruhestand mit ${params.retirementAge} öffnet ${bridge.yearsInBridge} Jahre bis zur ersten Rente mit ${bridge.pensionAge} — ${bridgeSpendDe}, die allein das Depot trägt. Jedes zusätzliche Arbeitsjahr verkürzt die Lücke und bringt ein weiteres Beitragsjahr.`,
+      de: `Ein Ruhestand mit ${params.retirementAge} öffnet ${bridge.yearsInBridge} Jahre bis zur ersten Rente mit ${bridge.pensionAge} — ${eur(bridge.cashNeedEUR)} an Ausgaben${bridgeUnit.de}, die allein das Depot trägt. Jedes zusätzliche Arbeitsjahr verkürzt die Lücke und bringt ein weiteres Beitragsjahr.`,
     })
   }
 

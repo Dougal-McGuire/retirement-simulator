@@ -24,7 +24,13 @@
       "hours": "{count} h ago",
       "offline": "Offline (stored on this device)",
       "hint": "Your plans are stored with your Google account and follow you to every device you sign in on.",
-      "offlineHint": "Cloud sync is unreachable right now. Your plans stay on this device and sync again automatically."
+      "offlineHint": "Cloud sync is unreachable right now. Your plans stay on this device and sync again automatically.",
+      "outdated": "Sync paused — reload needed",
+      "outdatedHint": "A newer version of the app is in use. Your plans stay on this device; reload the page and they sync again.",
+      "reloadRequired": "New version available — please reload so your plans keep syncing.",
+      "reloadSuggested": "New version available — reload to use it.",
+      "reload": "Reload",
+      "later": "Later"
     }
   },
   "landing": {
@@ -588,6 +594,13 @@
       "changedRows": "Changed rows highlighted",
       "openEditor": "Edit assumptions →",
       "perMonth": "{amount}/mo",
+      "flow": {
+        "monthly": "{amount}/mo",
+        "annual": "{amount}/yr",
+        "once": "{amount} once",
+        "more": "{count, plural, =1 {Show # more item} other {Show # more items}}",
+        "less": "Show fewer items"
+      },
       "kpi": {
         "success": "Success rate",
         "lastsTo": "Wealth lasts to",
