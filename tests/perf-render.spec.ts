@@ -18,9 +18,21 @@ import {
  *
  * Reads React's commits through the DevTools global hook, so it needs a
  * development build (component names); against a production build it skips.
+ *
+ * "Rendered in this commit" is read from the fiber tree's structure, not from
+ * clocks: a fiber that rendered was cloned for this commit (it was not in its
+ * root's tree at that root's previous commit) and carries React's
+ * PerformedWork flag (cloning resets the flags). An earlier version compared
+ * each fiber's render start time with the last commit of *any* root; the
+ * development overlay is a second React root, and under CPU load its commits
+ * landed in the middle of the time-sliced deferred render, so components that
+ * had begun rendering before that commit were dropped from the deferred
+ * commit ("Ergebnis never re-rendered") about one run in five.
  */
 
 interface Commit {
+  /** Which React root committed (the app, or e.g. the development overlay). */
+  root: number
   /** Components (by name) whose render function ran in this commit. */
   rendered: string[]
   /** The result bar's success rate and end assets after the commit. */
@@ -36,9 +48,7 @@ async function recordCommits(page: Page) {
       child: Fiber | null
       sibling: Fiber | null
       alternate: Fiber | null
-      memoizedProps: unknown
-      memoizedState: unknown
-      actualStartTime?: number
+      flags: number
     }
     const nameOf = (type: unknown): string | null => {
       if (typeof type === 'function') {
@@ -55,9 +65,15 @@ async function recordCommits(page: Page) {
     }
     // Function (0), class (1), forwardRef (11), memo (14) and simple memo (15).
     const COMPONENT_TAGS = new Set([0, 1, 11, 14, 15])
-    const seen = new WeakMap<object, { props: unknown; state: unknown }>()
-    const commits: Array<{ rendered: string[]; bar: string }> = []
-    let lastCommitAt = -1
+    // React's `PerformedWork` fiber flag: the component's render ran.
+    const PERFORMED_WORK = 1
+    const commits: Array<{ root: number; rendered: string[]; bar: string }> = []
+    // Per root: its id and how many commits it has made. Per fiber: the
+    // root commit at which it was last part of that root's current tree.
+    const rootIds = new WeakMap<object, number>()
+    const rootCommits = new WeakMap<object, number>()
+    const inTreeAt = new WeakMap<object, number>()
+    let nextRootId = 0
     let rendererId = 0
 
     ;(window as unknown as Record<string, unknown>).__commits = commits
@@ -76,35 +92,38 @@ async function recordCommits(page: Page) {
       onCommitFiberUnmount() {},
       onPostCommitFiberRoot() {},
       onCommitFiberRoot(_id: number, root: { current: Fiber }) {
+        if (!rootIds.has(root)) rootIds.set(root, (nextRootId += 1))
+        const commit = (rootCommits.get(root) ?? 0) + 1
+        rootCommits.set(root, commit)
         const rendered: string[] = []
         const stack: Fiber[] = [root.current]
         while (stack.length > 0) {
           const fiber = stack.pop()!
-          if (COMPONENT_TAGS.has(fiber.tag)) {
-            // A component rendered in this commit iff its props or hook state
-            // changed since the last commit we saw (bailouts keep both), and
-            // it began work after that commit (not a stale, uncloned fiber).
-            const previous =
-              seen.get(fiber) ?? (fiber.alternate ? seen.get(fiber.alternate) : undefined)
-            const changed =
-              !previous ||
-              previous.props !== fiber.memoizedProps ||
-              previous.state !== fiber.memoizedState
-            const fresh =
-              fiber.actualStartTime === undefined || fiber.actualStartTime > lastCommitAt
-            const entry = { props: fiber.memoizedProps, state: fiber.memoizedState }
-            seen.set(fiber, entry)
-            if (fiber.alternate) seen.set(fiber.alternate, entry)
-            const name = changed && fresh ? nameOf(fiber.type) : null
+          // React leaves a subtree without work as it is: the same fiber
+          // objects stay in the tree. Work clones a fiber (resetting its
+          // flags), so a fiber that was not in this root's tree at its
+          // previous commit is new to it, and its PerformedWork flag says
+          // whether its render ran — this commit, never an earlier one.
+          const cloned = inTreeAt.get(fiber) !== commit - 1
+          inTreeAt.set(fiber, commit)
+          if (
+            cloned &&
+            COMPONENT_TAGS.has(fiber.tag) &&
+            (fiber.flags & PERFORMED_WORK) === PERFORMED_WORK
+          ) {
+            const name = nameOf(fiber.type)
             if (name) rendered.push(name)
           }
           if (fiber.sibling) stack.push(fiber.sibling)
           if (fiber.child) stack.push(fiber.child)
         }
-        lastCommitAt = performance.now()
         const value = (testId: string) =>
           document.querySelector(`[data-testid="${testId}"]`)?.getAttribute('data-value') ?? ''
-        commits.push({ rendered, bar: `${value('success-pill')}|${value('end-assets')}` })
+        commits.push({
+          root: rootIds.get(root)!,
+          rendered,
+          bar: `${value('success-pill')}|${value('end-assets')}`,
+        })
       },
     }
   })
@@ -155,9 +174,22 @@ test('an edit re-renders the result bar first and never the page shell', async (
   await page.keyboard.press('ArrowRight')
   await expect(page.getByTestId('end-assets')).not.toHaveAttribute('data-value', before ?? '')
   await expect(page.getByTestId('run-status')).toHaveAttribute('data-state', 'updated')
-  // Let the deferred pass (and any chart follow-up) commit.
+  // Wait for the deferred pass itself rather than for a fixed time: on a
+  // loaded machine it can take longer than any sleep. Then give chart
+  // follow-ups a moment to commit too, so the shell check below sees them.
+  // (Waiting longer can only reveal more renders, never hide one.)
+  const commits: Commit[] = []
+  await expect
+    .poll(
+      async () => {
+        commits.push(...(await readCommits(page)))
+        return commits.some((commit) => commit.rendered.includes('ResultBody'))
+      },
+      { timeout: 20000, message: 'Ergebnis never re-rendered for the new result' }
+    )
+    .toBe(true)
   await page.waitForTimeout(500)
-  const commits = await readCommits(page)
+  commits.push(...(await readCommits(page)))
 
   // The page shell never re-renders for an edit or a run.
   const shell = commits.filter((commit) => commit.rendered.includes('WorkspacePage'))
