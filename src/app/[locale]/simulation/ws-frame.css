@@ -550,7 +550,10 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 20px;
+  /* 12 px between the facts: with the widths reserved below, all four stay on
+     one line from a 838 px canvas on (1366 px wide with the column docked),
+     with room left for an eight-digit worst case. */
+  gap: 4px 12px;
   min-height: 24px;
   margin: 0;
   font-size: var(--ui-font-body);
@@ -583,10 +586,10 @@
   min-inline-size: 5.8em;
 }
 .ws-head-facts [data-fact='draw'] .ws-head-fact {
-  min-inline-size: 7.5em;
+  min-inline-size: 6.8em;
 }
 .ws-head-facts [data-fact='bad'] dd {
-  min-inline-size: 5.2em;
+  min-inline-size: 4.9em;
 }
 .ws-head-fact .ws-link-button {
   position: relative;

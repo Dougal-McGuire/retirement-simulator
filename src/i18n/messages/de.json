@@ -1144,11 +1144,11 @@
     "reset": "Zoom zurücksetzen",
     "tooltip": {
       "label": "Alter {age}",
-      "p90": "90. Perzentil",
-      "p80": "80. Perzentil",
-      "median": "Median",
-      "p20": "20. Perzentil",
-      "p10": "10. Perzentil"
+      "p90": "Oberer Rand · 8 von 10",
+      "p80": "Oberer Rand · 6 von 10",
+      "median": "Mittlerer Verlauf",
+      "p20": "Unterer Rand · 6 von 10",
+      "p10": "Unterer Rand · 8 von 10"
     },
     "scale": {
       "label": "Skalierung der Werteachse",

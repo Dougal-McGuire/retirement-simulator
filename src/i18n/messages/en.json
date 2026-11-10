@@ -1144,11 +1144,11 @@
     "reset": "Reset Zoom",
     "tooltip": {
       "label": "Age {age}",
-      "p90": "90th percentile",
-      "p80": "80th percentile",
-      "median": "Median",
-      "p20": "20th percentile",
-      "p10": "10th percentile"
+      "p90": "Upper edge · 8 of 10",
+      "p80": "Upper edge · 6 of 10",
+      "median": "Middle path",
+      "p20": "Lower edge · 6 of 10",
+      "p10": "Lower edge · 8 of 10"
     },
     "scale": {
       "label": "Value axis scale",
