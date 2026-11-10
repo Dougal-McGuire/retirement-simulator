@@ -1,4 +1,5 @@
-import type { PercentileData, SimulationResults } from '@/types'
+import type { PercentileData, SimulationParams, SimulationResults } from '@/types'
+import { closingPriceLevels, usablePriceIndex } from '@/lib/insights/priceLevels'
 
 /**
  * Which euro the report's *projected* figures are printed in — the PDF side of
@@ -9,8 +10,7 @@ import type { PercentileData, SimulationResults } from '@/types'
  * produced over time (asset percentiles and everything derived from them, the
  * bridge need) follow the switch.
  *
- * Pure and dependency-free so the client (filename) and the server (report
- * data) make the same decision.
+ * Pure, so the button (file name) and the report data make the same decision.
  */
 export type EuroUnit = 'nominal' | 'real'
 
@@ -20,7 +20,8 @@ export type EuroUnit = 'nominal' | 'real'
  *   before taking percentiles (`assetPercentilesReal`) — what the app shows.
  * - `medianIndex`: results persisted before the real series existed; the
  *   nominal percentiles are divided by the median realised price level
- *   (`inflationIndexP50`). An approximation, and the report says so.
+ *   (`inflationIndexP50`) — an asset value by the level its year *closes* at,
+ *   as the engine does. An approximation, and the report says so.
  */
 export type RealMethod = 'perPath' | 'medianIndex'
 
@@ -38,7 +39,10 @@ export const NOMINAL_UNIT: ReportEuroUnit = { requested: 'nominal', applied: 'no
 type RealSource = Pick<
   SimulationResults,
   'ages' | 'assetPercentiles' | 'assetPercentilesReal' | 'inflationIndexP50'
->
+> & {
+  /** Only read for the inflation assumption that extrapolates the last closing level. */
+  params?: Pick<SimulationParams, 'averageInflation'>
+}
 
 const PERCENTILE_KEYS = ['p10', 'p20', 'p50', 'p80', 'p90'] as const
 
@@ -46,17 +50,11 @@ function hasSeries(percentiles: PercentileData | undefined, length: number): boo
   return Boolean(percentiles && PERCENTILE_KEYS.every((key) => percentiles[key]?.length === length))
 }
 
-function usableIndex(index: readonly number[] | undefined, length: number): boolean {
-  return Boolean(
-    index && index.length === length && index.every((value) => Number.isFinite(value) && value > 0)
-  )
-}
-
 /** How these results can be expressed in today's euros, or `null` if they cannot. */
 export function realMethodFor(results: RealSource): RealMethod | null {
   const length = results.ages.length
   if (hasSeries(results.assetPercentilesReal, length)) return 'perPath'
-  if (usableIndex(results.inflationIndexP50, length)) return 'medianIndex'
+  if (usablePriceIndex(results.inflationIndexP50, length)) return 'medianIndex'
   return null
 }
 
@@ -73,6 +71,11 @@ export function resolveEuroUnit(results: RealSource, displayReal: boolean): Repo
  * The asset percentiles in the resolved unit. Never mixes: either every value
  * is the engine's per-path real series, every value is deflated by the same
  * median index, or every value is nominal.
+ *
+ * The values are year-end balances. In the index fallback each is therefore
+ * divided by the level its year closes at (`index[i + 1]`; the last one is
+ * extrapolated with the plan's inflation rate) — dividing by the opening
+ * level would overstate every balance by a year of inflation.
  */
 export function assetPercentilesIn(results: RealSource, unit: ReportEuroUnit): PercentileData {
   if (unit.applied !== 'real') return results.assetPercentiles
@@ -81,7 +84,8 @@ export function assetPercentilesIn(results: RealSource, unit: ReportEuroUnit): P
   }
   const index = results.inflationIndexP50
   if (unit.realMethod === 'medianIndex' && index) {
-    const deflate = (values: number[]) => values.map((value, i) => value / index[i])
+    const closing = closingPriceLevels(index, results.params?.averageInflation)
+    const deflate = (values: number[]) => values.map((value, i) => value / closing[i])
     return {
       p10: deflate(results.assetPercentiles.p10),
       p20: deflate(results.assetPercentiles.p20),

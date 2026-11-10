@@ -1,2 +1,14 @@
-onlyBuiltDependencies:
-  - '@vscode/ripgrep'
+# @swc/core (via next-intl) ships prebuilt platform binaries as optional
+# dependencies; its postinstall script is not needed.
+ignoredBuiltDependencies:
+  - '@swc/core'
+
+# Security floors for transitive dependencies whose parents pin an older
+# release (next → styled-jsx → @babel/core → browserslist, next → postcss →
+# source-map-js, next-intl → @parcel/watcher → picomatch). Drop an entry once
+# `pnpm why <name>` shows the parent has moved past it.
+overrides:
+  'picomatch@>=4.0.0 <4.0.4': ^4.0.4
+  'browserslist@<4.28.7': ^4.28.7
+  'source-map-js@<1.2.2': ^1.2.2
+  '@babel/core@<7.29.6': ^7.29.6

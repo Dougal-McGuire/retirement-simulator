@@ -174,8 +174,11 @@ describe('pension taxation', () => {
   it('nets the pension down by Besteuerungsanteil × income-tax rate', () => {
     const params = { ...DEFAULT_PARAMS, monthlyPension: 5000 }
 
-    expect(netPensionFactor(params)).toBeCloseTo(1 - 0.83 * 0.18, 10)
-    expect(netAnnualPension(params)).toBeCloseTo(5000 * 12 * (1 - 0.83 * 0.18), 6)
+    // The shipped share is the default plan's own cohort (pension from 2038):
+    // 90%, no longer the 83% of a 2024 start.
+    expect(DEFAULT_PARAMS.pensionTaxablePortion).toBe(0.9)
+    expect(netPensionFactor(params)).toBeCloseTo(1 - 0.9 * 0.18, 10)
+    expect(netAnnualPension(params)).toBeCloseTo(5000 * 12 * (1 - 0.9 * 0.18), 6)
     expect(netAnnualPension(params)).toBeLessThan(5000 * 12)
   })
 
@@ -205,7 +208,7 @@ describe('pension taxation', () => {
     expect(taxed).toBeLessThan(untaxed)
     // The shortfall is exactly the tax on the pension (no capital gains tax is
     // due: the plan starts with a fresh basis and a €1,000 allowance).
-    expect(untaxed - taxed).toBeCloseTo(12_000 * 0.83 * 0.18, 4)
+    expect(untaxed - taxed).toBeCloseTo(12_000 * DEFAULT_PARAMS.pensionTaxablePortion * 0.18, 4)
   })
 
   it('makes the whole plan worse once the pension is taxed', () => {

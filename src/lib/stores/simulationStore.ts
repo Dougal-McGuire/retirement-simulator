@@ -16,9 +16,12 @@ import {
   DEFAULT_PARAMS,
   MAX_PLANS,
   type Plan,
+  type PlanSyncMeta,
 } from '@/types'
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 import { canUseWorker, runSimulationInClient } from '@/lib/simulation/workerClient'
+import { areSimulationParamsEqual } from '@/lib/simulation/planInsights'
+import { CALC_VERSION } from '@/lib/simulation/calcVersion'
 import {
   projectCustomExpenses,
   projectOneTimeIncomes,
@@ -33,12 +36,15 @@ import {
   DEFAULT_PLAN_NAME,
   DEFAULT_PLAN_NAME_KEY,
   makePlan,
+  mergePlanLists,
+  nextPlanStamp,
   normalizePlans,
-  plansToSavedSetups,
+  sanitizePlanStamps,
+  sanitizePlanTombstones,
   uniquePlanName,
+  withPlanTombstone,
 } from '@/lib/stores/plans'
 import {
-  BASE_PARAMS_KEY,
   BASE_PLANS_IMPORTED_KEY,
   BASE_SAVED_SETUPS_KEY,
   BASE_STORE_KEY,
@@ -50,26 +56,61 @@ import {
   sanitizeCustomExpenses,
   sanitizeOneTimeIncomes,
 } from '@/lib/stores/normalizeParams'
+import { PLAN_SCHEMA_VERSION } from '@/lib/plans/schemaVersion'
+import { createPlanStorage, type ForeignChange } from '@/lib/stores/planStorage'
+import { usePlanSyncStore } from '@/lib/stores/planSync'
 
 // Re-exported so the many existing importers (and `paramRegistration.test.ts`)
 // keep resolving it here; the implementation now lives in a store-free module
 // that the server-side plan store can share. See `./normalizeParams`.
 export { normalizePersistedParams }
 
-// Resolved lazily: when a Google account is signed in these keys gain a
-// per-user suffix so several accounts can share one browser without seeing
-// each other's plans. Signed out they resolve to the original key names, so
-// existing local data is untouched. See `./persistenceKey`.
-const STORAGE_KEY = () => storageKey(BASE_PARAMS_KEY)
-const SAVED_SETUPS_KEY = () => storageKey(BASE_SAVED_SETUPS_KEY)
-
 /**
  * v0: params + savedSetups.
  * v1: first-class plans.
  * v2: plans are durable; edits live in a working copy (`draftParams`).
  * v3: unified `cashFlows`; `customExpenses`/`oneTimeIncomes` become projections.
+ *
+ * Still 3 after `results` left the entry and the plan-schema stamp arrived:
+ * neither needs a migration. A v3 entry that still carries results simply has
+ * them ignored on load (`hydrateState`), and the stamp sits next to `version`
+ * in the entry, outside the state. A bump would buy nothing either — builds
+ * from before the guard rewrite any entry at their own version regardless.
+ *
+ * An entry with a *higher* version (or plan schema) than this build's was
+ * written by a newer build. It is never migrated down or written over: see
+ * `migrate` below and `./planStorage`.
  */
 const STORE_VERSION = 3
+
+/**
+ * State that lives in memory only: the run state, the results (recomputed on
+ * load — the engine is seeded, so the same plan gives the same numbers) and
+ * `isDirty`, which loading derives from the draft.
+ *
+ * Everything else in the store is persisted, *including fields added later*:
+ * a new persisted field needs no change here, only a line in `hydrateState`
+ * if what comes back from storage must be sanitized.
+ */
+const TRANSIENT_FIELDS: ReadonlySet<string> = new Set<keyof SimulationStore>([
+  'isDirty',
+  'results',
+  'resultsComputedAt',
+  'isLoading',
+  'error',
+  'autoRunSuspended',
+  'pendingRun',
+])
+
+type PersistedState = Partial<SimulationStore>
+
+const toPersistedState = (state: SimulationStore): PersistedState => {
+  const persisted: Record<string, unknown> = {}
+  for (const [field, value] of Object.entries(state)) {
+    if (typeof value !== 'function' && !TRANSIENT_FIELDS.has(field)) persisted[field] = value
+  }
+  return persisted as PersistedState
+}
 
 const normalizeSavedSetups = (value: unknown): SavedSetup[] => {
   if (!Array.isArray(value)) return []
@@ -113,11 +154,12 @@ const getParamsFingerprint = (params: Partial<SimulationParams>) =>
 const paramsDiffer = (a: SimulationParams, b: SimulationParams) =>
   getParamsFingerprint(a) !== getParamsFingerprint(b)
 
-const sanitizePlanSuccessRates = (value: unknown): Record<string, number> => {
+/** A stored `id → number` map (success rates), minus anything that is not one. */
+const sanitizeNumberMap = (value: unknown): Record<string, number> => {
   if (!isRecord(value)) return {}
   const sanitized: Record<string, number> = {}
-  Object.entries(value).forEach(([id, rate]) => {
-    if (typeof rate === 'number' && Number.isFinite(rate)) sanitized[id] = rate
+  Object.entries(value).forEach(([id, entry]) => {
+    if (typeof entry === 'number' && Number.isFinite(entry)) sanitized[id] = entry
   })
   return sanitized
 }
@@ -145,6 +187,206 @@ const startSimulation = (params: SimulationParams): Promise<SimulationResults> =
   })
 }
 
+// ---- Persistence ------------------------------------------------------------
+
+/** False while the store is being created; storage callbacks must wait for it. */
+let storeReady = false
+
+/**
+ * The part of the entry that is one tab's session — which plan is open, and
+ * the working copy on it — as opposed to the plans every tab shares. A tab
+ * only writes it when it changed in that tab (see `./planStorage`).
+ */
+const SESSION_FIELDS = ['activePlanId', 'params', 'draftParams'] as const satisfies ReadonlyArray<
+  keyof SimulationStore
+>
+
+/**
+ * Where the store entry lives. Refuses to write over an entry from a newer
+ * build, never writes over another tab's entry unseen, and never throws — see
+ * `./planStorage`. `undefined` on the server, where nothing is persisted.
+ */
+const planStorage = createPlanStorage<PersistedState>({
+  storeVersion: STORE_VERSION,
+  planSchema: PLAN_SCHEMA_VERSION,
+  sessionFields: SESSION_FIELDS,
+  // The notice the cloud schema guard raises, for the same reason: this tab
+  // runs an older build than the data it found, and only a reload fixes that.
+  onReadOnly: () => usePlanSyncStore.getState().requestReload('required'),
+  onForeignChange: (change) => storeReady && adoptForeignChange(change).changed,
+  snapshot: () => toPersistedState(currentState()),
+})
+
+/**
+ * The store's state. A declared return type, so that code above the store
+ * (its own storage options) can read it without the store's type depending
+ * on itself.
+ */
+function currentState(): SimulationStore {
+  return useSimulationStore.getState()
+}
+
+/** A raw localStorage entry next to the store's own; absent when unreadable. */
+const readStorageKey = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Pre-plan saved setups for the one-time import: the standalone legacy key if
+ * it holds any, else what a v0 store entry carried. Only ever read — nothing
+ * writes setups any more.
+ */
+const readLegacySetups = (fromEntry: unknown): SavedSetup[] => {
+  const stored = readStorageKey(storageKey(BASE_SAVED_SETUPS_KEY))
+  if (stored) {
+    try {
+      return normalizeSavedSetups(JSON.parse(stored) as unknown)
+    } catch (error) {
+      console.error('Failed to load saved setups:', error)
+    }
+  }
+  return normalizeSavedSetups(fromEntry)
+}
+
+/** Set by `migrate`: the entry being loaded was written by an older version. */
+let upgradingEntry = false
+
+/** Set when a legacy import created plans that have not reached storage yet. */
+let flushAfterHydration = false
+
+/**
+ * `persist`'s merge step: turns whatever storage held into the state the store
+ * runs on. Runs on every (re)hydration, also when storage is empty.
+ */
+const hydrateState = (persisted: unknown, current: SimulationStore): SimulationStore => {
+  const currentFields = current as unknown as Record<string, unknown>
+  const stored: Record<string, unknown> = {}
+  if (isRecord(persisted)) {
+    for (const [field, value] of Object.entries(persisted)) {
+      // What is not written is not read back either (entries from before
+      // results left storage still carry them), and data never replaces an
+      // action.
+      if (TRANSIENT_FIELDS.has(field) || typeof currentFields[field] === 'function') continue
+      stored[field] = value
+    }
+  }
+
+  // v0 entries kept the saved setups inside the store entry.
+  const { savedSetups: setupsInEntry, ...fields } = stored
+  const state = { ...current, ...fields } as SimulationStore
+
+  state.params = normalizePersistedParams(state.params)
+
+  // Upgrade any persisted shape to the plan model. Pre-plan state becomes a
+  // "Base plan" plus one plan per saved setup; nothing the user stored is
+  // discarded. The import runs at most once (guarded by a marker key) so
+  // plans deleted later never reappear.
+  const importMarker = storageKey(BASE_PLANS_IMPORTED_KEY)
+  const legacyImportDone = readStorageKey(importMarker) === '1'
+
+  const bootstrapped = bootstrapPlans(
+    {
+      plans: state.plans,
+      params: state.params,
+      savedSetups: legacyImportDone ? [] : readLegacySetups(setupsInEntry),
+      activePlanId: state.activePlanId,
+      allowLegacyImport: !legacyImportDone,
+    },
+    normalizePersistedParams
+  )
+
+  // An entry from a newer build is read-only, and so is everything around it.
+  const entryKey = storageKey(BASE_STORE_KEY)
+  const readOnly = planStorage?.isReadOnly(entryKey) ?? false
+  if (!legacyImportDone && !readOnly) {
+    try {
+      localStorage.setItem(importMarker, '1')
+    } catch {
+      // Storage full or unavailable: the import stays idempotent because
+      // imported plans keep their original setup ids.
+    }
+    // The marker says "imported", so the imported plans have to be stored
+    // too — even if nothing else on this page changes the store.
+    flushAfterHydration = bootstrapped.migrated
+  }
+
+  // A stored draft belongs to the stored active plan. If that plan is gone
+  // (another tab deleted it) the draft has no plan to be a working copy of.
+  const draftHasItsPlan = state.activePlanId === bootstrapped.activePlanId
+
+  state.plans = bootstrapped.plans
+  state.activePlanId = bootstrapped.activePlanId
+
+  const activePlan = bootstrapped.plans.find((plan) => plan.id === bootstrapped.activePlanId)
+  // Unsaved edits survive a reload as a visible working copy rather than
+  // being silently written into (or dropped from) the plan.
+  const draft =
+    state.draftParams && draftHasItsPlan ? normalizePersistedParams(state.draftParams) : null
+  if (activePlan && draft && paramsDiffer(draft, activePlan.params)) {
+    state.params = draft
+    state.draftParams = draft
+    state.isDirty = true
+  } else {
+    if (activePlan) state.params = activePlan.params
+    state.draftParams = null
+    state.isDirty = false
+  }
+
+  // Rates of plans that no longer exist (deleted in another tab) go.
+  const planIds = new Set(state.plans.map((plan) => plan.id))
+  state.planSuccessRates = Object.fromEntries(
+    Object.entries(sanitizeNumberMap(state.planSuccessRates)).filter(([id]) => planIds.has(id))
+  )
+
+  // Rates remembered by an older calculation are not this engine's numbers:
+  // they leave the switcher and wait for the notice that explains the change.
+  // An entry without a version is from before versions existed (1), unless it
+  // never remembered a rate — then there is nothing to explain.
+  const storedCalcVersion =
+    typeof stored.calcVersion === 'number' && Number.isFinite(stored.calcVersion)
+      ? stored.calcVersion
+      : Object.keys(state.planSuccessRates).length > 0
+        ? 1
+        : CALC_VERSION
+  const keptNotice = isRecord(stored.ratesBeforeCalcChange)
+    ? sanitizeNumberMap(stored.ratesBeforeCalcChange)
+    : null
+  if (storedCalcVersion < CALC_VERSION) {
+    state.ratesBeforeCalcChange = { ...keptNotice, ...state.planSuccessRates }
+    state.planSuccessRates = {}
+  } else {
+    state.ratesBeforeCalcChange = keptNotice
+  }
+  state.calcVersion = Math.max(storedCalcVersion, CALC_VERSION)
+
+  state.deletedPlans = sanitizePlanTombstones(state.deletedPlans)
+  state.syncedPlanStamps = sanitizePlanStamps(state.syncedPlanStamps)
+
+  // Results are never read from storage, so any present here were computed
+  // on this page (before a namespace switch). Keep them only if they describe
+  // the params just loaded.
+  // `results.params` is the engine's normalised copy, so the comparison has to
+  // read both sides the way the engine does (a raw fingerprint never matches).
+  if (state.results && !areSimulationParamsEqual(state.params, state.results.params)) {
+    state.results = null
+    state.resultsComputedAt = null
+  }
+
+  // What was just read is what a write would store: nothing needs writing
+  // until something changes. An entry that was upgraded, or grew imported
+  // plans, is different from what is on disk and gets written.
+  if (!upgradingEntry && !flushAfterHydration) {
+    planStorage?.remember(entryKey, toPersistedState(state))
+  }
+  upgradingEntry = false
+
+  return state
+}
+
 export const useSimulationStore = create<SimulationStore>()(
   persist(
     (set, get) => {
@@ -166,12 +408,9 @@ export const useSimulationStore = create<SimulationStore>()(
         }, delay)
       }
 
-      /**
-       * Plans are the single source of truth for parameter sets. `savedSetups`
-       * is kept as a mirror so the legacy save/load controls keep working.
-       */
+      /** Plans are the single source of truth for parameter sets. */
       const commitPlans = (plans: Plan[]) => {
-        set({ plans, savedSetups: plansToSavedSetups(plans) })
+        set({ plans })
       }
 
       const findPlan = (id: string) => get().plans.find((plan) => plan.id === id)
@@ -209,7 +448,7 @@ export const useSimulationStore = create<SimulationStore>()(
       const successRateFor = (params: SimulationParams): number | null => {
         const { results } = get()
         if (!results) return null
-        return paramsDiffer(results.params, params) ? null : results.successRate
+        return areSimulationParamsEqual(params, results.params) ? results.successRate : null
       }
 
       const rememberSuccessRate = (planId: string, rate: number | null) => {
@@ -241,13 +480,18 @@ export const useSimulationStore = create<SimulationStore>()(
         draftParams: null,
         isDirty: false,
         planSuccessRates: {},
+        calcVersion: CALC_VERSION,
+        ratesBeforeCalcChange: null,
+        dismissCalcNotice: () => set({ ratesBeforeCalcChange: null }),
         results: null,
         resultsComputedAt: null,
         isLoading: false,
         error: null,
-        savedSetups: plansToSavedSetups([defaultPlan]),
         plans: [defaultPlan],
         activePlanId: DEFAULT_PLAN_ID,
+        // Cloud-sync bookkeeping (see `./planSync`); empty while nothing synced.
+        deletedPlans: {},
+        syncedPlanStamps: {},
         // Auto-run control
         autoRunSuspended: false,
         pendingRun: false,
@@ -257,9 +501,13 @@ export const useSimulationStore = create<SimulationStore>()(
           if (!isDirty) return
           if (!plans.some((plan) => plan.id === activePlanId)) return
 
-          const timestamp = Date.now()
+          // Never at or before the stamp the plan already has: sync compares
+          // stamps, and a copy from a device whose clock runs ahead must not
+          // make this save look older than what it replaces.
           const nextPlans = plans.map((plan) =>
-            plan.id === activePlanId ? { ...plan, params, updatedAt: timestamp } : plan
+            plan.id === activePlanId
+              ? { ...plan, params, updatedAt: nextPlanStamp(plan.updatedAt) }
+              : plan
           )
 
           commitPlans(nextPlans)
@@ -377,7 +625,7 @@ export const useSimulationStore = create<SimulationStore>()(
                     ...plan,
                     name: uniquePlanName(trimmed, plans, id),
                     nameKey: undefined,
-                    updatedAt: Date.now(),
+                    updatedAt: nextPlanStamp(plan.updatedAt),
                   }
                 : plan
             )
@@ -387,10 +635,21 @@ export const useSimulationStore = create<SimulationStore>()(
         deletePlan: (id: string) => {
           const { plans, activePlanId } = get()
           if (plans.length <= 1) return
-          if (!plans.some((plan) => plan.id === id)) return
+          const removed = plans.find((plan) => plan.id === id)
+          if (!removed) return
 
           const nextPlans = plans.filter((plan) => plan.id !== id)
-          commitPlans(nextPlans)
+          // The tombstone travels with the next sync, so a device that still
+          // holds this plan drops it instead of pushing it back. Stamped no
+          // earlier than the plan itself: this deletion saw that revision.
+          set({
+            plans: nextPlans,
+            deletedPlans: withPlanTombstone(
+              get().deletedPlans,
+              id,
+              Math.max(Date.now(), removed.updatedAt)
+            ),
+          })
           rememberSuccessRate(id, null)
 
           if (activePlanId === id) {
@@ -428,22 +687,36 @@ export const useSimulationStore = create<SimulationStore>()(
          * user keeps the plan they are editing and the params on screen, and
          * only the surrounding list is reconciled.
          */
-        applySyncedPlans: (incoming: Plan[], incomingActiveId: string) => {
+        applySyncedPlans: (incoming: Plan[], incomingActiveId: string, sync?: PlanSyncMeta) => {
           const nextPlans = normalizePlans(incoming, normalizePersistedParams)
           if (nextPlans.length === 0) return false
 
           const { plans, activePlanId, isDirty } = get()
 
+          // Sync bookkeeping is written together with the plans it describes.
+          const meta = {
+            ...(sync?.deletedPlans
+              ? { deletedPlans: sanitizePlanTombstones(sync.deletedPlans) }
+              : {}),
+            ...(sync?.syncedPlanStamps
+              ? { syncedPlanStamps: sanitizePlanStamps(sync.syncedPlanStamps) }
+              : {}),
+          }
+
+          // A plan this device kept as a conflict copy lives under a new id;
+          // the selection (and an unsaved edit on it) goes where the plan went.
+          const currentId = sync?.renamedIds?.[activePlanId] ?? activePlanId
+
           const requestedActive = nextPlans.some((plan) => plan.id === incomingActiveId)
             ? incomingActiveId
-            : nextPlans.some((plan) => plan.id === activePlanId)
-              ? activePlanId
+            : nextPlans.some((plan) => plan.id === currentId)
+              ? currentId
               : nextPlans[0].id
 
           // A dirty working copy pins the selection: switching plans underneath
           // an unsaved edit would strand it on a plan it does not belong to.
-          const keepCurrent = isDirty && nextPlans.some((plan) => plan.id === activePlanId)
-          const nextActiveId = keepCurrent ? activePlanId : requestedActive
+          const keepCurrent = isDirty && nextPlans.some((plan) => plan.id === currentId)
+          const nextActiveId = keepCurrent ? currentId : requestedActive
 
           const unchanged =
             nextActiveId === activePlanId &&
@@ -458,9 +731,12 @@ export const useSimulationStore = create<SimulationStore>()(
               )
             })
 
-          if (unchanged) return false
+          if (unchanged) {
+            if (Object.keys(meta).length > 0) set(meta)
+            return false
+          }
 
-          commitPlans(nextPlans)
+          set({ plans: nextPlans, ...meta })
 
           const activePlan = nextPlans.find((plan) => plan.id === nextActiveId)
           if (activePlan && !keepCurrent) {
@@ -595,69 +871,6 @@ export const useSimulationStore = create<SimulationStore>()(
           }
         },
 
-        saveToStorage: () => {
-          const { params } = get()
-          try {
-            localStorage.setItem(STORAGE_KEY(), JSON.stringify(params))
-          } catch (error) {
-            console.error('Failed to save parameters:', error)
-            set({ error: 'Failed to save parameters' })
-          }
-        },
-
-        loadFromStorage: () => {
-          try {
-            const stored = localStorage.getItem(STORAGE_KEY())
-            if (stored) {
-              applyParams(normalizePersistedParams(JSON.parse(stored) as unknown))
-              // Run simulation with loaded parameters
-              get().runSimulation()
-            }
-          } catch (error) {
-            console.error('Failed to load parameters:', error)
-            set({ error: 'Failed to load parameters' })
-          }
-        },
-
-        // Legacy setup actions, now expressed in terms of plans so both entry
-        // points (sidebar "save as" and the plan switcher) stay in sync.
-        saveSetup: (name: string) => {
-          get().createPlan(name)
-        },
-
-        loadSetup: (id: string) => {
-          const { plans, savedSetups } = get()
-
-          if (plans.some((plan) => plan.id === id)) {
-            get().setActivePlan(id)
-            return
-          }
-
-          // Pre-plan snapshot that was never migrated: import its params into
-          // the active plan rather than dropping the user's data.
-          const setup = savedSetups.find((entry) => entry.id === id)
-          if (setup) {
-            applyParams(normalizePersistedParams(setup.params))
-            get().runSimulation()
-          }
-        },
-
-        deleteSetup: (id: string) => {
-          const { plans, savedSetups } = get()
-
-          if (plans.some((plan) => plan.id === id)) {
-            get().deletePlan(id)
-            return
-          }
-
-          set({ savedSetups: savedSetups.filter((entry) => entry.id !== id) })
-        },
-
-        getSavedSetups: () => {
-          const { savedSetups } = get()
-          return savedSetups
-        },
-
         clearResults: () => {
           set({
             results: null,
@@ -670,14 +883,23 @@ export const useSimulationStore = create<SimulationStore>()(
     {
       name: BASE_STORE_KEY,
       version: STORE_VERSION,
-      // v0 state has no plans. Clearing the field here stops the shallow merge
-      // from keeping the store's default plan around; onRehydrateStorage then
-      // rebuilds plans from the persisted params and saved setups (which may
-      // also live in the legacy standalone storage key).
+      storage: planStorage,
       migrate: (persistedState, version) => {
         let state = (
           isRecord(persistedState) ? { ...persistedState } : {}
         ) as Partial<SimulationStore>
+        // Written by a newer build: there is nothing to migrate *down*. The
+        // state is handed on untouched, `hydrateState` reads what this build
+        // understands of it, and the tab runs on that in memory only — the
+        // storage adapter has made the entry read-only, so the write `persist`
+        // does after a migration is refused and the newer data stays on disk
+        // exactly as it was.
+        if (version > STORE_VERSION) return state
+        upgradingEntry = true
+        // v0 state has no plans. Clearing the field here stops the merge from
+        // keeping the store's default plan around; `hydrateState` then
+        // rebuilds plans from the persisted params and saved setups (which may
+        // also live in the legacy standalone storage key).
         if (version < 1) {
           state = { ...state, plans: [], activePlanId: '' }
         }
@@ -709,109 +931,221 @@ export const useSimulationStore = create<SimulationStore>()(
               : {}),
           }
         }
-        return state as SimulationStore
+        return state
       },
-      partialize: (state) => ({
-        params: state.params,
-        draftParams: state.draftParams,
-        planSuccessRates: state.planSuccessRates,
-        results: state.results, // Persist results to avoid re-running simulation on every page load
-        plans: state.plans,
-        activePlanId: state.activePlanId,
-      }),
-      onRehydrateStorage: () => {
-        return (state) => {
-          if (state) {
-            state.savedSetups = normalizeSavedSetups(state.savedSetups)
-
-            // Load saved setups from separate storage
-            try {
-              const stored = localStorage.getItem(SAVED_SETUPS_KEY())
-              if (stored) {
-                state.savedSetups = normalizeSavedSetups(JSON.parse(stored) as unknown)
-              }
-            } catch (error) {
-              console.error('Failed to load saved setups:', error)
-            }
-            if (state.params) {
-              state.params = normalizePersistedParams(state.params)
-            }
-
-            // Upgrade any persisted shape to the plan model. Pre-plan state
-            // becomes a "Base plan" plus one plan per saved setup; nothing the
-            // user stored is discarded. The import runs at most once (guarded
-            // by a marker key) so plans deleted later never reappear.
-            let legacyImportDone = false
-            try {
-              legacyImportDone = localStorage.getItem(storageKey(BASE_PLANS_IMPORTED_KEY)) === '1'
-            } catch {
-              legacyImportDone = false
-            }
-
-            const bootstrapped = bootstrapPlans(
-              {
-                plans: state.plans,
-                params: state.params ?? DEFAULT_PARAMS,
-                savedSetups: state.savedSetups,
-                activePlanId: state.activePlanId,
-                allowLegacyImport: !legacyImportDone,
-              },
-              normalizePersistedParams
-            )
-
-            if (!legacyImportDone) {
-              try {
-                localStorage.setItem(storageKey(BASE_PLANS_IMPORTED_KEY), '1')
-              } catch {
-                // Storage full or unavailable: the import stays idempotent
-                // because imported plans keep their original setup ids.
-              }
-            }
-
-            state.plans = bootstrapped.plans
-            state.activePlanId = bootstrapped.activePlanId
-            state.savedSetups = plansToSavedSetups(bootstrapped.plans)
-
-            const activePlan = bootstrapped.plans.find(
-              (plan) => plan.id === bootstrapped.activePlanId
-            )
-            // Unsaved edits survive a reload as a visible working copy rather
-            // than being silently written into (or dropped from) the plan.
-            const draft = state.draftParams ? normalizePersistedParams(state.draftParams) : null
-            if (activePlan) {
-              if (draft && paramsDiffer(draft, activePlan.params)) {
-                state.params = draft
-                state.draftParams = draft
-                state.isDirty = true
-              } else {
-                state.params = activePlan.params
-                state.draftParams = null
-                state.isDirty = false
-              }
-            } else {
-              state.draftParams = null
-              state.isDirty = false
-            }
-
-            state.planSuccessRates = sanitizePlanSuccessRates(state.planSuccessRates)
-
-            // Validate that persisted results match current params
-            // If params have changed since results were generated, clear stale results
-            if (state.results && state.results.params) {
-              const resultsFingerprint = getParamsFingerprint(state.results.params)
-              const currentFingerprint = getParamsFingerprint(state.params)
-
-              if (resultsFingerprint !== currentFingerprint) {
-                console.log('Parameters have changed since last simulation, clearing stale results')
-                state.results = null
-              }
-            }
-          }
-        }
-      },
+      partialize: toPersistedState,
+      merge: hydrateState,
     }
   )
 )
+
+storeReady = true
+
+// A legacy import that ran while the store hydrated: store its plans now.
+const flushLegacyImport = () => {
+  if (!flushAfterHydration) return
+  flushAfterHydration = false
+  useSimulationStore.setState({})
+}
+
+// `persist` is absent on the server, where the store has no storage.
+if (useSimulationStore.persist) {
+  if (useSimulationStore.persist.hasHydrated()) flushLegacyImport()
+  useSimulationStore.persist.onFinishHydration(flushLegacyImport)
+}
+
+/** Runs `fn` with the store's writes to storage switched off (memory-only changes). */
+export function withoutPersisting<T>(fn: () => T): T {
+  return planStorage ? planStorage.withoutWriting(fn) : fn()
+}
+
+// ---- Other tabs -------------------------------------------------------------
+
+const isSamePlan = (a: Plan, b: Plan): boolean =>
+  a.name === b.name &&
+  a.nameKey === b.nameKey &&
+  a.updatedAt === b.updatedAt &&
+  !paramsDiffer(a.params, b.params)
+
+/**
+ * Persisted id-keyed number maps that every tab of a namespace has to agree
+ * on. They are unioned when another tab's entry is adopted (the other tab's
+ * value wins per key), so one tab's write never drops what another recorded.
+ * A new map of that kind is one more name in this list.
+ */
+const SHARED_MAP_FIELDS = [
+  'planSuccessRates',
+  // Sync bookkeeping (see `docs/specs/2026-11-09-sync-protocol.md`): a plan
+  // deleted or synced in one tab is deleted or synced in every tab.
+  'deletedPlans',
+  'syncedPlanStamps',
+] as const satisfies ReadonlyArray<keyof SimulationStore>
+
+/** Stamps only move forward: for these maps the later value wins per key. */
+const LATEST_WINS_FIELDS: ReadonlySet<string> = new Set(['deletedPlans', 'syncedPlanStamps'])
+
+const sameNumberMap = (a: Record<string, number>, b: Record<string, number>): boolean =>
+  Object.keys(a).length === Object.keys(b).length &&
+  Object.entries(a).every(([id, value]) => b[id] === value)
+
+const samePlanList = (a: readonly Plan[], b: readonly Plan[]): boolean =>
+  a.length === b.length &&
+  a.every((plan, index) => plan.id === b[index].id && isSamePlan(plan, b[index]))
+
+/**
+ * Brings what another tab stored into this tab's state.
+ *
+ * The plan lists are merged per plan against the entry this tab last knew
+ * (`mergePlanLists`) and handed to `applySyncedPlans` — the cloud-sync entry
+ * point, which sanitizes them, keeps an unsaved working copy where it is and
+ * changes nothing when the lists already agree.
+ *
+ * Everything else in the entry — the active plan, the params on screen, the
+ * draft — is the other tab's own session and is left alone.
+ *
+ * `contributes` says whether this tab now holds something their entry lacks
+ * (a plan the other tab's build knew nothing about, the plan this tab is
+ * editing, a newer save) and therefore has to write.
+ */
+function adoptForeignChange({ theirs, base }: ForeignChange): {
+  changed: boolean
+  contributes: boolean
+} {
+  const state = useSimulationStore.getState()
+
+  const theirPlans = normalizePlans(theirs.state.plans, normalizePersistedParams)
+  // A pre-plan entry, or nothing this build can read: there is nothing to
+  // adopt, and this tab's next write replaces it.
+  if (theirPlans.length === 0) return { changed: false, contributes: true }
+
+  // An entry without the schema stamp comes from a build that predates this
+  // guard — and the storage listener. Such a tab never saw this tab's plans,
+  // so a plan missing from its list was not deleted there: without a base the
+  // merge is a union and nothing is dropped on that tab's word.
+  const basePlans =
+    base && theirs.planSchema !== null
+      ? normalizePlans(base.state.plans, normalizePersistedParams)
+      : []
+
+  const merged = mergePlanLists({
+    base: basePlans,
+    mine: state.plans,
+    theirs: theirPlans,
+    isSame: isSamePlan,
+    // Unsaved work always wins: the plan being edited stays, even if the
+    // other tab deleted it.
+    keepId: state.isDirty ? state.activePlanId : null,
+  })
+  let changed = state.applySyncedPlans(merged, state.activePlanId)
+  let contributes = !samePlanList(useSimulationStore.getState().plans, theirPlans)
+
+  const planIds = new Set(useSimulationStore.getState().plans.map((plan) => plan.id))
+  const patch: Partial<SimulationStore> = {}
+  const sameCalc = theirs.state.calcVersion === CALC_VERSION
+  // Dismissing the "calculation corrected" notice dismisses it in every tab.
+  if (
+    sameCalc &&
+    !isRecord(theirs.state.ratesBeforeCalcChange) &&
+    useSimulationStore.getState().ratesBeforeCalcChange !== null
+  ) {
+    patch.ratesBeforeCalcChange = null
+  }
+  for (const field of SHARED_MAP_FIELDS) {
+    // Rates another calculation produced (a tab on an older build) are not
+    // adopted; that tab's entry is replaced by this tab's next write anyway.
+    if (field === 'planSuccessRates' && !sameCalc) {
+      contributes = true
+      continue
+    }
+    const mine = useSimulationStore.getState()[field]
+    const their = sanitizeNumberMap(theirs.state[field])
+    let union: Record<string, number> = { ...mine, ...their }
+    if (LATEST_WINS_FIELDS.has(field)) {
+      for (const [id, stamp] of Object.entries(mine)) {
+        if (stamp > (union[id] ?? 0)) union[id] = stamp
+      }
+    }
+    // A success rate describes a plan that exists.
+    if (field === 'planSuccessRates') {
+      union = Object.fromEntries(Object.entries(union).filter(([id]) => planIds.has(id)))
+    }
+    if (!sameNumberMap(union, mine)) patch[field] = union
+    if (!sameNumberMap(union, their)) contributes = true
+  }
+  if (Object.keys(patch).length > 0) {
+    useSimulationStore.setState(patch)
+    changed = true
+  }
+
+  return { changed, contributes }
+}
+
+/**
+ * Picks up what another tab wrote to this tab's store entry. Cheap when
+ * nothing changed (one string comparison), and safe to call at any time.
+ * Returns whether this tab's state changed.
+ *
+ * The exchange ends by itself: a tab that adopts writes only if it holds
+ * something the other entry lacks, and what it writes then contains
+ * everything the other tab has — so that tab adopts, finds nothing missing,
+ * and stays quiet.
+ */
+export function syncFromOtherTabs(): boolean {
+  if (!planStorage || !storeReady) return false
+  const name = useSimulationStore.persist.getOptions().name ?? BASE_STORE_KEY
+  const change = planStorage.takeForeignChange(name)
+  if (!change) return false
+
+  // In memory only: what was adopted is on disk already.
+  const { changed, contributes } = planStorage.withoutWriting(() => adoptForeignChange(change))
+  planStorage.remember(name, toPersistedState(useSimulationStore.getState()))
+  if (contributes) {
+    planStorage.markStale(name)
+    useSimulationStore.setState({})
+  }
+  return changed
+}
+
+/**
+ * Two tabs share one localStorage entry. Without this listener each tab kept
+ * the plan list it loaded and wrote it back whole on its next `set()`, so the
+ * last tab to do anything erased what the other had saved.
+ *
+ * The `storage` event only tells us *that* the entry changed: what is adopted
+ * is always what is on disk now, never the event's payload. Replaying payloads
+ * in arrival order would let two tabs that wrote at the same moment undo each
+ * other for ever; reading the entry makes every tab converge on it.
+ */
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  const registry = window as unknown as { __planStorageSync?: () => void }
+  // A previous instance of this module (dev hot reload) must stop listening.
+  registry.__planStorageSync?.()
+
+  const onStorage = (event: StorageEvent) => {
+    // `key` is null when the whole storage area was cleared.
+    if (event.key !== null && event.key !== useSimulationStore.persist.getOptions().name) return
+    syncFromOtherTabs()
+  }
+  // A page restored from the back/forward cache, or a tab the browser froze,
+  // never received the events it missed.
+  const onPageShow = (event: PageTransitionEvent) => {
+    if (event.persisted) syncFromOtherTabs()
+  }
+  const onVisibility = () => {
+    if (document.visibilityState === 'visible') syncFromOtherTabs()
+  }
+
+  window.addEventListener('storage', onStorage)
+  window.addEventListener('pageshow', onPageShow)
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility)
+
+  registry.__planStorageSync = () => {
+    window.removeEventListener('storage', onStorage)
+    window.removeEventListener('pageshow', onPageShow)
+    if (typeof document !== 'undefined')
+      document.removeEventListener('visibilitychange', onVisibility)
+  }
+}
 
 // ---- Results, with an optional deferred scope -------------------------------
 
@@ -856,12 +1190,6 @@ export const useSimulationError = () => useSimulationStore((state) => state.erro
 // Helper hooks for individual actions
 export const useUpdateParams = () => useSimulationStore((state) => state.updateParams)
 export const useRunSimulation = () => useSimulationStore((state) => state.runSimulation)
-export const useSaveToStorage = () => useSimulationStore((state) => state.saveToStorage)
-export const useLoadFromStorage = () => useSimulationStore((state) => state.loadFromStorage)
-export const useSaveSetup = () => useSimulationStore((state) => state.saveSetup)
-export const useLoadSetup = () => useSimulationStore((state) => state.loadSetup)
-export const useDeleteSetup = () => useSimulationStore((state) => state.deleteSetup)
-export const useSavedSetups = () => useSimulationStore((state) => state.savedSetups)
 export const useClearResults = () => useSimulationStore((state) => state.clearResults)
 export const useSetAutoRunSuspended = () => useSimulationStore((state) => state.setAutoRunSuspended)
 

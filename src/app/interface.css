@@ -33,7 +33,6 @@
   --shadow-dialog: 0 8px 32px #0000001a;
   --cta-slab-bg: #0f1524;
   --cta-slab-fg: #f6f8fb;
-  --theme-pattern-blend: normal;
   --background: 240 6% 97%;
   --foreground: 214 9% 15%;
   --card: 0 0% 100%;
@@ -70,39 +69,6 @@
   --viz-purple: rgb(var(--viz-purple-rgb));
   --viz-teal-rgb: 49 95 136;
   --viz-orange-rgb: 98 103 110;
-  --grid-line: rgba(22, 28, 41, 0.045);
-  --theme-border-width: 1px;
-  --theme-border-thin: 1px;
-  --theme-radius-panel: var(--ui-radius);
-  --theme-radius-control: var(--ui-radius);
-  --theme-radius-chip: var(--ui-radius);
-  --theme-panel-padding: var(--ui-space-6);
-  --theme-card-header-padding: var(--ui-space-4) var(--ui-space-6);
-  --theme-card-body-padding: var(--ui-space-6);
-  --theme-page-gap: var(--ui-space-6);
-  --theme-content-gap: var(--ui-space-6);
-  --theme-panel-clip: none;
-  --theme-card-backdrop: none;
-  --theme-control-transform: none;
-  --theme-ui-letter-spacing: 0;
-  --theme-chip-spacing: 0;
-  --theme-hover-x: 0px;
-  --theme-hover-y: 0px;
-  --theme-hero-transform: none;
-  --theme-panel-transform: none;
-  --theme-focus: var(--ui-accent);
-  --theme-bg-layer: hsl(var(--background));
-  --theme-pattern-image:
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(180deg, var(--grid-line) 1px, transparent 1px);
-  --theme-pattern-size: 64px 64px;
-  --theme-pattern-opacity: 0;
-  --theme-font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --theme-font-heading: ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --theme-letter-spacing-body: 0;
-  --theme-heading-transform: none;
-  --theme-heading-spacing: 0;
-  --theme-h1-spacing: 0;
   --chart-axis: var(--ink);
   --chart-brush: #94a3b8;
   --chart-retirement: var(--danger);
@@ -289,7 +255,6 @@
     --shadow-dialog: 0 16px 48px rgb(0 0 0 / 0.5);
     --cta-slab-bg: #13263a;
     --cta-slab-fg: #eef3f8;
-    --grid-line: rgb(227 232 238 / 0.05);
     --chart-brush: #566371;
     --scrollbar-thumb: rgb(227 232 238 / 0.18);
     --scrollbar-thumb-hover: rgb(227 232 238 / 0.32);
@@ -404,7 +369,6 @@
   --shadow-dialog: 0 16px 48px rgb(0 0 0 / 0.5);
   --cta-slab-bg: #13263a;
   --cta-slab-fg: #eef3f8;
-  --grid-line: rgb(227 232 238 / 0.05);
   --chart-brush: #566371;
   --scrollbar-thumb: rgb(227 232 238 / 0.18);
   --scrollbar-thumb-hover: rgb(227 232 238 / 0.32);
@@ -521,9 +485,15 @@ html :is(.ds-control, .ds-btn, .workspace-button, [data-slot='select-trigger']) 
   letter-spacing: 0;
 }
 html :is(.ds-control, .ds-btn, .workspace-button, [data-slot='select-trigger']):hover {
-  transform: none !important;
+  transform: none;
 }
-html :is(.ds-chip, .ds-pill, .app-chip, [data-slot='badge']) {
+/* Form controls share the control radius, whatever radius utility they carry. */
+html :is(input, textarea, [data-slot='select-item'], [role='tab']) {
+  border-radius: var(--ui-radius);
+  text-transform: none;
+  letter-spacing: 0;
+}
+html :is(.ds-chip, .app-chip, [data-slot='badge']) {
   border-radius: var(--ui-radius);
   box-shadow: none;
   font-size: var(--ui-font-small);
@@ -562,11 +532,24 @@ html :is(input:not([type='checkbox']):not([type='radio']):not([type='range']), t
   background: var(--ui-surface);
   box-shadow: none;
 }
+/* Card (the setup wizard's step card): the control radius, the spacing
+   scale and no shadow, whatever utilities the instance passes. */
 html :is(.theme-panel-card, .theme-panel-header, .theme-panel-body) {
   box-shadow: none;
 }
+html .theme-panel-card {
+  position: relative;
+  border-radius: var(--ui-radius);
+}
 html :is(.theme-panel-header, .theme-panel-body) {
   background: var(--ui-surface);
+}
+html .theme-panel-header {
+  padding: var(--ui-space-4) var(--ui-space-6);
+  border-bottom-color: var(--line);
+}
+html .theme-panel-body {
+  padding: var(--ui-space-6);
 }
 html [role='tab'] {
   font-size: var(--ui-font-body);
@@ -574,9 +557,6 @@ html [role='tab'] {
   line-height: 1.4;
   box-shadow: none;
   min-height: var(--ui-control-height);
-}
-html .ds-segment {
-  border-radius: var(--ui-radius);
 }
 html :is(.ds-table, table) {
   font-size: var(--ui-font-small);
@@ -600,7 +580,100 @@ html :is(button, a, input, select, textarea):focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
-/* Round shapes are reserved for sliders, radio buttons and status dots. */
-html :is(.theme-badge-row > span, .app-chip) {
-  border-radius: var(--ui-radius) !important;
+
+/* "Your browser blocks local storage": one quiet line, never a banner. */
+.storage-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  margin: 0 0 var(--ui-space-3);
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.storage-notice svg {
+  flex: none;
+}
+
+/* A part of the page that failed to render (SectionBoundary): compact,
+   inline, with its own retry. The floating variant stands in for a dialog. */
+.ws-section-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2) var(--ui-space-3);
+  padding: var(--ui-space-3) var(--ui-space-4);
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font-size: var(--ui-font-small);
+}
+.ws-section-error p {
+  margin: 0;
+  flex: 1 1 14rem;
+}
+.ws-section-error-icon {
+  flex: none;
+  color: var(--danger);
+}
+.ws-section-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+}
+.ws-section-error--floating {
+  position: fixed;
+  z-index: 100001;
+  left: 50%;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(28rem, calc(100vw - 2rem));
+  box-shadow: var(--shadow-lg);
+}
+
+/* InfoTip's pointer: a diamond in the tip's own surface and border, its two
+   outer edges carrying the border so it reads as part of the card. */
+.info-tip-arrow {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: inherit;
+  border: 0 solid;
+  border-color: inherit;
+  transform: rotate(45deg);
+}
+.info-tip-arrow[data-side='top'] {
+  bottom: -6px;
+  border-right-width: 1px;
+  border-bottom-width: 1px;
+}
+.info-tip-arrow[data-side='bottom'] {
+  top: -6px;
+  border-left-width: 1px;
+  border-top-width: 1px;
+}
+
+/* Entrances for Radix overlays, on the motion tokens: a short fade when they
+   open (the shadcn `animate-in`/`fade-in-0` classes had no plugin behind
+   them and did nothing). Opacity only, so it never fights the positioning
+   transforms; nothing moves for people who ask for reduced motion. */
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :is(
+    [data-slot='dialog-overlay'],
+    [data-slot='dialog-content'],
+    [data-slot='sheet-overlay'],
+    [data-slot='sheet-content'],
+    [data-slot='select-content']
+  )[data-state='open'],
+  [data-slot='tooltip-content']:is([data-state='delayed-open'], [data-state='instant-open']),
+  [data-slot='info-tip-content'] {
+    animation: ui-fade-in var(--motion-fast) var(--motion-ease);
+  }
 }

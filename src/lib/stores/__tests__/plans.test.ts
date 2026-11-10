@@ -4,8 +4,8 @@ import {
   createPlanId,
   DEFAULT_PLAN_ID,
   makePlan,
+  mergePlanLists,
   normalizePlans,
-  plansToSavedSetups,
   suggestDuplicateName,
   uniquePlanName,
 } from '../plans'
@@ -203,20 +203,169 @@ describe('plan helpers', () => {
 
       expect(result.plans).toHaveLength(MAX_PLANS)
     })
+
+    // Regression: the store used to mirror every plan into `savedSetups`, so
+    // without the import marker a lone base plan always looked like "legacy
+    // data to import" and was rebuilt — name reset, unsaved draft committed.
+    describe('a lone base plan without the import marker', () => {
+      const legacy = [{ id: 'setup-1', name: 'Legacy', timestamp: 5, params: DEFAULT_PARAMS }]
+
+      it('is not rebuilt because a setup carries its own id', () => {
+        const renamed = makePlan({
+          id: DEFAULT_PLAN_ID,
+          name: 'Mein Ruhestand',
+          params: { ...DEFAULT_PARAMS, currentAssets: 123_456 },
+          createdAt: 10,
+          updatedAt: 20,
+        })
+        const result = bootstrapPlans(
+          {
+            plans: [renamed],
+            // The working copy on screen: an unsaved draft, not the plan.
+            params: { ...DEFAULT_PARAMS, currentAssets: 654_321 },
+            savedSetups: [
+              { id: DEFAULT_PLAN_ID, name: 'Mein Ruhestand', timestamp: 20, params: renamed.params },
+            ],
+          },
+          normalizeParams
+        )
+
+        expect(result.plans).toEqual([renamed])
+        expect(result.migrated).toBe(false)
+      })
+
+      it('keeps a renamed plan as stored and imports nothing next to it', () => {
+        const renamed = makePlan({
+          id: DEFAULT_PLAN_ID,
+          name: 'Mein Ruhestand',
+          params: DEFAULT_PARAMS,
+          createdAt: 10,
+          updatedAt: 20,
+        })
+        const result = bootstrapPlans(
+          { plans: [renamed], params: DEFAULT_PARAMS, savedSetups: legacy },
+          normalizeParams
+        )
+
+        expect(result.plans).toEqual([renamed])
+      })
+
+      it('keeps an edited plan as stored and imports nothing next to it', () => {
+        const edited = makePlan({
+          id: DEFAULT_PLAN_ID,
+          name: 'Base plan',
+          nameKey: 'base',
+          params: { ...DEFAULT_PARAMS, currentAssets: 123_456 },
+          createdAt: 10,
+          updatedAt: 20,
+        })
+        const result = bootstrapPlans(
+          { plans: [edited], params: edited.params, savedSetups: legacy },
+          normalizeParams
+        )
+
+        expect(result.plans).toEqual([edited])
+      })
+
+      it('imports next to the untouched starter plan without rebuilding it', () => {
+        const starter = makePlan({
+          id: DEFAULT_PLAN_ID,
+          name: 'Base plan',
+          nameKey: 'base',
+          params: DEFAULT_PARAMS,
+          createdAt: 0,
+        })
+        const result = bootstrapPlans(
+          {
+            plans: [starter],
+            // An unsaved draft on the starter plan must not end up in it.
+            params: { ...DEFAULT_PARAMS, currentAssets: 654_321 },
+            savedSetups: legacy,
+            activePlanId: DEFAULT_PLAN_ID,
+          },
+          normalizeParams
+        )
+
+        expect(result.plans.map((entry) => entry.id)).toEqual([DEFAULT_PLAN_ID, 'setup-1'])
+        expect(result.plans[0]).toEqual(starter)
+        expect(result.activePlanId).toBe(DEFAULT_PLAN_ID)
+        expect(result.migrated).toBe(true)
+      })
+    })
   })
 
-  describe('plansToSavedSetups', () => {
-    it('mirrors plans into the legacy setup shape', () => {
-      const plans = [plan('a', 'Alpha')]
+  describe('mergePlanLists (two tabs, one storage entry)', () => {
+    const at = (id: string, updatedAt: number, name = id) =>
+      makePlan({ id, name, params: DEFAULT_PARAMS, createdAt: 1, updatedAt })
+    const isSame = (a: ReturnType<typeof at>, b: ReturnType<typeof at>) =>
+      a.name === b.name && a.updatedAt === b.updatedAt
+    const ids = (plans: ReturnType<typeof at>[]) => plans.map((entry) => entry.id)
 
-      expect(plansToSavedSetups(plans)).toEqual([
-        {
-          id: 'a',
-          name: 'Alpha',
-          timestamp: plans[0].updatedAt,
-          params: plans[0].params,
-        },
+    it('takes the other tab’s list as it is when this tab changed nothing', () => {
+      const base = [at('a', 1), at('b', 1)]
+      const theirs = [at('b', 5, 'B renamed'), at('c', 3)]
+
+      expect(mergePlanLists({ base, mine: base, theirs, isSame })).toEqual(theirs)
+    })
+
+    it('keeps a plan each tab created', () => {
+      const base = [at('a', 1)]
+      const merged = mergePlanLists({
+        base,
+        mine: [at('a', 1), at('mine', 2)],
+        theirs: [at('a', 1), at('theirs', 3)],
+        isSame,
+      })
+
+      expect(ids(merged)).toEqual(['a', 'mine', 'theirs'])
+    })
+
+    it('follows the side that changed a plan, and the newer save when both did', () => {
+      const base = [at('a', 1), at('b', 1), at('c', 1)]
+      const merged = mergePlanLists({
+        base,
+        mine: [at('a', 4, 'mine'), at('b', 1), at('c', 5, 'mine')],
+        theirs: [at('a', 1), at('b', 6, 'theirs'), at('c', 9, 'theirs')],
+        isSame,
+      })
+
+      expect(merged.map((entry) => entry.name)).toEqual(['mine', 'theirs', 'theirs'])
+    })
+
+    it('honours a delete on either side, unless the other side changed the plan', () => {
+      const base = [at('a', 1), at('b', 1), at('c', 1), at('d', 1)]
+      const merged = mergePlanLists({
+        base,
+        // Deleted here: a (untouched there) and b (edited there).
+        mine: [at('c', 1), at('d', 7, 'edited here')],
+        // Deleted there: c (untouched here) and d (edited here).
+        theirs: [at('a', 1), at('b', 8, 'edited there')],
+        isSame,
+      })
+
+      expect(merged.map((entry) => entry.name)).toEqual(['edited here', 'edited there'])
+    })
+
+    it('never drops the plan this tab is editing', () => {
+      const base = [at('a', 1), at('b', 1)]
+      const theirs = [at('a', 1)]
+
+      expect(ids(mergePlanLists({ base, mine: base, theirs, isSame }))).toEqual(['a'])
+      expect(ids(mergePlanLists({ base, mine: base, theirs, isSame, keepId: 'b' }))).toEqual([
+        'a',
+        'b',
       ])
+    })
+
+    it('is a union when there is no common base: nothing counts as deleted', () => {
+      const merged = mergePlanLists({
+        base: [],
+        mine: [at('a', 1), at('mine', 2)],
+        theirs: [at('a', 3, 'newer'), at('theirs', 1)],
+        isSame,
+      })
+
+      expect(merged.map((entry) => entry.name)).toEqual(['newer', 'mine', 'theirs'])
     })
   })
 })

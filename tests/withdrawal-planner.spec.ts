@@ -144,15 +144,15 @@ test.describe('withdrawal planner', () => {
     await expect(corridor).toBeVisible()
     await expect(page.locator('#spending-chart-title')).toHaveCount(0)
 
-    // The corridor's tooltip carries the old chart's withdrawal-rate row.
+    // The corridor's tooltip carries a withdrawal-rate row: the rate the rule
+    // itself used (portfolio-funded spending ÷ the portfolio it measured), no
+    // longer the realised gross draw the old chart showed.
     await corridor.scrollIntoViewIfNeeded()
     const box = (await corridor.boundingBox())!
     await expect(async () => {
       await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.5)
       await page.mouse.move(box.x + box.width * 0.45, box.y + box.height * 0.5, { steps: 4 })
-      await expect(page.getByText('Mean gross draw / mean opening portfolio')).toBeVisible({
-        timeout: 1000,
-      })
+      await expect(page.getByText('Rule withdrawal rate')).toBeVisible({ timeout: 1000 })
     }).toPass({ timeout: 10000 })
   })
 })

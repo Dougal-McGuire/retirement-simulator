@@ -11,6 +11,8 @@ export default [
       // Alternate build dirs (NEXT_DIST_DIR) used when several dev servers
       // share this checkout — generated output, never lint it.
       '.next-*/**',
+      // Agent worktrees are whole checkouts of this repo.
+      '.claude/**',
       'node_modules/**',
       'dist/**',
       'build/**',

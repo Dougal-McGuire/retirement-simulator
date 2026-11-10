@@ -30,13 +30,21 @@
       "reloadRequired": "Neue Version verfügbar – bitte neu laden, damit deine Pläne weiter synchronisiert werden.",
       "reloadSuggested": "Neue Version verfügbar – lade neu, um sie zu nutzen.",
       "reload": "Neu laden",
-      "later": "Später"
+      "later": "Später",
+      "serverOutdated": "Synchronisierung pausiert – der Server läuft gerade mit einer älteren Version",
+      "serverOutdatedHint": "Du musst nichts tun: Deine Pläne bleiben auf diesem Gerät und werden automatisch wieder synchronisiert, sobald der Server aktuell ist.",
+      "planLimit": "{count, plural, one {# Plan} other {# Pläne}} nicht synchronisiert – Planlimit erreicht",
+      "planLimitHint": "Ein Konto fasst höchstens {max} Pläne. Es geht nichts verloren: Jeder Plan bleibt, wo er ist. Lösche Pläne, die du nicht mehr brauchst, dann wird der Rest automatisch synchronisiert.",
+      "planLimitNotice": "Planlimit erreicht: {count, plural, one {# Plan wird} other {# Pläne werden}} nicht zwischen deinen Geräten synchronisiert. Lösche Pläne, die du nicht mehr brauchst – der Rest wird automatisch synchronisiert.",
+      "conflictCopyName": "{name} (Kopie von diesem Gerät)",
+      "conflictCopies": "In deinem Konto liegt eine andere Version eines Plans, den du auf diesem Gerät geändert hast. Die Version von diesem Gerät wurde als Kopie behalten: {names}",
+      "dismiss": "Verstanden"
     }
   },
   "landing": {
     "meta": {
       "title": "Ruhestandssimulator — Monte-Carlo-Ruhestandsplanung",
-      "description": "Teste deinen Ruhestandsplan gegen Tausende simulierte Marktverläufe. Kostenlos, privat und vollständig im Browser."
+      "description": "Teste deinen Ruhestandsplan gegen Tausende simulierte Marktverläufe. Kostenlos, privat und in deinem Browser berechnet."
     },
     "nav": {
       "appName": "Ruhestandssimulator",
@@ -54,7 +62,7 @@
       "subtitle": "Die Engine spielt dein gesamtes Finanzleben durch Tausende simulierte Märkte — Schwankungen, Inflation, Rente und Ausgaben — damit du die ganze Bandbreite der Ergebnisse siehst, bevor du deinen Ruhestand auf eine einzige Annahme setzt.",
       "ctaPrimary": "Jetzt planen — kostenlos",
       "ctaSecondary": "Dashboard erkunden",
-      "note": "Keine Registrierung nötig. Ohne Anmeldung verlassen deine Daten nie diesen Browser.",
+      "note": "Keine Registrierung nötig. Ohne Anmeldung verlassen deine Plandaten diesen Browser nicht – gezählt werden nur Seitenaufrufe. Meldest du dich an, werden deine Pläne in deinem Konto gespeichert.",
       "lede": "Eine Durchschnittsrendite sagt dir nichts.",
       "runsNote": "Der Chart oben ist ein gespeicherter Lauf der Engine: {previewRuns} Pfade, davon {previewRate} am Ende noch finanziert. Derselbe Plan rechnet auf deinem eigenen Dashboard standardmäßig {defaultRuns} Pfade und meldet {defaultRate} — weniger Stichproben, gleicher Plan. Im Plan-Editor kannst du die Laufzahl jederzeit erhöhen."
     },
@@ -68,7 +76,7 @@
       },
       "privacy": {
         "value": "0",
-        "label": "Bytes deiner Daten verlassen den Browser"
+        "label": "Bytes Plandaten übertragen – solange du nicht angemeldet bist"
       },
       "years": {
         "label": "Jahre, Jahr für Jahr modelliert"
@@ -111,7 +119,7 @@
         },
         "privacy": {
           "title": "Privat von Grund auf",
-          "body": "Kein Konto und kein Tracking deiner Finanzen. Parameter bleiben ausschließlich im lokalen Speicher deines Browsers."
+          "body": "Kein Konto nötig und kein Tracking deiner Finanzen: Simulation und PDF-Bericht werden in deinem Browser berechnet, deine Eingaben liegen in dessen lokalem Speicher. Gezählt werden nur Seitenaufrufe. Meldest du dich an, werden deine Pläne zusätzlich in deinem Konto gespeichert."
         },
         "bilingual": {
           "title": "Zweisprachig & lokalisiert",
@@ -147,7 +155,7 @@
       "tagline": "Monte-Carlo-Ruhestandsplanung — kostenlos, offen, privat.",
       "setup": "Geführtes Setup",
       "simulation": "Simulations-Dashboard",
-      "copyright": "© {year} Ruhestandssimulator. Läuft vollständig auf deinem Gerät."
+      "copyright": "© {year} Ruhestandssimulator. Simulation und Bericht werden auf deinem Gerät berechnet."
     },
     "spread": {
       "eyebrow": "Warum eine Zahl täuscht",
@@ -188,7 +196,32 @@
     "closeDialog": "Dialog schließen",
     "age": "Alter",
     "ageLabel": "Alter {age}",
-    "fieldHelp": "Hilfe: {label}"
+    "fieldHelp": "Hilfe: {label}",
+    "errors": {
+      "title": "Etwas ist schiefgelaufen",
+      "body": "Die Seite konnte nicht angezeigt werden. Deine Pläne sind sicher – lade die Seite neu.",
+      "chunkBody": "Ein Teil der App konnte nicht geladen werden, vermutlich wegen der Verbindung oder einer neuen Version. Lade die Seite neu.",
+      "reload": "Neu laden",
+      "discard": "Gespeicherte Ergebnisse verwerfen und neu laden",
+      "discardHint": "Verwirft nur die zwischengespeicherten Berechnungsergebnisse – deine Pläne bleiben erhalten und werden neu berechnet.",
+      "digest": "Fehlerkennung:",
+      "section": "Dieser Bereich konnte nicht angezeigt werden.",
+      "sectionChunk": "Dieser Bereich konnte nicht geladen werden – vermutlich ist die Verbindung unterbrochen.",
+      "retry": "Erneut versuchen",
+      "dismiss": "Schließen"
+    },
+    "storageBlocked": "Dein Browser blockiert lokalen Speicher – Änderungen gehen beim Schließen verloren.",
+    "toast": {
+      "close": "Hinweis schließen",
+      "shortcutCtrl": "Strg+Z",
+      "shortcutMeta": "⌘Z"
+    },
+    "money": {
+      "million": "{value} Mio €",
+      "thousand": "{value} T€",
+      "unit": "{value} €",
+      "points": "{value} Pkt."
+    }
   },
   "stepStatus": {
     "completed": "Abgeschlossen",
@@ -455,7 +488,11 @@
           "versorgungsbezuege": "Versorgungsbezüge — Freibetrag + Zuschlag nach Startjahr (§ 19 Abs. 2 EStG)"
         },
         "pensionTaxModeHint": "Das Startjahr folgt aus dem Startalter ({year}). Beide deutschen Modi frieren den steuerfreien Betrag in Euro ein, spätere Erhöhungen sind voll steuerpflichtig; bei inflationsangepassten Renten in heutigen Euro gerechnet.",
-        "taxTag": "Steuer {tax} · netto {net}"
+        "taxTag": "Steuer {tax} · netto {net}",
+        "startMonth": "Monat",
+        "startYear": "Jahr",
+        "noMonth": "Monat …",
+        "noYear": "Jahr …"
       },
       "window": {
         "lifetime": "Gesamter Plan",
@@ -538,7 +575,12 @@
         "demoRoof": "Dachsanierung",
         "demoCare": "Pflegekosten"
       },
-      "listTitle": "Einnahmen, Ausgaben & Renten"
+      "listTitle": "Einnahmen, Ausgaben & Renten",
+      "errors": {
+        "name": "Gib einen Namen ein.",
+        "amount": "Gib einen Betrag über 0 € ein.",
+        "date": "Wähle Monat und Jahr – oder keins von beiden."
+      }
     },
     "liveResult": {
       "label": "Live-Vorschau",
@@ -553,6 +595,10 @@
       "planLabel": "Plan",
       "menuTitle": "Konto und Sprache",
       "menuDescription": "Melde dich an, um deine Pläne zu synchronisieren, oder ändere Sprache und Darstellung."
+    },
+    "meta": {
+      "title": "Plan einrichten — Ruhestandssimulator",
+      "description": "In vier Schritten zu deinem Ruhestandsplan: persönliche Angaben, Vermögen, Einnahmen und Ausgaben, Markt und Steuern."
     }
   },
   "simulation": {
@@ -589,15 +635,19 @@
       "title": "Pläne vergleichen",
       "addPlan": "+ Plan hinzufügen (max. {max})",
       "running": "Wird neu berechnet…",
-      "meta": "{count} Pläne neu berechnet · je {runs} Läufe",
+      "meta": "{count, plural, =1 {# Plan neu berechnet} other {# Pläne neu berechnet}} · je {runs} Läufe",
       "exit": "Vergleich beenden",
       "changedRows": "Geänderte Zeilen hervorgehoben",
       "openEditor": "Annahmen bearbeiten →",
       "perMonth": "{amount}/Mon.",
+      "pensionFrom": "{amount}/Mon. ab {age}",
       "flow": {
         "monthly": "{amount}/Mon.",
         "annual": "{amount}/Jahr",
         "once": "{amount} einmalig",
+        "linked": "wächst mit der Inflation",
+        "fixed": "fester Euro-Betrag",
+        "growth": "{rate} p. a.",
         "more": "{count, plural, =1 {# weiteren Posten zeigen} other {# weitere Posten zeigen}}",
         "less": "Weniger Posten zeigen"
       },
@@ -617,7 +667,7 @@
         "monthlySpending": "Monatliche Ausgaben",
         "expectedReturn": "Erwartete Rendite",
         "withdrawalRule": "Entnahmeregel",
-        "pension": "Gesetzliche Rente ab {age}"
+        "pension": "Gesetzliche Rente"
       },
       "strategy": {
         "fixedReal": "Fest real",
@@ -885,13 +935,13 @@
           },
           "percentOfPortfolio": {
             "label": "Prozent vom Depot",
-            "description": "Jedes Jahr ein fester Prozentsatz des Depots — kann nie leerlaufen, das Einkommen schwankt aber mit dem Markt."
+            "description": "Jedes Jahr ein fester Prozentsatz des Depots, zusätzlich zu Rente und Einkommen. Die Regel allein leert das Depot nicht — geplante Sonderausgaben oder eine Untergrenze können es; das Einkommen schwankt mit dem Markt."
           }
         }
       },
       "dsWithdrawalRate": {
         "label": "Entnahmerate",
-        "tooltip": "Vanguard: die jährlich angestrebte Quote. Guyton-Klinger: die Startquote, an der die Leitplanken gemessen werden. Prozent vom Depot: die Quote, die direkt entnommen wird."
+        "tooltip": "Der Anteil des Depots, den die Regel pro Jahr entnimmt — zusätzlich zu Renten und laufendem Einkommen. Vanguard: die jährlich angestrebte Quote. Guyton-Klinger: die Quote, an der die Leitplanken gemessen werden. Prozent vom Depot: die Quote, die direkt entnommen wird."
       },
       "dsCeilingRate": {
         "label": "Ausgaben-Obergrenze",
@@ -963,7 +1013,7 @@
           "summary": "Rentenbesteuerung (erweitert)",
           "taxablePortion": {
             "label": "Besteuerungsanteil",
-            "help": "Anteil der gesetzlichen Rente, der als steuerpflichtiges Einkommen zählt. 83 % bei Rentenbeginn 2026, steigend Richtung 100 %."
+            "help": "Anteil der gesetzlichen Rente, der als steuerpflichtiges Einkommen zählt. Er richtet sich nach dem Jahr des Rentenbeginns: 84 % bei Beginn 2026, 90 % bei Beginn 2038, 100 % ab 2058."
           },
           "rate": {
             "label": "Einkommensteuersatz auf die Rente",
@@ -1019,16 +1069,16 @@
   },
   "report": {
     "errors": {
-      "requestFailed": "PDF-Erstellung fehlgeschlagen: {status}",
-      "generic": "PDF konnte nicht erstellt werden",
-      "timeout": "PDF-Erstellung hat zu lange gedauert. Bitte versuche es erneut."
+      "generic": "Der Bericht konnte nicht erstellt werden. Bitte versuch es noch einmal.",
+      "chunkLoad": "Das Berichtsmodul konnte nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal.",
+      "fonts": "Die Schriften für den Bericht konnten nicht geladen werden. Prüfe deine Verbindung und versuch es noch einmal."
     },
     "disabled": {
       "noData": "Keine Daten",
       "runSimulation": "Simulation zuerst ausführen"
     },
     "actions": {
-      "generating": "Erstelle…",
+      "generating": "Bericht wird erstellt …",
       "generate": "Bericht erstellen",
       "ready": "Bericht heruntergeladen"
     }
@@ -1056,9 +1106,8 @@
   },
   "recommendations": {
     "title": "Empfehlungen",
-    "subtitle": "Aus diesem Plan abgeleitet — jede Maßnahme nennt die Zahl, die sie ausgelöst hat. Geschätzte Wirkung in Prozentpunkten der Erfolgsquote.",
+    "subtitle": "Aus diesem Plan abgeleitet — jede Maßnahme nennt die Zahl, die sie ausgelöst hat. Wie stark ein Hebel die Erfolgsquote bewegt, zeigt die gemessene Liste darüber.",
     "none": "Für diesen Plan gibt es gerade keine Empfehlung.",
-    "uplift": "+{min}–{max} Pkt.",
     "impact": {
       "high": "Hohe Wirkung",
       "medium": "Mittlere Wirkung",
@@ -1108,23 +1157,26 @@
       "full": "Gesamtbereich"
     },
     "aria": {
-      "brush": "Angezeigter Altersbereich, {startAge} bis {endAge}. Ziehe die Griffe, um in einen Teil des Zeitraums zu zoomen."
+      "brush": "Angezeigter Altersbereich, {startAge} bis {endAge}. Ziehe die Griffe, um in einen Teil des Zeitraums zu zoomen.",
+      "brushStart": "Zeitraum: Beginn (Alter {startAge} bis {endAge} verfügbar)",
+      "brushEnd": "Zeitraum: Ende (Alter {startAge} bis {endAge} verfügbar)"
     }
   },
   "spendingChart": {
     "explanation": {
       "readingLabel": "Lesart",
-      "reading": "Die durchgezogene Linie ist der mediane monatliche Ausgabenrahmen nach Strategieregeln; das schattierte Band umfasst das 10. bis 90. Perzentil der Ergebnisse. Beim Überfahren eines Alters erscheint zusätzlich die mittlere Bruttoentnahme geteilt durch den mittleren Depotwert zu Jahresbeginn, einschließlich Kapitalertragsteuer.",
+      "reading": "Die durchgezogene Linie sind die medianen Monatsausgaben, die tatsächlich bezahlt wurden (Regel plus geplante Sonderposten); das schattierte Band umfasst das 10. bis 90. Perzentil. Ist das Depot in einem Verlauf aufgebraucht, zeigt er nur noch, was Renten und Einkommen decken. Beim Überfahren eines Alters erscheint die Entnahmerate der Regel: der Teil der laufenden Ausgaben, den das Depot trägt, geteilt durch den Depotwert, an dem die Regel misst — vor Kapitalertragsteuer und ohne Sonderposten.",
       "strategies": {
-        "fixedReal": "Feste Kaufkraft hält das geplante Budget auf einem Inflationspfad. Die Marktrenditen entscheiden, ob die Entnahmen durchhalten, ändern aber nie die Höhe der Ausgaben.",
-        "vanguardDynamic": "Die Vanguard-Leitplanken starten mit dem geplanten Budget des ersten Ruhestandsjahres. Danach werden {withdrawalRate} des Depotwerts zum Vorjahresende angestrebt, begrenzt auf {ceiling} über und {floor} unter den inflationsbereinigten Vorjahresausgaben.",
-        "guytonKlinger": "Guyton-Klinger hält das geplante Budget auf einem Inflationspfad und kürzt um 10%, sobald die Entnahmequote mehr als 20% über {withdrawalRate} liegt; um 10% mehr gibt es, sobald sie mehr als 20% darunter liegt.",
-        "percentOfPortfolio": "Prozent vom Depot entnimmt jedes Jahr {withdrawalRate} des Depotwerts zum Vorjahresende. Die Ausgaben folgen dem Markt in beide Richtungen; nur eine ausdrückliche Untergrenze zieht einen Boden ein."
+        "fixedReal": "Feste Kaufkraft hält das geplante Budget auf einem Inflationspfad. Die Marktrenditen entscheiden, ob das Depot durchhält, ändern aber nie das Budget, das der Plan ansetzt.",
+        "vanguardDynamic": "Die Vanguard-Leitplanken starten mit dem geplanten Budget des ersten Ruhestandsjahres. Danach gilt als leistbar: Renten und laufendes Einkommen plus {withdrawalRate} des Depotwerts zum Vorjahresende — begrenzt auf {ceiling} über und {floor} unter den inflationsbereinigten Vorjahresausgaben. Unter das, was Renten und Einkommen ohnehin decken, wird nicht gekürzt.",
+        "guytonKlinger": "Guyton-Klinger hält das geplante Budget auf einem Inflationspfad und beobachtet die Entnahmequote des Depots: den Teil der Ausgaben, den Renten und Einkommen nicht decken, geteilt durch den Depotwert. Liegt sie mehr als 20% über {withdrawalRate}, wird um 10% gekürzt; liegt sie mehr als 20% darunter, gibt es 10% mehr. Unter das, was Renten und Einkommen ohnehin decken, wird nicht gekürzt.",
+        "percentOfPortfolio": "Prozent vom Depot entnimmt jedes Jahr {withdrawalRate} des Depotwerts zum Vorjahresende, zusätzlich zu Renten und laufendem Einkommen. Die Ausgaben folgen dem Markt in beide Richtungen; nur eine ausdrückliche Untergrenze zieht einen Boden ein."
       }
     },
     "legend": {
-      "note": "Ausgaben zeigen den Bedarf. Die Entnahmerate im Tooltip stammt aus den tatsächlichen Bruttoentnahmen der Simulation; sie ist ein Verhältnis von Mittelwerten.",
-      "meanWithdrawalRate": "Ø Bruttoentnahme / Ø Anfangsdepot"
+      "note": "Die Ausgaben zeigen, was tatsächlich bezahlt wurde. Die Entnahmerate im Tooltip ist die Quote, mit der die Regel rechnet: der Depotanteil der laufenden Ausgaben geteilt durch den Depotwert, als Verhältnis von Mittelwerten. Steuern auf Verkäufe und geplante Sonderposten kommen hinzu.",
+      "meanWithdrawalRate": "Ø Bruttoentnahme / Ø Anfangsdepot",
+      "ruleWithdrawalRate": "Entnahmerate der Regel"
     }
   },
   "pdf": {
@@ -2100,7 +2152,19 @@
     "deleted": {
       "toast": "„{name}“ gelöscht",
       "restored": "„{name}“ wiederhergestellt",
+      "restoredInBackground": "„{name}“ wiederhergestellt. Deine ungespeicherten Änderungen an „{active}“ bleiben geöffnet.",
       "restoreFailed": "Plan konnte nicht wiederhergestellt werden — das Planlimit ist erreicht."
+    },
+    "localSave": {
+      "failed": "Konnte nicht lokal gespeichert werden — der Speicher des Browsers ist voll oder gesperrt. Deine Änderungen bleiben in diesem Tab geöffnet, sind aber weg, sobald du ihn schließt.",
+      "readOnly": "Nicht gespeichert: Dieser Tab läuft mit einer älteren Version der App als deine gespeicherten Pläne. Lade die Seite neu — Änderungen in diesem Tab bleiben nicht erhalten.",
+      "reload": "Neu laden",
+      "dismiss": "OK"
+    },
+    "calcChange": {
+      "message": "Berechnung korrigiert: Dynamische Entnahmeregeln geben Rente und andere Einnahmen jetzt aus, statt sie anzusparen, und ein Lauf zählt nur als Erfolg, wenn die Ausgaben in jedem Jahr gedeckt sind. Deine Erfolgsquoten können deshalb niedriger ausfallen als bisher.",
+      "thisPlan": "Dieser Plan: vorher {before}, jetzt {after}.",
+      "dismiss": "Verstanden"
     }
   },
   "headerControls": {
@@ -2170,7 +2234,7 @@
       "firstYear": "Erstes Ruhestandsjahr",
       "firstYearHint": "Mediane Monatsausgaben mit {age}, heutige €",
       "floor": "Garantierte Untergrenze",
-      "floorHint": "Mindestens so viel zahlt die Regel mit {age}, heutige €",
+      "floorHint": "Mindestens so viel sieht der Plan mit {age} vor (Regel plus Sonderposten), heutige €",
       "volatility": "Ausgabenspanne",
       "volatilityHint": "P90 ÷ P10 der realen Ausgaben mit {age}",
       "success": "Erfolgsquote",
@@ -2231,7 +2295,8 @@
       "none": "—",
       "waiting": "Pausiert, solange dein Plan neu rechnet oder bearbeitet wird.",
       "progress": "{done} von {total} Regeln berechnet",
-      "runsNote": "Jede Strategie läuft über dieselben {runs} Marktpfade, die Unterschiede kommen also allein aus den Regeln. Die Lebensausgaben sind der aufsummierte Medianpfad in heutigen Euro; die Spanne ist P90 ÷ P10 mit {age}."
+      "runsNote": "Jede Strategie läuft über dieselben {runs} Marktpfade, die Unterschiede kommen also allein aus den Regeln. Die Lebensausgaben sind der aufsummierte Medianpfad der tatsächlich bezahlten Ausgaben in heutigen Euro; die Spanne ist P90 ÷ P10 mit {age}.",
+      "applyAria": "Diese Strategie übernehmen: {strategy}"
     }
   },
   "cashflowSankey": {
@@ -2537,6 +2602,10 @@
         "emptyAction": "Posten hinzufügen",
         "more": "{count, plural, =1 {# weiterer Posten} other {# weitere Posten}} unter „Einnahmen & Ausgaben“"
       }
+    },
+    "meta": {
+      "title": "Dein Ruhestandsplan — Ruhestandssimulator",
+      "description": "Ergebnis, Annahmen, Geldfluss, Entnahme und Stellschrauben deines Ruhestandsplans auf einer Seite – live neu berechnet."
     }
   }
 }

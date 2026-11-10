@@ -10,7 +10,7 @@ import {
   resolveEuroUnit,
 } from '@/lib/pdf-generator/euroUnit'
 import { computeBridgeAnalysis } from '@/lib/insights/bridge'
-import { calculateCombinedExpenses, runMonteCarloSimulation } from '@/lib/simulation/engine'
+import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 import { DEFAULT_PARAMS, type SimulationResults } from '@/types'
 
 /**
@@ -77,26 +77,37 @@ describe('report euro unit — series selection', () => {
     expect(real.projections.successRatePct).toBe(nominal.projections.successRatePct)
     expect(real.simulation).toEqual(nominal.simulation)
     expect(real.summary?.planHealthScore).toBe(nominal.summary?.planHealthScore)
+    expect(real.summary?.planHealthBand).toBe(nominal.summary?.planHealthBand)
+    expect(real.summary?.planHealthComponents).toEqual(nominal.summary?.planHealthComponents)
     expect(real.summary?.successProbabilityPct).toBe(nominal.summary?.successProbabilityPct)
-    expect(real.summary?.topActionsDetailed).toEqual(nominal.summary?.topActionsDetailed)
   })
 
-  it('keeps unit-free ratios identical in both modes, taken on today’s euros', () => {
+  it('keeps unit-free ratios identical in both modes, read from the ledger', () => {
     const nominal = build(results, false)
     const real = build(results, true)
     expect(real.data.projections.ratios).toEqual(nominal.data.projections.ratios)
 
+    // The one definition: what the portfolio paid out in the first retirement
+    // year over what it held at the start of that year.
     const retirementIndex = results.ages.indexOf(params.retirementAge)
-    const budget = calculateCombinedExpenses(params.customExpenses).combinedAnnual
-    const realRetirementMedian = results.assetPercentilesReal!.p50[retirementIndex]
-    expect(nominal.data.projections.ratios?.firstYearWithdrawalRate).toBeCloseTo(
-      budget / realRetirementMedian,
+    const booked = results.cashFlowMeans![retirementIndex]
+    expect(nominal.data.projections.ratios?.firstYearWithdrawalRate).toBe(
+      booked.portfolioWithdrawal / booked.openingAssets
+    )
+    // Bridge share: both sides in today's euros, whichever unit is printed.
+    const realRows = results.cashFlowMeansReal!
+    let realNeed = 0
+    for (let age = params.retirementAge; age < params.legalRetirementAge; age++) {
+      realNeed += realRows[results.ages.indexOf(age)].portfolioWithdrawal
+    }
+    expect(nominal.data.projections.ratios?.bridgeShareOfRetirementAssets).toBeCloseTo(
+      realNeed / realRows[retirementIndex].openingAssets,
       10
     )
     const bridgeShare = (content: typeof real.content) =>
       deriveKeyFindings(content)
         .find((finding) => finding.id === 'bridge')
-        ?.text.match(/\((\d+)\s*% des Medianvermögens/)?.[1]
+        ?.text.match(/(\d+)\s*% des Depots zu Ruhestandsbeginn/)?.[1]
     expect(bridgeShare(real.content)).toBeDefined()
     expect(bridgeShare(real.content)).toBe(bridgeShare(nominal.content))
   })
@@ -116,11 +127,43 @@ describe('report euro unit — fallbacks for results without real series', () =>
     expect(realMethodFor(legacy)).toBe('medianIndex')
     const { data } = build(legacy, true)
     expect(data.units).toEqual({ requested: 'real', applied: 'real', realMethod: 'medianIndex' })
+    // The percentiles are year-END balances. `index[i]` is the level age i's
+    // year opens with, so a balance at its end belongs to `index[i + 1]`; the
+    // last year has no successor and closes one year of the plan's inflation
+    // assumption later.
+    const closingLevel = (i: number) =>
+      i < horizon ? index[i + 1] : index[horizon] * (1 + params.averageInflation)
     for (const [i, milestone] of data.projections.milestones.entries()) {
-      expect(milestone.p50).toBeCloseTo(results.assetPercentiles.p50[i] / index[i], 6)
-      expect(milestone.p10).toBeCloseTo(results.assetPercentiles.p10[i] / index[i], 6)
-      expect(milestone.p90).toBeCloseTo(results.assetPercentiles.p90[i] / index[i], 6)
+      expect(milestone.p50).toBeCloseTo(results.assetPercentiles.p50[i] / closingLevel(i), 6)
+      expect(milestone.p10).toBeCloseTo(results.assetPercentiles.p10[i] / closingLevel(i), 6)
+      expect(milestone.p90).toBeCloseTo(results.assetPercentiles.p90[i] / closingLevel(i), 6)
     }
+    // Not the opening level: that would overstate every balance by a year of
+    // inflation (the first one by exactly index[1] / index[0]).
+    expect(data.projections.milestones[0].p50).toBeLessThan(results.assetPercentiles.p50[0])
+  })
+
+  it('lands on the engine’s own real series — which the opening level misses by a year', () => {
+    // The engine deflates each path's year-end balance at that year's closing
+    // price level. The fallback has only the median index, so over decades it
+    // drifts a little from the engine's median — but in the first year, where
+    // the paths have hardly spread, the two must coincide. With the closing
+    // level they do; with the opening level the balance is a year of
+    // inflation (2.5 %) too high.
+    const perPath = results.assetPercentilesReal!.p50
+    const index = results.inflationIndexP50!
+    const fallback = build(withoutRealSeries(results), true).data.projections.milestones
+    const openingLevel = results.assetPercentiles.p50.map((value, i) => value / index[i])
+    expect(Math.abs(fallback[0].p50 / perPath[0] - 1)).toBeLessThan(0.002)
+    expect(openingLevel[0] / perPath[0] - 1).toBeGreaterThan(0.02)
+
+    // Across the whole horizon the closing level stays the closer of the two.
+    const meanAbsError = (values: number[]) =>
+      values.reduce((sum, value, i) => sum + Math.abs(value / perPath[i] - 1), 0) / values.length
+    const withClosing = meanAbsError(fallback.map((milestone) => milestone.p50))
+    const withOpening = meanAbsError(openingLevel)
+    expect(withClosing).toBeLessThan(0.02)
+    expect(withOpening).toBeGreaterThan(withClosing + 0.01)
   })
 
   it('stays nominal and says so when neither real series nor index exist', () => {
@@ -129,10 +172,9 @@ describe('report euro unit — fallbacks for results without real series', () =>
     const { data, content } = build(bare, true)
     expect(data.units).toEqual({ requested: 'real', applied: 'nominal' })
     expect(data.projections.milestones.map((m) => m.p50)).toEqual(results.assetPercentiles.p50)
-    // Nothing derived switches either: the bridge stays nominal, priced with
-    // the plan's inflation compounded from today since no index exists.
-    expect(data.summary?.bridge.cashNeedEUR).toBe(
-      Math.round(computeBridgeAnalysis(params, { unit: 'nominal' }).cashNeedEUR)
+    // Nothing derived switches either: the bridge stays the nominal ledger's.
+    expect(data.summary?.bridge?.cashNeedEUR).toBe(
+      Math.round(computeBridgeAnalysis(params, { unit: 'nominal', results }).cashNeedEUR!)
     )
     const copy = buildEuroUnitCopy(content.units, 'de')
     expect(copy.statement).toContain('keine inflationsbereinigten Werte')
@@ -147,56 +189,98 @@ describe('report euro unit — fallbacks for results without real series', () =>
 })
 
 describe('report euro unit — derived amounts', () => {
+  /** The ledger's portfolio withdrawals over the bridge ages 60–66. */
+  const withdrawn = (rows: NonNullable<SimulationResults['cashFlowMeans']>) => {
+    let total = 0
+    for (let age = 60; age <= 66; age++) total += rows[results.ages.indexOf(age)].portfolioWithdrawal
+    return total
+  }
+
   it('states the bridge need in today’s purchasing power in real mode', () => {
-    const annual = calculateCombinedExpenses(params.customExpenses).combinedAnnual
-    const bridge = computeBridgeAnalysis(params, { unit: 'real' })
-    expect(bridge.yearsInBridge).toBeGreaterThan(0)
-    expect(bridge.cashNeedEUR).toBeCloseTo(annual * bridge.yearsInBridge, 6)
+    const bridge = computeBridgeAnalysis(params, { unit: 'real', results })
+    expect(bridge.yearsInBridge).toBe(7)
+    expect(bridge.cashNeedEUR).toBeCloseTo(withdrawn(results.cashFlowMeansReal!), 6)
 
     const { data } = build(results, true)
-    expect(data.summary?.bridge.cashNeedEUR).toBe(Math.round(bridge.cashNeedEUR))
+    expect(data.summary?.bridge?.cashNeedEUR).toBe(Math.round(bridge.cashNeedEUR!))
   })
 
-  it('states the nominal bridge need at the run’s median price level of each year', () => {
-    // Default plan: 62.900 € a year, bridge ages 60–66, five years from today.
-    const annual = calculateCombinedExpenses(params.customExpenses).combinedAnnual
+  it('states the nominal bridge need in the euros the ledger booked', () => {
+    const expected = withdrawn(results.cashFlowMeans!)
+    const { data } = build(results, false)
+    expect(data.summary?.bridge).toMatchObject({
+      startAge: 60,
+      endAge: 66,
+      pensionAge: 67,
+      mainPension: 'statutory',
+      cashNeedEUR: Math.round(expected),
+    })
+    // Nominal is never below today's purchasing power at positive inflation.
+    expect(expected).toBeGreaterThan(withdrawn(results.cashFlowMeansReal!))
+  })
+
+  it('deflates the nominal ledger by the median index when there is no real ledger', () => {
+    const legacy = withoutRealSeries(results)
     const index = results.inflationIndexP50!
     let expected = 0
     for (let age = 60; age <= 66; age++) {
-      expected += annual * index[results.ages.indexOf(age)]
+      const i = results.ages.indexOf(age)
+      expected += results.cashFlowMeans![i].portfolioWithdrawal / index[i]
     }
-    const { data } = build(results, false)
-    expect(data.summary?.bridge.cashNeedEUR).toBe(Math.round(expected))
-    // The median index sits close to 2,5 % compounded from today, not from 60.
-    const compounded = computeBridgeAnalysis(params, { unit: 'nominal' }).cashNeedEUR
-    let fromToday = 0
-    for (let age = 60; age <= 66; age++) fromToday += annual * 1.025 ** (age - params.currentAge)
-    expect(compounded).toBeCloseTo(fromToday, 6)
-    expect(Math.abs(expected / compounded - 1)).toBeLessThan(0.02)
-    // Nominal is never below today's purchasing power at positive inflation.
-    expect(expected).toBeGreaterThan(annual * 7)
+    expect(build(legacy, true).data.summary?.bridge?.cashNeedEUR).toBe(Math.round(expected))
   })
 
-  it('quotes the real bridge need, labelled, in the recommendation texts', () => {
-    const { data } = build(results, true)
-    const amount = new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: 'EUR',
-      maximumFractionDigits: 0,
-    }).format(Math.round(computeBridgeAnalysis(params, { unit: 'real' }).cashNeedEUR))
-    const bridgeRec = data.recommendations.find((rec) => rec.id === 'bridgeLiquidity')
-    expect(bridgeRec?.body).toContain(`${amount} in heutiger Kaufkraft`)
+  it('carries no bridge figure — rather than an estimated one — without a ledger', () => {
+    const { cashFlowMeans: _nominal, cashFlowMeansReal: _real, ...bare } = results
+    const { data, content } = build(bare, false)
+    expect(data.summary?.bridge).toBeUndefined()
+    expect(data.ledger).toBeUndefined()
+    expect(data.projections.ratios).toEqual({
+      firstYearWithdrawalRate: null,
+      bridgeShareOfRetirementAssets: null,
+    })
+    expect(content.expenses.retirement).toBeNull()
+    // The score is then the success rate alone.
+    expect(data.summary?.planHealthComponents).toEqual([
+      { id: 'success', value: bare.successRate, weight: 1 },
+    ])
+    expect(deriveKeyFindings(content).map((finding) => finding.id)).toEqual([
+      'successBand',
+      'depletion',
+      'medianPath',
+    ])
+  })
+
+  it('quotes the bridge need, labelled with its unit, in the recommendation texts', () => {
+    const format = (value: number) =>
+      new Intl.NumberFormat('de-DE', {
+        style: 'currency',
+        currency: 'EUR',
+        maximumFractionDigits: 0,
+      }).format(value)
+
+    const real = build(results, true).data
+    const realRec = real.recommendations.find((rec) => rec.id === 'bridgeLiquidity')
+    expect(realRec?.body).toContain(
+      `${format(Math.round(withdrawn(results.cashFlowMeansReal!)))} in heutiger Kaufkraft`
+    )
 
     const nominal = build(results, false).data
     const nominalRec = nominal.recommendations.find((rec) => rec.id === 'bridgeLiquidity')
     expect(nominalRec?.body).not.toContain('Kaufkraft')
     // The nominal amount is the summary's figure and is labelled as nominal.
-    const nominalAmount = new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: 'EUR',
-      maximumFractionDigits: 0,
-    }).format(nominal.summary!.bridge.cashNeedEUR)
-    expect(nominalRec?.body).toContain(`${nominalAmount} in nominalen Euro`)
+    expect(nominalRec?.body).toContain(
+      `${format(nominal.summary!.bridge!.cashNeedEUR)} in nominalen Euro`
+    )
+  })
+
+  it('labels every ledger amount in the key findings with the unit it is in', () => {
+    const texts = (displayReal: boolean) =>
+      deriveKeyFindings(build(results, displayReal).content)
+        .filter((finding) => ['bridge', 'pensionCoverage', 'medianPath'].includes(finding.id))
+        .map((finding) => finding.text)
+    for (const text of texts(false)) expect(text).toContain('in nominalen Euro')
+    for (const text of texts(true)) expect(text).toContain('in heutiger Kaufkraft')
   })
 })
 

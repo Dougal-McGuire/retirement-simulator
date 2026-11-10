@@ -13,8 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ActionToast } from '@/components/ui/action-toast'
-import { toast, TOAST_DURATION } from '@/components/ui/toast'
+import { showActionToast } from '@/components/ui/action-toast'
+import { toast } from '@/components/ui/toast'
 import { ASSUMPTION_PANELS, type AssumptionPanel } from '@/components/plans/planSections'
 import {
   isCashFlowEnabled,
@@ -31,13 +31,14 @@ import { planDisplayName } from '@/lib/plans/planName'
 import {
   useActivePlan,
   useSimulationParams,
-  useSimulationResults,
   useSimulationStore,
   useUpdateParams,
 } from '@/lib/stores/simulationStore'
+import { useUsableResults } from '@/components/workspace/useUsableResults'
 import { Link } from '@/navigation'
 import { useWorkspace } from '../WorkspaceProvider'
 import { WorkspaceSection } from './WorkspaceSection'
+import { useMoney } from '@/lib/hooks/useMoney'
 
 interface CardContent {
   /** Names the key figure; every card has one, so the figures line up. */
@@ -64,27 +65,18 @@ function ResetToDefaults() {
     const previous: SimulationParams = { ...useSimulationStore.getState().params }
     updateParams({ ...DEFAULT_PARAMS })
     setResetOpen(false)
-    toast(
-      (instance) => (
-        <ActionToast
-          testId="plan-reset-toast"
-          message={t('reset.done', { name: planName })}
-          actions={[
-            {
-              label: tPlans('actions.undo'),
-              tone: 'primary',
-              testId: 'plan-reset-toast-undo',
-              onClick: () => {
-                toast.dismiss(instance.id)
-                updateParams(previous)
-                toast.success(t('reset.undone'))
-              },
-            },
-          ]}
-        />
-      ),
-      { duration: TOAST_DURATION }
-    )
+    showActionToast({
+      testId: 'plan-reset-toast',
+      message: t('reset.done', { name: planName }),
+      undo: {
+        label: tPlans('actions.undo'),
+        testId: 'plan-reset-toast-undo',
+        run: () => {
+          updateParams(previous)
+          toast.success(t('reset.undone'))
+        },
+      },
+    })
   }
 
   return (
@@ -131,14 +123,14 @@ export const AssumptionsSection = memo(function AssumptionsSection() {
   const t = useTranslations('workspace')
   const tGroups = useTranslations('planEditor.groups')
   const format = useFormatter()
+  const money = useMoney()
   const params = useSimulationParams()
   // Deferred inside the page's results scope; only the tax drag is read.
-  const drag = useSimulationResults()?.withdrawalTaxDrag
+  const drag = useUsableResults()?.withdrawalTaxDrag
   const { editor, openEditor } = useWorkspace()
 
   const cards = useMemo<Record<AssumptionPanel, CardContent>>(() => {
-    const euro = (value: number) =>
-      format.number(value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+    const euro = money.full
     const percent = (value: number, digits = 1) =>
       format.number(value, {
         style: 'percent',
@@ -231,7 +223,7 @@ export const AssumptionsSection = memo(function AssumptionsSection() {
         ],
       },
     }
-  }, [params, drag, t, format])
+  }, [params, drag, t, format, money])
 
   return (
     <WorkspaceSection

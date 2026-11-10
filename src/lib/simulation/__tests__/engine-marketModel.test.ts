@@ -156,11 +156,20 @@ describe('historical market model', () => {
 
   it('freezes the historical success rate for the shipped defaults', () => {
     // Golden: changing the series or the replay rule must be a deliberate act.
-    // 123 of the 125 start years survive the default plan; the two that do not
-    // (1968 and 1969) are the classic worst-case sequence — a bear market
-    // straight into the 1970s inflation, exactly the risk this mode exists to
-    // surface.
+    // 123 of the 125 start years survive the default plan. Two do not — the
+    // classic worst-case sequence, a bear market straight into the 1970s
+    // inflation, exactly the risk this mode exists to surface.
+    //
+    // History of the number: 98.4% → 96.8% when the withdrawal rule started
+    // spending the pension instead of banking it
+    // (docs/specs/2026-11-09-withdrawal-rules-with-income.md; two more start
+    // years reached the 1970s in their seventies with a fixed pension that
+    // inflation was eating), and back to 98.4% when the default withdrawal
+    // rate went from 5% to 4% on 2026-11-10. At the old 5% it is still 96.8.
     expect(runMonteCarloSimulation(historicalParams).successRate).toBe(98.4)
+    expect(
+      runMonteCarloSimulation({ ...historicalParams, dsWithdrawalRate: 0.05 }).successRate
+    ).toBe(96.8)
   })
 
   it('leaves Monte Carlo results untouched', () => {

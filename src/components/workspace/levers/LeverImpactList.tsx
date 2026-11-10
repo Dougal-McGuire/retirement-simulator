@@ -13,20 +13,19 @@ import {
 } from '@/lib/simulation/planInsights'
 import { diffParams } from '@/lib/simulation/planDiff'
 import { planDisplayName } from '@/lib/plans/planName'
-import { useCompactCurrency } from '@/lib/hooks/useCompactCurrency'
 import { useSetComparisonSelection } from '@/lib/stores/comparisonStore'
 import {
   useActivePlanId,
   useCreatePlan,
   usePlans,
   useSetActivePlan,
-  useSimulationResults,
   useSimulationStore,
   useUpdateParams,
 } from '@/lib/stores/simulationStore'
+import { useUsableResults } from '@/components/workspace/useUsableResults'
 import { simulationContextOf } from '@/lib/stores/useSimulationContext'
-import { toast, TOAST_DURATION } from '@/components/ui/toast'
-import { ActionToast } from '@/components/ui/action-toast'
+import { toast } from '@/components/ui/toast'
+import { showActionToast } from '@/components/ui/action-toast'
 import { ScenarioPlanDialog } from '@/components/plans/ScenarioPlanDialog'
 import { useNearViewport } from '../useNearViewport'
 import { SaturatedCallout, WorstDecileUnit } from './SaturatedCallout'
@@ -36,6 +35,7 @@ import {
   type LeverMeasurement,
   type LeverResult,
 } from './useLeverMeasurements'
+import { useMoney } from '@/lib/hooks/useMoney'
 
 /** The lever rows in their unmeasured order (names are known before any run). */
 const SCENARIO_IDS = Object.keys(SCENARIO_APPLY_KEYS) as ScenarioId[]
@@ -93,14 +93,14 @@ const LeverImpactView = memo(function LeverImpactView({
   const tPlans = useTranslations('plans')
   const tToast = useTranslations('plans.toasts')
   const format = useFormatter()
-  const compactCurrency = useCompactCurrency()
+  const money = useMoney()
   const updateParams = useUpdateParams()
   const createPlan = useCreatePlan()
   const setActivePlan = useSetActivePlan()
   const setComparisonSelection = useSetComparisonSelection()
   const plans = usePlans()
   const activePlanId = useActivePlanId()
-  const results = useSimulationResults()
+  const results = useUsableResults()
   const { enterCompare } = useWorkspace()
 
   const atPlanLimit = plans.length >= MAX_PLANS
@@ -117,8 +117,7 @@ const LeverImpactView = memo(function LeverImpactView({
       minimumFractionDigits: 1,
       maximumFractionDigits: 1,
     })
-  const formatCurrency = (value: number) =>
-    format.number(value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+  const formatCurrency = money.full
   const sign = (rounded: number) => (rounded > 0 ? '+' : rounded < 0 ? '−' : '±')
 
   const effectOf = (lever: LeverResult, saturated: boolean) => {
@@ -126,7 +125,7 @@ const LeverImpactView = memo(function LeverImpactView({
       const rounded = Math.round(lever.worstDecileDelta)
       return {
         tone: toneOf(rounded),
-        delta: `${sign(rounded)}${compactCurrency(Math.abs(rounded))}`,
+        delta: `${sign(rounded)}${money.compact(Math.abs(rounded))}`,
         result: formatCurrency(lever.worstDecileEnd),
       }
     }
@@ -156,34 +155,36 @@ const LeverImpactView = memo(function LeverImpactView({
     }
   }, [activePlanId])
 
+  // Applying a lever re-measures the list, which goes `inert` meanwhile: the
+  // focused "Übernehmen" would drop focus to <body>. Focus waits on the
+  // list's heading and returns to the lever's button once the list is live.
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const [refocusLever, setRefocusLever] = useState<ScenarioId | null>(null)
+
   const apply = (id: ScenarioId) => {
+    if (listRef.current?.contains(document.activeElement)) {
+      headingRef.current?.focus({ preventScroll: true })
+      setRefocusLever(id)
+    }
     const { params, activePlanId: planId } = useSimulationStore.getState()
     const name = t(`items.${id}.name`)
     const snapshot = pickScenarioKeys(id, params)
     updateParams(buildScenarioPatch(id, params))
     if (appliedToastRef.current) toast.dismiss(appliedToastRef.current.id)
-    const toastId = toast(
-      (instance) => (
-        <ActionToast
-          testId="lever-applied-toast"
-          message={tl('appliedToast', { name })}
-          actions={[
-            {
-              label: tPlans('actions.undo'),
-              tone: 'primary',
-              testId: 'lever-applied-toast-undo',
-              onClick: () => {
-                toast.dismiss(instance.id)
-                appliedToastRef.current = null
-                if (useSimulationStore.getState().activePlanId !== planId) return
-                updateParams(snapshot)
-              },
-            },
-          ]}
-        />
-      ),
-      { duration: TOAST_DURATION }
-    )
+    const toastId = showActionToast({
+      testId: 'lever-applied-toast',
+      message: tl('appliedToast', { name }),
+      undo: {
+        label: tPlans('actions.undo'),
+        testId: 'lever-applied-toast-undo',
+        run: () => {
+          appliedToastRef.current = null
+          if (useSimulationStore.getState().activePlanId !== planId) return
+          updateParams(snapshot)
+        },
+      },
+    })
     appliedToastRef.current = { id: toastId, planId }
   }
 
@@ -217,46 +218,41 @@ const LeverImpactView = memo(function LeverImpactView({
     const createdName =
       useSimulationStore.getState().plans.find((plan) => plan.id === newPlanId)?.name ?? name
     const invoker = saveInvokerRef.current
-    toast(
-      (instance) => (
-        <ActionToast
-          testId="plan-created-toast"
-          message={tToast('planCreatedFrom', { name: createdName, source: sourceName })}
-          actions={[
-            {
-              label: tToast('switchToPlan'),
-              tone: 'primary',
-              testId: 'plan-created-toast-switch',
-              onClick: () => {
-                setActivePlan(newPlanId)
-                toast.dismiss(instance.id)
-              },
-            },
-            {
-              label: tToast('compare'),
-              testId: 'plan-created-toast-compare',
-              onClick: () => {
-                toast.dismiss(instance.id)
-                const state = useSimulationStore.getState()
-                if (!state.plans.some((plan) => plan.id === newPlanId)) return
-                const other = state.activePlanId === newPlanId ? sourceId : newPlanId
-                setComparisonSelection(
-                  [state.activePlanId, other].filter(
-                    (id, index, list) =>
-                      Boolean(id) &&
-                      list.indexOf(id) === index &&
-                      state.plans.some((plan) => plan.id === id)
-                  )
-                )
-                enterCompare(invoker?.isConnected ? invoker : null)
-              },
-            },
-            { label: tToast('dismiss'), onClick: () => toast.dismiss(instance.id) },
-          ]}
-        />
-      ),
-      { duration: TOAST_DURATION }
-    )
+    showActionToast({
+      testId: 'plan-created-toast',
+      message: tToast('planCreatedFrom', { name: createdName, source: sourceName }),
+      actions: [
+        {
+          label: tToast('switchToPlan'),
+          tone: 'primary',
+          testId: 'plan-created-toast-switch',
+          onClick: (dismiss) => {
+            setActivePlan(newPlanId)
+            dismiss()
+          },
+        },
+        {
+          label: tToast('compare'),
+          testId: 'plan-created-toast-compare',
+          onClick: (dismiss) => {
+            dismiss()
+            const state = useSimulationStore.getState()
+            if (!state.plans.some((plan) => plan.id === newPlanId)) return
+            const other = state.activePlanId === newPlanId ? sourceId : newPlanId
+            setComparisonSelection(
+              [state.activePlanId, other].filter(
+                (id, index, list) =>
+                  Boolean(id) &&
+                  list.indexOf(id) === index &&
+                  state.plans.some((plan) => plan.id === id)
+              )
+            )
+            enterCompare(invoker?.isConnected ? invoker : null)
+          },
+        },
+        { label: tToast('dismiss'), onClick: (dismiss) => dismiss() },
+      ],
+    })
   }
 
   // ---- Rows -----------------------------------------------------------------------
@@ -265,6 +261,18 @@ const LeverImpactView = memo(function LeverImpactView({
   const context = baseResults ? simulationContextOf(baseResults.params, baseResults) : null
   const saturated = measurement?.saturated ?? false
   const state = measurement ? (fresh ? 'ready' : 'stale') : 'pending'
+  useEffect(() => {
+    if (!refocusLever || state !== 'ready') return
+    setRefocusLever(null)
+    // Only if the reader has not moved on meanwhile.
+    if (document.activeElement !== headingRef.current) return
+    listRef.current
+      ?.querySelector<HTMLElement>(
+        `[data-lever="${refocusLever}"] [data-testid="stress-lever-apply"]`
+      )
+      ?.focus({ preventScroll: true })
+  }, [refocusLever, state])
+
   const rows: Array<{ id: ScenarioId; lever: LeverResult | null }> = measurement
     ? measurement.levers.map((lever) => ({ id: lever.id, lever }))
     : SCENARIO_IDS.map((id) => ({ id, lever: null }))
@@ -280,15 +288,16 @@ const LeverImpactView = memo(function LeverImpactView({
       data-measure={state}
     >
       <header className="ws-levers-head">
-        <h3 id="levers-impact-title" className="ws-levers-title">
+        <h3 id="levers-impact-title" className="ws-levers-title" ref={headingRef} tabIndex={-1}>
           {tl('impactTitle')}
         </h3>
-        <p className="ws-levers-status" role="status">
-          {status}
-        </p>
+        {/* Visual only: a live region here spoke "measuring" after every edit;
+            settled results are announced once by the page (ResultAnnouncer). */}
+        <p className="ws-levers-status">{status}</p>
       </header>
 
       <div
+        ref={listRef}
         className="ws-levers-impact"
         data-stale={state === 'stale' || undefined}
         aria-busy={state !== 'ready'}

@@ -1,46 +1,37 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 
 /**
- * Custom hook to detect media query matches
- * @param query - CSS media query string (e.g., "(min-width: 768px)")
- * @returns boolean indicating if the media query matches
+ * Whether a CSS media query matches — right on the first client render.
+ *
+ * The old effect-based version returned `false` until after mount, so a
+ * component laid out for the desktop for one frame and then jumped. With
+ * `useSyncExternalStore` the client reads the query during render; the
+ * server (and hydration) see `false`, and React re-renders right after
+ * hydration if the client differs, without a mismatch warning.
  */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-    const media = window.matchMedia(query)
-
-    // Set initial value
-    setMatches(media.matches)
-
-    // Create event listener
-    const listener = (event: MediaQueryListEvent) => {
-      setMatches(event.matches)
-    }
-
-    // Modern browsers
-    if (media.addEventListener) {
-      media.addEventListener('change', listener)
-      return () => media.removeEventListener('change', listener)
-    } else {
-      // Fallback for older browsers
-      media.addListener(listener)
-      return () => media.removeListener(listener)
-    }
-  }, [query])
-
-  // Return false on server-side and before mount to prevent hydration mismatch
-  return mounted ? matches : false
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const media = window.matchMedia(query)
+      media.addEventListener('change', onChange)
+      return () => media.removeEventListener('change', onChange)
+    },
+    [query]
+  )
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(query).matches,
+    () => false
+  )
 }
 
 /**
- * Predefined breakpoint hooks matching Tailwind CSS defaults
+ * The workspace's phone layout: ≤760 px, the breakpoint its CSS uses
+ * (`ws-page.css`). One definition for every component that sizes itself in
+ * script (the fan chart, the spending corridor).
  */
-export const useIsMobile = () => useMediaQuery('(max-width: 767px)')
-export const useIsTablet = () => useMediaQuery('(min-width: 768px) and (max-width: 1023px)')
-export const useIsDesktop = () => useMediaQuery('(min-width: 1024px)')
+export const PHONE_QUERY = '(max-width: 760px)'
+
+export const usePhoneLayout = () => useMediaQuery(PHONE_QUERY)

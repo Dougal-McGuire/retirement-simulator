@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import type { SimulationResults } from '@/types'
 import { buildFanGeometry, FAN_H, FAN_W } from './fanGeometry'
-import { formatAxisEuro } from './format'
+import { useMoney } from '@/lib/hooks/useMoney'
 
 interface FanChartCardProps {
   results: SimulationResults
@@ -107,12 +107,8 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
           p90: visiblePercentiles.p90[inspectIndex],
         }
 
-  const formatCurrency = (value: number) =>
-    format.number(value, {
-      style: 'currency',
-      currency: 'EUR',
-      maximumFractionDigits: 0,
-    })
+  const money = useMoney()
+  const formatCurrency = money.full
 
   const inspectX = inspectIndex == null ? 0 : geometry.x(inspectIndex) / FAN_W
 
@@ -213,7 +209,7 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
         </svg>
         {geometry.gridLines.map((grid) => (
           <span key={grid.value} className="ws-chart-ylabel" style={{ top: grid.topPct }}>
-            {formatAxisEuro(grid.value, locale)}
+            {money.axis(grid.value)}
           </span>
         ))}
         <div className="ws-chart-legend">
@@ -266,7 +262,7 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
             min={0}
             max={maxIndex}
             value={start}
-            aria-label={tAssets('aria.brush', { startAge: firstAge, endAge: lastAge })}
+            aria-label={tAssets('aria.brushStart', { startAge: firstAge, endAge: lastAge })}
             onChange={(event) => setStartIndex(Math.min(Number(event.target.value), end - 1))}
           />
           <input
@@ -274,7 +270,7 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
             min={0}
             max={maxIndex}
             value={end}
-            aria-label={tAssets('aria.brush', { startAge: firstAge, endAge: lastAge })}
+            aria-label={tAssets('aria.brushEnd', { startAge: firstAge, endAge: lastAge })}
             onChange={(event) => setEndIndex(Math.max(Number(event.target.value), start + 1))}
           />
         </div>

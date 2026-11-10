@@ -1,104 +1,107 @@
-import type { SimulationParams, SimulationResults } from '@/types'
-import { defaultPdfConfig } from '@/lib/pdf-generator/utils/config'
-import { calculateCombinedExpenses } from '@/lib/simulation/engine'
-import { firstPensionAge } from '@/lib/simulation/cashFlows'
+import type { SimulationParams } from '@/types'
+import { ledgerRows, mainPension, type LedgerSource, type LedgerUnit } from './ledger'
 
 /**
  * Which euro the bridge need is stated in — the same two units as the
  * dashboard's Nominal / Heutige € switch.
  */
-export type BridgeUnit = 'nominal' | 'real'
+export type BridgeUnit = LedgerUnit
+
+/** Years of the bridge the "hold it in cash" advice refers to. */
+export const BRIDGE_CASH_BUCKET_YEARS = 2
 
 export type BridgeAnalysis = {
+  /** First bridge age: the retirement age, or today for someone already retired. */
   startAge: number
+  /** Last bridge age: the year before the main pension starts. */
   endAge: number
   yearsInBridge: number
-  /** The age the first pension starts — what the bridge has to reach. */
+  /** The age the main pension starts — what the bridge has to reach. */
   pensionAge: number
+  /** Which pension that is; `'none'` when no pension counts (then there is no bridge). */
+  mainPension: 'statutory' | 'other' | 'none'
   /** The unit `cashNeedEUR` is stated in. */
   unit: BridgeUnit
   /**
-   * Cash need across the bridge years, unrounded, in `unit`:
-   * - `'real'`: today's purchasing power. The budget is inflation-linked, so
-   *   every bridge year costs today's budget: budget × years.
-   * - `'nominal'`: euros of each bridge year. Each year costs the budget times
-   *   the expected price level of that year relative to today.
+   * What the portfolio pays out across the bridge years, unrounded, in `unit`:
+   * the sum of the ledger's portfolio withdrawals for those ages. That is the
+   * engine's own figure — after any income that does flow in those years (a
+   * small company pension, part-time work), with scheduled expenses and the
+   * tax on realised gains included.
+   *
+   * `null` when it cannot be read: no results, or results without a ledger.
+   * There is deliberately no formula to fall back on.
    */
-  cashNeedEUR: number
+  cashNeedEUR: number | null
   cashBucketYears: number
+  /** Share of the need that falls into the first `cashBucketYears` bridge years. */
   cashBucketSharePct: number
   portfolioSharePct: number
 }
 
 export type BridgeAnalysisOptions = {
   unit: BridgeUnit
-  /**
-   * The run the figures belong to. In nominal mode its median realised price
-   * level (`inflationIndexP50`) prices each bridge year, so the need agrees
-   * with the nominal charts. Without a usable index the plan's average
-   * inflation is compounded from today instead. Ignored in real mode.
-   */
-  results?: Pick<SimulationResults, 'ages' | 'inflationIndexP50'>
+  /** The run the need is read from. Without it only the ages are known. */
+  results?: LedgerSource
 }
 
 /**
- * Price level of each bridge age relative to today (the plan's first year).
- * Taken entirely from the run's median index when it covers every bridge age,
- * otherwise entirely from the compounded average inflation — never mixed.
+ * The bridge: the retirement years before the **main** pension pays (see
+ * `mainPension`). One definition for the dashboard's recommendations, the plan
+ * score's reasons and the report — the ages and the amount always describe
+ * the same years.
  */
-function priceLevels(
-  params: SimulationParams,
-  bridgeAges: readonly number[],
-  results: BridgeAnalysisOptions['results']
-): number[] {
-  const index = results?.inflationIndexP50
-  if (results && index && index.length === results.ages.length) {
-    const levels = bridgeAges.map((age) => index[results.ages.indexOf(age)])
-    if (levels.every((level) => Number.isFinite(level) && level > 0)) return levels
-  }
-  return bridgeAges.map((age) =>
-    Math.pow(1 + params.averageInflation, Math.max(0, age - params.currentAge))
-  )
-}
-
 export function computeBridgeAnalysis(
   params: SimulationParams,
   options: BridgeAnalysisOptions
 ): BridgeAnalysis {
-  const { unit } = options
-  const totalYearlyExpenses = calculateCombinedExpenses(params.customExpenses).combinedAnnual
+  const { unit, results } = options
+  const main = mainPension(params)
   const startAge = Math.max(params.retirementAge, params.currentAge)
-  // The bridge ends when the first pension pays, which may be years before
-  // the statutory age (a Versorgungswerk at 63, say).
-  const pensionAge = firstPensionAge(params.cashFlows ?? [], params.legalRetirementAge)
-  const endAge = Math.max(pensionAge - 1, startAge - 1)
+  const pensionAge = main?.startAge ?? params.legalRetirementAge
+  // Without a pension there is nothing to bridge to: the whole retirement runs
+  // on the portfolio, and calling its first years a "bridge" would promise an
+  // income that never starts.
+  const lastAge = main ? Math.min(pensionAge - 1, params.endAge) : startAge - 1
+  const endAge = Math.max(lastAge, startAge - 1)
   const yearsInBridge = Math.max(0, endAge - startAge + 1)
 
-  const bridgeAges = Array.from({ length: yearsInBridge }, (_, i) => startAge + i)
-  const levels =
-    unit === 'nominal' ? priceLevels(params, bridgeAges, options.results) : bridgeAges.map(() => 1)
-  const yearNeeds = levels.map((level) => Math.max(0, totalYearlyExpenses * level))
-  const cashNeedEUR = yearNeeds.reduce((sum, need) => sum + need, 0)
+  const rows = results ? ledgerRows(results, unit) : null
+  let yearNeeds: number[] | null = null
+  if (yearsInBridge === 0) {
+    yearNeeds = []
+  } else if (results && rows) {
+    const needs: number[] = []
+    for (let age = startAge; age <= endAge; age++) {
+      const index = results.ages.indexOf(age)
+      if (index === -1) break
+      needs.push(Math.max(0, rows[index].portfolioWithdrawal))
+    }
+    // Every bridge year or none: a partial sum would understate the need.
+    yearNeeds = needs.length === yearsInBridge ? needs : null
+  }
 
-  const cashBucketYears = defaultPdfConfig.bridge_cash_bucket_years as number
+  const cashNeedEUR = yearNeeds ? yearNeeds.reduce((sum, need) => sum + need, 0) : null
+
   let cashBucketSharePct = 0
-  if (yearsInBridge > 0 && cashNeedEUR > 0) {
+  if (yearNeeds && cashNeedEUR !== null && cashNeedEUR > 0) {
     const bucketSum = yearNeeds
-      .slice(0, Math.min(cashBucketYears, yearsInBridge))
+      .slice(0, Math.min(BRIDGE_CASH_BUCKET_YEARS, yearsInBridge))
       .reduce((sum, need) => sum + need, 0)
     cashBucketSharePct = Math.round((bucketSum / cashNeedEUR) * 100)
   }
   const portfolioSharePct =
-    yearsInBridge > 0 && cashNeedEUR > 0 ? Math.max(0, 100 - cashBucketSharePct) : 0
+    cashNeedEUR !== null && cashNeedEUR > 0 ? Math.max(0, 100 - cashBucketSharePct) : 0
 
   return {
     startAge,
     endAge,
     yearsInBridge,
     pensionAge,
+    mainPension: main ? (main.statutory ? 'statutory' : 'other') : 'none',
     unit,
     cashNeedEUR,
-    cashBucketYears,
+    cashBucketYears: BRIDGE_CASH_BUCKET_YEARS,
     cashBucketSharePct,
     portfolioSharePct,
   }

@@ -198,7 +198,7 @@ export function ChartTooltipCard({
   footer?: ReactNode
 }) {
   return (
-    <div className="rounded-sm pointer-events-none min-w-[12.5rem] border-2 border-border bg-card/95 px-3.5 py-3 shadow-sm backdrop-blur-sm">
+    <div className="rounded-sm pointer-events-none min-w-[12.5rem] border border-border bg-card/95 px-3.5 py-3 shadow-sm backdrop-blur-sm">
       <div className="mb-2 border-b border-ink/15 pb-1.5 text-[0.66rem] font-extrabold   text-ink">
         {title}
       </div>

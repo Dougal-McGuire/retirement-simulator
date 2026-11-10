@@ -16,11 +16,20 @@ import {
 import { withdrawalStrategyLabel } from '@/lib/pdf-generator/withdrawalStrategy'
 import { buildMethodologyCopy } from '@/lib/pdf-generator/methodologyCopy'
 import { buildEuroUnitCopy } from '@/lib/pdf-generator/euroUnitCopy'
-import './fonts'
+import { planBandOfRate } from '@/lib/pdf-generator/planScoreCopy'
 
 interface RetirementReportProps {
   content: ReportContent
 }
+
+/** Characters of "Plan: <name>" that fit one line under the cover title. */
+const COVER_PLAN_LINE_CHARS = 52
+/** Longest plan name the cover's narrow metadata column shows in two lines. */
+const COVER_METADATA_PLAN_CHARS = 28
+/** Longest plan name that fits the running header next to brand and date. */
+const RUNNING_HEADER_PLAN_CHARS = 60
+/** Longest plan name that fits the footer's left third next to the report id. */
+const RUNNING_FOOTER_PLAN_CHARS = 26
 
 interface ReportSection {
   id: string
@@ -51,6 +60,8 @@ function AppendixSection({
 
   const { methodology: methodologyText, successRate: successGlossaryText } = copy
 
+  // Percentiles have the card to the left of the glossary to themselves; an
+  // entry here would say the same thing twice on one page.
   const glossary: Array<{ term: string; text: string }> = isGerman
     ? [
         {
@@ -59,19 +70,15 @@ function AppendixSection({
         },
         {
           term: 'Planungs-Score',
-          text: 'Gewichteter Mittelwert aus Erfolgsquote (60 %), Entnahmerate (25 %) und Liquidität (15 %), auf ganze Punkte gerundet — identisch zur Anzeige im Dashboard.',
-        },
-        {
-          term: 'Perzentil (P10/P50/P90)',
-          text: 'Rangwert über alle Läufe: P50 ist der Medianpfad, P10 der konservative Rand, P90 der günstige Rand.',
+          text: copy.planScore,
         },
         {
           term: 'Überbrückungsphase',
-          text: 'Jahre zwischen dem gewählten Ruhestandsbeginn und dem Start der gesetzlichen Rente, in denen die Ausgaben vollständig aus dem Depot kommen.',
+          text: copy.bridge,
         },
         {
           term: 'Entnahmerate',
-          text: 'Erstjahresentnahme aus dem Depot geteilt durch das Depotvermögen zu Ruhestandsbeginn.',
+          text: copy.withdrawalRate,
         },
         {
           term: 'Realrendite',
@@ -85,19 +92,15 @@ function AppendixSection({
         },
         {
           term: 'Plan score',
-          text: 'Weighted mean of success rate (60%), withdrawal rate (25%) and liquidity (15%), rounded to whole points — the same figure the dashboard shows.',
-        },
-        {
-          term: 'Percentile (P10/P50/P90)',
-          text: 'Rank across all runs: P50 is the median path, P10 the conservative edge, P90 the favourable edge.',
+          text: copy.planScore,
         },
         {
           term: 'Bridge phase',
-          text: 'The years between the chosen retirement age and the start of the state pension, when spending comes entirely from the portfolio.',
+          text: copy.bridge,
         },
         {
           term: 'Withdrawal rate',
-          text: 'First-year portfolio withdrawal divided by portfolio value at retirement.',
+          text: copy.withdrawalRate,
         },
         {
           term: 'Real return',
@@ -156,11 +159,11 @@ function AppendixSection({
       label: isGerman ? 'Erfolgsdefinition' : 'Success defined as',
       value: legacyConditioned
         ? isGerman
-          ? 'Überleben + Nachlassziel'
-          : 'survival + bequest goal'
+          ? 'Ausgaben gedeckt + Nachlassziel'
+          : 'spending funded + bequest goal'
         : isGerman
-          ? 'Kapital nicht aufgebraucht'
-          : 'capital not exhausted',
+          ? 'Ausgaben jedes Jahr gedeckt'
+          : "every year's spending funded",
     },
   ]
 
@@ -210,12 +213,29 @@ function AppendixSection({
         }
       />
 
-      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-        <View style={[styles.card, { width: '55%', marginRight: 10, marginBottom: 0 }]}>
-        <Text style={styles.cardTitle}>{isGerman ? 'Methodik' : 'Methodology'}</Text>
-        <Text style={{ fontSize: 7.2, color: tokens.colors.ink[700], lineHeight: 1.42 }}>
-          {methodologyText}
-        </Text>
+      {/* The legal note sits under the methodology, in the space the taller
+          parameter table leaves free — the limits below can then use the full
+          width, which is what keeps the appendix on one page. */}
+      <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+        <View style={{ width: '55%', marginRight: 10 }}>
+          <View style={[styles.card, { marginBottom: 6 }]}>
+            <Text style={styles.cardTitle}>{isGerman ? 'Methodik' : 'Methodology'}</Text>
+            <Text style={{ fontSize: 7, color: tokens.colors.ink[700], lineHeight: 1.36 }}>
+              {methodologyText}
+            </Text>
+          </View>
+          <View style={[styles.cardMuted, { marginBottom: 0, paddingVertical: 7 }]}>
+            <Text
+              style={{ fontSize: 8, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 2 }}
+            >
+              {isGerman ? 'Wichtiger Hinweis' : 'Important Note'}
+            </Text>
+            <Text style={{ fontSize: 6.6, color: tokens.colors.ink[600], lineHeight: 1.35 }}>
+              {isGerman
+                ? 'Dieser Bericht dient ausschließlich der Information und stellt keine Anlage-, Steuer- oder Rechtsberatung dar. Alle Projektionen sind modellbasierte Schätzungen; tatsächliche Ergebnisse können erheblich abweichen. Vergangene Wertentwicklungen sind kein verlässlicher Indikator für zukünftige Ergebnisse.'
+                : 'This report is provided for information purposes only and does not constitute investment, tax, or legal advice. All projections are model-based estimates; actual outcomes may differ materially. Past performance is not a reliable indicator of future results.'}
+            </Text>
+          </View>
         </View>
 
         <View style={[styles.card, { flex: 1, marginBottom: 0 }]}>
@@ -225,10 +245,10 @@ function AppendixSection({
           <Table>
             {parameterRecap.map((row, index) => (
               <TableRow key={row.label} alt={index % 2 === 1}>
-                <TableCell width="60%">
+                <TableCell width="54%">
                   <Text style={{ fontSize: 7.5, lineHeight: 1.4 }}>{row.label}</Text>
                 </TableCell>
-                <TableCell width="40%" align="right">
+                <TableCell width="46%" align="right">
                   <Text style={{ fontSize: 7.5, fontWeight: 600, color: tokens.colors.ink[900] }}>
                     {row.value}
                   </Text>
@@ -239,8 +259,8 @@ function AppendixSection({
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-        <View style={[styles.card, { width: '42%', marginRight: 10, marginBottom: 0 }]}>
+      <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+        <View style={[styles.card, { width: '34%', marginRight: 10, marginBottom: 0 }]}>
           <Text style={styles.cardTitle}>
             {isGerman ? 'Perzentile richtig lesen' : 'How to Read Percentiles'}
           </Text>
@@ -282,45 +302,28 @@ function AppendixSection({
         </View>
       </View>
 
-      {/* Limits and the legal note sit side by side: stacked, the German
-          appendix spilled four lines onto a page of its own. */}
-      <View style={{ flexDirection: 'row' }}>
-        <View style={[styles.card, { width: '63%', marginRight: 10, marginBottom: 0 }]}>
-          <Text style={[styles.cardTitle, { marginBottom: 5 }]}>
-            {isGerman ? 'Grenzen des Modells' : 'Limits of the Model'}
-          </Text>
-          {limitations.map((limitation) => (
-            <View key={limitation} style={{ flexDirection: 'row', marginBottom: 3 }}>
-              <View
-                style={{
-                  width: 4,
-                  height: 4,
-                  backgroundColor: tokens.colors.brand.yellow,
-                  marginTop: 3.5,
-                  marginRight: 6,
-                }}
-              />
-              <Text
-                style={{ flex: 1, fontSize: 6.8, color: tokens.colors.ink[600], lineHeight: 1.35 }}
-              >
-                {limitation}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={[styles.cardMuted, { flex: 1, marginBottom: 0 }]}>
-          <Text
-            style={{ fontSize: 8, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 3 }}
-          >
-            {isGerman ? 'Wichtiger Hinweis' : 'Important Note'}
-          </Text>
-          <Text style={{ fontSize: 6.6, color: tokens.colors.ink[600], lineHeight: 1.35 }}>
-            {isGerman
-              ? 'Dieser Bericht dient ausschließlich der Information und stellt keine Anlage-, Steuer- oder Rechtsberatung dar. Alle Projektionen sind modellbasierte Schätzungen; tatsächliche Ergebnisse können erheblich abweichen. Vergangene Wertentwicklungen sind kein verlässlicher Indikator für zukünftige Ergebnisse.'
-              : 'This report is provided for information purposes only and does not constitute investment, tax, or legal advice. All projections are model-based estimates; actual outcomes may differ materially. Past performance is not a reliable indicator of future results.'}
-          </Text>
-        </View>
+      <View style={[styles.card, { marginBottom: 0, paddingVertical: 8 }]}>
+        <Text style={[styles.cardTitle, { marginBottom: 4 }]}>
+          {isGerman ? 'Grenzen des Modells' : 'Limits of the Model'}
+        </Text>
+        {limitations.map((limitation) => (
+          <View key={limitation} style={{ flexDirection: 'row', marginBottom: 2.5 }}>
+            <View
+              style={{
+                width: 4,
+                height: 4,
+                backgroundColor: tokens.colors.brand.yellow,
+                marginTop: 3.5,
+                marginRight: 6,
+              }}
+            />
+            <Text
+              style={{ flex: 1, fontSize: 6.8, color: tokens.colors.ink[600], lineHeight: 1.35 }}
+            >
+              {limitation}
+            </Text>
+          </View>
+        ))}
       </View>
     </View>
   )
@@ -341,15 +344,22 @@ export function RetirementReport({ content }: RetirementReportProps) {
   const planName = metadata.planName?.trim()
   const planLabel = isGerman ? 'Plan' : 'Plan'
   const documentTitle = planName ? `${reportTitle} — ${planName}` : reportTitle
+  // The running header and footer are single lines: a long name is cut there
+  // (with an ellipsis) rather than wrapped into the page. The cover prints it
+  // in full.
+  const shortPlan = (limit: number) =>
+    planName && planName.length > limit ? `${planName.slice(0, limit - 1).trimEnd()}…` : planName
 
   const headerConfig = {
     brand: brandName,
     right: planName
-      ? `${planLabel}: ${planName}  ·  ${generatedLong}`
+      ? `${planLabel}: ${shortPlan(RUNNING_HEADER_PLAN_CHARS)}  ·  ${generatedLong}`
       : `${reportTitle}  ·  ${generatedLong}`,
   }
   const footerConfig = {
-    left: planName ? `${planLabel}: ${planName}  ·  ${metadata.id}` : metadata.id,
+    left: planName
+      ? `${planLabel}: ${shortPlan(RUNNING_FOOTER_PLAN_CHARS)}  ·  ${metadata.id}`
+      : metadata.id,
     center: isGerman
       ? 'Vertraulich · Keine Anlageberatung'
       : 'Confidential · Not investment advice',
@@ -360,8 +370,11 @@ export function RetirementReport({ content }: RetirementReportProps) {
 
   const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
   const successRate = profile.success.successRate
+  // One grading of the success rate for the whole report: the app's bands
+  // (`getPlanHealth`, 90 % / 75 %), not a second set of thresholds.
+  const band = planBandOfRate(successRate)
   const badgeTone: 'success' | 'warning' | 'danger' =
-    successRate >= 0.8 ? 'success' : successRate >= 0.6 ? 'warning' : 'danger'
+    band === 'strong' ? 'success' : band === 'watch' ? 'warning' : 'danger'
 
   const milestones = projections.milestones
   const finalMedian = milestones[milestones.length - 1]?.p50 ?? 0
@@ -439,8 +452,8 @@ export function RetirementReport({ content }: RetirementReportProps) {
           title: 'Erfolgsquote prüfen',
           text:
             simulation.successDefinition === 'legacyConditioned'
-              ? `Sie zeigt, in wie vielen Läufen das Vermögen bis zum Planungsende reicht UND das Nachlassziel erreicht wird. Reines Überleben des Kapitals liegt bei ${fmtPercent(simulation.depletionSuccessRate, 1, intlLocale)}. Ab 85 % gilt ein Plan üblicherweise als tragfähig.`
-              : 'Sie zeigt, in wie vielen der Läufe das Vermögen bis zum Planungsende reicht. Ab 85 % gilt ein Plan üblicherweise als tragfähig.',
+              ? `Sie zeigt, in wie vielen Läufen die Ausgaben bis zum Planungsende in jedem Jahr gedeckt sind UND das Nachlassziel erreicht wird. Ohne Nachlassziel liegt die Quote bei ${fmtPercent(simulation.depletionSuccessRate, 1, intlLocale)}. Ab 85 % gilt ein Plan üblicherweise als tragfähig.`
+              : 'Sie zeigt, in wie vielen der Läufe die Ausgaben bis zum Planungsende in jedem Jahr gedeckt sind. Ab 85 % gilt ein Plan üblicherweise als tragfähig.',
         },
         {
           step: 'Schritt 2',
@@ -459,8 +472,8 @@ export function RetirementReport({ content }: RetirementReportProps) {
           title: 'Check the success rate',
           text:
             simulation.successDefinition === 'legacyConditioned'
-              ? `It shows how many runs keep capital alive to the horizon AND meet the bequest goal. Plain survival of the capital sits at ${fmtPercent(simulation.depletionSuccessRate, 1, intlLocale)}. Above 85% a plan is usually considered sustainable.`
-              : 'It shows how many runs keep capital alive to the planning horizon. Above 85% a plan is usually considered sustainable.',
+              ? `It shows in how many runs every year's spending to the horizon is funded AND the bequest goal is met. Without the bequest goal the rate is ${fmtPercent(simulation.depletionSuccessRate, 1, intlLocale)}. Above 85% a plan is usually considered sustainable.`
+              : "It shows in how many runs every year's spending to the planning horizon is funded. Above 85% a plan is usually considered sustainable.",
         },
         {
           step: 'Step 2',
@@ -503,8 +516,8 @@ export function RetirementReport({ content }: RetirementReportProps) {
     {
       label: isGerman ? 'Rote Markierung' : 'Red marker',
       text: isGerman
-        ? 'Kapitalerschöpfung — die einzige Bedeutung von Rot im Bericht'
-        : 'capital depletion — the only meaning red carries in this report',
+        ? 'Deckungslücke im Stressszenario — die einzige Bedeutung von Rot im Bericht'
+        : 'shortfall in the stress scenario — the only meaning red carries in this report',
       color: tokens.colors.danger[600],
       kind: 'line',
     },
@@ -587,6 +600,9 @@ export function RetirementReport({ content }: RetirementReportProps) {
               locale={content.locale}
               retireAge={profile.person.retireAge}
               pensionAge={profile.person.pensionAge}
+              // A plan name that wraps to a second line takes its height
+              // from the chart, so the cover stays one page.
+              height={planName && planName.length > COVER_PLAN_LINE_CHARS ? 222 : 246}
             />
           ) : undefined
         }
@@ -596,7 +612,12 @@ export function RetirementReport({ content }: RetirementReportProps) {
             : `Median asset path with P10–P90 band, age ${profile.person.currentAge} to ${profile.person.horizonAge}, ${unitCopy.tag} · detailed chart in section 03`
         }
         metadata={[
-          ...(planName ? [{ label: planLabel, value: planName }] : []),
+          // The plan is named under the title. Repeating it in this strip put
+          // an 80-character name into a fifth of the page width, where it ran
+          // to six lines and pushed the cover onto a second, blank page.
+          ...(planName && planName.length <= COVER_METADATA_PLAN_CHARS
+            ? [{ label: planLabel, value: planName }]
+            : []),
           { label: isGerman ? 'Berichts-ID' : 'Report ID', value: metadata.id },
           { label: isGerman ? 'Erstellt am' : 'Generated', value: generatedLong },
           {
@@ -672,11 +693,16 @@ export function RetirementReport({ content }: RetirementReportProps) {
                 <Text style={styles.kpiDescription}>
                   {simulation.successDefinition === 'legacyConditioned'
                     ? isGerman
-                      ? 'Kapital reicht + Nachlassziel erreicht'
-                      : 'capital lasts + bequest goal met'
+                      ? 'Ausgaben gedeckt + Nachlassziel erreicht'
+                      : 'spending funded + bequest goal met'
                     : isGerman
-                      ? 'Anteil der Läufe ohne Kapitalerschöpfung'
-                      : 'share of runs with no depletion'}
+                      ? 'Anteil der Läufe ohne Deckungslücke'
+                      : 'share of runs with no shortfall'}
+                  {profile.success.label
+                    ? isGerman
+                      ? ` · Einstufung: ${profile.success.label}`
+                      : ` · graded: ${profile.success.label}`
+                    : ''}
                 </Text>
               </View>
               <View style={[styles.cardMuted, { flex: 1, marginRight: 10, marginBottom: 0 }]} wrap={false}>
@@ -686,15 +712,29 @@ export function RetirementReport({ content }: RetirementReportProps) {
                     ? `${fmtNumber(profile.success.score, { locale: intlLocale })} / 100`
                     : '–'}
                 </Text>
+                {/* No band next to the score: the band grades the success
+                    rate, and is printed there. */}
                 <Text style={styles.kpiDescription}>
-                  {profile.success.label ?? (isGerman ? 'Nicht verfügbar' : 'Not available')}
+                  {profile.success.score === null
+                    ? isGerman
+                      ? 'Nicht verfügbar'
+                      : 'Not available'
+                    : profile.success.components.length > 1
+                      ? isGerman
+                        ? 'aus Erfolgsquote und Entnahmerate'
+                        : 'from success rate and withdrawal rate'
+                      : isGerman
+                        ? 'entspricht der Erfolgsquote'
+                        : 'equals the success rate'}
                 </Text>
               </View>
               <View style={[styles.cardMuted, { flex: 1, marginRight: 10, marginBottom: 0 }]} wrap={false}>
                 <Text style={styles.kpiLabel}>{isGerman ? 'Jahresbudget' : 'Annual Budget'}</Text>
                 <Text style={styles.kpiValue}>{fmtCurrency(annualSpend, intlLocale)}</Text>
                 <Text style={styles.kpiDescription}>
-                  {isGerman ? 'Ausgaben pro Jahr' : 'Spending per year'}
+                  {isGerman
+                    ? `Ausgaben pro Jahr, ${unitCopy.inputTag}`
+                    : `Spending per year, ${unitCopy.inputTag}`}
                 </Text>
               </View>
               <View style={[styles.cardMuted, { flex: 1, marginBottom: 0 }]} wrap={false}>

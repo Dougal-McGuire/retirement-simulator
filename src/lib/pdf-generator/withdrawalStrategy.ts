@@ -23,22 +23,28 @@ const LABELS: Record<WithdrawalStrategy, { de: string; en: string }> = {
   percentOfPortfolio: { de: 'Prozent vom Depot', en: 'Percent of portfolio' },
 }
 
+/**
+ * What each rule does, in the engine's terms: the rules govern the part of
+ * spending the **portfolio** pays. Pensions and recurring income come first,
+ * the rule's rate is the portfolio's share on top of them — so none of these
+ * sentences describes total spending as a percentage of the portfolio.
+ */
 const SUMMARIES: Record<WithdrawalStrategy, { de: string; en: string }> = {
   fixedReal: {
-    de: 'Die Ausgaben behalten ihre Kaufkraft, unabhängig von der Marktentwicklung.',
-    en: 'Spending keeps its purchasing power regardless of market returns.',
+    de: 'Das geplante Budget behält seine Kaufkraft, unabhängig von der Marktentwicklung.',
+    en: 'The planned budget keeps its purchasing power regardless of market returns.',
   },
   vanguardDynamic: {
-    de: 'Die Entnahme zielt auf einen Prozentsatz des Vorjahresdepots, darf gegenüber dem inflationsangepassten Vorjahr aber nur begrenzt steigen oder fallen.',
-    en: 'Withdrawals target a share of the prior year-end portfolio but may only rise or fall within a ceiling and floor around last year’s inflation-adjusted spending.',
+    de: 'Als leistbar gelten Renten und laufende Einnahmen plus ein Prozentsatz des Vorjahresdepots; die Ausgaben dürfen gegenüber dem inflationsangepassten Vorjahr aber nur begrenzt steigen oder fallen.',
+    en: 'What counts as affordable is pensions and recurring income plus a share of the prior year-end portfolio; spending may only rise or fall within a ceiling and floor around last year’s inflation-adjusted spending.',
   },
   guytonKlinger: {
-    de: 'Inflationsausgleich mit zwei Leitplanken: 10% Kürzung, sobald die Entnahmequote 20% über der Startquote liegt, 10% Aufschlag, sobald sie 20% darunter liegt.',
-    en: 'Inflation-linked spending with two guardrails: a 10% cut once the withdrawal rate runs 20% above the initial rate, a 10% raise once it runs 20% below.',
+    de: 'Inflationsausgleich mit zwei Leitplanken auf der Entnahmequote des Depots (Ausgaben, die Renten und Einnahmen nicht decken, geteilt durch das Depot): 10% Kürzung, sobald sie 20% über der Zielquote liegt, 10% Aufschlag, sobald sie 20% darunter liegt.',
+    en: 'Inflation-linked spending with two guardrails on the portfolio’s withdrawal rate (spending that pensions and income do not cover, over the portfolio): a 10% cut once it runs 20% above the target rate, a 10% raise once it runs 20% below.',
   },
   percentOfPortfolio: {
-    de: 'Jedes Jahr wird ein fester Prozentsatz des Depots entnommen. Das Depot kann rechnerisch nicht aufgezehrt werden, dafür schwanken die Ausgaben mit dem Markt.',
-    en: 'A fixed share of the portfolio is withdrawn every year. The portfolio cannot mathematically be exhausted, but spending swings with the market.',
+    de: 'Das Depot zahlt jedes Jahr einen festen Prozentsatz seines Wertes, zusätzlich zu Renten und laufenden Einnahmen. Die Regel allein zehrt das Depot nicht auf — geplante Sonderausgaben oder eine Ausgabenuntergrenze können es; die Ausgaben schwanken mit dem Markt.',
+    en: 'The portfolio pays a fixed share of its value every year, on top of pensions and recurring income. The rule alone cannot use the portfolio up — scheduled expenses or a spending floor can — and spending swings with the market.',
   },
 }
 
@@ -72,7 +78,7 @@ export function withdrawalStrategyRows(
     case 'vanguardDynamic':
       return [
         {
-          label: isGerman ? 'Zielentnahmerate' : 'Target withdrawal rate',
+          label: isGerman ? 'Zielentnahmerate vom Depot' : 'Target portfolio withdrawal rate',
           value: fmtPercent(assumptions.dsWithdrawalRate, 2, locale),
         },
         {
@@ -83,7 +89,9 @@ export function withdrawalStrategyRows(
     case 'guytonKlinger':
       return [
         {
-          label: isGerman ? 'Startentnahmerate' : 'Initial withdrawal rate',
+          // The rate the guardrails are measured against — every year, not
+          // only at the start.
+          label: isGerman ? 'Zielentnahmerate vom Depot' : 'Target portfolio withdrawal rate',
           value: fmtPercent(assumptions.dsWithdrawalRate, 2, locale),
         },
         {

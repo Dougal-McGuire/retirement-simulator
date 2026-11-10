@@ -11,12 +11,13 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useFormatter, useTranslations } from 'next-intl'
 import { ChevronLeft, ChevronRight, LoaderCircle, X } from 'lucide-react'
 import { adjacentPanels, assumptionPanel } from '@/components/plans/planSections'
-import { useSimulationResults } from '@/lib/stores/simulationStore'
+import { useUsableResults } from '@/components/workspace/useUsableResults'
 import { AnimatedNumber } from '../AnimatedNumber'
 import { useRunStatus } from '../useRunStatus'
 import { useSavedSuccessDelta } from '../useSavedSuccessDelta'
 import { useWorkspaceUiStore } from '../useWorkspaceUiStore'
 import { useWorkspace, useWorkspaceInternals, type EditorState } from '../WorkspaceProvider'
+import { SectionBoundary } from '@/components/errors/SectionBoundary'
 import { focusField } from './focusField'
 import { PANEL_CONTENT } from './panelContent'
 
@@ -77,7 +78,7 @@ function useOverlayTabCycle(active: boolean, panelRef: RefObject<HTMLElement | n
 
 function useRateText() {
   const format = useFormatter()
-  const results = useSimulationResults()
+  const results = useUsableResults()
   const formatRate = (value: number) =>
     format.number(value / 100, {
       style: 'percent',
@@ -120,47 +121,6 @@ function MiniResult() {
       )}
       {status === 'running' && <LoaderCircle className="ws-spin" size={16} aria-hidden="true" />}
     </div>
-  )
-}
-
-/**
- * Screen-reader users hear cause and effect: once per settled run (1 s after
- * the status returns to "updated") while the panel is open.
- */
-function LiveAnnouncer() {
-  const t = useTranslations('workspace.editPanel')
-  const rate = useRateText()
-  const delta = useSavedSuccessDelta()
-  const { status } = useRunStatus()
-  const [message, setMessage] = useState('')
-  const wasRunning = useRef(false)
-  const latest = useRef({ rate: rate.text, delta: delta.text })
-  useEffect(() => {
-    latest.current = { rate: rate.text, delta: delta.text }
-  }, [rate.text, delta.text])
-
-  useEffect(() => {
-    if (status === 'running') {
-      wasRunning.current = true
-      return
-    }
-    if (status !== 'updated' || !wasRunning.current) return
-    wasRunning.current = false
-    const timer = setTimeout(() => {
-      const { rate: rateText, delta: deltaText } = latest.current
-      setMessage(
-        deltaText
-          ? `${t('liveResult', { rate: rateText })} (${t('liveDelta', { delta: deltaText })})`
-          : t('liveResult', { rate: rateText })
-      )
-    }, 1000)
-    return () => clearTimeout(timer)
-  }, [status, t])
-
-  return (
-    <p className="sr-only" aria-live="polite" aria-atomic="true">
-      {message}
-    </p>
   )
 }
 
@@ -212,6 +172,8 @@ export function EditPanel() {
       if (!body) return
       if (!fieldId) {
         body.scrollTop = 0
+        // Short viewports scroll the whole panel (ws-page.css).
+        if (contentRef.current) contentRef.current.scrollTop = 0
         focusTitle()
         return
       }
@@ -342,7 +304,12 @@ export function EditPanel() {
         </div>
 
         <div ref={bodyRef} className="ws-panel-body @container">
-          <Content />
+          {/* A body that fails (or whose chunk does not arrive) keeps the
+              panel, its walk and Fertig usable. Keyed by panel: walking on
+              starts the next body fresh. */}
+          <SectionBoundary key={shown.panel} name={`panel-${shown.panel}`}>
+            <Content />
+          </SectionBoundary>
         </div>
 
         <footer className="ws-panel-footer">
@@ -386,7 +353,6 @@ export function EditPanel() {
             {t('done')}
           </button>
         </footer>
-        <LiveAnnouncer />
       </DialogPrimitive.Content>
     </DialogPrimitive.Root>
   )

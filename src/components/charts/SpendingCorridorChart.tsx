@@ -14,7 +14,7 @@ import {
 } from 'recharts'
 import { useFormatter, useTranslations } from 'next-intl'
 import type { SpendingCorridorPoint } from '@/lib/simulation/spendingCorridor'
-import { useIsMobile } from '@/lib/hooks/useMediaQuery'
+import { usePhoneLayout } from '@/lib/hooks/useMediaQuery'
 import {
   axisTick,
   brushChrome,
@@ -30,7 +30,7 @@ import {
 } from '@/components/charts/chartTheme'
 import { clampChartRange, sliceChartRange, type ChartIndexRange } from './chartRange'
 
-interface SpendingCorridorChartProps {
+export interface SpendingCorridorChartProps {
   points: SpendingCorridorPoint[]
   retirementAge: number
   legalRetirementAge: number
@@ -50,9 +50,9 @@ const MIN_PLOT_HEIGHT = 200
 
 /**
  * The Entnahme section's one spending chart: the P10–P90 band of simulated
- * spending, its median, and the floor and ceiling the rule itself promises.
- * Hovering an age also reads out the mean withdrawal rate (mean gross draw ÷
- * mean opening portfolio), which the old separate spending chart used to show.
+ * (paid) spending, its median, and the floor and ceiling the rule itself
+ * promises. Hovering an age also reads out the rule's own withdrawal rate
+ * (mean portfolio-funded baseline ÷ mean portfolio the rule measured).
  *
  * The plot follows its frame's width exactly, down to the 288px a 320px phone
  * leaves, so it never pushes the page sideways.
@@ -73,7 +73,7 @@ export const SpendingCorridorChart = memo(function SpendingCorridorChart({
   const tTable = useTranslations('simulationChart.spendingTable')
   const tUi = useTranslations('ui')
   const format = useFormatter()
-  const isMobile = useIsMobile()
+  const isMobile = usePhoneLayout()
   const frameRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [scaleMode, setScaleMode] = useState<ScaleMode>('focus')
@@ -214,12 +214,23 @@ export const SpendingCorridorChart = memo(function SpendingCorridorChart({
         dividerAbove: point.ceiling === null,
       })
     }
-    rows.push({
-      key: 'rate',
-      label: tSpending('legend.meanWithdrawalRate'),
-      value: formatRate(point.withdrawalRateMean),
-      dividerAbove: true,
-    })
+    // The rate the rule itself used; results booked before the engine recorded
+    // it fall back to the realised gross draw, under its own label.
+    rows.push(
+      point.ruleWithdrawalRate !== null
+        ? {
+            key: 'rate',
+            label: tSpending('legend.ruleWithdrawalRate'),
+            value: formatRate(point.ruleWithdrawalRate),
+            dividerAbove: true,
+          }
+        : {
+            key: 'rate',
+            label: tSpending('legend.meanWithdrawalRate'),
+            value: formatRate(point.withdrawalRateMean),
+            dividerAbove: true,
+          }
+    )
 
     return <ChartTooltipCard title={t('tooltip.label', { age: label ?? '' })} rows={rows} />
   }

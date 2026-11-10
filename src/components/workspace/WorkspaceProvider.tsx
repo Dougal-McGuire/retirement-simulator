@@ -24,10 +24,18 @@ import {
 import {
   WORKSPACE_SECTIONS,
   formatWorkspaceHash,
+  isWorkspaceSection,
   parseWorkspaceHash,
   scrollToElement,
   type WorkspaceSectionId,
 } from './workspaceNav'
+
+/** The workspace section an element sits in, if any. */
+function sectionOfElement(el: HTMLElement | null | undefined): WorkspaceSectionId | null {
+  if (!el?.isConnected) return null
+  const id = el.closest<HTMLElement>('[data-section]')?.dataset.section
+  return isWorkspaceSection(id) ? id : null
+}
 
 export type { AssumptionPanel } from '@/components/plans/planSections'
 export type { PanelMode } from './usePanelMode'
@@ -323,7 +331,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         )
       }
       commitEditor(null)
-      writeHash(sectionHash(useWorkspaceUiStore.getState().activeSection, undefined))
+      // Back to the section of the card that opened the panel (see openEditor).
+      const from = anchor ? sectionOfElement(invokerRef.current) : null
+      writeHash(sectionHash(from ?? useWorkspaceUiStore.getState().activeSection, undefined))
     },
     [anchorOn, commitEditor, writeHash, sectionHash]
   )
@@ -362,7 +372,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       invokerRef.current = who
       commitEditor({ panel: target.panel, fieldId: target.fieldId })
       setFocusRequest((count) => count + 1)
-      writeHash(sectionHash(useWorkspaceUiStore.getState().activeSection, target.panel))
+      // The section the click came from, when it came from one: the scroll
+      // spy can still name the section above while the card sits low on the
+      // screen (scroll padding keeps it clear of the bar), and the hash must
+      // bring the reader back to the card they used.
+      const section = sectionOfElement(who) ?? useWorkspaceUiStore.getState().activeSection
+      writeHash(sectionHash(section, target.panel))
     },
     [anchorOn, commitEditor, jumpToWithdrawal, resolveInvoker, sectionHash, writeHash]
   )
@@ -537,7 +552,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   // Warm the code-split panel contents while the reader looks at results.
   useEffect(() => {
-    const warm = () => void import('./edit/panelContent').then((m) => m.preloadPanelContent())
+    const warm = () =>
+      void import('./edit/panelContent')
+        .then((m) => m.preloadPanelContent())
+        // Only a warm-up: opening a panel loads (and retries) for real.
+        .catch(() => {})
     if (typeof window.requestIdleCallback === 'function') {
       const handle = window.requestIdleCallback(warm, { timeout: 4000 })
       return () => window.cancelIdleCallback(handle)

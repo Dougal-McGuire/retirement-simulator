@@ -73,12 +73,12 @@ export function WizardSliderField({
         <output
           htmlFor={id}
           aria-live="off"
-          className="rounded-sm border-2 border-border bg-secondary px-2.5 py-0.5 text-xs font-bold tabular-nums text-secondary-foreground shadow-sm"
+          className="rounded-sm border border-border bg-secondary px-2.5 py-0.5 text-xs font-bold tabular-nums text-secondary-foreground shadow-sm"
         >
           {valueLabel}
         </output>
       </div>
-      <div className="rounded-sm border-2 border-border bg-field px-4 pb-3 pt-5 shadow-sm">
+      <div className="rounded-sm border border-border bg-field px-4 pb-3 pt-5 shadow-sm">
         <Slider
           id={id}
           value={[value]}

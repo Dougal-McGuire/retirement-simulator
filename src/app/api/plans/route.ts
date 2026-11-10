@@ -1,11 +1,23 @@
 /**
- * Account-scoped plan storage.
+ * Account-scoped plan storage. Protocol: `docs/specs/2026-11-09-sync-protocol.md`.
  *
- *   GET  /api/plans -> { configured: true, schemaVersion, blob: CloudPlanBlob | null }
- *   PUT  /api/plans -> { configured: true, updatedAt: number }
+ *   GET  /api/plans -> { configured: true, schemaVersion, rev, blob: CloudPlanBlob | null }
+ *   PUT  /api/plans -> { configured: true, rev, updatedAt }
  *
  * Both require a signed-in Google account (401 otherwise) and a configured
  * backing store (501 otherwise).
+ *
+ * `blob: null` means exactly one thing: nothing is stored for this account. A
+ * store that cannot be read answers `502` instead — a client seeds an empty
+ * account from what it has locally, so "could not read" must never look like
+ * "empty".
+ *
+ * REVISIONS: `rev` counts the writes to the account's blob and is returned by
+ * both methods (body and `x-plan-rev`). A `PUT` must send the revision it is
+ * based on in `x-plan-rev` (`428` without it); the store compares and replaces
+ * in one atomic step and the route answers `412 { error: 'rev-mismatch', rev }`
+ * without writing when the account has moved on. The client then pulls, merges
+ * and pushes again.
  *
  * SCHEMA GUARD (see `src/lib/plans/schemaVersion.ts`): every request states the
  * client's `PLAN_SCHEMA_VERSION` in the `x-plan-schema` header (missing = 1,
@@ -29,21 +41,20 @@
 import { z } from 'zod'
 import { auth } from '@/auth'
 import { isAuthConfigured } from '@/lib/auth/env'
-import {
-  isCloudStoreConfigured,
-  readPlanBlob,
-  writePlanBlob,
-  readStoredSchemaVersion,
-} from '@/lib/server/planStore'
+import { isCloudStoreConfigured, readPlanBlob, writePlanBlob } from '@/lib/server/planStore'
 import {
   BUILD_ID,
   BUILD_ID_HEADER,
   OUTDATED_CLIENT_ERROR,
   OUTDATED_SERVER_ERROR,
+  PLAN_REV_HEADER,
   PLAN_SCHEMA_HEADER,
   PLAN_SCHEMA_VERSION,
+  REV_MISMATCH_ERROR,
+  parsePlanRev,
   parsePlanSchemaVersion,
 } from '@/lib/plans/schemaVersion'
+import { MAX_PLAN_TOMBSTONES } from '@/lib/stores/plans'
 import { MAX_PLANS } from '@/types'
 
 export const runtime = 'nodejs'
@@ -73,20 +84,26 @@ const PlanBlobSchema = z.object({
   updatedAt: z.number().finite().optional(),
   plans: z.array(PlanSchema).min(1).max(MAX_PLANS),
   activePlanId: z.string().min(1).max(MAX_PLAN_ID_LENGTH),
+  /** Deleted plan id -> time; the store drops expired and surplus entries. */
+  deletedPlans: z
+    .record(z.string().min(1).max(MAX_PLAN_ID_LENGTH), z.number().finite())
+    .refine((value) => Object.keys(value).length <= MAX_PLAN_TOMBSTONES * 2)
+    .optional(),
 })
 
 /** Headers on every answer: no caching, the server's schema and build. */
-function responseHeaders(): Record<string, string> {
+function responseHeaders(rev?: number): Record<string, string> {
   const headers: Record<string, string> = {
     'Cache-Control': 'no-store',
     [PLAN_SCHEMA_HEADER]: String(PLAN_SCHEMA_VERSION),
   }
   if (BUILD_ID) headers[BUILD_ID_HEADER] = BUILD_ID
+  if (rev !== undefined) headers[PLAN_REV_HEADER] = String(rev)
   return headers
 }
 
-const json = (body: unknown, status = 200) =>
-  Response.json(body, { status, headers: responseHeaders() })
+const json = (body: unknown, status = 200, rev?: number) =>
+  Response.json(body, { status, headers: responseHeaders(rev) })
 
 const unconfigured = () => json({ configured: false, error: 'cloud-sync-unconfigured' }, 501)
 
@@ -137,15 +154,29 @@ export async function GET(request: Request) {
   const conflict = checkClientVersion(request)
   if (conflict) return conflict
 
+  const stored = await readPlanBlob(accountId)
+
+  // Could not read (store down, timeout, quota, unreadable value): say so. The
+  // client reads `blob: null` as "seed this account from my device", so a
+  // failed read answered that way would get the account overwritten.
+  if (stored.status === 'error') return json({ error: 'read-failed' }, 502)
+
+  // Written by a newer deployment (this one is a rollback): our sanitizer
+  // would strip what it does not know, so the blob must not leave here.
+  if (stored.status === 'newer') return schemaConflict(OUTDATED_SERVER_ERROR)
+
   // A missing key is not an error: a brand-new account simply has no blob yet,
   // and the client's merge policy reads that as "seed me from this device".
-  const blob = await readPlanBlob(accountId)
-
-  // Written by a newer deployment (this one is a rollback): our sanitizer has
-  // already stripped what it does not know, so the blob must not leave here.
-  if (blob && blob.schemaVersion > PLAN_SCHEMA_VERSION) return schemaConflict(OUTDATED_SERVER_ERROR)
-
-  return json({ configured: true, schemaVersion: PLAN_SCHEMA_VERSION, blob })
+  return json(
+    {
+      configured: true,
+      schemaVersion: PLAN_SCHEMA_VERSION,
+      rev: stored.rev,
+      blob: stored.status === 'ok' ? stored.blob : null,
+    },
+    200,
+    stored.rev
+  )
 }
 
 export async function PUT(request: Request) {
@@ -170,23 +201,34 @@ export async function PUT(request: Request) {
     return json({ error: 'invalid-body' }, 400)
   }
 
-  // Never overwrite a blob a newer deployment wrote (rollback), and refuse
-  // when the guard cannot see what is stored. A check-then-write race only
-  // matters during a rollback with newer tabs still writing — accepted.
-  const stored = await readStoredSchemaVersion(accountId)
-  if (!stored.ok) return json({ error: 'write-failed' }, 502)
-  if (stored.version !== null && stored.version > PLAN_SCHEMA_VERSION) {
-    return schemaConflict(OUTDATED_SERVER_ERROR)
-  }
+  // A write replaces the whole blob, so it must say which revision it has
+  // seen: a client that never pulled (or pulled long ago) may not overwrite.
+  const expectedRev = parsePlanRev(request.headers.get(PLAN_REV_HEADER))
+  if (expectedRev === null) return json({ error: 'rev-required' }, 428)
 
-  // The blob records the highest version that ever wrote it — with both
-  // guards passed, that is this server's (= the writer's) version.
-  const result = await writePlanBlob(accountId, parsed.data, PLAN_SCHEMA_VERSION)
-  if (!result.ok) {
-    if (result.reason === 'too-large') return json({ error: 'too-large' }, 413)
-    if (result.reason === 'unconfigured') return unconfigured()
-    return json({ error: 'write-failed' }, 502)
-  }
+  // One atomic step in the store: compare the revision, refuse a blob a newer
+  // deployment wrote (rollback), replace. Nothing is read here first, so there
+  // is no check-then-write window, and nothing is written unless all of it holds.
+  const result = await writePlanBlob(accountId, parsed.data, { expectedRev })
 
-  return json({ configured: true, updatedAt: result.updatedAt })
+  switch (result.status) {
+    case 'ok':
+      return json(
+        { configured: true, rev: result.rev, updatedAt: result.updatedAt },
+        200,
+        result.rev
+      )
+    case 'conflict':
+      return json({ error: REV_MISMATCH_ERROR, rev: result.rev }, 412, result.rev)
+    case 'newer':
+      return schemaConflict(OUTDATED_SERVER_ERROR)
+    case 'too-large':
+      return json({ error: 'too-large' }, 413)
+    case 'invalid':
+      return json({ error: 'invalid-body' }, 400)
+    case 'unconfigured':
+      return unconfigured()
+    default:
+      return json({ error: 'write-failed' }, 502)
+  }
 }

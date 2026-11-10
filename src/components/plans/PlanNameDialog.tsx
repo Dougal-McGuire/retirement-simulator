@@ -104,7 +104,7 @@ export function PlanNameDialog({
               if (event.key === 'Enter') confirm()
             }}
             placeholder={placeholder}
-            className="rounded-sm mt-2 h-11 border-2 border-border bg-card px-3 py-2 text-[0.78rem] font-semibold"
+            className="rounded-sm mt-2 h-11 border border-border bg-card px-3 py-2 text-[0.78rem] font-semibold"
           />
         </div>
         <DialogFooter className="sm:flex-wrap">

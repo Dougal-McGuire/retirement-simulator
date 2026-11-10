@@ -1,3 +1,0 @@
-I want you to adress a small usability issue.
-In several input fields constraint on the possible value make it sometime difficult to change numbers.
-Suggest three differetn approaches to fix this!

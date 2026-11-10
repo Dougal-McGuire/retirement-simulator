@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils'
 import { useAuthEnabled, useCloudSyncEnabled } from './AuthProvider'
 import { AccountStatusLine } from './AccountStatusLine'
+import { flushPlanSync } from './PlanCloudSync'
 
 interface AuthMenuProps {
   className?: string
@@ -122,7 +123,12 @@ function AuthSession({ className, compact, signInRedirectTo }: AuthMenuProps) {
 
   const handleSignOut = useCallback(() => {
     setIsPending(true)
-    void signOut({ redirectTo: currentPath() }).finally(() => setIsPending(false))
+    // A change saved in the last two seconds is still waiting for its debounced
+    // push, and signing out ends the session that would send it: push it first
+    // (bounded — sign-out goes ahead after a short wait either way).
+    void flushPlanSync()
+      .then(() => signOut({ redirectTo: currentPath() }))
+      .finally(() => setIsPending(false))
   }, [])
 
   if (status === 'loading') {

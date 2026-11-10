@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/info-tip'
 import { Slider } from '@/components/ui/slider'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
-import { SpendingCorridorChart } from '@/components/charts/SpendingCorridorChart'
+import type { SpendingCorridorChartProps } from '@/components/charts/SpendingCorridorChart'
+import { SectionBoundary } from '@/components/errors/SectionBoundary'
+import { lazyComponent } from '@/components/lazy/lazyComponent'
 import { useChartFormatters } from '@/components/charts/useChartFormatters'
 import { AnimatedNumber } from '@/components/workspace/AnimatedNumber'
 import { LazyMount } from '@/components/workspace/LazyMount'
@@ -26,11 +28,8 @@ import {
 import { comparisonFingerprint } from '@/lib/simulation/planDiff'
 import { areSimulationParamsEqual } from '@/lib/simulation/planInsights'
 import { useDisplayReal } from '@/lib/stores/displayStore'
-import {
-  useSimulationParams,
-  useSimulationResults,
-  useUpdateParams,
-} from '@/lib/stores/simulationStore'
+import { useSimulationParams, useUpdateParams } from '@/lib/stores/simulationStore'
+import { useUsableResults } from '@/components/workspace/useUsableResults'
 import { cn } from '@/lib/utils'
 
 /**
@@ -41,6 +40,35 @@ import { cn } from '@/lib/utils'
  * make that difference signal rather than sampling noise, and a user who sees
  * 1,200 in one footnote and 400 in the other has to wonder which to believe.
  */
+/**
+ * The corridor chart, code-split: it is the only Recharts chart on the page's
+ * first screen path (below the fold, inside a `LazyMount`), and statically
+ * importing it put all of Recharts into the workspace's first-load JS. The
+ * placeholder is the chart's own frame at its final height, so nothing moves
+ * when it arrives; a chunk that does not arrive throws to the chart's
+ * `SectionBoundary`.
+ */
+const SpendingCorridorChart = lazyComponent<SpendingCorridorChartProps>(
+  () =>
+    import('@/components/charts/SpendingCorridorChart').then(
+      (module) => module.SpendingCorridorChart
+    ),
+  CorridorChartSkeleton
+)
+
+function CorridorChartSkeleton({ title }: SpendingCorridorChartProps) {
+  return (
+    <div className="ws-withdrawal-chart">
+      {title}
+      <Skeleton
+        variant="chart"
+        height="calc(var(--ws-withdrawal-chart-h) + 64px)"
+        className="ws-withdrawal-chart-placeholder"
+      />
+    </div>
+  )
+}
+
 const STRATEGY_COMPARE_RUNS = 1200
 
 /**
@@ -95,7 +123,7 @@ export function WithdrawalPlanner() {
   const format = useFormatter()
 
   const params = useSimulationParams()
-  const results = useSimulationResults()
+  const results = useUsableResults()
   const updateParams = useUpdateParams()
   const displayReal = useDisplayReal()
   const { formatCurrency, formatCurrencyShort } = useChartFormatters()
@@ -381,16 +409,18 @@ export function WithdrawalPlanner() {
               }
             >
               {corridor ? (
-                <SpendingCorridorChart
-                  title={corridorHeading}
-                  points={corridor.points}
-                  retirementAge={retirementAge}
-                  legalRetirementAge={results?.params.legalRetirementAge ?? 0}
-                  hasFloor={corridor.paths.hasFloor}
-                  hasCeiling={corridor.paths.hasCeiling}
-                  formatCurrency={formatCurrency}
-                  formatCurrencyShort={formatCurrencyShort}
-                />
+                <SectionBoundary name="chart-corridor">
+                  <SpendingCorridorChart
+                    title={corridorHeading}
+                    points={corridor.points}
+                    retirementAge={retirementAge}
+                    legalRetirementAge={results?.params.legalRetirementAge ?? 0}
+                    hasFloor={corridor.paths.hasFloor}
+                    hasCeiling={corridor.paths.hasCeiling}
+                    formatCurrency={formatCurrency}
+                    formatCurrencyShort={formatCurrencyShort}
+                  />
+                </SectionBoundary>
               ) : (
                 <div className="ws-withdrawal-chart">
                   {corridorHeading}
@@ -513,7 +543,7 @@ function StrategyCompare({
 }: StrategyCompareProps) {
   const t = useTranslations('withdrawalPlanner')
   const format = useFormatter()
-  const results = useSimulationResults()
+  const results = useUsableResults()
   const { editor } = useWorkspace()
   const { busy } = useRunStatus()
   const near = useNearViewport(areaRef, COMPARE_NEAR_MARGIN, { once: false })
@@ -667,6 +697,7 @@ function StrategyCompare({
         type="button"
         className="ws-withdrawal-apply"
         onClick={() => onApply(snapshot.strategy)}
+        aria-label={t('compare.applyAria', { strategy: strategyLabel(snapshot.strategy) })}
         data-testid={withTestId ? `strategy-compare-apply-${snapshot.strategy}` : undefined}
       >
         {t('compare.apply')}

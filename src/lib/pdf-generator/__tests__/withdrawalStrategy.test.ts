@@ -61,9 +61,27 @@ describe('withdrawal strategy in the report', () => {
     // The Vanguard guardrails are not inputs to the other two rules, so they
     // must not appear under them.
     expect(rowsFor('guytonKlinger')).not.toContain('Obergrenze')
-    expect(rowsFor('guytonKlinger')).toContain('Startentnahmerate')
+    // The rate the guardrails are measured against every year — not a rate
+    // that only applies at the start.
+    expect(rowsFor('guytonKlinger')).toContain('Zielentnahmerate vom Depot')
+    expect(rowsFor('guytonKlinger')).not.toContain('Startentnahmerate')
     expect(rowsFor('percentOfPortfolio')).not.toContain('Obergrenze')
     expect(rowsFor('percentOfPortfolio')).toContain('Ausgabenuntergrenze')
+  })
+
+  it('describes the rules as governing what the portfolio pays on top of other income', () => {
+    // The engine's rules take pensions and recurring income first; the rate is
+    // the portfolio's share on top. No summary may read as "total spending is
+    // x % of the portfolio", and none may promise the portfolio cannot run out.
+    for (const strategy of ['vanguardDynamic', 'guytonKlinger', 'percentOfPortfolio'] as const) {
+      expect(withdrawalStrategySummary(strategy, false)).toMatch(/pensions and (recurring )?income/)
+      expect(withdrawalStrategySummary(strategy, true)).toMatch(/Renten und (laufende[n]? )?Einnahmen/)
+    }
+    expect(withdrawalStrategySummary('percentOfPortfolio', false)).toContain(
+      'scheduled expenses or a spending floor can'
+    )
+    expect(withdrawalStrategySummary('percentOfPortfolio', false)).not.toMatch(/cannot mathematically/)
+    expect(withdrawalStrategySummary('percentOfPortfolio', true)).not.toMatch(/kann rechnerisch nicht/)
   })
 
   it('says "none" rather than €0 when the percentage rule has no floor', () => {

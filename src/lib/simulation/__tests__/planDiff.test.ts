@@ -10,11 +10,15 @@ import {
   buildAssumptionGroups,
   buildAssumptionRows,
   buildFlowDiffRows,
+  buildFlowSwitchRows,
   comparisonFingerprint,
+  diffFlowSwitches,
   diffParams,
+  isPositionalFlowId,
   matchFlowsAcrossPlans,
+  withSwitchesOf,
 } from '../planDiff'
-import { applyCashFlows, withCashFlowEnabled } from '../cashFlows'
+import { applyCashFlows, reconcileCashFlows, withCashFlowEnabled } from '../cashFlows'
 import type { CashFlow } from '@/types'
 
 const withParams = (overrides: Partial<SimulationParams>): SimulationParams => ({
@@ -98,7 +102,7 @@ describe('assumption rows', () => {
       withParams({ withdrawalStrategy: 'vanguardDynamic' }),
     ])
     expect(rowByKey(mixed, 'withdrawalStrategy')?.differs).toBe(true)
-    expect(rowByKey(mixed, 'dsWithdrawalRate')?.values).toEqual([0.05, 0.05])
+    expect(rowByKey(mixed, 'dsWithdrawalRate')?.values).toEqual([0.04, 0.04])
   })
 
   it('shows only the strategy parameters the compared strategies actually read', () => {
@@ -107,9 +111,9 @@ describe('assumption rows', () => {
     // did not apply.
     const gk = buildAssumptionRows([
       withParams({ withdrawalStrategy: 'guytonKlinger' }),
-      withParams({ withdrawalStrategy: 'guytonKlinger', dsWithdrawalRate: 0.04 }),
+      withParams({ withdrawalStrategy: 'guytonKlinger', dsWithdrawalRate: 0.03 }),
     ])
-    expect(rowByKey(gk, 'dsWithdrawalRate')?.values).toEqual([0.05, 0.04])
+    expect(rowByKey(gk, 'dsWithdrawalRate')?.values).toEqual([0.04, 0.03])
     expect(rowByKey(gk, 'dsCeilingRate')).toBeUndefined()
     expect(rowByKey(gk, 'dsFloorRate')).toBeUndefined()
     expect(rowByKey(gk, 'spendingFloorReal')).toBeUndefined()
@@ -512,7 +516,24 @@ describe('flow rows in the comparison', () => {
     ])
   })
 
-  it('reads an unset window as the plan default, so an explicit default is no change', () => {
+  it("compares a flow's own window, not the plan's horizon or current age", () => {
+    const lifelong: CashFlow = { ...care, id: 'rent', kind: 'income', name: 'Miete' }
+    delete lifelong.startAge
+    delete lifelong.endAge
+    const until: CashFlow = { ...care, id: 'loan', name: 'Kredit' }
+    delete until.startAge
+    // Same flows; the plans differ in horizon and current age only. The
+    // horizon is a row of its own — no flow row may claim a difference.
+    const short = applyCashFlows(
+      withParams({ currentAge: 40, endAge: 90, cashFlows: [lifelong, until, care] })
+    )
+    const long = applyCashFlows(
+      withParams({ currentAge: 50, endAge: 100, cashFlows: [lifelong, until, care] })
+    )
+    expect(buildFlowDiffRows([short, long])).toEqual([])
+  })
+
+  it('names an explicit window against an unset one: the cells read differently', () => {
     const lifelong: CashFlow = { ...care, id: 'rent', kind: 'income', name: 'Miete' }
     delete lifelong.startAge
     delete lifelong.endAge
@@ -521,7 +542,64 @@ describe('flow rows in the comparison', () => {
       startAge: DEFAULT_PARAMS.currentAge,
       endAge: DEFAULT_PARAMS.endAge,
     }
-    expect(buildFlowDiffRows([plan(lifelong), plan(explicit)])).toEqual([])
+    // "Whole plan" vs "Age 45–95".
+    expect(summary(buildFlowDiffRows([plan(lifelong), plan(explicit)]))).toEqual([
+      { key: 'flow:rent', change: 'terms', values: ['on', 'on'], termsDiffer: true },
+    ])
+  })
+
+  it('flags no row whose cells would read the same', () => {
+    // An explicit pension start equal to the plan's statutory age reads
+    // "From age 67" either way; a payment month is part of the cell.
+    const company: CashFlow = {
+      id: 'company',
+      kind: 'pension',
+      name: 'Betriebsrente',
+      amount: 300,
+      frequency: 'monthly',
+    }
+    const explicit = { ...company, startAge: DEFAULT_PARAMS.legalRetirementAge }
+    expect(buildFlowDiffRows([plan(company), plan(explicit)])).toEqual([])
+    expect(
+      buildFlowDiffRows([plan(inheritance), plan({ ...inheritance, amount: 80000.4 })])
+    ).toEqual([])
+    expect(
+      summary(
+        buildFlowDiffRows([plan(inheritance), plan({ ...inheritance, startDate: '2042-05' })])
+      )
+    ).toEqual([
+      { key: 'flow:inheritance', change: 'terms', values: ['on', 'on'], termsDiffer: true },
+    ])
+  })
+
+  it('names a different growth rate or inflation link, which no aggregate row shows', () => {
+    // Same amount, same window: the budget row reads the same in both plans,
+    // the results do not.
+    const base = plan()
+    const budgetId = base.customExpenses[0].id
+    const withFlow = (change: Partial<CashFlow>) =>
+      applyCashFlows({
+        ...base,
+        cashFlows: base.cashFlows.map((flow) =>
+          flow.id === budgetId ? { ...flow, ...change } : flow
+        ),
+      })
+
+    const growing = buildFlowDiffRows([base, withFlow({ growthRate: 0.015 })])
+    expect(
+      growing.map((row) => [row.key, row.change, row.termsDiffer, row.indexingDiffers])
+    ).toEqual([[`flow:${budgetId}`, 'terms', false, true]])
+
+    const fixed = buildFlowDiffRows([base, withFlow({ inflationLinked: false })])
+    expect(fixed.map((row) => [row.key, row.indexingDiffers])).toEqual([[`flow:${budgetId}`, true]])
+
+    // Unset and the defaults are the same thing.
+    expect(buildFlowDiffRows([base, withFlow({ growthRate: 0, inflationLinked: true })])).toEqual(
+      []
+    )
+    expect(
+      buildFlowDiffRows([withFlow({ growthRate: 0.015 }), withFlow({ growthRate: 0.015 })])
+    ).toEqual([])
   })
 
   it('leaves amount changes the aggregate rows already show to them', () => {
@@ -558,6 +636,32 @@ describe('flow rows in the comparison', () => {
     expect(
       summary(buildFlowDiffRows([plan(budgetItem), plan({ ...budgetItem, endAge: 75 })]))
     ).toEqual([{ key: 'flow:hobby', change: 'terms', values: ['on', 'on'], termsDiffer: true }])
+  })
+
+  it('names the statutory pension when its start, end or frequency moves, not its amount', () => {
+    const base = plan()
+    const moved = (change: Partial<CashFlow>) =>
+      applyCashFlows({
+        ...base,
+        cashFlows: base.cashFlows.map((flow) =>
+          flow.id === 'pension-statutory' ? { ...flow, ...change } : flow
+        ),
+      })
+    // Duplicate, move the statutory pension from 67 to 63.
+    const earlier = buildFlowDiffRows([base, moved({ startAge: 63 })])
+    expect(summary(earlier)).toEqual([
+      { key: 'flow:pension-statutory', change: 'terms', values: ['on', 'on'], termsDiffer: true },
+    ])
+    expect(earlier[0].flows.map((flow) => flow?.startAge)).toEqual([undefined, 63])
+    expect(buildFlowDiffRows([base, moved({ endAge: 85 })]).map((row) => row.change)).toEqual([
+      'terms',
+    ])
+    expect(
+      buildFlowDiffRows([base, moved({ frequency: 'annual' })]).map((row) => row.change)
+    ).toEqual(['terms'])
+    // The amount alone is the pension row's business.
+    const statutory = base.cashFlows.find((flow) => flow.id === 'pension-statutory')!
+    expect(buildFlowDiffRows([base, moved({ amount: statutory.amount + 100 })])).toEqual([])
   })
 
   it('never names the statutory pension as missing (its row shows 0 €)', () => {
@@ -636,6 +740,66 @@ describe('flow rows in the comparison', () => {
       ])
     })
 
+    it('never pairs two unrelated flows by a shared positional id alone', () => {
+      // Both created through the legacy `oneTimeIncomes` path: `income-0`.
+      const legacy = (oneTimeIncomes: SimulationParams['oneTimeIncomes']) =>
+        applyCashFlows({
+          ...withParams({ oneTimeIncomes }),
+          cashFlows: reconcileCashFlows({
+            cashFlows: DEFAULT_PARAMS.cashFlows,
+            oneTimeIncomes,
+            currentAge: DEFAULT_PARAMS.currentAge,
+          }),
+        })
+      const a = legacy([{ name: 'Erbschaft', age: 62, amount: 80000 }])
+      const b = legacy([{ name: 'Autoverkauf', age: 58, amount: 15000 }])
+      expect(a.cashFlows.find((flow) => flow.kind === 'income')?.id).toBe('income-0')
+      expect(b.cashFlows.find((flow) => flow.kind === 'income')?.id).toBe('income-0')
+
+      const rows = buildFlowDiffRows([a, b])
+      expect(rows.map((row) => `${row.change}:${row.name}`)).toEqual([
+        'presence:Erbschaft',
+        'presence:Autoverkauf',
+      ])
+      expect(rows.map((row) => row.values)).toEqual([
+        ['on', 'absent'],
+        ['absent', 'on'],
+      ])
+    })
+
+    it.each(['income-0', 'flow-2', 'expense-1', 'income-0-2', 'migrated-monthly-health'])(
+      'treats %s as positional',
+      (id) => {
+        expect(isPositionalFlowId(id)).toBe(true)
+        const first = plan({ ...inheritance, id })
+        const second = plan({ ...inheritance, id, name: 'Autoverkauf', amount: 15000 })
+        expect(buildFlowDiffRows([first, second]).map((row) => row.change)).toEqual([
+          'presence',
+          'presence',
+        ])
+      }
+    )
+
+    it.each(['flow-1730000000000-k3j9x2a', 'health', 'pension-statutory', 'inheritance'])(
+      'keeps matching the real id %s across a rename',
+      (id) => {
+        expect(isPositionalFlowId(id)).toBe(false)
+      }
+    )
+
+    it('pairs positional ids when the names agree, a seeded key resolved', () => {
+      const keyed: CashFlow = {
+        ...inheritance,
+        id: 'income-0',
+        name: 'Inheritance',
+        nameKey: 'demoInheritance',
+      }
+      const typed: CashFlow = { ...inheritance, id: 'income-0', name: 'erbschaft ', amount: 1 }
+      expect(summary(buildFlowDiffRows([plan(keyed), plan(typed)]))).toEqual([
+        { key: 'flow:income-0', change: 'terms', values: ['on', 'on'], termsDiffer: true },
+      ])
+    })
+
     it('never pairs flows of different kinds that share an id', () => {
       const income = { ...inheritance, id: 'flow-3' }
       const expense: CashFlow = { ...care, id: 'flow-3' }
@@ -661,5 +825,85 @@ describe('flow rows in the comparison', () => {
       ])
       expect(rows.map((row) => row.change)).toEqual(['terms'])
     })
+  })
+})
+
+describe('one matcher for switch rows, flow rows and the save dialog', () => {
+  const erbschaft: CashFlow = {
+    id: 'income-0',
+    kind: 'income',
+    name: 'Erbschaft',
+    amount: 80000,
+    frequency: 'once',
+    startAge: 62,
+  }
+  const bonus: CashFlow = { ...erbschaft, id: 'income-1', name: 'Bonus', amount: 20000 }
+  const plan = (...extra: CashFlow[]) =>
+    applyCashFlows(withParams({ cashFlows: [...DEFAULT_PARAMS.cashFlows, ...extra] }))
+  // Positional ids re-issued per plan, swapped between the two.
+  const base = plan(erbschaft, bonus)
+  const draft = plan(
+    { ...bonus, id: 'income-0' },
+    withCashFlowEnabled({ ...erbschaft, id: 'income-1' }, false)
+  )
+
+  it('names the flow that was switched, not the one that inherited its id', () => {
+    expect(buildFlowSwitchRows([base, draft])).toEqual([
+      { id: 'income-0', name: 'Erbschaft', values: ['on', 'off'] },
+    ])
+    expect(diffFlowSwitches(base, draft)).toEqual([
+      {
+        key: 'flow:income-0',
+        kind: 'flowSwitch',
+        from: 'on',
+        to: 'off',
+        flow: { name: 'Erbschaft' },
+      },
+    ])
+    expect(buildFlowDiffRows([base, draft]).filter((row) => row.change === 'switch')).toHaveLength(
+      1
+    )
+  })
+
+  it('applies the switches to the same pairs, leaving nothing else to report', () => {
+    const switched = withSwitchesOf(base, draft)
+    expect(
+      switched.cashFlows.filter((flow) => flow.enabled === false).map((flow) => flow.name)
+    ).toEqual(['Erbschaft'])
+    expect(diffParams(switched, draft)).toEqual([])
+  })
+})
+
+describe('budget vs scheduled classification', () => {
+  const row = (params: SimulationParams, key: string) =>
+    buildAssumptionRows([params]).find((entry) => entry.key === key)?.values[0]
+  const plain: CashFlow = {
+    id: 'club',
+    kind: 'expense',
+    name: 'Verein',
+    amount: 100,
+    frequency: 'monthly',
+  }
+
+  it.each([
+    ['a growth rate', { growthRate: 0.02 }],
+    ['a fixed nominal amount', { inflationLinked: false }],
+  ])('counts a lifetime expense with %s once, in the budget', (_label, extra) => {
+    const withPlain = applyCashFlows(withParams({ cashFlows: [plain] }))
+    const withExtra = applyCashFlows(withParams({ cashFlows: [{ ...plain, ...extra }] }))
+    expect(row(withExtra, 'monthlySpending')).toBe(100)
+    expect(row(withExtra, 'monthlySpending')).toBe(row(withPlain, 'monthlySpending'))
+    // Not a scheduled flow as well.
+    expect(row(withExtra, 'scheduledExpenses')).toBeUndefined()
+    expect(row(withExtra, 'scheduledItems')).toBeUndefined()
+  })
+
+  it('still schedules a windowed expense', () => {
+    const windowed = applyCashFlows(
+      withParams({ cashFlows: [{ ...plain, startAge: 70, endAge: 79 }] })
+    )
+    expect(row(windowed, 'monthlySpending')).toBe(0)
+    expect(row(windowed, 'scheduledExpenses')).toBeCloseTo(100 * 12 * 10)
+    expect(row(windowed, 'scheduledItems')).toBe(1)
   })
 })

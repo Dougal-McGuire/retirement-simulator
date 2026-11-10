@@ -27,14 +27,42 @@
  * History:
  *   1 — everything before the guard (no header sent).
  *   2 — `CashFlow.enabled` (switched-off flows, 62d6132).
+ *   3 — sync protocol with revisions and deletion tombstones
+ *       (`docs/specs/2026-11-09-sync-protocol.md`). The blob gains
+ *       `deletedPlans` and `rev`, and a write must name the revision it is
+ *       based on (`x-plan-rev`). A v2 build knows neither: it would drop the
+ *       tombstones from the blob and push deleted plans back, and it replaces
+ *       the blob without ever having read it. It is therefore refused (`409
+ *       outdated-client`) on every request and can neither read nor write.
  */
-export const PLAN_SCHEMA_VERSION = 2
+export const PLAN_SCHEMA_VERSION = 3
 
 /** Request and response header carrying a plan schema version. */
 export const PLAN_SCHEMA_HEADER = 'x-plan-schema'
 
 /** Response header carrying the server's build id (when it knows one). */
 export const BUILD_ID_HEADER = 'x-build-id'
+
+/**
+ * Revision of the account's blob: a counter the server increments on every
+ * write. `GET` answers with it; `PUT` must send the revision the client last
+ * saw and is refused with `412` when the account has moved on since.
+ */
+export const PLAN_REV_HEADER = 'x-plan-rev'
+
+/** `412` error code of `PUT /api/plans`: the stored revision is not the one sent. */
+export const REV_MISMATCH_ERROR = 'rev-mismatch'
+
+/** Parses a revision from a header or payload; `null` when it is not one. */
+export function parsePlanRev(value: unknown): number | null {
+  const parsed =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && /^\d+$/.test(value.trim())
+        ? Number(value.trim())
+        : NaN
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null
+}
 
 /** Version assumed for a request or blob that does not state one. */
 export const LEGACY_PLAN_SCHEMA_VERSION = 1
@@ -46,7 +74,10 @@ export const LEGACY_PLAN_SCHEMA_VERSION = 1
  *  - `outdated-server`: the client, or the stored blob, is newer than this
  *    deployment (a rollback while newer tabs or data exist).
  *
- * Both mean "this tab must not sync"; a reload is the way out of either.
+ * Both mean "this tab must not sync right now". A reload fixes
+ * `outdated-client` (it loads the newer build) and that tab stays paused until
+ * then; `outdated-server` is a rollback the user cannot fix, so the client
+ * waits and asks again the next time the tab gets focus.
  */
 export const OUTDATED_CLIENT_ERROR = 'outdated-client'
 export const OUTDATED_SERVER_ERROR = 'outdated-server'

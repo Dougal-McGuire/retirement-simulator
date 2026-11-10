@@ -5,7 +5,8 @@ import { pinnedBottom } from './workspaceNav'
 import { useWorkspaceUiStore } from './useWorkspaceUiStore'
 
 /**
- * Measures the pinned chrome and writes two CSS variables on `.ws-page`:
+ * Measures the pinned chrome and writes two CSS variables on `.ws-page`
+ * (plus `--ws-scroll-pad-top/-bottom` on `<html>` for the scroll margins):
  *
  * - `--ws-bar-bottom`: the pinned bottom edge of the result bar (the overlay
  *   panel starts there);
@@ -21,6 +22,7 @@ export function useStickyOffset(pageRef: RefObject<HTMLElement | null>): void {
     if (!page) return
     const bar = page.querySelector<HTMLElement>('[data-testid="result-bar"]')
     const index = page.querySelector<HTMLElement>('#navigation')
+    const root = document.documentElement
 
     let frame = 0
     let last = { barBottom: -1, stickyTop: -1, bottomInset: -1 }
@@ -40,6 +42,11 @@ export function useStickyOffset(pageRef: RefObject<HTMLElement | null>): void {
       if (barBottom !== last.barBottom) page.style.setProperty('--ws-bar-bottom', `${barBottom}px`)
       if (stickyTop !== last.stickyTop) page.style.setProperty('--ws-sticky-top', `${stickyTop}px`)
       if (stickyTop !== last.stickyTop || bottomInset !== last.bottomInset) {
+        // On <html>, for the page's scroll margins (ws-page.css): a focused
+        // control (Tab, find-in-page) stays clear of the sticky bar and the
+        // phones' fixed bottom bar (WCAG 2.4.11).
+        root.style.setProperty('--ws-scroll-pad-top', `${stickyTop}px`)
+        root.style.setProperty('--ws-scroll-pad-bottom', `${bottomInset}px`)
         useWorkspaceUiStore.setState({ stickyTop, bottomInset })
       }
       last = { barBottom, stickyTop, bottomInset }
@@ -56,6 +63,8 @@ export function useStickyOffset(pageRef: RefObject<HTMLElement | null>): void {
     return () => {
       observer?.disconnect()
       window.removeEventListener('resize', schedule)
+      root.style.removeProperty('--ws-scroll-pad-top')
+      root.style.removeProperty('--ws-scroll-pad-bottom')
       if (frame) window.cancelAnimationFrame(frame)
     }
   }, [pageRef])

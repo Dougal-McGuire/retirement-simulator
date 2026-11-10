@@ -1,8 +1,7 @@
 import type { SimulationParams, SimulationResults } from '@/types'
-import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
 import type { Recommendation } from '@/lib/pdf-generator/schema/reportData'
-import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { computeBridgeAnalysis, type BridgeUnit } from '@/lib/insights/bridge'
+import { firstYearWithdrawalRate } from '@/lib/insights/ledger'
 
 /**
  * Plan-derived recommendations for a **German** retirement plan.
@@ -41,8 +40,6 @@ export type RecommendationId =
 export type RecommendationLocale = 'en' | 'de'
 
 export type PlanRecommendation = Recommendation & { id: RecommendationId }
-
-export type RecommendationUplift = { title: string; upliftMin: number; upliftMax: number }
 
 const HEADINGS: Record<RecommendationId, Record<RecommendationLocale, [string, string]>> = {
   increaseSavings: {
@@ -128,6 +125,8 @@ export function generateRecommendations(
 
   const successRate = results.successRate
   const unit: BridgeUnit = options.unit ?? 'nominal'
+  // Ages and amount from one definition: the retirement years before the main
+  // pension pays, and what the ledger withdrew from the portfolio in them.
   const bridge = computeBridgeAnalysis(params, { unit, results })
   // The bridge need is the one derived amount quoted next to today's-euro
   // inputs, so it always says which euro it is in — the same words as the
@@ -136,18 +135,18 @@ export function generateRecommendations(
     unit === 'real'
       ? { en: " in today's euros", de: ' in heutiger Kaufkraft' }
       : { en: ' in nominal euros', de: ' in nominalen Euro' }
+  // Results without a ledger cannot state the need; the advice then stands
+  // without an amount rather than with an estimated one.
+  const bridgeNeed = bridge.cashNeedEUR
+  const pensionName =
+    bridge.mainPension === 'statutory'
+      ? { en: 'the statutory pension', de: 'der gesetzlichen Rente' }
+      : { en: 'the main pension', de: 'der größten Rente' }
   const accumulationYears = Math.max(0, params.retirementAge - params.currentAge)
 
-  // First retirement year: what the portfolio alone has to deliver, over what
-  // the median run holds at that point.
-  const annualSpend = calculateCombinedExpenses(params.customExpenses).combinedAnnual
-  const pensionAtRetirement =
-    pensionMonthlyAtAge(params.cashFlows ?? [], params.retirementAge, params.legalRetirementAge)
-      .total * 12
-  const retirementAssets =
-    results.assetPercentiles.p50[Math.max(0, params.retirementAge - params.currentAge)] ?? 0
-  const withdrawalRate =
-    retirementAssets > 0 ? Math.max(0, annualSpend - pensionAtRetirement) / retirementAssets : 0
+  // The first-year withdrawal rate as the engine booked it — the same figure
+  // the report and the plan score print (see `firstYearWithdrawalRate`).
+  const withdrawalRate = firstYearWithdrawalRate(params, results)
 
   // --- Outcome-driven levers -------------------------------------------------
 
@@ -160,9 +159,20 @@ export function generateRecommendations(
   }
 
   if (successRate < 85 && bridge.yearsInBridge > 0) {
+    const years = bridge.yearsInBridge
+    const need = {
+      en:
+        bridgeNeed === null
+          ? ''
+          : ` In those years the portfolio pays out ${eur(bridgeNeed)}${bridgeUnit.en}.`,
+      de:
+        bridgeNeed === null
+          ? ''
+          : ` In diesen Jahren zahlt das Depot ${eur(bridgeNeed)}${bridgeUnit.de} aus.`,
+    }
     push('delayRetirement', successRate < 70 ? 'High' : 'Medium', {
-      en: `Retiring at ${params.retirementAge} opens a ${bridge.yearsInBridge}-year gap to the first pension at ${bridge.pensionAge}, worth ${eur(bridge.cashNeedEUR)}${bridgeUnit.en} of spending the portfolio carries alone. Each extra working year shortens that gap and adds a year of contributions.`,
-      de: `Ein Ruhestand mit ${params.retirementAge} öffnet ${bridge.yearsInBridge} Jahre bis zur ersten Rente mit ${bridge.pensionAge} — ${eur(bridge.cashNeedEUR)} an Ausgaben${bridgeUnit.de}, die allein das Depot trägt. Jedes zusätzliche Arbeitsjahr verkürzt die Lücke und bringt ein weiteres Beitragsjahr.`,
+      en: `Retiring at ${params.retirementAge} leaves ${years} ${years === 1 ? 'year' : 'years'} until ${pensionName.en} starts at ${bridge.pensionAge}.${need.en} Each extra working year shortens that stretch and adds a year of contributions.`,
+      de: `Ein Ruhestand mit ${params.retirementAge} lässt ${years} ${years === 1 ? 'Jahr' : 'Jahre'} bis zum Beginn ${pensionName.de} mit ${bridge.pensionAge}.${need.de} Jedes zusätzliche Arbeitsjahr verkürzt diese Strecke und bringt ein weiteres Beitragsjahr.`,
     })
   }
 
@@ -173,10 +183,10 @@ export function generateRecommendations(
     })
   }
 
-  if (withdrawalRate > 0.045) {
+  if (withdrawalRate !== null && withdrawalRate > 0.045) {
     push('reviewSpending', withdrawalRate > 0.06 ? 'High' : 'Medium', {
-      en: `The first retirement year needs ${pct(withdrawalRate, 1)} of the portfolio. Above roughly 4.5% a plan is depending on a friendly first decade; the largest discretionary lines in the cash-flow list are where that rate falls fastest.`,
-      de: `Das erste Ruhestandsjahr benötigt ${pct(withdrawalRate, 1)} des Depots. Oberhalb von rund 4,5 % hängt der Plan an einem freundlichen ersten Jahrzehnt; die größten frei wählbaren Posten der Zahlungsliste senken die Quote am schnellsten.`,
+      en: `In the first retirement year ${pct(withdrawalRate, 1)} of the portfolio is withdrawn, tax on realised gains included. Above roughly 4.5% a plan is depending on a friendly first decade; the largest discretionary lines in the cash-flow list are where that rate falls fastest.`,
+      de: `Im ersten Ruhestandsjahr werden ${pct(withdrawalRate, 1)} des Depots entnommen, Steuern auf realisierte Gewinne eingerechnet. Oberhalb von rund 4,5 % hängt der Plan an einem freundlichen ersten Jahrzehnt; die größten frei wählbaren Posten der Zahlungsliste senken die Quote am schnellsten.`,
     })
   }
 
@@ -206,8 +216,10 @@ export function generateRecommendations(
 
   if (params.equityFundExemption < 0.3) {
     push('equityFundExemption', params.equityFundExemption <= 0 ? 'Medium' : 'Low', {
-      en: `The plan assumes a ${pct(params.equityFundExemption, 0)} Teilfreistellung. A fund holding more than 51% equity carries 30%, which raises the after-tax return of the same gross return without changing the risk — worth checking what the current holdings qualify for.`,
-      de: `Der Plan unterstellt ${pct(params.equityFundExemption, 0)} Teilfreistellung. Ein Fonds mit über 51 % Aktienquote trägt 30 % und hebt die Nachsteuerrendite bei gleicher Bruttorendite und gleichem Risiko — prüfenswert, was die aktuellen Positionen erfüllen.`,
+      // § 2 Abs. 6 InvStG: an Aktienfonds holds *more than 50 %* in equities on
+      // a continuous basis; § 20 Abs. 1 exempts 30 % of its gains.
+      en: `The plan assumes a ${pct(params.equityFundExemption, 0)} Teilfreistellung. A fund that continuously holds more than 50% in equities (an Aktienfonds under the InvStG) carries 30%, which raises the after-tax return of the same gross return without changing the risk — worth checking what the current holdings qualify for.`,
+      de: `Der Plan unterstellt ${pct(params.equityFundExemption, 0)} Teilfreistellung. Ein Fonds, der fortlaufend zu mehr als 50 % in Aktien investiert (Aktienfonds im Sinne des InvStG), trägt 30 % und hebt die Nachsteuerrendite bei gleicher Bruttorendite und gleichem Risiko — prüfenswert, was die aktuellen Positionen erfüllen.`,
     })
   }
 
@@ -224,55 +236,32 @@ export function generateRecommendations(
   // --- Liquidity -------------------------------------------------------------
 
   if (bridge.yearsInBridge > 0) {
+    // "Entirely on the portfolio" would be false as soon as anything else
+    // pays in those years; the amount is what the portfolio pays, no more.
+    const span =
+      bridge.startAge === bridge.endAge
+        ? { en: `At age ${bridge.startAge}`, de: `Im Alter ${bridge.startAge}` }
+        : {
+            en: `From age ${bridge.startAge} to ${bridge.endAge}`,
+            de: `Im Alter ${bridge.startAge}–${bridge.endAge}`,
+          }
+    const need = {
+      en:
+        bridgeNeed === null
+          ? `${span.en}, before ${pensionName.en} starts, the portfolio carries the plan.`
+          : `${span.en}, before ${pensionName.en} starts, the portfolio pays out ${eur(bridgeNeed)}${bridgeUnit.en}.`,
+      de:
+        bridgeNeed === null
+          ? `${span.de}, vor Beginn ${pensionName.de}, trägt das Depot den Plan.`
+          : `${span.de}, vor Beginn ${pensionName.de}, zahlt das Depot ${eur(bridgeNeed)}${bridgeUnit.de} aus.`,
+    }
     push('bridgeLiquidity', bridge.yearsInBridge >= 5 ? 'Medium' : 'Low', {
-      en: `Ages ${bridge.startAge}–${bridge.endAge} run entirely on the portfolio: ${eur(bridge.cashNeedEUR)}${bridgeUnit.en} before the statutory pension starts. Holding the first of those years in something that cannot fall — call money, short-dated Bundesanleihen — removes the one scenario where a crash forces a sale at the worst moment.`,
-      de: `Die Jahre ${bridge.startAge}–${bridge.endAge} laufen allein über das Depot: ${eur(bridge.cashNeedEUR)}${bridgeUnit.de} bis zum Beginn der gesetzlichen Rente. Die ersten dieser Jahre schwankungsfrei zu halten — Tagesgeld, kurz laufende Bundesanleihen — nimmt genau das Szenario heraus, in dem ein Crash den Verkauf zum schlechtesten Zeitpunkt erzwingt.`,
+      en: `${need.en} Holding the first of those years in something that cannot fall — call money, short-dated Bundesanleihen — removes the one scenario where a crash forces a sale at the worst moment.`,
+      de: `${need.de} Die ersten dieser Jahre schwankungsfrei zu halten — Tagesgeld, kurz laufende Bundesanleihen — nimmt genau das Szenario heraus, in dem ein Crash den Verkauf zum schlechtesten Zeitpunkt erzwingt.`,
     })
   }
 
   // Ranked, so the PDF's "top actions" really are the strongest ones.
   const rank = { High: 0, Medium: 1, Low: 2 } as const
   return out.sort((a, b) => rank[a.impact] - rank[b.impact]).slice(0, 6)
-}
-
-/**
- * Rough uplift range, in success-rate points, for the levers the app can put a
- * defensible number on. Everything else returns `null` and is shown without a
- * figure rather than with an invented one.
- */
-export function estimateRecommendationUplift(
-  recommendation: Recommendation,
-  params: SimulationParams,
-  results: SimulationResults
-): RecommendationUplift | null {
-  const successGap = Math.max(0, 85 - results.successRate)
-  const clampUplift = (value: number) => Math.max(1, Math.min(20, Math.round(value)))
-  const id = recommendation.id as RecommendationId | undefined
-
-  if (id === 'increaseSavings') {
-    const yearlySavingsMonths = params.annualSavings / 12
-    const min = clampUplift(successGap * 0.35 + Math.min(4, yearlySavingsMonths / 1000))
-    return { title: recommendation.title, upliftMin: min, upliftMax: clampUplift(min + 4) }
-  }
-
-  if (id === 'optimizeMix') {
-    const min = clampUplift(successGap * 0.2 + params.roiVolatility * 12)
-    return { title: recommendation.title, upliftMin: min, upliftMax: clampUplift(min + 3) }
-  }
-
-  if (id === 'delayRetirement') {
-    const bridgeYears = Math.max(0, params.legalRetirementAge - params.retirementAge)
-    const min = clampUplift(successGap * 0.28 + bridgeYears * 1.5)
-    return { title: recommendation.title, upliftMin: min, upliftMax: clampUplift(min + 5) }
-  }
-
-  if (id === 'reviewSpending') {
-    const monthlyExpenseLoad = params.customExpenses.reduce((sum, expense) => {
-      return sum + (expense.interval === 'monthly' ? expense.amount : expense.amount / 12)
-    }, 0)
-    const min = clampUplift(successGap * 0.18 + monthlyExpenseLoad / 3000)
-    return { title: recommendation.title, upliftMin: min, upliftMax: clampUplift(min + 3) }
-  }
-
-  return null
 }

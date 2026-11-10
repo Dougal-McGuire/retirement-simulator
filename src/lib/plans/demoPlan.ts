@@ -82,6 +82,10 @@ export function buildDemoPlanParams(): SimulationParams {
     // A bequest goal turns the success gauge into a strictly harder question,
     // which is exactly the behaviour the example is meant to demonstrate.
     legacyTargetReal: 150000,
+    // A notch below the default rate: with the bequest goal on top, 4% of the
+    // portfolio on top of the pension leaves the example below the "watch it"
+    // band (68% at 2,000 runs); 3.5% puts it at 83%.
+    dsWithdrawalRate: 0.035,
     glidePathEnabled: true,
     cashFlows,
   })

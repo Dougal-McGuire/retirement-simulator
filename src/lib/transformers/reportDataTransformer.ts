@@ -7,15 +7,26 @@ import {
 } from '@/lib/simulation/cashFlows'
 import type { ReportData } from '@/lib/pdf-generator/schema/reportData'
 import { buildSimulationContext } from '@/lib/simulation/context'
-import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { computeBridgeAnalysis } from '@/lib/insights/bridge'
 import { computePlanHealthScore } from '@/lib/insights/planHealth'
 import {
-  estimateRecommendationUplift,
+  firstRetirementYear,
+  firstYearWithdrawalRate,
+  ledgerRows,
+  pensionYear,
+  phaseFlow,
+  retirementSpending,
+} from '@/lib/insights/ledger'
+import type { LeverEffects } from '@/lib/insights/leverEffects'
+import {
   generateRecommendations,
   type RecommendationLocale,
 } from '@/lib/insights/recommendations'
-import { assetPercentilesIn, resolveEuroUnit } from '@/lib/pdf-generator/euroUnit'
+import {
+  assetPercentilesIn,
+  resolveEuroUnit,
+  type ReportEuroUnit,
+} from '@/lib/pdf-generator/euroUnit'
 
 export type ReportDataOptions = {
   /**
@@ -24,6 +35,59 @@ export type ReportDataOptions = {
    * report prints, so nothing here re-runs the simulation.
    */
   displayReal?: boolean
+  /**
+   * The stress levers measured against `results` (see `measureLeverEffects`).
+   * The caller measures — this function never runs a simulation. Omitted or
+   * `null`, the report carries no lever table.
+   */
+  leverEffects?: LeverEffects | null
+}
+
+/** A tenth of the runs: the share the report's stress case ("P10") stands for. */
+const STRESS_SHARE = 0.1
+
+/**
+ * The age by which a tenth of the runs has had a year whose spending could not
+ * be paid — read from the engine's own depletion data, which counts exactly
+ * the runs the success rate counts as failed.
+ *
+ * `null`: fewer than a tenth ever get there. `undefined`: the results carry no
+ * depletion data. Not derived from the P10 balance touching zero: with a
+ * pension that pays the budget, an empty portfolio is not a failed plan.
+ */
+export function stressShortfallAge(
+  results: Pick<SimulationResults, 'ages' | 'depletionByAge'>
+): number | null | undefined {
+  const shares = results.depletionByAge
+  if (!shares || shares.length !== results.ages.length) return undefined
+  const index = shares.findIndex((share) => share >= STRESS_SHARE - 1e-9)
+  return index === -1 ? null : results.ages[index]
+}
+
+/** The measured levers in the report's unit; `undefined` when they do not fit `results`. */
+function leverEffectsFor(
+  effects: LeverEffects | null | undefined,
+  results: SimulationResults,
+  units: ReportEuroUnit,
+  baseWorstDecileEnd: number
+): NonNullable<ReportData['summary']>['leverEffects'] {
+  if (!effects || effects.levers.length === 0) return undefined
+  // Measured against another result (the plan changed while the report was
+  // being prepared): not this report's numbers.
+  if (Math.abs(effects.baseSuccessRate - results.successRate) > 1e-9) return undefined
+  const real = units.applied === 'real'
+  const levers = effects.levers.map((lever) => ({
+    id: lever.id,
+    successRatePct: lever.successRate,
+    deltaPoints: lever.delta,
+    worstDecileEndEUR: real ? lever.worstDecileEndReal : lever.worstDecileEnd,
+  }))
+  if (levers.some((lever) => lever.worstDecileEndEUR === null)) return undefined
+  return {
+    baseSuccessRatePct: effects.baseSuccessRate,
+    baseWorstDecileEndEUR: baseWorstDecileEnd,
+    levers: levers.map((lever) => ({ ...lever, worstDecileEndEUR: lever.worstDecileEndEUR ?? 0 })),
+  }
 }
 
 export function transformToReportData(
@@ -43,6 +107,7 @@ export function transformToReportData(
   // results can really be expressed that way; otherwise the report stays
   // nominal and says so — it never mixes the two.
   const units = resolveEuroUnit(results, options.displayReal === true)
+  const unit = units.applied
   const assets = assetPercentilesIn(results, units)
 
   // Generate milestones from simulation results
@@ -56,49 +121,78 @@ export function transformToReportData(
   }))
 
   // Plan-derived, already in the report's language.
-  const recommendations = generateRecommendations(params, results, locale, { unit: units.applied })
+  const recommendations = generateRecommendations(params, results, locale, { unit })
 
   // Derived figures
   const monthlyExpenses = params.customExpenses.filter((e) => e.interval === 'monthly')
   const annualExpenses = params.customExpenses.filter((e) => e.interval === 'annual')
 
-  // Nominal: each bridge year priced at the run's median price level, like the
-  // nominal charts. Real: today's budget per year.
-  const bridge = computeBridgeAnalysis(params, { unit: units.applied, results })
+  // The retirement years before the main pension pays, and what the ledger
+  // withdrew from the portfolio in them — in the report's unit.
+  const bridge = computeBridgeAnalysis(params, { unit, results })
 
-  // Ratios have no unit, so the € switch must not move them. The budget is in
-  // today's euros, so they are taken against today's-euro assets whenever the
-  // results allow it — in both modes — and nominal ones only when nothing else
-  // exists (the same basis in both modes then too).
-  const ratioUnit = resolveEuroUnit(results, true)
-  const retirementIndex = results.ages.indexOf(params.retirementAge)
-  const retirementMedian =
-    retirementIndex === -1 ? undefined : assetPercentilesIn(results, ratioUnit).p50[retirementIndex]
-  const ratioOf = (amount: number) =>
-    retirementMedian !== undefined && retirementMedian > 0 ? amount / retirementMedian : null
+  // Everything below is read from the engine's ledger. Without one (results
+  // stored before it existed) the block is absent and the report prints
+  // dashes, not estimates.
+  const hasLedger = ledgerRows(results, unit) !== null
+  const bridgePhase =
+    bridge.yearsInBridge > 0 ? phaseFlow(results, unit, bridge.startAge, bridge.endAge) : null
+  // The pension phase starts once the main pension pays and the plan is in
+  // retirement; without a pension it is simply the retirement.
+  const drawdownStart = Math.max(
+    bridge.mainPension === 'none' ? params.retirementAge : bridge.pensionAge,
+    params.retirementAge,
+    params.currentAge
+  )
+  const ledger: ReportData['ledger'] = hasLedger
+    ? {
+        firstRetirementYear: firstRetirementYear(params, results, unit),
+        pensionYear: pensionYear(params, results, unit),
+        retirementSpending: retirementSpending(params, results, unit),
+        phases: {
+          accumulation:
+            params.retirementAge > params.currentAge
+              ? phaseFlow(results, unit, params.currentAge, params.retirementAge - 1)
+              : null,
+          bridge: bridgePhase,
+          pension: phaseFlow(results, unit, drawdownStart, params.endAge),
+        },
+      }
+    : undefined
+
+  // Ratios have no unit, so the € switch must not move them: the withdrawal
+  // rate is the ledger's one definition, and the bridge share is taken on
+  // today's euros whenever the results allow it — in both modes.
+  const ratioUnit = ledgerRows(results, 'real') ? 'real' : 'nominal'
+  const ratioBridge = computeBridgeAnalysis(params, { unit: ratioUnit, results })
+  const ratioRetirement = firstRetirementYear(params, results, ratioUnit)
   const ratios = {
-    firstYearWithdrawalRate: ratioOf(
-      calculateCombinedExpenses(params.customExpenses).combinedAnnual
-    ),
-    bridgeShareOfRetirementAssets: ratioOf(
-      Math.round(computeBridgeAnalysis(params, { unit: ratioUnit.applied, results }).cashNeedEUR)
-    ),
+    firstYearWithdrawalRate: firstYearWithdrawalRate(params, results),
+    bridgeShareOfRetirementAssets:
+      ratioBridge.yearsInBridge > 0 &&
+      ratioBridge.cashNeedEUR !== null &&
+      ratioRetirement !== null &&
+      ratioRetirement.openingAssets > 0
+        ? ratioBridge.cashNeedEUR / ratioRetirement.openingAssets
+        : null,
   }
-  // Unit-free: the score reads the success rate and today's-euro inputs only.
+
+  // Unit-free: the score reads the success rate and the ledger's withdrawal rate.
   const health = computePlanHealthScore(params, results)
   // One description of the run, built by the same function the dashboard uses.
   // Everything the report says about run counts, the market model or what
   // "success" means is read off this object — nothing is re-derived downstream.
   const context = buildSimulationContext(params, results)
 
-  const topRecs = recommendations
-  const topActions = topRecs.slice(0, 2).map((r) => r.title)
-  const uplifts = topRecs
-    .slice(0, 2)
-    .map((rec) => estimateRecommendationUplift(rec, params, results))
-    .filter(
-      (uplift): uplift is { title: string; upliftMin: number; upliftMax: number } => uplift !== null
-    )
+  const shortfallAge = stressShortfallAge(results)
+
+  const topActions = recommendations.slice(0, 2).map((r) => r.title)
+  const leverEffects = leverEffectsFor(
+    options.leverEffects,
+    results,
+    units,
+    assets.p10[assets.p10.length - 1] ?? 0
+  )
 
   // Transform the data to match PDF generator schema
   return {
@@ -111,7 +205,8 @@ export function transformToReportData(
     finances: {
       currentAssetsEUR: params.currentAssets,
       annualSavingsEUR: params.annualSavings,
-      // Every pension paying out at the statutory age, not just the statutory one.
+      // Every pension paying out at the statutory age, not just the statutory
+      // one — the amounts as entered (gross, in the euros each is quoted in).
       expectedMonthlyPensionEUR: pensionMonthlyAtAge(
         params.cashFlows ?? [],
         params.legalRetirementAge,
@@ -249,25 +344,34 @@ export function transformToReportData(
     projections: {
       milestones,
       successRatePct: results.successRate,
+      ...(shortfallAge !== undefined ? { stressShortfallAge: shortfallAge } : {}),
       ratios,
     },
+    ...(ledger ? { ledger } : {}),
     summary: {
       planHealthScore: health.score,
-      planHealthLabel: health.label,
-      planHealthWhy: health.why,
-      planHealthWhyBits: health.whyBits,
+      planHealthBand: health.band,
       planHealthComponents: health.components,
+      planHealthWithdrawalRate: health.withdrawalRate,
       successProbabilityPct: results.successRate,
-      bridge: {
-        startAge: bridge.startAge,
-        endAge: bridge.endAge,
-        cashNeedEUR: Math.round(bridge.cashNeedEUR),
-        cashBucketYears: bridge.cashBucketYears,
-        cashBucketSharePct: bridge.cashBucketSharePct,
-        portfolioSharePct: bridge.portfolioSharePct,
-      },
+      // Only a bridge the report can put a figure on: years to bridge, a
+      // pension to bridge to, and a ledger to read the amount from.
+      ...(bridge.yearsInBridge > 0 && bridge.mainPension !== 'none' && bridge.cashNeedEUR !== null
+        ? {
+            bridge: {
+              startAge: bridge.startAge,
+              endAge: bridge.endAge,
+              pensionAge: bridge.pensionAge,
+              mainPension: bridge.mainPension,
+              cashNeedEUR: Math.round(bridge.cashNeedEUR),
+              cashBucketYears: bridge.cashBucketYears,
+              cashBucketSharePct: bridge.cashBucketSharePct,
+              portfolioSharePct: bridge.portfolioSharePct,
+            },
+          }
+        : {}),
       topActions,
-      topActionsDetailed: uplifts,
+      ...(leverEffects ? { leverEffects } : {}),
     },
     recommendations,
     units,

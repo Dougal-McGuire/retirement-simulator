@@ -17,9 +17,14 @@ export const DEFAULT_PATH_SEED = 0x5eed_c0de
 /**
  * What "success" counts as for a given plan.
  *
- * - `legacyConditioned`: a run succeeds only if it never depletes **and** its
- *   real terminal assets clear `legacyTargetReal`. Strictly harder.
- * - `depletion`: plain survival — the plan has no bequest goal.
+ * - `legacyConditioned`: a run succeeds only if every year was funded **and**
+ *   its real terminal assets clear `legacyTargetReal`. Strictly harder.
+ * - `depletion`: every year funded — the plan has no bequest goal.
+ *
+ * "Funded" is the engine's definition: no year's shortfall above 1 % of the
+ * spending requested for it (`UNFUNDED_SPENDING_TOLERANCE`). A balance of zero
+ * is not a failure when income pays the budget. The names keep "depletion"
+ * because for a plan without income the two are the same event.
  */
 export type SuccessDefinition = 'legacyConditioned' | 'depletion'
 
@@ -47,9 +52,9 @@ export interface SimulationContext {
   legacyTargetReal: number
   /** Share of runs (0..100) meeting `successDefinition`. */
   successRate: number
-  /** Share of runs (0..100) that merely never depleted. */
+  /** Share of runs (0..100) in which every year was funded, bequest goal aside. */
   depletionSuccessRate: number
-  /** Share of runs (0..100) whose assets were exhausted before the horizon. */
+  /** Share of runs (0..100) with an unfunded year before the horizon. */
   depletionRisk: number
   /** Runs meeting `successDefinition`, as a count out of `effectiveRuns`. */
   successCount: number
@@ -78,7 +83,9 @@ export interface SimulationContext {
  * How many paths the engine runs for these parameters. The engine calls this
  * too, so a caption can never disagree with the loop that produced the number.
  */
-export function effectiveRunCount(params: Pick<SimulationParams, 'marketModel' | 'simulationRuns'>) {
+export function effectiveRunCount(
+  params: Pick<SimulationParams, 'marketModel' | 'simulationRuns'>
+) {
   return params.marketModel === 'historical' ? HISTORICAL_PATH_COUNT : params.simulationRuns
 }
 

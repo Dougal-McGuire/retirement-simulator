@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePlanSyncStore } from '@/lib/stores/planSync'
+import { MAX_PLANS } from '@/types'
 
 /** Relative timestamps only need to be roughly right. */
 const TICK_MS = 30_000
@@ -39,7 +40,12 @@ export function AccountStatusLine() {
   const t = useTranslations('auth')
   const phase = usePlanSyncStore((state) => state.phase)
   const lastSyncedAt = usePlanSyncStore((state) => state.lastSyncedAt)
+  const planLimit = usePlanSyncStore((state) => state.planLimit)
   const relative = useRelativeLabel(lastSyncedAt)
+
+  // Synced, but the plan limit keeps some plans on one side only.
+  const atLimit = phase === 'synced' && planLimit !== null
+  const isSynced = phase === 'synced' && !atLimit
 
   const label =
     phase === 'syncing'
@@ -48,11 +54,14 @@ export function AccountStatusLine() {
         ? t('sync.offline')
         : phase === 'outdated'
           ? t('sync.outdated')
-          : phase === 'synced' && relative
-            ? t('sync.synced', { when: relative })
-            : null
+          : phase === 'server-outdated'
+            ? t('sync.serverOutdated')
+            : atLimit
+              ? t('sync.planLimit', { count: planLimit.unsynced + planLimit.hidden })
+              : isSynced && relative
+                ? t('sync.synced', { when: relative })
+                : null
 
-  const isSynced = phase === 'synced'
   const tooltip =
     label === null
       ? t('localOnly')
@@ -60,12 +69,16 @@ export function AccountStatusLine() {
         ? t('sync.hint')
         : phase === 'outdated'
           ? t('sync.outdatedHint')
-          : t('sync.offlineHint')
+          : phase === 'server-outdated'
+            ? t('sync.serverOutdatedHint')
+            : atLimit
+              ? t('sync.planLimitHint', { max: MAX_PLANS })
+              : t('sync.offlineHint')
 
   const dotClass =
     phase === 'syncing'
       ? 'bg-accent animate-pulse'
-      : phase === 'offline' || phase === 'outdated'
+      : phase === 'offline' || phase === 'outdated' || phase === 'server-outdated' || atLimit
         ? 'bg-viz-orange'
         : isSynced
           ? 'bg-ok'

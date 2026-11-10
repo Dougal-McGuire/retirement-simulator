@@ -4,8 +4,13 @@ import {
   netPensionAnnualAtAge,
   pensionMonthlyAtAge,
 } from '@/lib/simulation/cashFlows'
-import { calculateCombinedExpenses, netAnnualPension } from '@/lib/simulation/engine'
+import {
+  calculateCombinedExpenses,
+  netAnnualPension,
+  normalizeSimulationParams,
+} from '@/lib/simulation/engine'
 import { cashFlowsEqual, isCashFlowEnabled } from '@/lib/simulation/cashFlows'
+import { firstYearWithdrawalRate as ledgerWithdrawalRate } from '@/lib/insights/ledger'
 
 export type PlanHealth = 'strong' | 'watch' | 'strained'
 
@@ -76,10 +81,41 @@ const scaleExpenseFlows = (flows: CashFlow[], multiplier: number) =>
       : flow
   )
 
+/**
+ * Normalised parameter sets by object identity. The store hands out a new
+ * `params` object per edit and `results.params` lives as long as its results,
+ * so a selector that runs on every store update normalises each at most once.
+ */
+const normalizedByIdentity = new WeakMap<SimulationParams, SimulationParams>()
+
+function normalizedParams(params: SimulationParams): SimulationParams {
+  let normalized = normalizedByIdentity.get(params)
+  if (!normalized) {
+    normalized = normalizeSimulationParams(params)
+    normalizedByIdentity.set(params, normalized)
+  }
+  return normalized
+}
+
+/**
+ * True when both parameter sets describe the same simulation — i.e. results
+ * computed for one are the results of the other.
+ *
+ * Both sides are compared **as the engine reads them** (normalised). The
+ * second argument is usually `results.params`, which is the engine's
+ * normalised copy of what it was asked to run; comparing it with the raw
+ * request made every plan the engine had to repair look permanently stale
+ * (a retirement age below the current age, a run count above the cap, an
+ * out-of-range rate). Normalising the request the same way asks the question
+ * that matters: would a re-run produce anything else?
+ */
 export function areSimulationParamsEqual(
-  currentParams: SimulationParams,
-  resultParams: SimulationParams
+  currentInput: SimulationParams,
+  resultInput: SimulationParams
 ): boolean {
+  const currentParams = normalizedParams(currentInput)
+  const resultParams = normalizedParams(resultInput)
+
   if (currentParams.withdrawalStrategy !== resultParams.withdrawalStrategy) {
     return false
   }
@@ -184,8 +220,9 @@ export function buildPlanInsightMetrics(
     pensionContext
   )
   const firstYearPortfolioNeed = Math.max(0, combinedExpenses.combinedAnnual - firstYearPension)
-  const firstYearWithdrawalRate =
-    retirementMedianAssets > 0 ? firstYearPortfolioNeed / retirementMedianAssets : null
+  // The one definition the report and the plan score use: what the engine
+  // booked, not a rate re-derived from the budget and the median portfolio.
+  const firstYearWithdrawalRate = results ? ledgerWithdrawalRate(params, results) : null
   const realReturn = (1 + params.averageROI) / (1 + params.averageInflation) - 1
   const pensionStart = firstPensionAge(params.cashFlows ?? [], params.legalRetirementAge)
 

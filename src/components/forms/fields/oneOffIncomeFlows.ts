@@ -1,5 +1,5 @@
 import type { CashFlow, OneTimeIncome } from '@/types'
-import { isCashFlowEnabled, withCashFlowEnabled } from '@/lib/simulation/cashFlows'
+import { hasOnceIncomeShape, isCashFlowEnabled } from '@/lib/simulation/cashFlows'
 
 /**
  * The setup wizard's one-off income list, read from and written to the flow
@@ -18,13 +18,8 @@ export interface OneOffIncomeEntry extends OneTimeIncome {
   enabled: boolean
 }
 
-/** A fresh flow id, unique enough for one browser's plans. */
-export const createFlowId = (): string =>
-  `flow-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-
 /** A one-off income flow, switched on or off. */
-export const isOneOffIncomeFlow = (flow: CashFlow): boolean =>
-  flow.kind === 'income' && flow.frequency === 'once'
+export const isOneOffIncomeFlow = hasOnceIncomeShape
 
 /** Every one-off income in list order, named as the UI names it. */
 export function oneOffIncomeEntries(
@@ -86,16 +81,4 @@ export function updateOneOffIncome(
       ...(keepsAge && startDate !== undefined ? { startDate } : {}),
     }
   })
-}
-
-/** Drops one flow by id. */
-export function removeFlow(flows: readonly CashFlow[] | undefined, id: string): CashFlow[] {
-  return (flows ?? []).filter((flow) => flow.id !== id)
-}
-
-/** Flips one flow's switch, as the flow list does. */
-export function toggleFlow(flows: readonly CashFlow[] | undefined, id: string): CashFlow[] {
-  return (flows ?? []).map((flow) =>
-    flow.id === id ? withCashFlowEnabled(flow, !isCashFlowEnabled(flow)) : flow
-  )
 }

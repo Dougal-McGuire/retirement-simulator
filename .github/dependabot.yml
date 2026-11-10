@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: npm # pnpm-lock.yaml is supported
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      # One PR a week for everything that stays within its major.
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Pinned on purpose: Auth.js v5 is still a beta (see DEPLOYMENT.md).
+      - dependency-name: next-auth
+      # Must match the Chromium build preinstalled in the agent sandboxes;
+      # bump together with that image.
+      - dependency-name: '@playwright/test'
+        update-types: [version-update:semver-minor]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']

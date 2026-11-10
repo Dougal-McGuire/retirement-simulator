@@ -12,9 +12,10 @@
 
 /** Zustand `persist` key for the simulation store. */
 export const BASE_STORE_KEY = 'retirement-simulator-store'
-/** Legacy standalone params snapshot key (`saveToStorage` / `loadFromStorage`). */
-export const BASE_PARAMS_KEY = 'retirement-simulator-params'
-/** Saved setups key. */
+/**
+ * Pre-plan saved setups. Nothing writes this key any more; it is read once, by
+ * the legacy import that turns old setups into plans.
+ */
 export const BASE_SAVED_SETUPS_KEY = 'retirement-simulator-saved-setups'
 /**
  * Marks that pre-plan saved setups have been imported as plans, so the one-time
@@ -30,7 +31,6 @@ export const BASE_PLANS_MIGRATED_KEY = 'retirement-simulator-plans-migrated'
 /** Every key the browser-local workspace of one namespace is made of. */
 export const NAMESPACED_BASE_KEYS = [
   BASE_STORE_KEY,
-  BASE_PARAMS_KEY,
   BASE_SAVED_SETUPS_KEY,
   BASE_PLANS_IMPORTED_KEY,
 ] as const

@@ -8,7 +8,7 @@ import {
   type KeyValueStorage,
 } from '../authMigration'
 import {
-  BASE_PARAMS_KEY,
+  BASE_PLANS_IMPORTED_KEY,
   BASE_SAVED_SETUPS_KEY,
   BASE_STORE_KEY,
   namespaceStorageKey,
@@ -207,8 +207,10 @@ describe('storage helpers', () => {
   it('copies every namespaced key without touching the anonymous ones', () => {
     const storage = makeStorage({
       [BASE_STORE_KEY]: multiPlanBlob(),
-      [BASE_PARAMS_KEY]: JSON.stringify(DEFAULT_PARAMS),
+      [BASE_PLANS_IMPORTED_KEY]: '1',
       [BASE_SAVED_SETUPS_KEY]: '[]',
+      // A key no build reads any more is not part of the workspace.
+      'retirement-simulator-params': JSON.stringify(DEFAULT_PARAMS),
     })
 
     const copied = copyAnonymousWorkspace(USER, storage)
@@ -216,9 +218,11 @@ describe('storage helpers', () => {
     expect(copied).toBe(3)
     expect(storage.getItem(namespaceStorageKey(BASE_STORE_KEY, USER))).toBe(multiPlanBlob())
     expect(storage.getItem(namespaceStorageKey(BASE_SAVED_SETUPS_KEY, USER))).toBe('[]')
+    expect(storage.getItem(namespaceStorageKey(BASE_PLANS_IMPORTED_KEY, USER))).toBe('1')
+    expect(storage.getItem(namespaceStorageKey('retirement-simulator-params', USER))).toBeNull()
     // Anonymous data stays exactly as it was, so signing out restores it.
     expect(storage.getItem(BASE_STORE_KEY)).toBe(multiPlanBlob())
-    expect(storage.getItem(BASE_PARAMS_KEY)).toBe(JSON.stringify(DEFAULT_PARAMS))
+    expect(storage.getItem(BASE_PLANS_IMPORTED_KEY)).toBe('1')
   })
 
   it('marks an account as answered so the prompt never repeats', () => {

@@ -8,7 +8,9 @@ import {
   buildScenarioParams,
   type ScenarioId,
 } from '@/lib/simulation/planInsights'
-import { useSimulationResults, useSimulationStore } from '@/lib/stores/simulationStore'
+import { useSimulationStore } from '@/lib/stores/simulationStore'
+import { useUsableResults } from '@/components/workspace/useUsableResults'
+import { isUsableResults } from '@/lib/results/usableResults'
 import { isRunBusy } from '../useRunStatus'
 import { useWorkspace } from '../WorkspaceProvider'
 
@@ -153,7 +155,7 @@ export function useSettledBase({
   // Deferred inside the page's results scope: a landing run reaches the list
   // after the result bar. The settle timer and the `getState()` checks
   // compare against the store, so a superseded result is never measured.
-  const results = useSimulationResults()
+  const results = useUsableResults()
   // Narrow selectors: while a slider is scrubbed these flip a few times, and
   // only then does the list re-render.
   const busy = useSimulationStore((state) =>
@@ -162,14 +164,14 @@ export function useSettledBase({
       pending: state.pendingRun,
       suspended: state.autoRunSuspended,
       stale: false,
-      hasResults: state.results !== null,
+      hasResults: isUsableResults(state.results),
       error: state.error,
       holding: false,
     })
   )
   const current = useSimulationStore(
     (state) =>
-      state.results !== null && areSimulationParamsEqual(state.params, state.results.params)
+      isUsableResults(state.results) && areSimulationParamsEqual(state.params, state.results.params)
   )
 
   const gateOpen = shouldMeasureLevers({

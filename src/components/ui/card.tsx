@@ -27,15 +27,19 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 )
 CardHeader.displayName = 'CardHeader'
 
-const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h3
-      ref={ref}
-      className={cn('theme-panel-title text-2xl font-bold leading-none ', className)}
-      {...props}
-    />
-  )
-)
+const CardTitle = React.forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement> & {
+    /** Heading level in the page outline (default h3). */
+    as?: 'h2' | 'h3' | 'h4'
+  }
+>(({ className, as: Heading = 'h3', ...props }, ref) => (
+  <Heading
+    ref={ref}
+    className={cn('theme-panel-title text-2xl font-bold leading-none ', className)}
+    {...props}
+  />
+))
 CardTitle.displayName = 'CardTitle'
 
 const CardDescription = React.forwardRef<

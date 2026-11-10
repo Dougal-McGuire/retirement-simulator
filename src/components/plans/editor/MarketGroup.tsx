@@ -14,11 +14,8 @@ import {
   HISTORICAL_LAST_YEAR,
   HISTORICAL_PATH_COUNT,
 } from '@/lib/simulation/data/historicalMarket'
-import {
-  useSimulationParams,
-  useSimulationResults,
-  useUpdateParams,
-} from '@/lib/stores/simulationStore'
+import { useSimulationParams, useUpdateParams } from '@/lib/stores/simulationStore'
+import { useUsableResults } from '@/components/workspace/useUsableResults'
 import { useWorkspace } from '@/components/workspace/WorkspaceProvider'
 import { PanelGroupBody, PresetRow, isClose, useEditorFormat } from './shared'
 
@@ -42,7 +39,7 @@ export function MarketGroup() {
   const tTax = useTranslations('parameterControls.fields.tax')
   const tWorkspace = useTranslations('workspace.editPanel')
   const params = useSimulationParams()
-  const results = useSimulationResults()
+  const results = useUsableResults()
   const updateParams = useUpdateParams()
   const { openEditor } = useWorkspace()
   const { formatCurrency, formatPercent, formatInteger, numberRange, notANumber } =
@@ -444,9 +441,7 @@ export function MarketGroup() {
                   onClick={() => updateParams({ householdType: type })}
                   className="ws-choice"
                 >
-                  <span className="ws-choice-title">
-                    {tTax(`household.options.${type}.label`)}
-                  </span>
+                  <span className="ws-choice-title">{tTax(`household.options.${type}.label`)}</span>
                   <span className="ws-choice-detail">
                     {tTax(`household.options.${type}.description`)}
                   </span>

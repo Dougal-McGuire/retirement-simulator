@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useMemo, useState, useSyncExternalStore, type MouseEvent } from 'react'
+import { memo, useMemo, useState, type MouseEvent } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { ArrowLeftRight, ArrowRight, CopyPlus } from 'lucide-react'
 import { MAX_PLANS, type SimulationResults } from '@/types'
@@ -10,6 +10,7 @@ import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
 import { toast } from '@/components/ui/toast'
 import { planDisplayName } from '@/lib/plans/planName'
 import { useDisplayReal } from '@/lib/stores/displayStore'
+import { usePhoneLayout } from '@/lib/hooks/useMediaQuery'
 import { useSetComparisonSelection } from '@/lib/stores/comparisonStore'
 import { suggestDuplicateName } from '@/lib/stores/plans'
 import { effectiveRunCount } from '@/lib/simulation/context'
@@ -18,37 +19,18 @@ import {
   useActivePlanId,
   useDuplicatePlan,
   usePlans,
-  useSimulationResults,
   useSimulationStore,
 } from '@/lib/stores/simulationStore'
+import { useUsableResults } from '@/components/workspace/useUsableResults'
 import { simulationContextOf } from '@/lib/stores/useSimulationContext'
+import { SectionBoundary } from '@/components/errors/SectionBoundary'
 import { AnimatedNumber } from '../AnimatedNumber'
 import { LazyMount } from '../LazyMount'
 import { Skeleton } from '../Skeleton'
 import { useWorkspace, type EditTarget } from '../WorkspaceProvider'
 import { WorkspaceSection } from './WorkspaceSection'
 import './result.css'
-
-const PHONE_QUERY = '(max-width: 760px)'
-
-function subscribePhone(onChange: () => void) {
-  const media = window.matchMedia(PHONE_QUERY)
-  media.addEventListener('change', onChange)
-  return () => media.removeEventListener('change', onChange)
-}
-
-/**
- * The phone layout (≤760), right on the first client render. `useMediaQuery`
- * starts at `false` and corrects itself in an effect, which drew the fan at
- * the desktop height for a frame and then shrank it under the reader.
- */
-function usePhoneLayout(): boolean {
-  return useSyncExternalStore(
-    subscribePhone,
-    () => window.matchMedia(PHONE_QUERY).matches,
-    () => false
-  )
-}
+import { useMoney } from '@/lib/hooks/useMoney'
 
 /**
  * Entry into plan comparison. With two or more plans it lines up the active
@@ -157,8 +139,7 @@ const ResultBody = memo(function ResultBody({ results }: { results: SimulationRe
     () => buildCompactKpis(results.params, results, { displayReal }),
     [results, displayReal]
   )
-  const euro = (value: number) =>
-    format.number(value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+  const euro = useMoney().full
   const formatRate = (value: number) =>
     format.number(value / 100, {
       style: 'percent',
@@ -257,7 +238,9 @@ const ResultBody = memo(function ResultBody({ results }: { results: SimulationRe
         <h3 id="result-assets-title">{t('assetTitle')}</h3>
         <p>{t('assetDescription')}</p>
         <LazyMount minHeight={fanTotal} fallback={<FanSkeleton />}>
-          <MemoFanChartCard results={results} displayReal={displayReal} height={fanHeight} />
+          <SectionBoundary name="chart-fan">
+            <MemoFanChartCard results={results} displayReal={displayReal} height={fanHeight} />
+          </SectionBoundary>
         </LazyMount>
       </section>
 
@@ -328,8 +311,7 @@ function ResultSkeleton({ label }: { label: string }) {
   const legalAge = useSimulationStore((state) => state.params.legalRetirementAge)
   const historical = useSimulationStore((state) => state.params.marketModel === 'historical')
   const runs = useSimulationStore((state) => effectiveRunCount(state.params))
-  const euro = (value: number) =>
-    format.number(value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+  const euro = useMoney().full
   const rate = format.number(0.888, {
     style: 'percent',
     minimumFractionDigits: 1,
@@ -424,7 +406,7 @@ function ResultSkeleton({ label }: { label: string }) {
  */
 export const ResultSection = memo(function ResultSection() {
   const t = useTranslations('workspace')
-  const results = useSimulationResults()
+  const results = useUsableResults()
   return (
     <WorkspaceSection
       id="result"

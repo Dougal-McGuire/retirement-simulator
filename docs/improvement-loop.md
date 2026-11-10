@@ -53,7 +53,7 @@ Repo rules:
 - Preserve existing uncommitted work. Never revert files you did not change.
 - Keep changes small enough to verify within this cycle.
 - Prefer existing Next.js, React, Tailwind, Jest, Playwright, Zustand, next-intl, and React PDF patterns.
-- Treat /api/generate-pdf as the active PDF path; the HTML print route is legacy.
+- The PDF report is built in the browser (src/lib/pdf-generator/client); there is no report endpoint and no request may carry plan data.
 
 Cycle objective:
 1. Inspect git status, recent failures, TODO/FIXME comments, test gaps, and obvious UX/performance friction.

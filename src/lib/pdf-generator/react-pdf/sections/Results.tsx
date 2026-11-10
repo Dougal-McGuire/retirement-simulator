@@ -38,32 +38,44 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
   const unitCopy = buildEuroUnitCopy(content.units, content.locale)
 
   // Build outcome table: interval ages plus life milestones. The interval is
-  // widened for long horizons so the section always fits on a single page.
+  // widened for long horizons so the section always fits on a single page —
+  // the life milestones are never the rows that get dropped.
+  const MAX_SIMULATED_ROWS = 9
   const horizonYears = person.horizonAge - person.currentAge
-  const ageStep = horizonYears > 30 ? 10 : 5
   const keyAges = new Set([person.currentAge, person.retireAge, person.pensionAge, person.horizonAge])
-  const tableAges = new Set<number>(keyAges)
-  for (let age = person.currentAge; age <= person.horizonAge; age += ageStep) {
-    tableAges.add(age)
+  const rowsAtStep = (step: number) => {
+    const ages = new Set<number>(keyAges)
+    for (let age = person.currentAge; age <= person.horizonAge; age += step) ages.add(age)
+    return milestones.filter((m) => ages.has(m.age)).sort((a, b) => a.age - b.age)
   }
-  const outcomeRows = milestones
-    .filter((m) => tableAges.has(m.age))
-    .sort((a, b) => a.age - b.age)
-    .slice(0, 10)
+  const outcomeRows =
+    [5, 10, 15, 20, 25]
+      .filter((step) => step > 5 || horizonYears <= 30)
+      .map(rowsAtStep)
+      .find((rows) => rows.length <= MAX_SIMULATED_ROWS) ??
+    // Even 25-year steps do not fit: the life milestones alone.
+    rowsAtStep(Number.POSITIVE_INFINITY)
 
+  // Every simulated row is the state at the END of the year of that age. The
+  // row for the current age therefore already contains a year of savings and
+  // returns — it is not "today"; today is the capital that was entered.
   const milestoneLabel = (age: number): string | null => {
-    if (age === person.currentAge) return isGerman ? 'Heute' : 'Today'
+    if (age === person.currentAge) return isGerman ? 'Ende 1. Planjahr' : 'End of plan year 1'
     if (age === person.retireAge) return isGerman ? 'Ruhestand' : 'Retirement'
-    if (age === person.pensionAge) return isGerman ? 'Rentenbeginn' : 'State pension'
+    if (age === person.pensionAge) return isGerman ? 'Gesetzl. Rentenalter' : 'Statutory pension age'
     if (age === person.horizonAge) return isGerman ? 'Planungsende' : 'Horizon'
     return null
   }
 
   const finalMedian = milestones[milestones.length - 1]?.p50 ?? 0
-  const retireMilestone = milestones.find((m) => m.age === person.retireAge)
-  const startAssets = milestones[0]?.p50 ?? 0
+  // Capital at the start of retirement = the end of the last working year.
+  const retireStartMilestone =
+    person.retireAge > person.currentAge
+      ? milestones.find((m) => m.age === person.retireAge - 1)
+      : undefined
+  const startAssets = finances.currentAssets
   const medianGrowth =
-    retireMilestone && startAssets > 0 ? retireMilestone.p50 / startAssets - 1 : null
+    retireStartMilestone && startAssets > 0 ? retireStartMilestone.p50 / startAssets - 1 : null
 
   const money = (value: number | undefined) =>
     value === undefined ? '–' : fmtCurrency(value, locale)
@@ -77,15 +89,13 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
    */
   const baseSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
   const realReturn = (1 + assumptions.expectedReturn) / (1 + assumptions.inflation) - 1
-  const retireMedian = milestones.find((m) => m.age === person.retireAge)?.p50
-  // Precomputed on today's euros when the payload carries it, so the rate is
-  // the same whichever euro the report prints; older payloads derive it here.
-  const firstYearWithdrawalRate = projections.ratios
-    ? projections.ratios.firstYearWithdrawalRate
-    : retireMedian && retireMedian > 0
-      ? baseSpend / retireMedian
-      : null
-  const bridgeYears = Math.max(0, person.pensionAge - person.retireAge)
+  // The ledger's one definition (portfolio withdrawal ÷ opening portfolio in
+  // the first retirement year). No ledger, no figure — never a second formula.
+  const firstYearWithdrawalRate = projections.ratios?.firstYearWithdrawalRate ?? null
+  // The same bridge as everywhere else in the report: the retirement years
+  // before the main pension pays.
+  const bridge = profile.bridge
+  const bridgeYears = bridge ? Math.max(0, bridge.endAge - bridge.startAge + 1) : 0
   const derived: Array<{ label: string; value: string; note: string }> = [
     {
       label: isGerman ? 'Reale Rendite' : 'Real return',
@@ -98,14 +108,20 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
         firstYearWithdrawalRate !== null
           ? fmtRatioPercent(firstYearWithdrawalRate, 1, locale)
           : '–',
-      note: isGerman ? 'erstes Ruhestandsjahr' : 'first year of retirement',
+      note: isGerman
+        ? 'erstes Ruhestandsjahr, Entnahme / Depot'
+        : 'first retirement year, withdrawal / portfolio',
     },
     {
       label: isGerman ? 'Überbrückungsjahre' : 'Bridge years',
       value: fmtNumber(bridgeYears, { locale }),
-      note: isGerman
-        ? `Alter ${person.retireAge}–${person.pensionAge}`
-        : `age ${person.retireAge}–${person.pensionAge}`,
+      note: bridge
+        ? isGerman
+          ? `Alter ${bridge.startAge}–${bridge.endAge}, vor der Rente`
+          : `age ${bridge.startAge}–${bridge.endAge}, before the pension`
+        : isGerman
+          ? 'keine Jahre vor der Rente'
+          : 'no years before the pension',
     },
     {
       label: isGerman ? 'Sparquote zu Ausgaben' : 'Savings vs spending',
@@ -130,13 +146,15 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
       <View style={[styles.figure, { marginTop: 0, marginBottom: 12 }]}>
         <Text style={[styles.cardTitle, { marginBottom: 2 }]}>
           {isGerman
-            ? `Vermögensentwicklung nach Perzentilen (${unitCopy.tag})`
-            : `Asset Projection by Percentile (${unitCopy.tag})`}
+            ? `Vermögensentwicklung nach Perzentilen (${unitCopy.tag}, Jahresendwerte)`
+            : `Asset Projection by Percentile (${unitCopy.tag}, year-end values)`}
         </Text>
         <ProjectionChart
           data={milestones}
           width={481}
-          height={210}
+          // Sized so that chart, table (with its "today" row) and the two
+          // KPI rows share one page even at ten table rows.
+          height={176}
           locale={content.locale}
           retireAge={person.retireAge}
           pensionAge={person.pensionAge}
@@ -149,8 +167,8 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
       <View style={[styles.card, { marginBottom: 12 }]}>
         <Text style={styles.cardTitle}>
           {isGerman
-            ? `Vermögensstände im Zeitverlauf (${unitCopy.tag})`
-            : `Projected Assets Over Time (${unitCopy.tag})`}
+            ? `Vermögensstände im Zeitverlauf (${unitCopy.tag}, Jahresende)`
+            : `Projected Assets Over Time (${unitCopy.tag}, year-end)`}
         </Text>
         <Table>
           <TableRow header>
@@ -180,8 +198,44 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
               P90
             </TableCell>
           </TableRow>
-          {outcomeRows.map((row, index) => {
+          {/* Today: the capital entered — one certain value, the same in
+              nominal and in today's euros, so every percentile shows it. */}
+          <TableRow key="today">
+            <TableCell width={hasBands ? '10%' : '12%'}>
+              <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
+                {fmtNumber(person.currentAge, { locale })}
+              </Text>
+            </TableCell>
+            <TableCell width={hasBands ? '16%' : '22%'}>
+              <Text style={{ fontSize: 7, color: tokens.colors.accent[700] }}>
+                {isGerman ? 'Heute (Eingabe)' : 'Today (as entered)'}
+              </Text>
+            </TableCell>
+            <TableCell width={hasBands ? '15%' : '22%'} align="right">
+              {money(startAssets)}
+            </TableCell>
+            {hasBands && (
+              <TableCell width="15%" align="right">
+                {money(startAssets)}
+              </TableCell>
+            )}
+            <TableCell width={hasBands ? '15%' : '22%'} align="right">
+              <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
+                {money(startAssets)}
+              </Text>
+            </TableCell>
+            {hasBands && (
+              <TableCell width="14%" align="right">
+                {money(startAssets)}
+              </TableCell>
+            )}
+            <TableCell width={hasBands ? '15%' : '22%'} align="right">
+              {money(startAssets)}
+            </TableCell>
+          </TableRow>
+          {outcomeRows.map((row, rowIndex) => {
             const label = milestoneLabel(row.age)
+            const index = rowIndex + 1
             return (
               <TableRow key={row.age} alt={index % 2 === 1}>
                 <TableCell width={hasBands ? '10%' : '12%'}>
@@ -230,6 +284,11 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
             )
           })}
         </Table>
+        <Text style={{ marginTop: 4, fontSize: 6.8, color: tokens.colors.ink[500], lineHeight: 1.35 }}>
+          {isGerman
+            ? '„Heute“ ist das eingegebene Vermögen; alle übrigen Zeilen zeigen den simulierten Stand zum Ende des Jahres mit dem genannten Alter.'
+            : '"Today" is the capital entered; every other row is the simulated state at the end of the year of that age.'}
+        </Text>
       </View>
 
       {/* Interpretation */}
@@ -238,13 +297,14 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
           <Text style={styles.kpiLabel}>{isGerman ? 'Median am Horizont' : 'Median at Horizon'}</Text>
           <Text style={styles.kpiValue}>{fmtCurrency(finalMedian, locale)}</Text>
           <Text style={styles.kpiDescription}>
+            {isGerman
+              ? `Ende Alter ${person.horizonAge} · ${unitCopy.tag}`
+              : `End of age ${person.horizonAge} · ${unitCopy.tag}`}
             {medianGrowth !== null
               ? isGerman
-                ? `Median bis Ruhestand: ${growthLabel(medianGrowth, locale, isGerman)} ${unitCopy.growth}`
-                : `Median growth to retirement: ${growthLabel(medianGrowth, locale, isGerman)} ${unitCopy.growth}`
-              : isGerman
-                ? `Alter ${person.horizonAge} · ${unitCopy.tag}`
-                : `Age ${person.horizonAge} · ${unitCopy.tag}`}
+                ? ` · von heute bis Ruhestandsbeginn ${growthLabel(medianGrowth, locale, isGerman)} ${unitCopy.growth}`
+                : ` · from today to the start of retirement ${growthLabel(medianGrowth, locale, isGerman)} ${unitCopy.growth}`
+              : ''}
           </Text>
         </View>
 
@@ -254,20 +314,23 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
               <Text
                 style={{ fontSize: 8.5, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 3 }}
               >
-                {isGerman ? 'Erschöpfungsrisiko im Stressszenario' : 'Depletion Risk in the Stress Scenario'}
+                {isGerman ? 'Deckungslücke im Stressszenario' : 'Shortfall in the Stress Scenario'}
               </Text>
+              {/* The event the success rate counts — a year portfolio and
+                  income together could not pay — at the age a tenth of the
+                  runs has reached it. Not "the P10 balance is zero". */}
               <Text style={{ fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
                 {isGerman
-                  ? `Im P10-Szenario kann das Vermögen ab Alter ${fmtNumber(projections.exhaustionAge, { locale })} erschöpft sein. Die Handlungsempfehlungen in Abschnitt 05 adressieren dieses Risiko.`
-                  : `In the P10 scenario, assets may be exhausted from age ${fmtNumber(projections.exhaustionAge, { locale })}. The recommended actions in section 05 address this risk.`}
+                  ? `Im schwächsten Zehntel der Läufe reichen Depot und Einnahmen spätestens im Alter ${fmtNumber(projections.exhaustionAge, { locale })} erstmals nicht mehr für die Ausgaben. Die Handlungsempfehlungen in Abschnitt 05 adressieren dieses Risiko.`
+                  : `In the weakest tenth of runs, portfolio and income first fail to cover a year's spending by age ${fmtNumber(projections.exhaustionAge, { locale })}. The recommended actions in section 05 address this risk.`}
               </Text>
             </View>
           ) : (
             <View
               style={[
                 styles.callout,
-                // Red is reserved for depletion in this report; a residual risk
-                // that the P10 line hides is a warning, not a failure.
+                // Red is reserved for a plan that cannot pay in this report; a
+                // residual risk below the stress case is a warning, not that.
                 simulation.depletionRisk > 0.0005 ? styles.calloutWarning : styles.calloutSuccess,
                 { flex: 1 },
               ]}
@@ -275,23 +338,32 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
               <Text
                 style={{ fontSize: 8.5, fontWeight: 600, color: tokens.colors.ink[900], marginBottom: 3 }}
               >
-                {isGerman ? 'P10-Pfad bleibt finanziert' : 'P10 Path Stays Funded'}
+                {isGerman ? 'Stressszenario bleibt finanziert' : 'Stress Scenario Stays Funded'}
               </Text>
-              {/* The P10 *band line* staying positive is not the same claim as
-                  "no run ever depletes": the worst decile of a plan with a 5%
-                  depletion risk is full of failed runs. State the band fact,
-                  then the actual risk. */}
+              {/* "The stress case is funded" is not "no run ever fails": the
+                  worst decile of a plan with a 5% risk is half failed runs.
+                  State the stress-case fact, then the actual risk — and, where
+                  the P10 balance does reach zero, that this alone is not a
+                  failure. */}
               <Text style={{ fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
                 {isGerman
-                  ? `Der P10-Pfad bleibt bis Alter ${fmtNumber(person.horizonAge, { locale })} durchgehend positiv. ${
+                  ? `In mehr als neun von zehn Läufen sind die Ausgaben bis Alter ${fmtNumber(person.horizonAge, { locale })} in jedem Jahr gedeckt. ${
                       simulation.depletionRisk > 0.0005
-                        ? `Das heißt nicht, dass kein Lauf scheitert: in ${fmtPercent(simulation.depletionRisk, 1, locale)} der Läufe ist das Kapital vor dem Planungsende aufgebraucht.`
-                        : 'Kein einziger Lauf erschöpft das Kapital vor dem Planungsende.'
+                        ? `Das heißt nicht, dass kein Lauf scheitert: In ${fmtPercent(simulation.depletionRisk, 1, locale)} der Läufe reichen Depot und Einnahmen in mindestens einem Jahr nicht.`
+                        : 'In keinem einzigen Lauf entsteht eine Deckungslücke.'
+                    }${
+                      projections.portfolioEmptyAge !== undefined
+                        ? ` Im P10-Pfad ist das Depot ab Alter ${fmtNumber(projections.portfolioEmptyAge, { locale })} aufgebraucht; die Ausgaben tragen dann Renten und Einnahmen.`
+                        : ''
                     }`
-                  : `The P10 path stays positive all the way to age ${fmtNumber(person.horizonAge, { locale })}. ${
+                  : `In more than nine runs in ten, every year's spending to age ${fmtNumber(person.horizonAge, { locale })} is funded. ${
                       simulation.depletionRisk > 0.0005
-                        ? `That is not the same as no run failing: capital is exhausted before the horizon in ${fmtPercent(simulation.depletionRisk, 1, locale)} of runs.`
-                        : 'Not a single run exhausts capital before the horizon.'
+                        ? `That is not the same as no run failing: in ${fmtPercent(simulation.depletionRisk, 1, locale)} of runs portfolio and income fall short in at least one year.`
+                        : 'Not a single run has a year that goes short.'
+                    }${
+                      projections.portfolioEmptyAge !== undefined
+                        ? ` On the P10 path the portfolio is used up from age ${fmtNumber(projections.portfolioEmptyAge, { locale })}; pensions and income then carry the spending.`
+                        : ''
                     }`}
               </Text>
             </View>

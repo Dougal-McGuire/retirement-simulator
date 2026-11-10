@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises'
+import type { Download, Locator, Page, Request } from '@playwright/test'
 import {
   SECTIONS,
   enterCompare,
@@ -10,6 +12,7 @@ import {
   sectionHeading,
   test,
   waitForLeversMeasured,
+  waitForResults,
   waitForScrollSettled,
 } from './helpers/workspace'
 
@@ -168,66 +171,152 @@ test.describe('one-page workspace', () => {
     const bridge = page
       .getByTestId('recommendations')
       .locator('[data-recommendation="bridgeLiquidity"]')
-    // Default plan: 62,900 € a year over the seven years 60–66.
-    await expect(bridge).toContainText(/€[\d,]+ in nominal euros/)
-    const nominal = Number(
-      (await bridge.innerText()).match(/€([\d,]+) in nominal euros/)![1].replace(/,/g, '')
-    )
-    // Each year at its price level relative to today, so above budget × years.
-    expect(nominal).toBeGreaterThan(62_900 * 7)
+    // The amount is what the simulation's ledger pays out of the portfolio in
+    // the seven years 60–66 before the statutory pension starts — the mean of
+    // all runs, tax on gains included — in the unit of the switch. That it is
+    // exactly the ledger's sum is asserted where the ledger can be read
+    // (`src/lib/transformers/__tests__/reportDisplayReal.test.ts`); here: it
+    // is quoted, labelled with its unit, and follows the switch.
+    const quoted = async (unit: string) =>
+      Number(
+        (await bridge.innerText())
+          .match(new RegExp(`pays out €([\\d,]+) in ${unit}`))?.[1]
+          .replace(/,/g, '')
+      )
+
+    await expect(bridge).toContainText(/pays out €[\d,]+ in nominal euros/)
+    const nominal = await quoted('nominal euros')
+    expect(nominal).toBeGreaterThan(0)
 
     await page.getByTestId('display-toggle').getByRole('radio', { name: "Today's €" }).click()
-    await expect(bridge).toContainText("€440,300 in today's euros")
+    await expect(bridge).toContainText(/pays out €[\d,]+ in today's euros/)
+    await expect(bridge).not.toContainText('nominal euros')
+    const real = await quoted("today's euros")
+    // The same withdrawals at today's prices: less than at each year's prices.
+    expect(real).toBeGreaterThan(0)
+    expect(real).toBeLessThan(nominal)
   })
 
-  test('the PDF report follows the € switch', async ({ page }) => {
-    test.setTimeout(90000) // two PDFs render on the dev server
-    await gotoWorkspace(page)
-    await expect(page.getByTestId('fan-chart')).toBeVisible({ timeout: 30000 })
-    const toggle = page.getByTestId('display-toggle')
-    const endAssets = page.getByTestId('end-assets')
-
-    // Generates the report from the Menu and returns what was posted and saved.
-    const generate = async () => {
+  test.describe('PDF report', () => {
+    /**
+     * Opens the Menu, clicks "Generate Report" and waits for `settled`.
+     * Returns its value and every request the browser made meanwhile (page
+     * and workers).
+     */
+    const generateReport = async <T>(
+      page: Page,
+      settled: (menu: Locator) => Promise<T>
+    ): Promise<{ value: T; requests: Request[] }> => {
+      const requests: Request[] = []
+      const record = (request: Request) => requests.push(request)
+      page.context().on('request', record)
       await page.getByTestId('dashboard-tools').click()
       const menu = page.getByRole('dialog', { name: 'Report and settings' })
-      const requestPromise = page.waitForRequest('**/api/generate-pdf')
-      const responsePromise = page.waitForResponse('**/api/generate-pdf', { timeout: 60000 })
-      const downloadPromise = page.waitForEvent('download', { timeout: 60000 })
-      await menu.getByRole('button', { name: 'Generate Report' }).click()
-      const body = (await requestPromise).postDataJSON() as {
-        displayReal?: boolean
-        results: {
-          assetPercentiles: { p50: number[] }
-          assetPercentilesReal?: { p50: number[] }
-        }
-      }
-      const response = await responsePromise
-      expect(response.status()).toBe(200)
-      expect(response.headers()['content-type']).toBe('application/pdf')
-      const download = await downloadPromise
+      const button = menu.getByTestId('generate-report')
+      await expect(button).toHaveText('Generate Report')
+      await button.click()
+      const value = await settled(menu)
+      await expect(button).toHaveAttribute('aria-busy', 'false')
+      page.context().off('request', record)
       if (await menu.isVisible()) await page.keyboard.press('Escape')
-      return { body, response, filename: download.suggestedFilename() }
+      return { value, requests }
     }
 
-    // Today's €: the request asks for the real report, and the real series it
-    // carries ends on exactly the figure the result bar shows.
-    await toggle.getByRole('radio', { name: "Today's €" }).click()
-    const realEnd = Number(await endAssets.getAttribute('data-value'))
-    const real = await generate()
-    expect(real.body.displayReal).toBe(true)
-    expect(Math.round(real.body.results.assetPercentilesReal!.p50.at(-1)!)).toBe(realEnd)
-    expect(real.response.headers()['content-disposition']).toContain('-todays-euros.pdf')
-    expect(real.filename).toContain('-todays-euros-')
+    const savedReport = async (download: Download) => ({
+      filename: download.suggestedFilename(),
+      bytes: await readFile((await download.path())!),
+    })
 
-    // Nominal: the same plan, the nominal series, no suffix.
-    await toggle.getByRole('radio', { name: 'Nominal' }).click()
-    const nominalEnd = Number(await endAssets.getAttribute('data-value'))
-    expect(nominalEnd).not.toBe(realEnd)
-    const nominal = await generate()
-    expect(nominal.body.displayReal).toBe(false)
-    expect(Math.round(nominal.body.results.assetPercentiles.p50.at(-1)!)).toBe(nominalEnd)
-    expect(nominal.filename).not.toContain('todays-euros')
+    test('is built in this browser, in the unit of the € switch, and sends nothing', async ({
+      page,
+    }) => {
+      test.setTimeout(120000) // two reports; the first loads the report chunk, worker and fonts
+      await gotoWorkspace(page)
+      await expect(page.getByTestId('fan-chart')).toBeVisible({ timeout: 30000 })
+      const toggle = page.getByTestId('display-toggle')
+      const appOrigin = new URL(page.url()).origin
+
+      const generate = async () => {
+        const downloadPromise = page.waitForEvent('download', { timeout: 90000 })
+        const { value, requests } = await generateReport(page, async (menu) => {
+          // The button says what it is doing while the file is built.
+          await expect(menu.getByTestId('generate-report')).toHaveAttribute('aria-busy', 'true')
+          await expect(menu.getByTestId('generate-report')).toHaveText('Creating report…')
+          return savedReport(await downloadPromise)
+        })
+        return { ...value, requests }
+      }
+
+      const expectLocalPdf = (report: Awaited<ReturnType<typeof generate>>) => {
+        expect(report.bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-')
+        expect(report.bytes.length).toBeGreaterThan(30_000)
+        // The plan stays here: nothing is posted anywhere — not to the app's
+        // own origin (there is no report endpoint any more) and not elsewhere.
+        const sent = report.requests
+          .filter((request) => request.method() !== 'GET')
+          .map((request) => `${request.method()} ${request.url()}`)
+        expect(sent.filter((entry) => entry.includes(appOrigin))).toEqual([])
+        expect(sent).toEqual([])
+        // What is fetched (report chunk, worker, fonts) comes from the app
+        // itself, and none of it is an API route (the sign-in control's own
+        // session check aside).
+        const fetched = report.requests
+          .map((request) => request.url())
+          .filter((url) => !/^(blob|data):/.test(url))
+        expect(fetched.filter((url) => new URL(url).origin !== appOrigin)).toEqual([])
+        expect(fetched.filter((url) => /\/api\/(?!auth\/)/.test(url))).toEqual([])
+        return fetched
+      }
+
+      // Today's €: the file name says so.
+      await toggle.getByRole('radio', { name: "Today's €" }).click()
+      const real = await generate()
+      const firstFetches = expectLocalPdf(real)
+      expect(real.filename).toMatch(
+        /^retirement-report-base-plan-todays-euros-\d{4}-\d{2}-\d{2}\.pdf$/
+      )
+      // The first report brings its four fonts from the app's own origin.
+      const fonts = firstFetches.filter((url) => url.endsWith('.ttf'))
+      expect(fonts).toHaveLength(4)
+      for (const url of fonts) expect(new URL(url).pathname).toMatch(/^\/_next\/static\/media\//)
+
+      // Nominal: the same plan, no suffix — and a different document.
+      await toggle.getByRole('radio', { name: 'Nominal' }).click()
+      const nominal = await generate()
+      expectLocalPdf(nominal)
+      expect(nominal.filename).toMatch(/^retirement-report-base-plan-\d{4}-\d{2}-\d{2}\.pdf$/)
+      expect(nominal.bytes.equals(real.bytes)).toBe(false)
+    })
+
+    test('says why a report failed, and the next click works', async ({ page }) => {
+      test.setTimeout(120000)
+      await gotoWorkspace(page)
+      await expect(page.getByTestId('fan-chart')).toBeVisible({ timeout: 30000 })
+
+      // The report's fonts cannot be fetched (offline, say).
+      const fontFiles = '**/_next/static/media/Inter-*.ttf'
+      await page.context().route(fontFiles, (route) => route.abort('internetdisconnected'))
+
+      const failed = await generateReport(page, async (menu) => {
+        const alert = menu.getByTestId('generate-report-error')
+        await expect(alert).toBeVisible({ timeout: 90000 })
+        return alert.innerText()
+      })
+      // A catalog sentence — not an exception's text.
+      expect(failed.value).toBe(
+        "The report's fonts could not be loaded. Check your connection and try again."
+      )
+
+      // Back online: the same button now delivers the file.
+      await page.context().unroute(fontFiles)
+      const downloadPromise = page.waitForEvent('download', { timeout: 90000 })
+      const retried = await generateReport(page, async (menu) => {
+        const report = await savedReport(await downloadPromise)
+        await expect(menu.getByTestId('generate-report-error')).toHaveCount(0)
+        return report
+      })
+      expect(retried.value.bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-')
+    })
   })
 
   test('enters compare, gains a challenger plan and shows delta KPIs', async ({ page }) => {
@@ -325,6 +414,9 @@ test.describe('working copy', () => {
 test.describe('market model and glide path', () => {
   test('switches to a historical backtest and freezes the inputs it ignores', async ({ page }) => {
     await gotoWorkspace(page)
+    const monteCarlo = {
+      endAssets: await page.getByTestId('end-assets').getAttribute('data-value'),
+    }
     await openPanel(page, 'market')
 
     await page.getByTestId('market-model-historical').click()
@@ -336,41 +428,42 @@ test.describe('market model and glide path', () => {
     await expect(page.locator('#editor-averageROI')).toHaveAttribute('aria-disabled', 'true')
     await expect(page.locator('#editor-simulationRuns')).toBeDisabled()
 
-    // Deterministic: the same plan replayed gives exactly the same number.
-    const readState = () =>
-      page.evaluate(() => {
-        const raw = window.localStorage.getItem('retirement-simulator-store')
-        const state = raw ? JSON.parse(raw).state : null
-        return state
-          ? {
-              rate: state.results?.successRate ?? null,
-              model: state.results?.params?.marketModel ?? null,
-            }
-          : null
-      })
+    // Deterministic: the same plan replayed gives exactly the same numbers.
+    // Results are not stored, so the reload below computes them again.
+    const shown = async () => ({
+      rate: await page.getByTestId('success-pill').getAttribute('data-value'),
+      endAssets: await page.getByTestId('end-assets').getAttribute('data-value'),
+    })
 
-    // Anchor on the *historical* result, not merely the first non-null rate —
-    // the Monte Carlo run that started on page load can land in storage just
-    // after the click and would otherwise be captured as the baseline.
-    await expect.poll(async () => (await readState())?.model, { timeout: 15000 }).toBe('historical')
-    const first = (await readState())!.rate
+    // Anchor on the *historical* result, not merely the numbers on screen —
+    // those are the Monte Carlo run's until the backtest lands.
+    await expect
+      .poll(async () => (await shown()).endAssets, { timeout: 15000 })
+      .not.toBe(monteCarlo.endAssets)
+    await expect(page.getByTestId('run-status')).toHaveAttribute('data-state', 'updated')
+    const first = await shown()
+    expect(first.rate).toMatch(/\d/)
+
     await page.reload()
-    await expect(page.getByTestId('run-button')).toBeVisible()
-    await expect.poll(async () => (await readState())?.rate, { timeout: 15000 }).toBe(first)
+    await waitForResults(page)
+    await expect(page.getByTestId('run-status')).toHaveAttribute('data-state', 'updated')
+    expect(await shown()).toEqual(first)
   })
 
   test('narrows the outcome band when the glide path is switched on', async ({ page }) => {
     await gotoWorkspace(page)
     await openPanel(page, 'market')
 
+    // P90 − P10 at the last age, read from the fan chart's data table (the
+    // results themselves are not stored anywhere a test could read them).
     const spread = () =>
       page.evaluate(() => {
-        const raw = window.localStorage.getItem('retirement-simulator-store')
-        if (!raw) return null
-        const results = JSON.parse(raw).state?.results
-        if (!results) return null
-        const last = results.ages.length - 1
-        return Math.round(results.assetPercentiles.p90[last] - results.assetPercentiles.p10[last])
+        const row = document.querySelector(
+          '[data-testid="fan-chart"] details table tbody tr:last-child'
+        )
+        if (!row || row.children.length < 6) return null
+        const euros = (cell: Element) => Number((cell.textContent ?? '').replace(/[^\d-]/g, ''))
+        return euros(row.children[5]) - euros(row.children[1])
       })
 
     await expect.poll(spread).not.toBeNull()
@@ -508,7 +601,8 @@ test.describe('cash-flow ergonomics', () => {
     // A calendar month pins the payment to a plan year; age 55 today → eight
     // years out, so the row lands at 63.
     const year = new Date().getFullYear() + 8
-    await card.locator('#cashflow-date-new').fill(`${year}-01`)
+    await card.locator('#cashflow-date-new').selectOption('01')
+    await card.locator('#cashflow-date-year-new').selectOption(String(year))
     await card.getByRole('button', { name: 'Advanced options' }).click()
     await card.locator('#cashflow-tax-new').click()
     await page.getByRole('option', { name: /One-fifth rule/ }).click()

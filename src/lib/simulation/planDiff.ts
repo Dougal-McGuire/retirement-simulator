@@ -7,13 +7,14 @@ import {
   cashFlowSignature,
   enabledCashFlows,
   hasLifetimeExpenseShape,
+  hasOnceIncomeShape,
   isCashFlowEnabled,
   withCashFlowEnabled,
-  isLifetimeExpenseFlow,
-  isOnceIncomeFlow,
   isPensionFlow,
   pensionMonthlyAtAge,
 } from '@/lib/simulation/cashFlows'
+import { localizeCashFlowName } from '@/lib/plans/cashFlowName'
+import { flowWindowKey } from '@/lib/plans/flowWindow'
 
 /**
  * Assumption diffing for plan comparison.
@@ -88,15 +89,27 @@ const valuesDiffer = (values: Array<number | string>): boolean =>
 const sum = (values: readonly number[]) => values.reduce((total, value) => total + value, 0)
 
 /**
- * Lifetime totals, in today's euros, of everything the two legacy arrays cannot
- * express: windowed or one-off flows, and anything with its own growth or a
- * fixed nominal amount. Lifetime living costs stay in the spending rows above
- * and one-off income keeps its own row, so nothing is counted twice.
+ * Every flow lands in exactly one row, classified by shape:
+ *
+ * - a lifetime recurring expense (no window) is budget — the monthly and
+ *   annual spending rows, whatever its growth rate or indexing;
+ * - a one-off income is the one-off row;
+ * - a pension is the pension row;
+ * - everything else (windowed flows, one-off expenses, recurring income) is
+ *   scheduled.
+ */
+const isScheduledFlow = (flow: CashFlow): boolean =>
+  !isPensionFlow(flow) && !hasLifetimeExpenseShape(flow) && !hasOnceIncomeShape(flow)
+
+/**
+ * Lifetime totals, in today's euros, of the scheduled flows (see
+ * {@link isScheduledFlow}). Lifetime living costs stay in the spending rows
+ * — a growing or nominally fixed one included — and one-off income keeps its
+ * own row, so nothing is counted twice.
  */
 function scheduledTotals(params: SimulationParams): { income: number; expense: number } {
   const series = buildCashFlowSeries(
-    // Pensions have their own row; here only the windowed extras count.
-    (params.cashFlows ?? []).filter((flow) => !isPensionFlow(flow)),
+    (params.cashFlows ?? []).filter(isScheduledFlow),
     params.currentAge,
     Math.max(params.currentAge, params.endAge)
   )
@@ -108,9 +121,7 @@ function scheduledTotals(params: SimulationParams): { income: number; expense: n
 
 /** How many (switched-on) flows are scheduled rather than lifetime-recurring. */
 function countScheduledFlows(params: SimulationParams): number {
-  return enabledCashFlows(params.cashFlows).filter(
-    (flow) => !isLifetimeExpenseFlow(flow) && !isOnceIncomeFlow(flow) && !isPensionFlow(flow)
-  ).length
+  return enabledCashFlows(params.cashFlows).filter(isScheduledFlow).length
 }
 
 /** Where a flow stands in one compared plan. */
@@ -126,57 +137,84 @@ export interface FlowSwitchRow {
   values: FlowSwitchState[]
 }
 
+const switchStateOf = (flow: CashFlow | null): FlowSwitchState =>
+  flow === null ? 'absent' : isCashFlowEnabled(flow) ? 'on' : 'off'
+
 /**
  * Flows that are switched off in at least one compared plan and switched on
- * in another — "Erbschaft: berücksichtigt → ausgeschaltet". Matched by id,
- * because a scenario is normally a copy of its plan with one switch flipped.
+ * in another — "Erbschaft: berücksichtigt → ausgeschaltet". Lined up by
+ * {@link matchFlowsAcrossPlans}, the comparison's one notion of "the same
+ * flow".
  *
  * Only a real on/off difference makes a row: a flow off in every plan that
  * has it describes no difference, and a flow that exists in one plan only
  * already moves the amount rows.
  */
 export function buildFlowSwitchRows(paramsList: SimulationParams[]): FlowSwitchRow[] {
-  const rows: FlowSwitchRow[] = []
-  const seen = new Set<string>()
-  for (const params of paramsList) {
-    for (const flow of params.cashFlows ?? []) {
-      if (seen.has(flow.id)) continue
-      seen.add(flow.id)
-      const values = paramsList.map((other): FlowSwitchState => {
-        const match = (other.cashFlows ?? []).find((entry) => entry.id === flow.id)
-        if (!match) return 'absent'
-        return isCashFlowEnabled(match) ? 'on' : 'off'
-      })
-      if (!values.includes('on') || !values.includes('off')) continue
-      rows.push({
-        id: flow.id,
-        name: flow.name,
-        ...(flow.nameKey !== undefined ? { nameKey: flow.nameKey } : {}),
+  return matchFlowsAcrossPlans(paramsList).flatMap((flows) => {
+    const values = flows.map(switchStateOf)
+    if (!values.includes('on') || !values.includes('off')) return []
+    const reference = flows.find((flow): flow is CashFlow => flow !== null)!
+    return [
+      {
+        id: reference.id,
+        name: reference.name,
+        ...(reference.nameKey !== undefined ? { nameKey: reference.nameKey } : {}),
         values,
-      })
-    }
-  }
-  return rows
+      },
+    ]
+  })
+}
+
+/**
+ * Ids issued by position rather than by identity: `income-0` (legacy one-off
+ * income folded into the flow list), `expense-0` (a legacy expense without an
+ * id), `flow-0` (a stored flow without an id), each possibly de-duplicated to
+ * `income-0-2`, and the `migrated-…` ids of the pre-flow expense migration.
+ * Two plans holding `income-0` say nothing about holding the same flow. A
+ * real id (`flow-<timestamp>-<random>`, a seeded `health` or
+ * `pension-statutory`) does.
+ */
+const POSITIONAL_ID = /^(?:(?:income|expense|flow)-\d{1,6}(?:-\d{1,6})*|migrated-.*)$/
+
+export const isPositionalFlowId = (id: string): boolean => POSITIONAL_ID.test(id)
+
+/**
+ * The names a flow goes by, lower-cased: its seeded label in both languages
+ * when it has a key, else what the user typed. "Erbschaft" typed in one plan
+ * and the seeded "Inheritance" in another are the same name.
+ */
+const flowNames = (flow: CashFlow): string[] => [
+  localizeCashFlowName(flow, 'de').trim().toLowerCase(),
+  localizeCashFlowName(flow, 'en').trim().toLowerCase(),
+]
+
+const sameName = (a: CashFlow, b: CashFlow): boolean => {
+  const names = flowNames(b)
+  return flowNames(a).some((name) => names.includes(name))
 }
 
 /**
  * Lines one plan's flows up with each other plan's: `result[i][p]` is the
  * flow standing for item `i` in plan `p`, or null where plan `p` has none.
- * Items keep the order in which the plans first list them.
+ * Items keep the order in which the plans first list them. This is the
+ * comparison's one matcher: the flow rows, the switch rows and the
+ * save-as-variant dialog all read it.
  *
  * A duplicated plan keeps its flows' ids, so the id is the identity. Plans
  * duplicated before ids were stable (legacy positional ids such as
  * `income-0`, re-issued per plan) are lined up by kind and name instead:
- * first id + kind + name, then kind + name, then id + kind alone (a flow
- * renamed in a copy). Kind always has to agree, so two unrelated flows that
- * happen to share a positional id never pair up across income and expense.
+ * first id + kind + name, then kind + name, then id + kind alone — a flow
+ * renamed in a copy — but only for a real id: a positional id never pairs
+ * two flows on its own ("Erbschaft" and "Autoverkauf", both `income-0`, are
+ * two flows). Kind always has to agree, so two unrelated flows never pair up
+ * across income and expense. Names compare with seeded keys resolved, in
+ * either language.
  */
 export function matchFlowsAcrossPlans(
   paramsList: SimulationParams[]
 ): Array<Array<CashFlow | null>> {
   const items: Array<Array<CashFlow | null>> = []
-  const nameOf = (flow: CashFlow) =>
-    flow.nameKey !== undefined ? `key:${flow.nameKey}` : `name:${flow.name.trim().toLowerCase()}`
 
   paramsList.forEach((params, planIndex) => {
     const pending = [...(params.cashFlows ?? [])]
@@ -198,15 +236,15 @@ export function matchFlowsAcrossPlans(
     const reference = (item: Array<CashFlow | null>) => item.find((entry) => entry !== null)!
     claim((item, flow) => {
       const ref = reference(item)
-      return ref.id === flow.id && ref.kind === flow.kind && nameOf(ref) === nameOf(flow)
+      return ref.id === flow.id && ref.kind === flow.kind && sameName(ref, flow)
     })
     claim((item, flow) => {
       const ref = reference(item)
-      return ref.kind === flow.kind && nameOf(ref) === nameOf(flow)
+      return ref.kind === flow.kind && sameName(ref, flow)
     })
     claim((item, flow) => {
       const ref = reference(item)
-      return ref.id === flow.id && ref.kind === flow.kind
+      return ref.id === flow.id && ref.kind === flow.kind && !isPositionalFlowId(flow.id)
     })
     for (const flow of pending) {
       const item: Array<CashFlow | null> = paramsList.map(() => null)
@@ -244,28 +282,52 @@ export interface FlowDiffRow {
   values: FlowSwitchState[]
   /** Amount, frequency or window differ between the plans that have the flow. */
   termsDiffer: boolean
-}
-
-/** What a flow pays and when — the part a comparison row has to show. */
-const flowTerms = (flow: CashFlow, params: SimulationParams) => {
-  // A pension without a start age follows the plan's statutory retirement age.
-  const start =
-    flow.startAge ?? (flow.kind === 'pension' ? params.legalRetirementAge : params.currentAge)
-  return [
-    flow.amount,
-    flow.frequency,
-    start,
-    flow.frequency === 'once' ? '' : (flow.endAge ?? params.endAge),
-  ].join('|')
+  /**
+   * Extra growth or the inflation link differ between the plans that have the
+   * flow. A cell names both only then (see {@link flowIndexing}).
+   */
+  indexingDiffers: boolean
 }
 
 /**
- * Flows the comparison's aggregate rows already speak for. The statutory
- * pension has its own row; a lifetime recurring expense is part of the
- * monthly budget row — an amount change there would be listed twice.
+ * When a flow pays: exactly what a comparison cell shows next to the amount
+ * (`flowWindowLabel`), so two cells that read the same never make a
+ * difference. It is the flow's own window: an unset end stays "whole plan"
+ * in plans of any horizon (the horizon is a row of its own).
  */
-const coveredByAggregateRow = (flow: CashFlow) =>
-  flow.id === STATUTORY_PENSION_FLOW_ID || hasLifetimeExpenseShape(flow)
+const flowTiming = (flow: CashFlow, params: SimulationParams) =>
+  `${flow.frequency}|${flowWindowKey(flow, params)}`
+
+/** What a flow pays and when; the amount as the cell shows it, in whole euros. */
+const flowTerms = (flow: CashFlow, params: SimulationParams) =>
+  `${Math.round(flow.amount)}|${flowTiming(flow, params)}`
+
+/**
+ * How a flow's amount moves over the years: growth on top of the inflation
+ * adjustment (in hundredths of a percent, as the editor shows it) and whether
+ * the amount follows inflation at all. No aggregate row shows either — a
+ * budget of 3,000 € that grows 1.5% a year reads "3,000 €" like one that does
+ * not — so a difference here always makes a row.
+ */
+export const flowIndexing = (flow: CashFlow): { growthRate: number; inflationLinked: boolean } => ({
+  growthRate: Math.round((flow.growthRate ?? 0) * 1e4) / 1e4,
+  inflationLinked: flow.inflationLinked !== false,
+})
+
+const flowIndexingKey = (flow: CashFlow) => {
+  const { growthRate, inflationLinked } = flowIndexing(flow)
+  return `${growthRate}|${inflationLinked}`
+}
+
+const isStatutoryPension = (flow: CashFlow) => flow.id === STATUTORY_PENSION_FLOW_ID
+
+/**
+ * Flows whose amount the comparison's aggregate rows already show. The
+ * statutory pension has its own row; a lifetime recurring expense is part of
+ * the monthly budget row — an amount change there would be listed twice.
+ */
+const amountShownByAggregateRow = (flow: CashFlow) =>
+  isStatutoryPension(flow) || hasLifetimeExpenseShape(flow)
 
 /**
  * The flow rows of a plan comparison, in display order: switch flips first
@@ -275,9 +337,11 @@ const coveredByAggregateRow = (flow: CashFlow) =>
  * - A flow in every plan but switched off in all of them makes no row: no
  *   figure sees it. A flow missing from a plan always does, switched off or
  *   not — it is a difference in what the plans hold.
- * - The statutory pension never gets a presence or terms row (its own row
- *   shows the amount), and a lifetime expense gets no terms row while it is
- *   one in every plan (the monthly budget row shows it).
+ * - The statutory pension never gets a presence row (its own row shows 0 €),
+ *   and neither it nor a lifetime expense (in every plan) gets a terms row
+ *   for an amount change alone: the pension row and the monthly budget row
+ *   show that. A changed start, end or frequency does get one, and so does
+ *   a different growth rate or inflation link, which no aggregate row shows.
  */
 export function buildFlowDiffRows(paramsList: SimulationParams[]): FlowDiffRow[] {
   if (paramsList.length < 2) return []
@@ -296,13 +360,14 @@ export function buildFlowDiffRows(paramsList: SimulationParams[]): FlowDiffRow[]
   for (const flows of matchFlowsAcrossPlans(paramsList)) {
     const reference = flows.find((flow): flow is CashFlow => flow !== null)!
     const key = uniqueKey(reference.id)
-    const values = flows.map(
-      (flow): FlowSwitchState => (flow === null ? 'absent' : isCashFlowEnabled(flow) ? 'on' : 'off')
-    )
+    const values = flows.map(switchStateOf)
     const present = flows.flatMap((flow, index) =>
       flow === null ? [] : [{ flow, params: paramsList[index] }]
     )
     const termsDiffer = new Set(present.map(({ flow, params }) => flowTerms(flow, params))).size > 1
+    const timingDiffers =
+      new Set(present.map(({ flow, params }) => flowTiming(flow, params))).size > 1
+    const indexingDiffers = new Set(present.map(({ flow }) => flowIndexingKey(flow))).size > 1
     const row = (change: FlowDiffChange): FlowDiffRow => ({
       key,
       change,
@@ -312,21 +377,22 @@ export function buildFlowDiffRows(paramsList: SimulationParams[]): FlowDiffRow[]
       flows,
       values,
       termsDiffer,
+      indexingDiffers,
     })
 
     if (present.length < flows.length) {
-      if (reference.id !== STATUTORY_PENSION_FLOW_ID) presence.push(row('presence'))
+      if (!isStatutoryPension(reference)) presence.push(row('presence'))
       continue
     }
     if (values.includes('on') && values.includes('off')) {
       switches.push(row('switch'))
       continue
     }
-    if (
-      termsDiffer &&
-      values.includes('on') &&
-      !present.every(({ flow }) => coveredByAggregateRow(flow))
-    ) {
+    // The aggregate rows show an amount, not when the flow pays: a moved
+    // start, end or frequency still needs a row of its own.
+    const shownElsewhere =
+      !timingDiffers && present.every(({ flow }) => amountShownByAggregateRow(flow))
+    if (((termsDiffer && !shownElsewhere) || indexingDiffers) && values.includes('on')) {
       terms.push(row('terms'))
     }
   }
@@ -693,7 +759,8 @@ export function comparisonFingerprint(params: SimulationParams): string {
 
 /**
  * The switch flips between a saved plan and a changed copy of it, as changes
- * ("Erbschaft: berücksichtigt → ausgeschaltet"), in the copy's list order.
+ * ("Erbschaft: berücksichtigt → ausgeschaltet"), in the saved plan's list
+ * order: the pairs {@link matchFlowsAcrossPlans} lines up.
  */
 export function diffFlowSwitches(
   base: SimulationParams,
@@ -716,16 +783,19 @@ export function diffFlowSwitches(
  * reported as "Einmalzahlungen 100.000 € → 0 €".
  */
 export function withSwitchesOf(base: SimulationParams, next: SimulationParams): SimulationParams {
-  const nextState = new Map(
-    (next.cashFlows ?? []).map((flow) => [flow.id, isCashFlowEnabled(flow)])
-  )
+  // The same pairs the switch rows name, so what is "left to diff" is exactly
+  // what the named switches do not cover.
+  const nextOf = new Map<CashFlow, CashFlow>()
+  for (const [baseFlow, nextFlow] of matchFlowsAcrossPlans([base, next])) {
+    if (baseFlow && nextFlow) nextOf.set(baseFlow, nextFlow)
+  }
   return applyCashFlows({
     ...base,
     cashFlows: (base.cashFlows ?? []).map((flow) => {
-      const enabled = nextState.get(flow.id)
-      return enabled === undefined || enabled === isCashFlowEnabled(flow)
+      const match = nextOf.get(flow)
+      return match === undefined || isCashFlowEnabled(match) === isCashFlowEnabled(flow)
         ? flow
-        : withCashFlowEnabled(flow, enabled)
+        : withCashFlowEnabled(flow, isCashFlowEnabled(match))
     }),
   })
 }

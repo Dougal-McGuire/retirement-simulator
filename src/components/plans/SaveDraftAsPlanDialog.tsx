@@ -3,8 +3,8 @@
 import { useMemo, type RefObject } from 'react'
 import { useTranslations } from 'next-intl'
 import { ScenarioPlanDialog } from '@/components/plans/ScenarioPlanDialog'
-import { ActionToast } from '@/components/ui/action-toast'
-import { toast, TOAST_DURATION } from '@/components/ui/toast'
+import { showActionToast } from '@/components/ui/action-toast'
+import { toast } from '@/components/ui/toast'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import { planDisplayName } from '@/lib/plans/planName'
 import { diffFlowSwitches, diffParams, withSwitchesOf } from '@/lib/simulation/planDiff'
@@ -85,40 +85,32 @@ export function SaveDraftAsPlanDialog({
     // Read the stored name back: duplicates get a suffix on the way in.
     const createdName =
       useSimulationStore.getState().plans.find((plan) => plan.id === newPlanId)?.name ?? name
-    toast(
-      (instance) => (
-        <ActionToast
-          testId="plan-created-toast"
-          message={tToast('draftSavedAsNew', { name: createdName, source: sourceName })}
-          actions={[
-            {
-              label: tToast('compare'),
-              tone: 'primary',
-              testId: 'plan-created-toast-compare',
-              onClick: () => {
-                toast.dismiss(instance.id)
-                const state = useSimulationStore.getState()
-                if (!state.plans.some((plan) => plan.id === newPlanId)) return
-                onCompare(
-                  state.activePlanId === newPlanId ? sourceId : state.activePlanId,
-                  newPlanId
-                )
-              },
-            },
-            {
-              label: tToast('switchToPlan'),
-              testId: 'plan-created-toast-switch',
-              onClick: () => {
-                toast.dismiss(instance.id)
-                setActivePlan(newPlanId)
-              },
-            },
-            { label: tToast('dismiss'), onClick: () => toast.dismiss(instance.id) },
-          ]}
-        />
-      ),
-      { duration: TOAST_DURATION }
-    )
+    showActionToast({
+      testId: 'plan-created-toast',
+      message: tToast('draftSavedAsNew', { name: createdName, source: sourceName }),
+      actions: [
+        {
+          label: tToast('compare'),
+          tone: 'primary',
+          testId: 'plan-created-toast-compare',
+          onClick: (dismiss) => {
+            dismiss()
+            const state = useSimulationStore.getState()
+            if (!state.plans.some((plan) => plan.id === newPlanId)) return
+            onCompare(state.activePlanId === newPlanId ? sourceId : state.activePlanId, newPlanId)
+          },
+        },
+        {
+          label: tToast('switchToPlan'),
+          testId: 'plan-created-toast-switch',
+          onClick: (dismiss) => {
+            dismiss()
+            setActivePlan(newPlanId)
+          },
+        },
+        { label: tToast('dismiss'), onClick: (dismiss) => dismiss() },
+      ],
+    })
   }
 
   return (

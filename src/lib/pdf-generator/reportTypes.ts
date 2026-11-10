@@ -1,4 +1,6 @@
 import type {
+  Ledger,
+  LeverEffects,
   Milestone,
   Recommendation,
   ReportData,
@@ -9,23 +11,18 @@ import type {
 import type { WithdrawalStrategy, IncomeTaxTreatment, PensionTaxMode } from '@/types'
 import { localizeCashFlowName } from '@/lib/plans/cashFlowName'
 import { NOMINAL_UNIT, type ReportEuroUnit } from '@/lib/pdf-generator/euroUnit'
+import { getPlanHealth } from '@/lib/simulation/planInsights'
+import { planBandLabel, planScoreReasons } from '@/lib/pdf-generator/planScoreCopy'
 
 export type { ReportLocale } from '@/lib/pdf-generator/schema/reportData'
 
-type SummaryBridge = NonNullable<Summary>['bridge']
+type SummaryBridge = NonNullable<NonNullable<Summary>['bridge']>
 
-const PLAN_HEALTH_LABELS_DE: Record<string, string> = {
-  Strong: 'Stark',
-  Moderate: 'Ausgewogen',
-  'Needs Attention': 'Überarbeiten',
-}
+/** Figures read from the engine's ledger, in the report's unit. */
+export type ReportLedger = Ledger
 
-const PLAN_HEALTH_REASONS_DE: Record<string, string> = {
-  'solid savings rate': 'Solide Sparquote hält Entnahmen stabil',
-  'moderate bridge drawdown': 'Überbrückungsphase benötigt moderaten Kapitalverzehr',
-  'high success probability': 'Hohe Erfolgswahrscheinlichkeit im Simulationsergebnis',
-  'balanced assumptions': 'Ausgewogene Markt- und Ausgabenannahmen',
-}
+/** The measured stress levers, in the report's unit. */
+export type ReportLeverEffects = LeverEffects
 
 const RECOMMENDATION_IMPACT_DE: Record<string, string> = {
   High: 'hoch',
@@ -121,19 +118,9 @@ function fallbackExpenseCategories(
   return { monthlyCategories, annualCategories }
 }
 
-const DEFAULT_REASON: Record<ReportLocale, string> = {
-  de: 'Ausgewogene Annahmen',
-  en: 'Balanced assumptions',
-}
-
-const DEFAULT_HIGHLIGHT: Record<ReportLocale, string> = {
-  de: 'Zusätzliche Optimierung prüfen',
-  en: 'Consider further optimisation',
-}
-
 const SCENARIO_LABEL: Record<ReportLocale, { label: string; description: string }> = {
   de: { label: 'Überbrückungsphase', description: 'Liquidität bis zum Rentenbeginn sichern' },
-  en: { label: 'Bridge phase', description: 'Secure liquidity until state pension begins' },
+  en: { label: 'Bridge phase', description: 'Secure liquidity until the pension begins' },
 }
 
 export interface ReportMetadata {
@@ -156,9 +143,12 @@ export interface ReportSimulation {
   successDefinition: 'legacyConditioned' | 'depletion'
   /** 0..1 — the headline rate under `successDefinition`. */
   successRate: number
-  /** 0..1 — plain survival, ignoring any bequest goal. */
+  /** 0..1 — runs in which every year's spending was funded, ignoring any bequest goal. */
   depletionSuccessRate: number
-  /** 0..1 — share of runs whose assets were exhausted. */
+  /**
+   * 0..1 — share of runs with at least one year whose spending was not funded.
+   * (A balance of zero is not that: income may still pay the budget.)
+   */
   depletionRisk: number
   successCount: number
   /** Simulated years, from the engine's age grid. */
@@ -186,11 +176,24 @@ export interface ReportProfile {
     successCount: number
     successRate: number
     score: number | null
+    /**
+     * The plan's band in the report's language. Always the app's grading of
+     * the success rate (`getPlanHealth`) — never derived from `score`.
+     */
     label: string | null
+    /** One sentence per score part, each quoting that part's own number. */
     reasons: string[]
-    /** Weighted parts the score is composed of, when the payload carries them. */
-    components: Array<{ id: 'success' | 'spending' | 'liquidity'; value: number; weight: number }>
+    /** Weighted parts the score is composed of (`computePlanHealthScore`). */
+    components: Array<{
+      id: 'success' | 'withdrawal'
+      value: number
+      weight: number
+    }>
   }
+  /**
+   * The retirement years before the main pension pays, with the ledger's
+   * withdrawals over them. Absent when there are no such years or no ledger.
+   */
   bridge?: SummaryBridge
   highlights: string[]
 }
@@ -227,7 +230,18 @@ export interface ReportFinances {
 
 export interface ReportProjections {
   milestones: Array<Pick<Milestone, 'age' | 'p10' | 'p20' | 'p50' | 'p80' | 'p90'>>
+  /**
+   * The stress case's failure: the age by which a tenth of the runs has had a
+   * year whose spending could not be paid (the engine's depletion data, the
+   * same event the success rate counts). Absent when fewer than a tenth do.
+   *
+   * The name predates that definition — it used to be "P10 balance ≤ 0",
+   * which called a plan failed whose pension pays the budget from an empty
+   * portfolio. That fact is `portfolioEmptyAge`, and it is not a failure.
+   */
   exhaustionAge?: number
+  /** First age at whose year-end the P10 balance is zero; absent when it never is. */
+  portfolioEmptyAge?: number
   /** Unit-free ratios, identical in either euro unit; absent in older payloads. */
   ratios?: {
     firstYearWithdrawalRate: number | null
@@ -264,13 +278,21 @@ export interface ReportExpenses {
   /** Simulated years — the count of ages the engine ran, not the age span. */
   horizonYears: number
   /**
-   * Every euro of planned spending across the horizon: recurring budget × years
-   * **plus** the scheduled flows (care costs, one-off repairs), which used to be
-   * silently excluded even though the report lists them a section earlier.
+   * Spending the plan asks for over the **retirement** years, summed, in the
+   * report's unit — `ledger.retirementSpending`. `null` when the results
+   * carry no ledger or retirement lies beyond the horizon; the report then
+   * prints a dash rather than "budget × years".
    */
-  totalHorizonAmount: number
-  /** The scheduled-flow part of `totalHorizonAmount`; 0 when there are none. */
-  scheduledExpenseTotal: number
+  retirement: {
+    total: number
+    /** Part of `total` from scheduled flows (windows, one-offs); `null` when not itemised. */
+    scheduled: number | null
+    /** Part of `total` that could not be paid, mean across paths. */
+    shortfall: number
+    firstAge: number
+    lastAge: number
+    years: number
+  } | null
   annualTotal: number
   monthlyTotal: number
   monthlyCategories: ReportExpensesCategory[]
@@ -298,8 +320,12 @@ export interface ReportScenario {
 
 export interface ReportRecommendations {
   primary: Array<Recommendation & { impactLabel?: string }>
-  /** Estimated success-rate uplift per headline action, when available. */
-  uplifts: Array<{ title: string; upliftMin: number; upliftMax: number }>
+  /**
+   * What the three stress levers do to this plan, measured by simulation.
+   * `null` when they could not be measured — the report then prints no lever
+   * table at all.
+   */
+  levers: ReportLeverEffects | null
 }
 
 export interface ReportContent {
@@ -313,8 +339,15 @@ export interface ReportContent {
   scenarios: ReportScenario[]
   recommendations: ReportRecommendations
   /**
-   * The euro every projected figure (asset percentiles, bridge need) is
-   * printed in. Nominal for payloads that predate the switch.
+   * Everything the report states about money actually moving — what the
+   * pension covers, what the portfolio pays out, the phases of the plan —
+   * read from the engine's ledger in the report's unit. Absent for results
+   * without a ledger; the sections then leave those statements out.
+   */
+  ledger?: ReportLedger
+  /**
+   * The euro every projected figure (asset percentiles, ledger amounts, the
+   * bridge need) is printed in. Nominal for payloads that predate the switch.
    */
   units: ReportEuroUnit
   locale: ReportLocale
@@ -391,26 +424,10 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
   const yearlyTotal = monthlyTotal * 12 + annualTotal
   const horizonYears = simulation.horizonYears
 
-  // "Total horizon need" has to mean every euro the plan expects to spend.
-  // Leaving the scheduled flows out made the figure contradict the care-cost
-  // table printed one section earlier, which the reader had just read.
-  const scheduledFlows = data.spending.cashFlows ?? []
-  const flowYears = (flow: (typeof scheduledFlows)[number]) => {
-    const from = Math.max(flow.startAge ?? data.person.currentAge, data.person.currentAge)
-    const to = Math.min(flow.endAge ?? data.person.horizonAge, data.person.horizonAge)
-    return Math.max(0, to - from + 1)
-  }
-  const scheduledExpenseTotal = scheduledFlows
-    .filter((flow) => flow.kind === 'expense')
-    .reduce((sum, flow) => {
-      if (flow.frequency === 'once') {
-        const age = flow.startAge ?? data.person.currentAge
-        const inHorizon = age >= data.person.currentAge && age <= data.person.horizonAge
-        return sum + (inHorizon ? flow.amount : 0)
-      }
-      return sum + flow.amount * (flow.frequency === 'monthly' ? 12 : 1) * flowYears(flow)
-    }, 0)
-  const totalHorizonAmount = yearlyTotal * horizonYears + scheduledExpenseTotal
+  // What the plan spends in retirement is what the engine booked for those
+  // years (report unit) — not "budget × every simulated year", which counted
+  // the working years in and ignored the withdrawal strategy.
+  const retirement = data.ledger?.retirementSpending ?? null
 
   const pickMilestones = data.projections.milestones.map((m) => ({
     age: m.age,
@@ -421,24 +438,37 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
     p90: m.p90,
   }))
 
-  const reasonSource =
-    summary?.planHealthWhyBits ?? (summary?.planHealthWhy ? [summary.planHealthWhy] : [])
-  let reasons: string[]
-  if (!reasonSource.length) {
-    reasons = [DEFAULT_REASON[locale]]
-  } else if (locale === 'de') {
-    reasons = reasonSource.map((item) => PLAN_HEALTH_REASONS_DE[item] ?? DEFAULT_REASON.de)
-  } else {
-    reasons = reasonSource
-  }
+  // The stress case fails when a tenth of the runs can no longer pay for a
+  // year — the engine's depletion data, not the P10 balance touching zero
+  // (a pension that pays the budget keeps a plan funded with no portfolio at
+  // all). Payloads without that data fall back to the balance, but only where
+  // at least a tenth of the runs did fail, and then no later than the horizon.
+  const portfolioEmptyAge = pickMilestones.find((m) => m.p10 <= 0)?.age
+  const storedShortfallAge = data.projections.stressShortfallAge
+  const shortfallAge =
+    storedShortfallAge !== undefined
+      ? (storedShortfallAge ?? undefined)
+      : simulation.depletionRisk >= 0.1
+        ? (portfolioEmptyAge ?? data.person.horizonAge)
+        : undefined
 
-  const label = (() => {
-    if (!summary?.planHealthLabel) return null
-    if (locale === 'de') {
-      return PLAN_HEALTH_LABELS_DE[summary.planHealthLabel] ?? summary.planHealthLabel
-    }
-    return summary.planHealthLabel
-  })()
+  // The band is the app's grading of the success rate — taken from the payload
+  // when it carries one, otherwise derived by the very same function. It is
+  // never read off the score.
+  const band = summary?.planHealthBand ?? getPlanHealth(successRate * 100)
+  const label = planBandLabel(band, locale)
+  const scoreParts = summary?.planHealthComponents ?? []
+  const reasons = summary
+    ? planScoreReasons(
+        {
+          successRatePct: successRate * 100,
+          band,
+          parts: scoreParts,
+          withdrawalRate: summary.planHealthWithdrawalRate ?? null,
+        },
+        locale
+      )
+    : []
 
   // Recommendation text now arrives already written in the report's language
   // (see `generateRecommendations`), because every body interpolates this
@@ -516,7 +546,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
         score: summary?.planHealthScore ?? null,
         label,
         reasons,
-        components: summary?.planHealthComponents ?? [],
+        components: scoreParts,
       },
       bridge: summary?.bridge,
       highlights,
@@ -550,14 +580,14 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
     },
     projections: {
       milestones: pickMilestones,
-      exhaustionAge: pickMilestones.find((m) => m.p10 <= 0)?.age,
+      ...(shortfallAge !== undefined ? { exhaustionAge: shortfallAge } : {}),
+      ...(portfolioEmptyAge !== undefined ? { portfolioEmptyAge } : {}),
       ...(data.projections.ratios ? { ratios: data.projections.ratios } : {}),
     },
     simulation,
     expenses: {
       horizonYears,
-      totalHorizonAmount,
-      scheduledExpenseTotal,
+      retirement,
       annualTotal,
       monthlyTotal,
       monthlyCategories,
@@ -579,7 +609,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
     },
     scenarios,
     recommendations: {
-      uplifts: summary?.topActionsDetailed ?? [],
+      levers: summary?.leverEffects ?? null,
       // Only the impact tag is still a fixed vocabulary, so only it is mapped.
       primary:
         locale === 'de'
@@ -589,6 +619,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
             }))
           : data.recommendations,
     },
+    ...(data.ledger ? { ledger: data.ledger } : {}),
     units: data.units
       ? {
           requested: data.units.requested,

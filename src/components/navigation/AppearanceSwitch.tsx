@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useSyncExternalStore, type KeyboardEvent } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
@@ -12,6 +12,7 @@ import {
   writeColorSchemePreference,
   type ColorSchemePreference,
 } from '@/lib/colorScheme'
+import { SegmentedRadio } from '@/components/ui/segmented-radio'
 import { cn } from '@/lib/utils'
 
 const ICONS = { system: Monitor, light: Sun, dark: Moon } as const
@@ -59,65 +60,37 @@ interface AppearanceSwitchProps {
 export function AppearanceSwitch({ className, showLabel = false }: AppearanceSwitchProps) {
   const t = useTranslations('appearance')
   const [preference, setPreference] = useColorSchemePreference()
-  const refs = useRef<Array<HTMLButtonElement | null>>([])
-
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const step =
-      event.key === 'ArrowRight' || event.key === 'ArrowDown'
-        ? 1
-        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
-          ? -1
-          : 0
-    if (!step) return
-    event.preventDefault()
-    const count = COLOR_SCHEME_PREFERENCES.length
-    // Move from the focused radio (WAI-ARIA radio group), not the stored value.
-    const focused = refs.current.findIndex((node) => node === document.activeElement)
-    const index = focused >= 0 ? focused : COLOR_SCHEME_PREFERENCES.indexOf(preference)
-    const next = (index + step + count) % count
-    setPreference(COLOR_SCHEME_PREFERENCES[next])
-    refs.current[next]?.focus()
-  }
-
   const group = (
-    <div
-      role="radiogroup"
-      aria-label={t('label')}
-      data-testid="appearance-switch"
-      onKeyDown={onKeyDown}
+    <SegmentedRadio
+      options={COLOR_SCHEME_PREFERENCES.map((option) => {
+        const Icon = ICONS[option]
+        return {
+          value: option,
+          label: (
+            <>
+              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {t(`options.${option}`)}
+            </>
+          ),
+        }
+      })}
+      value={preference}
+      onChange={setPreference}
+      ariaLabel={t('label')}
+      testId="appearance-switch"
       className={cn(
         'inline-flex shrink-0 overflow-hidden rounded-sm border border-border bg-card',
         !showLabel && className
       )}
-    >
-      {COLOR_SCHEME_PREFERENCES.map((option, index) => {
-        const Icon = ICONS[option]
-        const checked = preference === option
-        return (
-          <button
-            key={option}
-            ref={(node) => {
-              refs.current[index] = node
-            }}
-            type="button"
-            role="radio"
-            aria-checked={checked}
-            tabIndex={checked ? 0 : -1}
-            data-value={option}
-            onClick={() => setPreference(option)}
-            className={cn(
-              'inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-r border-border px-3 text-sm transition-colors last:border-r-0',
-              checked
-                ? 'bg-muted font-semibold text-ink'
-                : 'font-normal text-muted-foreground hover:bg-muted hover:text-ink'
-            )}
-          >
-            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-            {t(`options.${option}`)}
-          </button>
+      optionClassName={(checked) =>
+        cn(
+          'inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-r border-border px-3 text-sm transition-colors last:border-r-0',
+          checked
+            ? 'bg-muted font-semibold text-ink'
+            : 'font-normal text-muted-foreground hover:bg-muted hover:text-ink'
         )
-      })}
-    </div>
+      }
+    />
   )
 
   if (!showLabel) return group

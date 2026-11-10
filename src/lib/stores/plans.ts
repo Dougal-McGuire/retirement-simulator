@@ -1,4 +1,11 @@
-import { MAX_PLANS, type Plan, type SavedSetup, type SimulationParams } from '@/types'
+import {
+  DEFAULT_PARAMS,
+  MAX_PLANS,
+  type Plan,
+  type SavedSetup,
+  type SimulationParams,
+} from '@/types'
+import { isRecord } from '@/lib/isRecord'
 
 /**
  * Stable id for the plan every user starts with (or gets migrated into). Fixed
@@ -9,11 +16,8 @@ export const DEFAULT_PLAN_ID = 'plan-base'
 /** Translation key used for the built-in "Base plan" name. */
 export const DEFAULT_PLAN_NAME_KEY = 'base'
 
-/** Fallback literal used when no translation is available (tests, PDF, mirror). */
+/** Fallback literal used when no translation is available (tests, PDF). */
 export const DEFAULT_PLAN_NAME = 'Base plan'
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 
 /** Params normalizer injected by the store (avoids a circular import). */
 export type ParamsNormalizer = (value: unknown) => SimulationParams
@@ -44,6 +48,89 @@ export function makePlan({
     createdAt: createdAt ?? now,
     updatedAt: updatedAt ?? createdAt ?? now,
   }
+}
+
+/**
+ * Timestamp for a change to a plan: the device clock, but never at or before
+ * the stamp the plan already carries. A plan pulled from a device whose clock
+ * runs ahead would otherwise be "saved" into the past here, and the stale copy
+ * on that device would keep winning.
+ */
+export function nextPlanStamp(previous: number, now = Date.now()): number {
+  return Number.isFinite(previous) ? Math.max(now, previous + 1) : now
+}
+
+// ---- Deletion tombstones ----------------------------------------------------
+
+/** Plan id -> time the plan was deleted. Synced, so a deletion sticks everywhere. */
+export type PlanTombstones = Record<string, number>
+
+/** Plan id -> `updatedAt` of the plan as the account last held it (sync base). */
+export type PlanStamps = Record<string, number>
+
+/**
+ * How long a deletion is remembered. A device that stays offline for longer
+ * than this can bring a deleted plan back — the price of not keeping
+ * tombstones forever.
+ */
+export const PLAN_TOMBSTONE_TTL_MS = 180 * 24 * 60 * 60 * 1000
+
+/** Upper bound on remembered deletions; the oldest are forgotten first. */
+export const MAX_PLAN_TOMBSTONES = 200
+
+/** Same bound `/api/plans` puts on a plan id. */
+const MAX_TRACKED_ID_LENGTH = 64
+
+const isTrackedId = (id: string): boolean => id.trim() !== '' && id.length <= MAX_TRACKED_ID_LENGTH
+
+/**
+ * Tombstones as they may be stored or merged: well-formed entries only, none
+ * older than `PLAN_TOMBSTONE_TTL_MS`, at most `MAX_PLAN_TOMBSTONES` (newest
+ * kept). Anything else — persisted junk, a tampered blob — reads as "none".
+ */
+export function sanitizePlanTombstones(value: unknown, now = Date.now()): PlanTombstones {
+  if (!isRecord(value)) return {}
+
+  const entries = Object.entries(value)
+    .filter(
+      (entry): entry is [string, number] =>
+        isTrackedId(entry[0]) &&
+        typeof entry[1] === 'number' &&
+        Number.isFinite(entry[1]) &&
+        entry[1] > 0 &&
+        now - entry[1] <= PLAN_TOMBSTONE_TTL_MS
+    )
+    // Newest first; the id breaks ties so every device keeps the same ones.
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .slice(0, MAX_PLAN_TOMBSTONES)
+
+  return Object.fromEntries(entries)
+}
+
+/** `tombstones` plus one more deletion (a later deletion of the same id wins). */
+export function withPlanTombstone(
+  tombstones: unknown,
+  id: string,
+  deletedAt: number,
+  now = Date.now()
+): PlanTombstones {
+  const current = sanitizePlanTombstones(tombstones, now)
+  return sanitizePlanTombstones({ ...current, [id]: Math.max(current[id] ?? 0, deletedAt) }, now)
+}
+
+/** Well-formed sync-base stamps; anything else reads as "never synced". */
+export function sanitizePlanStamps(value: unknown): PlanStamps {
+  if (!isRecord(value)) return {}
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(
+        (entry): entry is [string, number] =>
+          isTrackedId(entry[0]) && typeof entry[1] === 'number' && Number.isFinite(entry[1])
+      )
+      // Far more than an account can hold; only guards against persisted junk.
+      .slice(0, MAX_PLAN_TOMBSTONES)
+  )
 }
 
 /** Collision-free id for a newly created plan. */
@@ -141,23 +228,13 @@ export function normalizePlans(value: unknown, normalizeParams: ParamsNormalizer
     .slice(0, MAX_PLANS)
 }
 
-/**
- * Legacy view over plans. `savedSetups` predates plans; keeping it as a mirror
- * means the existing "save / load setup" controls operate on real plans instead
- * of a second, competing store of parameter snapshots.
- */
-export function plansToSavedSetups(plans: readonly Plan[]): SavedSetup[] {
-  return plans.map((plan) => ({
-    id: plan.id,
-    name: plan.name,
-    timestamp: plan.updatedAt,
-    params: plan.params,
-  }))
-}
-
 export interface BootstrapPlansInput {
   plans?: unknown
   params: SimulationParams
+  /**
+   * Pre-plan saved setups, read from a v0 blob or the standalone legacy key.
+   * They are only ever an import source: nothing writes them any more.
+   */
   savedSetups?: readonly SavedSetup[]
   activePlanId?: unknown
   /**
@@ -170,17 +247,34 @@ export interface BootstrapPlansInput {
 export interface BootstrapPlansResult {
   plans: Plan[]
   activePlanId: string
-  /** True when plans had to be created from pre-plan (v0) persisted state. */
+  /** True when pre-plan saved setups were imported as plans. */
   migrated: boolean
+}
+
+/**
+ * Whether `plan` is the starter plan exactly as the store creates it: the
+ * default id, still under its built-in name, on default parameters. The same
+ * definition the first-sign-in prompt uses (`authMigration.planIsPristine`).
+ */
+function isUntouchedDefaultPlan(plan: Plan, normalizeParams: ParamsNormalizer): boolean {
+  if (plan.id !== DEFAULT_PLAN_ID) return false
+  if (plan.nameKey !== DEFAULT_PLAN_NAME_KEY && plan.name !== DEFAULT_PLAN_NAME) return false
+  return (
+    JSON.stringify(normalizeParams(plan.params)) === JSON.stringify(normalizeParams(DEFAULT_PARAMS))
+  )
 }
 
 /**
  * Brings any persisted shape up to the plan-based model.
  *
- * - v1+ state: normalize plans, repair a dangling `activePlanId`.
+ * - v1+ state: normalize plans, repair a dangling `activePlanId`. Stored plans
+ *   are never rebuilt: a renamed or edited plan comes back exactly as stored.
  * - v0 state (params + savedSetups only): the live params become the "Base
  *   plan" and every saved setup is imported as a plan, preserving ids, names
- *   and timestamps. Nothing is deleted — `savedSetups` keeps mirroring plans.
+ *   and timestamps.
+ * - Only the untouched starter plan, next to pre-plan saved setups (the store
+ *   fell back to its initial state while the standalone legacy key still holds
+ *   setups): the setups are imported alongside it.
  * - Empty state: a single default plan holding the current params.
  */
 export function bootstrapPlans(
@@ -188,32 +282,16 @@ export function bootstrapPlans(
   normalizeParams: ParamsNormalizer
 ): BootstrapPlansResult {
   const normalized = normalizePlans(plans, normalizeParams)
+  const knownIds = new Set(normalized.map((plan) => plan.id))
 
-  // A lone untouched default plan means the store fell back to its initial
-  // state, so pre-plan saved setups may still need importing.
-  const isPristineDefault = normalized.length === 1 && normalized[0].id === DEFAULT_PLAN_ID
-  const needsLegacyImport = allowLegacyImport && savedSetups.length > 0
-
-  if (normalized.length > 0 && !(isPristineDefault && needsLegacyImport)) {
-    const active =
-      typeof activePlanId === 'string' && normalized.some((plan) => plan.id === activePlanId)
-        ? activePlanId
-        : normalized[0].id
-
-    return { plans: normalized, activePlanId: active, migrated: false }
-  }
-
-  const basePlan = makePlan({
-    id: DEFAULT_PLAN_ID,
-    name: DEFAULT_PLAN_NAME,
-    nameKey: DEFAULT_PLAN_NAME_KEY,
-    params,
-  })
-
-  const imported = (allowLegacyImport ? savedSetups : [])
-    .filter((setup) => setup.id !== DEFAULT_PLAN_ID)
-    .slice(0, MAX_PLANS - 1)
-    .map((setup) =>
+  // Setups that are not plans yet. An entry carrying a plan's id *is* that
+  // plan (the store used to mirror every plan into `savedSetups`), not legacy
+  // data waiting to be imported.
+  const importable = (allowLegacyImport ? savedSetups : []).filter(
+    (setup) => setup.id !== DEFAULT_PLAN_ID && !knownIds.has(setup.id)
+  )
+  const importSetups = (room: number): Plan[] =>
+    importable.slice(0, Math.max(0, room)).map((setup) =>
       makePlan({
         id: setup.id,
         name: setup.name.trim() || DEFAULT_PLAN_NAME,
@@ -223,11 +301,110 @@ export function bootstrapPlans(
       })
     )
 
-  const nextPlans = [basePlan, ...imported]
+  if (normalized.length > 0) {
+    // Plans exist. Pre-plan setups are only brought in next to the untouched
+    // starter plan: anything the user has worked on means the import already
+    // ran, or would resurrect plans they deleted since.
+    const untouched =
+      normalized.length === 1 && isUntouchedDefaultPlan(normalized[0], normalizeParams)
+    const imported = untouched ? importSetups(MAX_PLANS - normalized.length) : []
+    const nextPlans = [...normalized, ...imported]
+    const active =
+      typeof activePlanId === 'string' && nextPlans.some((plan) => plan.id === activePlanId)
+        ? activePlanId
+        : nextPlans[0].id
+
+    return { plans: nextPlans, activePlanId: active, migrated: imported.length > 0 }
+  }
+
+  const basePlan = makePlan({
+    id: DEFAULT_PLAN_ID,
+    name: DEFAULT_PLAN_NAME,
+    nameKey: DEFAULT_PLAN_NAME_KEY,
+    params,
+  })
+  const imported = importSetups(MAX_PLANS - 1)
 
   return {
-    plans: nextPlans,
+    plans: [basePlan, ...imported],
     activePlanId: DEFAULT_PLAN_ID,
     migrated: imported.length > 0,
   }
+}
+
+export interface MergePlanListsInput {
+  /**
+   * The list both sides started from: what this tab last read from, or wrote
+   * to, storage. Empty when unknown — then nothing counts as deleted and the
+   * result is the union of both lists.
+   */
+  base: readonly Plan[]
+  /** This tab's list, in memory. */
+  mine: readonly Plan[]
+  /** The list another tab wrote. */
+  theirs: readonly Plan[]
+  /** Whether two versions of one plan are the same (name, timestamps, params). */
+  isSame: (a: Plan, b: Plan) => boolean
+  /** A plan of this tab that must survive: the one carrying unsaved edits. */
+  keepId?: string | null
+}
+
+/**
+ * Three-way merge of two tabs' plan lists, per plan.
+ *
+ * Two tabs of one browser share one localStorage entry and each writes its
+ * whole list. Merging against the common base keeps both tabs' work: a plan
+ * only one side changed (or created, or deleted) follows that side; a plan
+ * both sides saved keeps the newer save; an edit beats a delete.
+ *
+ * When this tab changed nothing since the base, the other tab's list is
+ * returned as it is, order included — the ordinary case of a tab that sat in
+ * the background while the other one was used.
+ */
+export function mergePlanLists({
+  base,
+  mine,
+  theirs,
+  isSame,
+  keepId,
+}: MergePlanListsInput): Plan[] {
+  const baseById = new Map(base.map((plan) => [plan.id, plan]))
+  const mineById = new Map(mine.map((plan) => [plan.id, plan]))
+  const theirsById = new Map(theirs.map((plan) => [plan.id, plan]))
+
+  /** In the base, and still exactly as it was there. */
+  const untouched = (plan: Plan): boolean => {
+    const origin = baseById.get(plan.id)
+    return origin !== undefined && isSame(plan, origin)
+  }
+
+  const mineUnchanged =
+    mine.length === base.length &&
+    mine.every((plan, index) => plan.id === base[index].id && isSame(plan, base[index]))
+  if (mineUnchanged && (!keepId || theirsById.has(keepId))) return [...theirs]
+
+  const merged: Plan[] = []
+
+  for (const plan of mine) {
+    const rival = theirsById.get(plan.id)
+    if (!rival) {
+      // Gone from their list: they deleted it — unless it is new here, was
+      // changed here since, or carries this tab's unsaved edits.
+      if (!untouched(plan) || plan.id === keepId) merged.push(plan)
+      continue
+    }
+    if (isSame(plan, rival) || untouched(rival)) merged.push(plan)
+    else if (untouched(plan)) merged.push(rival)
+    // Both sides saved it (or there is no base to tell): the newer save wins,
+    // a tie goes to the copy this tab is showing.
+    else merged.push(rival.updatedAt > plan.updatedAt ? rival : plan)
+  }
+
+  for (const plan of theirs) {
+    // Not in this tab's list: deleted here — unless it is new there, or they
+    // changed it since.
+    if (!mineById.has(plan.id) && !untouched(plan)) merged.push(plan)
+  }
+
+  return merged
 }

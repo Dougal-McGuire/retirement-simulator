@@ -31,8 +31,8 @@ const flashTimers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>()
  * 3. focuses it, or the first slider thumb / input / select / button inside
  *    it (`WizardSliderField` puts the id on the Radix Slider root);
  * 4. scrolls it to about a third of the panel height by setting the scroll
- *    container's `scrollTop` — never `scrollIntoView`, which would also scroll
- *    the window;
+ *    container's `scrollTop` (the body, or the whole panel on short
+ *    viewports) — never `scrollIntoView`, which would also scroll the window;
  * 5. flashes the field's wrapper (`data-flash`) for 1.2 s.
  *
  * Returns false when the field does not exist (e.g. glide-path sliders while
@@ -50,7 +50,12 @@ export function focusField(fieldId: string, body: HTMLElement): boolean {
   const target = isFocusable(el) ? el : (el.querySelector<HTMLElement>(FOCUSABLE_INSIDE) ?? el)
   target.focus({ preventScroll: true })
 
-  const scroller = body
+  // The body scrolls on its own, except on short viewports where the whole
+  // panel does (header and footer scroll along; see ws-page.css).
+  const scroller =
+    body.scrollHeight > body.clientHeight + 1
+      ? body
+      : (body.closest<HTMLElement>('.ws-panel') ?? body)
   const offset =
     el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop
   scroller.scrollTop = Math.max(0, offset - scroller.clientHeight / 3)

@@ -5,6 +5,7 @@ import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
 import { SpendingChart } from '../charts'
 import type { ReportCashFlow, ReportContent } from '@/lib/pdf-generator/reportTypes'
 import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
+import { buildEuroUnitCopy } from '@/lib/pdf-generator/euroUnitCopy'
 
 interface SpendingProps {
   content: ReportContent
@@ -17,6 +18,16 @@ export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
   const isGerman = content.locale !== 'en'
 
   const annualTotal = expenses.monthlyTotal * 12 + expenses.annualTotal
+  const unitCopy = buildEuroUnitCopy(content.units, content.locale)
+  const retirement = expenses.retirement ?? null
+  const meanOfRuns =
+    simulation.marketModel === 'historical'
+      ? isGerman
+        ? 'Mittel der Startjahre'
+        : 'mean across start years'
+      : isGerman
+        ? 'Mittel der Läufe'
+        : 'mean across runs'
   // The section has to hold the chart, the category table AND the scheduled
   // flows on one page; every flow row costs one category row. Shrinking the
   // list is preferable to spilling a two-line table onto a blank page.
@@ -29,8 +40,8 @@ export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
   const topShare = topCategories.reduce((sum, category) => sum + category.share, 0)
 
   // Scheduled flows live here rather than with the planning assumptions: they
-  // are spending (or income that offsets it), and the "total horizon need" KPI
-  // above now counts them, so the reader can see what went into the figure.
+  // are spending (or income that offsets it), and the "retirement spending"
+  // KPI above counts the ones the engine booked in retirement.
   const scheduledFlows = expenses.scheduledFlows ?? []
   const switchedOff = expenses.switchedOffFlows ?? []
   const incomeWord = isGerman ? 'Einnahme' : 'Income'
@@ -72,27 +83,53 @@ export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
           <Text style={styles.kpiLabel}>{isGerman ? 'Monatliches Budget' : 'Monthly Budget'}</Text>
           <Text style={styles.kpiValue}>{fmtCurrency(expenses.monthlyTotal, locale)}</Text>
           <Text style={styles.kpiDescription}>
-            {isGerman ? 'Wiederkehrende Ausgaben' : 'Recurring expenses'}
+            {isGerman
+              ? `Wiederkehrende Ausgaben, ${unitCopy.inputTag}`
+              : `Recurring expenses, ${unitCopy.inputTag}`}
           </Text>
         </View>
         <View style={[styles.card, { flex: 1, marginRight: 10, marginBottom: 0 }]} wrap={false}>
           <Text style={styles.kpiLabel}>{isGerman ? 'Jahresbudget' : 'Annual Budget'}</Text>
           <Text style={styles.kpiValue}>{fmtCurrency(annualTotal, locale)}</Text>
           <Text style={styles.kpiDescription}>
-            {isGerman ? 'Monatlich × 12 + jährliche Posten' : 'Monthly × 12 + annual items'}
+            {isGerman
+              ? `Monatlich × 12 + jährliche Posten, ${unitCopy.inputTag}`
+              : `Monthly × 12 + annual items, ${unitCopy.inputTag}`}
           </Text>
         </View>
+        {/* What the plan sets out to spend over the retirement years, as the
+            engine booked it — not "budget × every simulated year", which
+            counted the working years. The ledger's spending is the amount
+            asked for; where part of it could not be paid, that part is named. */}
         <View style={[styles.card, { flex: 1, marginBottom: 0 }]} wrap={false}>
-          <Text style={styles.kpiLabel}>{isGerman ? 'Gesamtbedarf' : 'Total Horizon Need'}</Text>
-          <Text style={styles.kpiValue}>{fmtCurrency(expenses.totalHorizonAmount, locale)}</Text>
+          <Text style={styles.kpiLabel}>
+            {isGerman ? 'Ausgaben im Ruhestand' : 'Retirement Spending'}
+          </Text>
+          <Text style={styles.kpiValue}>
+            {retirement ? fmtCurrency(retirement.total, locale) : '–'}
+          </Text>
           <Text style={styles.kpiDescription}>
-            {expenses.scheduledExpenseTotal > 0
-              ? isGerman
-                ? `Über ${fmtNumber(simulation.horizonYears, { locale })} Jahre, ohne Inflation · inkl. ${fmtCurrency(expenses.scheduledExpenseTotal, locale)} geplanter Zahlungen`
-                : `Over ${fmtNumber(simulation.horizonYears, { locale })} years, before inflation · incl. ${fmtCurrency(expenses.scheduledExpenseTotal, locale)} of scheduled flows`
+            {retirement
+              ? `${
+                  isGerman
+                    ? `Summe Alter ${retirement.firstAge}–${retirement.lastAge} (${fmtNumber(retirement.years, { locale })} Jahre), ${unitCopy.tag}, ${meanOfRuns}`
+                    : `Total for ages ${retirement.firstAge}–${retirement.lastAge} (${fmtNumber(retirement.years, { locale })} years), ${unitCopy.tag}, ${meanOfRuns}`
+                }${
+                  retirement.scheduled !== null && retirement.scheduled > 0
+                    ? isGerman
+                      ? ` · inkl. ${fmtCurrency(retirement.scheduled, locale)} geplanter Zahlungen`
+                      : ` · incl. ${fmtCurrency(retirement.scheduled, locale)} of scheduled flows`
+                    : ''
+                }${
+                  retirement.shortfall >= 0.5
+                    ? isGerman
+                      ? ` · davon ${fmtCurrency(retirement.shortfall, locale)} nicht gedeckt`
+                      : ` · of which ${fmtCurrency(retirement.shortfall, locale)} is not funded`
+                    : ''
+                }`
               : isGerman
-                ? `Über ${fmtNumber(simulation.horizonYears, { locale })} Jahre, ohne Inflation`
-                : `Over ${fmtNumber(simulation.horizonYears, { locale })} years, before inflation`}
+                ? 'Aus diesen Ergebnissen nicht ablesbar'
+                : 'Not available from these results'}
           </Text>
         </View>
       </View>
@@ -199,8 +236,8 @@ export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
           </Text>
           <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 3 }}>
             {isGerman
-              ? 'Zusätzlich zu den laufenden Ausgaben oben, in heutigen Beträgen — im Gesamtbedarf enthalten.'
-              : 'On top of the recurring spending above, in today’s amounts — included in the total horizon need.'}
+              ? 'Zusätzlich zu den laufenden Ausgaben oben, in heutigen Beträgen. Ausgaben, die in die Ruhestandsjahre fallen, sind in den „Ausgaben im Ruhestand“ enthalten.'
+              : 'On top of the recurring spending above, in today’s amounts. Expenses that fall into the retirement years are included in "Retirement Spending".'}
           </Text>
           <Table>
             <TableRow header>

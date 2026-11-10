@@ -17,20 +17,6 @@
     border-radius: var(--radius-lg);
     background: var(--surface);
   }
-  .ds-micro {
-    font-size: var(--fs-xs);
-    line-height: var(--lh-xs);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-    color: var(--text-label);
-    margin: 0;
-  }
-  .ds-meta {
-    font-size: var(--fs-xs);
-    line-height: var(--lh-xs);
-    color: var(--text-label);
-  }
   .ds-num {
     font-variant-numeric: tabular-nums;
     text-align: right;
@@ -53,20 +39,6 @@
     font-size: var(--fs-xs);
     line-height: var(--lh-xs);
   }
-  .ds-btn--md {
-    padding: var(--ctl-py-md) var(--ctl-px-md);
-    font-size: var(--fs-sm);
-    line-height: var(--lh-sm);
-  }
-  .ds-btn--default {
-    background: var(--action);
-    color: var(--on-action);
-    text-decoration: none;
-  }
-  .ds-btn--default:hover {
-    background: var(--action-hover);
-    color: var(--on-action);
-  }
   .ds-btn--outline {
     background: var(--surface);
     color: var(--text);
@@ -76,15 +48,6 @@
   .ds-btn--outline:hover {
     background: var(--gray-50);
     color: var(--text);
-  }
-  .ds-btn--ghost {
-    background: transparent;
-    color: var(--gray-700);
-    text-decoration: none;
-  }
-  .ds-btn--ghost:hover {
-    background: var(--gray-100);
-    color: var(--gray-700);
   }
   .ds-btn[disabled],
   .ds-btn[aria-disabled='true'] {
@@ -133,37 +96,6 @@
     background: var(--action);
     color: var(--on-action);
   }
-  .ds-kbd {
-    border: 1px solid var(--line-strong);
-    border-bottom-width: 2px;
-    border-radius: var(--radius);
-    background: var(--gray-50);
-    padding: 0 0.25rem;
-    font-family: var(--font-mono);
-    font-size: var(--fs-micro-label);
-    color: var(--gray-700);
-  }
-  .ds-tabs {
-    display: flex;
-    gap: 14px;
-    border-bottom: 1px solid var(--line);
-  }
-  .ds-tab {
-    margin-bottom: -1px;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    background: none;
-    padding: var(--sp-1) 0;
-    font: inherit;
-    font-size: var(--fs-xs);
-    color: var(--text-muted);
-    cursor: pointer;
-  }
-  .ds-tab[aria-selected='true'] {
-    border-bottom-color: var(--accent);
-    font-weight: 600;
-    color: var(--accent);
-  }
   .ds-table {
     width: 100%;
     border-collapse: collapse;
@@ -195,36 +127,6 @@
   .ds-row--behind {
     background: var(--amber-50);
   }
-  .ds-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    border: 1px solid var(--green-300);
-    background: var(--green-50);
-    color: var(--ok);
-    border-radius: var(--radius-full);
-    padding: 1px 8px;
-    font-size: 11px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .ds-pill .ds-pill-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: currentColor;
-    flex: none;
-  }
-  .ds-pill--warn {
-    border-color: var(--amber-300);
-    background: var(--amber-50);
-    color: var(--warn);
-  }
-  .ds-pill--danger {
-    border-color: var(--red-300);
-    background: var(--red-50);
-    color: var(--danger);
-  }
   .ds-delta {
     font-size: 11px;
     font-weight: 600;
@@ -253,44 +155,5 @@
     color: var(--text-label);
     background: var(--gray-50);
     border-color: var(--line-strong);
-  }
-  .ds-slider {
-    position: relative;
-    display: flex;
-    align-items: center;
-    flex: 1;
-    height: 13px;
-    touch-action: none;
-    user-select: none;
-    cursor: pointer;
-  }
-  .ds-slider-track {
-    position: relative;
-    flex: 1;
-    height: 3px;
-    border-radius: 2px;
-    background: var(--gray-200);
-  }
-  .ds-slider-range {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    border-radius: 2px;
-    background: var(--accent);
-  }
-  .ds-slider-thumb {
-    display: block;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: var(--surface);
-    border: 2px solid var(--accent);
-    box-sizing: border-box;
-  }
-
-  /* The compact dashboard manages its own rhythm; other pages keep the page-end
-   padding from globals.css. */
-  .app-page-simulation {
-    padding-bottom: 0 !important;
   }
 }

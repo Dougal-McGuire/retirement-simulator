@@ -313,6 +313,10 @@ commit_current_changes() {
     return 1
   fi
 
+  if ! bash "$ROOT_DIR/scripts/check-untracked.sh" "$ROOT_DIR"; then
+    return 1
+  fi
+
   git -C "$ROOT_DIR" add -A
   if git -C "$ROOT_DIR" diff --cached --quiet; then
     echo "[$(date -Is)] No staged changes to commit."
@@ -398,7 +402,8 @@ codex_exec() {
   local output_file="$3"
   local log_file="$4"
 
-  pnpm exec codex \
+  # Codex is fetched on demand (it is ~280 MB, too heavy for every install).
+  pnpm dlx "${IMPROVEMENT_LOOP_CODEX_PACKAGE:-@openai/codex}" \
     -m "$CODEX_MODEL" \
     -a never \
     --sandbox "$sandbox" \
@@ -458,7 +463,7 @@ Read AGENTS.md first. You are not alone in the codebase: preserve existing chang
 Rules:
 - Keep the patch small enough for an unattended 10-minute cycle.
 - Prefer existing Next.js, React, Tailwind, Jest, Playwright, Zustand, next-intl, and React PDF patterns.
-- Treat /api/generate-pdf as the active PDF path; the HTML print route is legacy.
+- The PDF report is built in the browser (src/lib/pdf-generator/client); there is no report endpoint and no request may carry plan data.
 - Do not make broad refactors, dependency upgrades, or visual redesigns in this worker pass.
 - Finish with changed files, verification results, self-critique, and exactly one final marker:
   WORKER_DECISION: CHANGED

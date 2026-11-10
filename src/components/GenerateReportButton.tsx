@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
@@ -10,6 +10,8 @@ import { planDisplayName } from '@/lib/plans/planName'
 import { useActivePlanId, usePlans } from '@/lib/stores/simulationStore'
 import { useDisplayReal } from '@/lib/stores/displayStore'
 import { euroUnitFilenameSuffix, resolveEuroUnit } from '@/lib/pdf-generator/euroUnit'
+import { ReportGenerationError } from '@/lib/pdf-generator/client/reportErrors'
+import { reportErrorKey, reportFilename } from '@/lib/pdf-generator/client/reportFile'
 import { SimulationResults, SimulationParams } from '@/types'
 
 interface GenerateReportButtonProps {
@@ -25,18 +27,27 @@ interface GenerateReportButtonProps {
   planName?: string
 }
 
-/** Filename-safe slug of a plan name, e.g. "Retire 2 years later" → "retire-2-years-later". */
-export function planFilenameSlug(name: string | undefined | null): string {
-  if (!name) return ''
-  return name
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40)
+function saveBlob(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  // Revoked a tick later: Safari cancels the download when the URL goes away
+  // inside the click's own task.
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
 }
 
+/**
+ * "Bericht erstellen": builds the PDF **in this browser** and saves it.
+ *
+ * The report pipeline (`client/generateReportPdf`) is a separate chunk that
+ * is only fetched on the first click, and it renders in a worker, so the page
+ * stays responsive while the file is built. The plan, its results and its
+ * name are never sent anywhere.
+ */
 export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
   results,
   params = null,
@@ -53,6 +64,9 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
   const locale = useLocale()
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // A second click while a report is being built must not start another one
+  // (state updates are asynchronous; the ref is not).
+  const busyRef = useRef(false)
   const plans = usePlans()
   const activePlanId = useActivePlanId()
   // The report prints its euro figures in the unit the dashboard shows.
@@ -68,71 +82,36 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
 
   const canGenerate = results && !disabled
 
-  const generatePDF = async () => {
-    // Create abort controller for timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
+  const generatePDF = async (source: SimulationResults) => {
+    const reportParams = source.params || params
+    if (!reportParams) throw new Error('No parameters to report on')
 
+    let reportModule: typeof import('@/lib/pdf-generator/client/generateReportPdf')
     try {
-      const response = await fetch('/api/generate-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          params: results?.params || params,
-          results,
-          locale,
-          planName: activePlanName,
-          displayReal,
-        }),
-        signal: controller.signal,
-      })
-
-      clearTimeout(timeoutId)
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error('PDF generation error response:', errorData)
-        throw new Error(
-          errorData.details ||
-            errorData.error ||
-            t('errors.requestFailed', { status: response.statusText })
-        )
-      }
-
-      const blob = await response.blob()
-      const slug = planFilenameSlug(activePlanName)
-      // Same decision the server makes, so a report that had to fall back to
-      // nominal (results without real series) is not named as today's euros.
-      const unitSuffix = results
-        ? euroUnitFilenameSuffix(resolveEuroUnit(results, displayReal), locale)
-        : ''
-      const filename = `retirement-report${slug ? `-${slug}` : ''}${unitSuffix}-${
-        new Date().toISOString().split('T')[0]
-      }.pdf`
-
-      // Create download link
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-    } catch (error) {
-      clearTimeout(timeoutId)
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(t('errors.timeout'))
-      }
-      throw error
+      reportModule = await import('@/lib/pdf-generator/client/generateReportPdf')
+    } catch (cause) {
+      // Offline, or a deploy replaced the chunk this tab still points at.
+      throw new ReportGenerationError('chunkLoad', cause)
     }
+
+    const blob = await reportModule.generateReportPdf({
+      params: reportParams,
+      results: source,
+      locale: locale === 'en' ? 'en' : 'de',
+      planName: activePlanName,
+      displayReal,
+    })
+
+    // The same decision the report makes, so one that had to fall back to
+    // nominal (results without real series) is not named as today's euros.
+    const unitSuffix = euroUnitFilenameSuffix(resolveEuroUnit(source, displayReal), locale)
+    saveBlob(blob, reportFilename(activePlanName, unitSuffix))
   }
 
   const handleGenerate = async () => {
-    if (!canGenerate) return
+    if (!results || disabled || busyRef.current) return
 
+    busyRef.current = true
     setIsGenerating(true)
     setError(null)
 
@@ -141,14 +120,20 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
     const toastId = toast.loading(t('actions.generating'))
 
     try {
-      await generatePDF()
+      await generatePDF(results)
       toast.success(t('actions.ready'), { id: toastId })
-    } catch (error) {
-      console.error('PDF generation failed:', error)
-      const message = error instanceof Error ? error.message : t('errors.generic')
+    } catch (cause) {
+      // For the console only; the reader gets a catalog sentence.
+      console.error(
+        'PDF generation failed:',
+        cause,
+        cause instanceof Error && cause.cause !== undefined ? cause.cause : ''
+      )
+      const message = t(`errors.${reportErrorKey(cause)}`)
       setError(message)
       toast.error(message, { id: toastId })
     } finally {
+      busyRef.current = false
       setIsGenerating(false)
     }
   }
@@ -179,6 +164,7 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
         onClick={handleGenerate}
         disabled={isGenerating}
         aria-busy={isGenerating}
+        data-testid="generate-report"
         className={cn(buttonClassName)}
       >
         {/* The busy state wins over any custom label: callers that pass their
@@ -199,7 +185,13 @@ export const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({
       </Button>
 
       {error && (
-        <div className="max-w-xs text-center text-xs font-semibold   text-danger">{error}</div>
+        <div
+          role="alert"
+          data-testid="generate-report-error"
+          className="max-w-xs text-center text-xs font-semibold text-danger"
+        >
+          {error}
+        </div>
       )}
     </div>
   )

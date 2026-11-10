@@ -19,8 +19,20 @@ export interface EuroUnitCopy {
   methodology: string
   /** Qualifier for growth percentages: "nominal" / "real". */
   growth: string
-  /** Suffix for a derived amount like the bridge need; empty when nominal. */
+  /**
+   * Suffix for every amount the simulation produced (ledger figures, the
+   * bridge need): " in nominalen Euro" / " in heutiger Kaufkraft". Never
+   * empty — a projected amount without its unit, printed next to inputs in
+   * today's euros, reads as today's euros.
+   */
   amountQualifier: string
+  /**
+   * Suffix for an amount the user entered (budget, savings, pension): always
+   * today's euros, whichever unit the projected figures are in.
+   */
+  inputQualifier: string
+  /** The same as a caption: "heutige Beträge" / "today's euros". */
+  inputTag: string
 }
 
 export function buildEuroUnitCopy(unit: ReportEuroUnit, locale: ReportLocale): EuroUnitCopy {
@@ -74,6 +86,14 @@ export function buildEuroUnitCopy(unit: ReportEuroUnit, locale: ReportLocale): E
     statement,
     methodology,
     growth: real ? 'real' : 'nominal',
-    amountQualifier: real ? (de ? ' in heutiger Kaufkraft' : " in today's euros") : '',
+    amountQualifier: real
+      ? de
+        ? ' in heutiger Kaufkraft'
+        : " in today's euros"
+      : de
+        ? ' in nominalen Euro'
+        : ' in nominal euros',
+    inputQualifier: de ? ' in heutigen Beträgen' : " in today's euros",
+    inputTag: de ? 'heutige Beträge' : "today's euros",
   }
 }

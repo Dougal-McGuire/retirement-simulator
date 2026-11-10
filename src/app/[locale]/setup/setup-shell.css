@@ -253,3 +253,9 @@
     display: none;
   }
 }
+
+/* A sub-heading inside a step card (h3 under the step's h2): keeps the small
+   label size the global `html :is(h2, h3, h4)` rule would otherwise raise. */
+.workspace-setup .setup-subheading {
+  font-size: 0.72rem;
+}

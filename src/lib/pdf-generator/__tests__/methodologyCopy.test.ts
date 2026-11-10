@@ -1,8 +1,14 @@
-import { buildMethodologyCopy } from '@/lib/pdf-generator/methodologyCopy'
+import {
+  UNFUNDED_SPENDING_TOLERANCE,
+  buildMethodologyCopy,
+} from '@/lib/pdf-generator/methodologyCopy'
 import { mapReportDataToContent } from '@/lib/pdf-generator/reportTypes'
 import { ReportDataSchema, type ReportLocale } from '@/lib/pdf-generator/schema/reportData'
 import { transformToReportData } from '@/lib/transformers/reportDataTransformer'
-import { runMonteCarloSimulation } from '@/lib/simulation/engine'
+import {
+  UNFUNDED_SPENDING_TOLERANCE as ENGINE_TOLERANCE,
+  runMonteCarloSimulation,
+} from '@/lib/simulation/engine'
 import { DEFAULT_PARAMS, type SimulationParams } from '@/types'
 
 function contentFor(patch: Partial<SimulationParams>, locale: ReportLocale = 'en') {
@@ -80,12 +86,28 @@ describe('report methodology copy — tax model', () => {
 })
 
 describe('report methodology copy — success definition', () => {
-  it('defines success as plain survival without a bequest goal', () => {
+  it('defines success as every year being funded — not as the capital surviving', () => {
     const { content } = contentFor({ legacyTargetReal: 0 })
     const copy = buildMethodologyCopy(content)
 
-    expect(copy.successRate).toContain('plain survival')
+    // The engine's definition: income and portfolio together pay each year's
+    // spending, within the engine's 1 % tolerance. A portfolio at zero is not
+    // a failure while a pension pays the budget.
+    // The report quotes the tolerance the engine counts with — its own copy of
+    // the constant must never drift from the engine's.
+    expect(UNFUNDED_SPENDING_TOLERANCE).toBe(ENGINE_TOLERANCE)
+    expect(ENGINE_TOLERANCE).toBe(0.01)
+    expect(copy.successRate).toContain("every year's spending to age 90 is funded")
+    expect(copy.successRate).toContain('by income and portfolio together')
+    expect(copy.successRate).toContain("a gap of up to 1% of a year's spending still counts")
     expect(copy.successRate).toContain('no bequest goal')
+    expect(copy.successRate).not.toMatch(/survival|exhaust|capital/i)
+
+    const german = buildMethodologyCopy({ ...content, locale: 'de' }).successRate
+    expect(german).toContain('die Ausgaben bis Alter 90 in jedem Jahr gedeckt sind')
+    expect(german).toContain('aus Einnahmen und Depot zusammen')
+    expect(german.replace(/\s+/g, ' ')).toContain('eine Lücke bis 1 % der Jahresausgaben')
+    expect(german).not.toMatch(/Überleben|aufgebraucht|Kapital/)
   })
 
   it('prints both numbers with their labels when a bequest goal is active', () => {
@@ -142,61 +164,51 @@ describe('report simulation context', () => {
   })
 })
 
-describe('total horizon need', () => {
-  it('includes scheduled cash-flow expenses the report lists elsewhere', () => {
-    const care = {
-      id: 'care',
-      kind: 'expense' as const,
-      name: 'Care costs',
-      amount: 3000,
-      frequency: 'monthly' as const,
-      startAge: 80,
-      endAge: 90,
-    }
-    const { content: withoutCare } = contentFor({})
-    const { content: withCare } = contentFor({
-      cashFlows: [...DEFAULT_PARAMS.cashFlows, care],
-    })
+describe('report glossary — one definition, one wording', () => {
+  it('defines the withdrawal rate the way firstYearWithdrawalRate computes it', () => {
+    const en = buildMethodologyCopy(contentFor({}).content).withdrawalRate
+    expect(en).toContain('pays out in the first retirement year')
+    expect(en).toContain('after pensions and other income')
+    expect(en).toContain('tax on realised gains')
+    expect(en).toContain('divided by the portfolio at the start of that year')
 
-    // 3 000 a month for ages 80..90 inclusive = 11 years.
-    const expected = 3000 * 12 * 11
-    expect(withCare.expenses.scheduledExpenseTotal).toBe(expected)
-    expect(withCare.expenses.totalHorizonAmount).toBe(
-      withoutCare.expenses.totalHorizonAmount + expected
-    )
-    expect(withoutCare.expenses.scheduledExpenseTotal).toBe(0)
+    const de = buildMethodologyCopy(contentFor({}, 'de').content).withdrawalRate
+    expect(de).toContain('im ersten Ruhestandsjahr')
+    expect(de).toContain('geteilt durch das Depot zu Beginn dieses Jahres')
   })
 
-  it('counts a one-off expense exactly once', () => {
-    const { content } = contentFor({
-      cashFlows: [
-        ...DEFAULT_PARAMS.cashFlows,
-        {
-          id: 'roof',
-          kind: 'expense' as const,
-          name: 'Roof',
-          amount: 40_000,
-          frequency: 'once' as const,
-          startAge: 70,
-        },
-      ],
-    })
-    expect(content.expenses.scheduledExpenseTotal).toBe(40_000)
+  it('defines the bridge as the years before the main pension, with the ledger’s withdrawals', () => {
+    const en = buildMethodologyCopy(contentFor({}).content).bridge
+    expect(en).toContain('before the main pension starts')
+    expect(en).toContain('the statutory pension where the plan counts it, otherwise the largest')
+    expect(en).toContain('sum of what the portfolio pays out in those years')
+    // The old entry: "when spending comes entirely from the portfolio".
+    expect(en).not.toContain('entirely')
   })
 
-  it('ignores scheduled income — the figure is a spending need', () => {
-    const { content } = contentFor({
-      cashFlows: [
-        ...DEFAULT_PARAMS.cashFlows,
-        {
-          id: 'rent',
-          kind: 'income' as const,
-          name: 'Rent',
-          amount: 900,
-          frequency: 'monthly' as const,
-        },
-      ],
-    })
-    expect(content.expenses.scheduledExpenseTotal).toBe(0)
+  it('states the plan score with the weights actually applied and no dashboard claim', () => {
+    const { content } = contentFor({})
+    const en = buildMethodologyCopy(content).planScore
+    expect(content.profile.success.components.map((part) => [part.id, part.weight])).toEqual([
+      ['success', 0.7],
+      ['withdrawal', 0.3],
+    ])
+    expect(en).toContain('success rate (70%)')
+    expect(en).toContain('first-year withdrawal rate (30%')
+    expect(en).toContain('follows the success rate alone')
+    expect(en).not.toMatch(/liquidity/i)
+    expect(en).not.toMatch(/same figure/i)
+
+    const de = buildMethodologyCopy(contentFor({}, 'de').content).planScore
+    expect(de.replace(/[\u00a0\u202f]/g, ' ')).toContain('Erfolgsquote (70 %)')
+    expect(de).not.toMatch(/Liquidität|identisch zur Anzeige im Dashboard/)
+  })
+
+  it('lists that today’s portfolio is assumed to carry no unrealised gains', () => {
+    const en = buildMethodologyCopy(contentFor({}).content).limitations
+    expect(en.some((line) => line.includes('assumed to carry no unrealised gains'))).toBe(true)
+    const de = buildMethodologyCopy(contentFor({}, 'de').content).limitations
+    expect(de.some((line) => line.includes('keine unrealisierten Kursgewinne'))).toBe(true)
   })
 })
+

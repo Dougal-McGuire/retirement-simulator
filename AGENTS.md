@@ -1,46 +1,15 @@
-# Repository Guidelines
+# Agent guidelines
 
-## Project Structure & Module Organization
-- `src/app`: Next.js App Router pages and route segments (for example `app/setup`, `app/simulation`, `layout.tsx`).
-- `src/components`: Shared UI and feature components; primitives live in `src/components/ui`.
-- `src/lib`: Core logic and utilities, including simulation, state stores, and PDF generation (`pdf-generator/{templates,styles,charts,utils}`).
-- `src/types`: Shared TypeScript types and defaults.
-- `public`: Static assets. CI workflows live in `.github/workflows`.
-- Tests are colocated as `src/**/__tests__/*.test.ts` or `src/**/*.test.ts`.
+Read [`CLAUDE.md`](./CLAUDE.md): it is the single source for commands, architecture, conventions and copy rules in this repository. `CONTRIBUTING.md` has the test workflow (including `PW_REUSE` for E2E) and `DEPLOYMENT.md` the CI/CD pipeline.
 
-## Build, Test, and Development Commands
-- `pnpm dev`: Start local dev server on port `3000` with Turbopack.
-- `pnpm dev:clean`: Kill anything on `:3000`, then start dev.
-- `pnpm build`: Create a production build.
-- `pnpm start`: Serve the production build.
-- `pnpm test`: Run Jest tests once.
-- `pnpm test:watch`: Run tests in watch mode.
-- `pnpm test:e2e`: Run Playwright tests; the config starts the local app automatically.
-- `pnpm lint`: Run ESLint for `.ts`/`.tsx` files.
-- `pnpm format`: Format the repo with Prettier.
+The block below is maintained by `next dev` (Next.js `agentRules`); leave it in place.
 
-## Coding Style & Naming Conventions
-- TypeScript with `strict` mode; use alias imports via `@/*` for `src/*`.
-- Use 2-space indentation, single quotes, and omit semicolons.
-- Prefer named exports and functional React components with hooks.
-- Component filenames use PascalCase (for example `ParameterSidebar.tsx`).
-- UI primitives under `src/components/ui` use lowercase filenames (for example `button.tsx`).
-- Styling uses Tailwind CSS; keep print/PDF tokens aligned with `src/lib/pdf-generator/styles`.
+<!-- BEGIN:nextjs-agent-rules -->
 
-## Testing Guidelines
-- Framework: Jest with `ts-jest` (`jest.config.js`, Node test environment).
-- Name tests `*.test.ts` and keep them near the code under test.
-- Prioritize coverage for `src/lib/simulation` and transformation logic.
-- Use defaults from `src/types` (for example `DEFAULT_PARAMS`) to build stable fixtures.
-- Run `pnpm test` before opening a PR; use `pnpm exec jest --coverage` when validating broader changes.
+## This is NOT the Next.js you know
 
-## Commit & Pull Request Guidelines
-- Keep commits concise and imperative (for example `Fix Vercel PDF generation`).
-- Group related changes into a single commit/PR.
-- PRs should include: clear summary, linked issue(s), test updates, and screenshots/GIFs for UI changes.
-- Call out higher-risk areas explicitly (for example PDF generation paths or API routes).
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
-## Security & Configuration Tips
-- Do not commit secrets or local credentials.
-- The active PDF path uses React PDF via `/api/generate-pdf`; treat the HTML print route as legacy unless you are intentionally working on that fallback.
-- Confirm `vercel.json` settings and API route runtime (`nodejs`) before deployment changes.
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

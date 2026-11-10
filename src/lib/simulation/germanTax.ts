@@ -4,6 +4,13 @@
  * Everything here is a pure function of euros and calendar years. Amounts are
  * quoted in today's euros, so the tariff is the current one and the brackets
  * are implicitly assumed to move with inflation.
+ *
+ * That makes the unit the caller's responsibility: an amount fixed in the
+ * nominal euros of a later year has to be deflated before it goes in here,
+ * or it is taxed as if those euros were today's. `buildCashFlowSeries` does
+ * that with the plan's expected inflation.
+ *
+ * The tariff itself has no year switch: it is the 2026 one for every year.
  */
 
 /** Source: https://www.gesetze-im-internet.de/estg/__32a.html (checked 2026-09-06).

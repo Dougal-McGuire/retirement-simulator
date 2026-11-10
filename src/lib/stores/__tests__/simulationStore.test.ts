@@ -3,7 +3,6 @@ import { DEFAULT_PARAMS, MAX_PLANS, type SimulationParams, type SimulationResult
 type StoreModule = typeof import('../simulationStore')
 
 const STORE_KEY = 'retirement-simulator-store'
-const STORAGE_KEY = 'retirement-simulator-params'
 const SAVED_SETUPS_KEY = 'retirement-simulator-saved-setups'
 
 function createResults(params: SimulationParams): SimulationResults {
@@ -144,19 +143,24 @@ describe('simulationStore', () => {
     expect(useSimulationStore.getState().results?.params.currentAge).toBe(57)
   })
 
-  it('clears persisted results when their params no longer match the hydrated params', () => {
-    const { useSimulationStore } = loadStore({
-      [STORE_KEY]: JSON.stringify({
-        state: {
-          params: DEFAULT_PARAMS,
-          results: createResults({ ...DEFAULT_PARAMS, currentAge: DEFAULT_PARAMS.currentAge + 1 }),
-          savedSetups: [],
-        },
-        version: 0,
-      }),
-    })
+  it('never reads results back from storage, matching params or not', () => {
+    for (const params of [
+      DEFAULT_PARAMS,
+      { ...DEFAULT_PARAMS, currentAge: DEFAULT_PARAMS.currentAge + 1 },
+    ]) {
+      const { useSimulationStore } = loadStore({
+        [STORE_KEY]: JSON.stringify({
+          state: {
+            params: DEFAULT_PARAMS,
+            results: createResults(params),
+            plans: [],
+          },
+          version: 3,
+        }),
+      })
 
-    expect(useSimulationStore.getState().results).toBeNull()
+      expect(useSimulationStore.getState().results).toBeNull()
+    }
   })
 
   it('sanitizes invalid scalar params when hydrating persisted params', () => {
@@ -340,8 +344,9 @@ describe('simulationStore', () => {
       ]),
     })
 
-    // Saved setups are imported as plans; `savedSetups` is now a mirror of them.
-    const { plans, savedSetups } = useSimulationStore.getState()
+    // Saved setups are imported as plans; the store keeps no setups of its own.
+    const state = useSimulationStore.getState()
+    const { plans } = state
 
     expect(plans.map((plan) => plan.id)).toEqual(['plan-base', 'saved-valid'])
     expect(plans[1]).toMatchObject({
@@ -355,14 +360,7 @@ describe('simulationStore', () => {
         withdrawalStrategy: 'fixedReal',
       },
     })
-    expect(savedSetups).toEqual(
-      plans.map((plan) => ({
-        id: plan.id,
-        name: plan.name,
-        timestamp: plan.updatedAt,
-        params: plan.params,
-      }))
-    )
+    expect(state).not.toHaveProperty('savedSetups')
   })
 
   it('drops malformed saved setups from the main persisted store', () => {
@@ -409,119 +407,6 @@ describe('simulationStore', () => {
     })
   })
 
-  it('sanitizes invalid scalar params when loading params from storage', () => {
-    const { useSimulationStore } = loadStore({
-      [STORAGE_KEY]: JSON.stringify({
-        ...DEFAULT_PARAMS,
-        currentAge: 'invalid',
-        legalRetirementAge: '68',
-        endAge: null,
-        simulationRuns: '750',
-        withdrawalStrategy: 'fixedReal',
-        dsWithdrawalRate: '0.055',
-      }),
-    })
-    const runSimulation = jest.fn(async () => {})
-    useSimulationStore.setState({ runSimulation })
-
-    useSimulationStore.getState().loadFromStorage()
-
-    const { params } = useSimulationStore.getState()
-    expect(runSimulation).toHaveBeenCalledTimes(1)
-    expect(params.currentAge).toBe(DEFAULT_PARAMS.currentAge)
-    expect(params.legalRetirementAge).toBe(68)
-    expect(params.endAge).toBe(DEFAULT_PARAMS.endAge)
-    expect(params.simulationRuns).toBe(750)
-    expect(params.withdrawalStrategy).toBe('fixedReal')
-    expect(params.dsWithdrawalRate).toBe(0.055)
-  })
-
-  it('migrates legacy expenses when loading params from storage', () => {
-    const { customExpenses: _customExpenses, ...legacyParams } = DEFAULT_PARAMS
-    const { useSimulationStore } = loadStore({
-      [STORAGE_KEY]: JSON.stringify({
-        ...legacyParams,
-        monthlyExpenses: {
-          utilities: 410,
-        },
-        annualExpenses: {
-          carMaintenance: 1600,
-        },
-      }),
-    })
-    const runSimulation = jest.fn(async () => {})
-    useSimulationStore.setState({ runSimulation })
-
-    useSimulationStore.getState().loadFromStorage()
-
-    expect(runSimulation).toHaveBeenCalledTimes(1)
-    expect(useSimulationStore.getState().params.customExpenses).toEqual([
-      {
-        id: 'migrated-monthly-utilities',
-        name: 'Utilities',
-        nameKey: 'utilities',
-        amount: 410,
-        interval: 'monthly',
-      },
-      {
-        id: 'migrated-annual-carMaintenance',
-        name: 'Car Maintenance',
-        nameKey: 'carMaintenance',
-        amount: 1600,
-        interval: 'annual',
-      },
-    ])
-  })
-
-  it('runs one simulation when loading a saved setup', async () => {
-    const { useSimulationStore } = loadStore()
-    const runSimulation = jest.fn(async () => {
-      useSimulationStore.setState({
-        results: createResults(useSimulationStore.getState().params),
-        isLoading: false,
-        error: null,
-        pendingRun: false,
-      })
-    })
-    useSimulationStore.setState({ runSimulation })
-
-    useSimulationStore.setState({
-      savedSetups: [
-        {
-          id: 'saved-1',
-          name: 'Saved setup',
-          timestamp: Date.now(),
-          params: {
-            ...DEFAULT_PARAMS,
-            currentAge: 59,
-            customExpenses: [
-              {
-                id: 'saved-current-expense',
-                name: 'Saved expense',
-                amount: 1200,
-                interval: 'annual',
-              },
-            ],
-          },
-        },
-      ],
-    })
-
-    useSimulationStore.getState().loadSetup('saved-1')
-    await flushSimulationQueue()
-
-    expect(runSimulation).toHaveBeenCalledTimes(1)
-    expect(useSimulationStore.getState().params.currentAge).toBe(59)
-    expect(useSimulationStore.getState().params.customExpenses).toEqual([
-      {
-        id: 'saved-current-expense',
-        name: 'Saved expense',
-        amount: 1200,
-        interval: 'annual',
-      },
-    ])
-  })
-
   describe('plans', () => {
     const setupStore = () => {
       const { useSimulationStore } = loadStore()
@@ -539,13 +424,12 @@ describe('simulationStore', () => {
 
     it('starts with a single active base plan holding the current params', () => {
       const { useSimulationStore } = setupStore()
-      const { plans, activePlanId, params, savedSetups } = useSimulationStore.getState()
+      const { plans, activePlanId, params } = useSimulationStore.getState()
 
       expect(plans).toHaveLength(1)
       expect(plans[0].nameKey).toBe('base')
       expect(activePlanId).toBe(plans[0].id)
       expect(plans[0].params).toEqual(params)
-      expect(savedSetups.map((setup) => setup.id)).toEqual([plans[0].id])
     })
 
     it('creates a plan from the current params, activates it and runs once', async () => {
@@ -780,26 +664,6 @@ describe('simulationStore', () => {
       expect(useSimulationStore.getState().plans).toHaveLength(MAX_PLANS)
       expect(useSimulationStore.getState().error).toBe('planLimitReached')
     })
-
-    it('routes the legacy setup actions through plans', async () => {
-      const { useSimulationStore } = setupStore()
-
-      useSimulationStore.getState().saveSetup('Legacy save')
-      await flushSimulationQueue()
-
-      const created = useSimulationStore
-        .getState()
-        .plans.find((plan) => plan.name === 'Legacy save')
-      expect(created).toBeDefined()
-      expect(useSimulationStore.getState().savedSetups.map((setup) => setup.id)).toEqual(
-        useSimulationStore.getState().plans.map((plan) => plan.id)
-      )
-
-      useSimulationStore.getState().deleteSetup(created!.id)
-      expect(useSimulationStore.getState().plans.some((plan) => plan.id === created!.id)).toBe(
-        false
-      )
-    })
   })
 
   describe('working copy (plan drafts)', () => {
@@ -854,13 +718,11 @@ describe('simulationStore', () => {
       await flushSimulationQueue()
       useSimulationStore.getState().savePlanDraft()
 
-      const { plans, isDirty, draftParams, savedSetups } = useSimulationStore.getState()
+      const { plans, isDirty, draftParams } = useSimulationStore.getState()
       expect(isDirty).toBe(false)
       expect(draftParams).toBeNull()
       expect(plans[0].params.currentAssets).toBe(750000)
       expect(plans[0].updatedAt).toBeGreaterThanOrEqual(before)
-      // The legacy mirror stays in sync with plans.
-      expect(savedSetups[0].params.currentAssets).toBe(750000)
     })
 
     it('does nothing when saving a clean working copy', () => {
@@ -945,6 +807,38 @@ describe('simulationStore', () => {
       expect(state.plans.find((plan) => plan.id === baseId)?.params.retirementAge).toBe(
         DEFAULT_PARAMS.retirementAge
       )
+    })
+
+    // Creating a plan from *other* params and activating it drops the working
+    // copy — the store's contract, and why callers with unsaved edits (the
+    // example button, "undo delete") must add the plan in the background.
+    it('keeps an unsaved draft when a plan is added in the background', async () => {
+      const { useSimulationStore } = setupStore()
+      const baseId = useSimulationStore.getState().activePlanId
+      const other = { ...DEFAULT_PARAMS, currentAssets: 1 }
+
+      useSimulationStore.getState().updateParams({ currentAssets: 31_337 })
+      await flushSimulationQueue()
+
+      const addedId = useSimulationStore.getState().createPlan('Demo', other, { activate: false })
+
+      const state = useSimulationStore.getState()
+      expect(state.plans.find((plan) => plan.id === addedId)?.params.currentAssets).toBe(1)
+      expect(state.activePlanId).toBe(baseId)
+      expect(state.isDirty).toBe(true)
+      expect(state.params.currentAssets).toBe(31_337)
+      expect(state.draftParams?.currentAssets).toBe(31_337)
+
+      // Activating it is what loses the draft.
+      useSimulationStore.getState().setActivePlan(addedId as string)
+      const after = useSimulationStore.getState()
+      expect(after.isDirty).toBe(false)
+      expect(after.draftParams).toBeNull()
+      expect(after.params.currentAssets).toBe(1)
+      expect(after.plans.map((plan) => plan.params.currentAssets)).toEqual([
+        DEFAULT_PARAMS.currentAssets,
+        1,
+      ])
     })
 
     it('caches the success rate of a clean run per plan', async () => {

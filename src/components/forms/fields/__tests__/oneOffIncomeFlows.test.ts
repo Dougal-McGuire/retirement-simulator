@@ -2,11 +2,12 @@ import { DEFAULT_PARAMS, type CashFlow, type SimulationParams } from '@/types'
 import { applyCashFlows, withCashFlowEnabled } from '@/lib/simulation/cashFlows'
 import {
   addOneOffIncome,
+  isOneOffIncomeFlow,
   oneOffIncomeEntries,
-  removeFlow,
-  toggleFlow,
   updateOneOffIncome,
 } from '../oneOffIncomeFlows'
+import { createFlowId, removeFlow, toggleFlow } from '@/lib/plans/flowOps'
+import { hasOnceIncomeShape } from '@/lib/simulation/cashFlows'
 
 const inheritance: CashFlow = {
   id: 'inheritance',
@@ -140,5 +141,17 @@ describe('setup wizard one-off income list', () => {
 
   it('ignores ids that are not one-off incomes', () => {
     expect(updateOneOffIncome(flows, 'rent', { name: 'x', age: 1, amount: 1 })).toEqual(flows)
+  })
+})
+
+describe('one definition per helper', () => {
+  it('the wizard reads one-off income by the shape the engine uses', () => {
+    expect(isOneOffIncomeFlow).toBe(hasOnceIncomeShape)
+  })
+
+  it('issues ids that are never positional', () => {
+    const id = createFlowId()
+    expect(id).toMatch(/^flow-\d{13}-[a-z0-9]+$/)
+    expect(createFlowId()).not.toBe(id)
   })
 })

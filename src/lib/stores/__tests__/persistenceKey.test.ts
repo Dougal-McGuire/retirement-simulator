@@ -1,5 +1,5 @@
 import {
-  BASE_PARAMS_KEY,
+  BASE_PLANS_IMPORTED_KEY,
   BASE_SAVED_SETUPS_KEY,
   BASE_STORE_KEY,
   getActiveAuthUserId,
@@ -54,10 +54,10 @@ describe('persistence key resolution', () => {
 
     it('separates different base keys for the same user', () => {
       const store = namespaceStorageKey(BASE_STORE_KEY, 'user-a')
-      const params = namespaceStorageKey(BASE_PARAMS_KEY, 'user-a')
+      const marker = namespaceStorageKey(BASE_PLANS_IMPORTED_KEY, 'user-a')
       const setups = namespaceStorageKey(BASE_SAVED_SETUPS_KEY, 'user-a')
 
-      expect(new Set([store, params, setups]).size).toBe(3)
+      expect(new Set([store, marker, setups]).size).toBe(3)
     })
 
     it('never leaks the raw account id into the key', () => {
@@ -92,7 +92,7 @@ describe('persistence key resolution', () => {
     it('defaults to signed out, resolving to base keys', () => {
       expect(getActiveAuthUserId()).toBeNull()
       expect(storageKey(BASE_STORE_KEY)).toBe(BASE_STORE_KEY)
-      expect(storageKey(BASE_PARAMS_KEY)).toBe(BASE_PARAMS_KEY)
+      expect(storageKey(BASE_PLANS_IMPORTED_KEY)).toBe(BASE_PLANS_IMPORTED_KEY)
       expect(storageKey(BASE_SAVED_SETUPS_KEY)).toBe(BASE_SAVED_SETUPS_KEY)
     })
 
@@ -101,7 +101,9 @@ describe('persistence key resolution', () => {
 
       expect(getActiveAuthUserId()).toBe('user-a')
       expect(storageKey(BASE_STORE_KEY)).toBe(namespaceStorageKey(BASE_STORE_KEY, 'user-a'))
-      expect(storageKey(BASE_PARAMS_KEY)).toBe(namespaceStorageKey(BASE_PARAMS_KEY, 'user-a'))
+      expect(storageKey(BASE_PLANS_IMPORTED_KEY)).toBe(
+        namespaceStorageKey(BASE_PLANS_IMPORTED_KEY, 'user-a')
+      )
       expect(storageKey(BASE_SAVED_SETUPS_KEY)).toBe(
         namespaceStorageKey(BASE_SAVED_SETUPS_KEY, 'user-a')
       )

@@ -1,73 +1,85 @@
 import type { SimulationParams, SimulationResults } from '@/types'
-import { pensionMonthlyAtAge } from '@/lib/simulation/cashFlows'
-import { defaultPdfConfig } from '@/lib/pdf-generator/utils/config'
-import { calculateCombinedExpenses } from '@/lib/simulation/engine'
-import { computeBridgeAnalysis } from './bridge'
+import { getPlanHealth, type PlanHealth } from '@/lib/simulation/planInsights'
+import { firstYearWithdrawalRate } from './ledger'
 
-export type PlanHealthLabel = 'Strong' | 'Moderate' | 'Needs Attention'
+/**
+ * The plan score printed in the report.
+ *
+ * A weighted mean of sub-scores that are each **measured on this run**:
+ *
+ * - `success` — the success rate itself (0–100);
+ * - `withdrawal` — the first-year withdrawal rate from the ledger (see
+ *   `firstYearWithdrawalRate`): 100 up to 4 %, minus 25 points for every
+ *   percentage point above, 0 from 8 %.
+ *
+ * There is no third component. The score used to carry a "liquidity" part that
+ * was the constant 100 — fifteen points every plan got for nothing — and a
+ * spending part computed as if the plan retired today on the gross pension.
+ * When the withdrawal rate cannot be read (no ledger, no retirement inside the
+ * horizon) the score is the success rate alone rather than a guess.
+ *
+ * The **band** is not derived from the score. It is `getPlanHealth` of the
+ * success rate — the app's one definition of strong / watch / strained — so
+ * the report can never grade a plan differently from the rest of the app.
+ */
 
-/** One weighted input to the plan score, in the units the score is built from. */
+export type PlanHealthComponentId = 'success' | 'withdrawal'
+
+/** One weighted input to the plan score. */
 export type PlanHealthComponent = {
-  id: 'success' | 'spending' | 'liquidity'
+  id: PlanHealthComponentId
   /** 0–100 sub-score. */
   value: number
   /** Weight applied to `value` (weights sum to 1). */
   weight: number
 }
 
+export const PLAN_SCORE_WEIGHTS = { success: 0.7, withdrawal: 0.3 } as const
+
+/** Withdrawal rate that still earns the full sub-score. */
+export const WITHDRAWAL_COMFORT_RATE = 0.04
+/** Sub-score points lost per percentage point above the comfort rate. */
+export const WITHDRAWAL_PENALTY_PER_POINT = 25
+
 export type PlanHealthScore = {
+  /** 0–100, rounded from `components`. */
   score: number
-  label: PlanHealthLabel
-  why: string
-  whyBits: string[]
+  /** `getPlanHealth(successRate)` — never derived from `score`. */
+  band: PlanHealth
   /** The weighted parts `score` is rounded from — same numbers, itemised. */
   components: PlanHealthComponent[]
+  /** The rate behind the `withdrawal` component; `null` when it could not be read. */
+  withdrawalRate: number | null
+}
+
+/** 0–100 sub-score of a first-year withdrawal rate. */
+export function withdrawalSubScore(rate: number): number {
+  const pointsAbove = Math.max(0, rate - WITHDRAWAL_COMFORT_RATE) * 100
+  return Math.max(0, Math.min(100, 100 - pointsAbove * WITHDRAWAL_PENALTY_PER_POINT))
 }
 
 export function computePlanHealthScore(
   params: SimulationParams,
   results: SimulationResults
 ): PlanHealthScore {
-  const weights = defaultPdfConfig.score_weights
-  const totalYearlyExpenses = calculateCombinedExpenses(params.customExpenses).combinedAnnual
-  const pensionAnnual =
-    pensionMonthlyAtAge(
-      params.cashFlows ?? [],
-      params.legalRetirementAge,
-      params.legalRetirementAge
-    ).total * 12
-  const netAnnualSpendIfRetiredNow = Math.max(0, totalYearlyExpenses - pensionAnnual)
-  const withdrawalRateNow =
-    params.currentAssets > 0 ? netAnnualSpendIfRetiredNow / params.currentAssets : 1
-  const spendPenaltyPerPoint = 2500 // -25 points per +1pp above 4%
-  const spendingScore = Math.max(
-    0,
-    Math.min(100, 100 - Math.max(0, withdrawalRateNow - 0.04) * spendPenaltyPerPoint)
-  )
-  const liquidityScore = 100 // placeholder until explicit liquidity coverage metric is added
-  const components: PlanHealthComponent[] = [
-    { id: 'success', value: results.successRate, weight: weights.success_pct },
-    { id: 'spending', value: spendingScore, weight: weights.spend_rate },
-    { id: 'liquidity', value: liquidityScore, weight: weights.liquidity },
-  ]
+  const successRate = Math.max(0, Math.min(100, results.successRate))
+  const withdrawalRate = firstYearWithdrawalRate(params, results)
+
+  const components: PlanHealthComponent[] =
+    withdrawalRate === null
+      ? [{ id: 'success', value: successRate, weight: 1 }]
+      : [
+          { id: 'success', value: successRate, weight: PLAN_SCORE_WEIGHTS.success },
+          {
+            id: 'withdrawal',
+            value: withdrawalSubScore(withdrawalRate),
+            weight: PLAN_SCORE_WEIGHTS.withdrawal,
+          },
+        ]
+
   const score = Math.round(
     components.reduce((sum, component) => sum + component.weight * component.value, 0)
   )
-  const label: PlanHealthLabel =
-    score >= defaultPdfConfig.label_bands.strong[0]
-      ? 'Strong'
-      : score >= defaultPdfConfig.label_bands.moderate[0]
-        ? 'Moderate'
-        : 'Needs Attention'
 
-  // Weighed against today's assets, so in today's purchasing power too.
-  const bridge = computeBridgeAnalysis(params, { unit: 'real' })
-  const whyBits: string[] = []
-  if (spendingScore >= 85) whyBits.push('solid savings rate')
-  if (bridge.yearsInBridge <= 6 && bridge.cashNeedEUR <= params.currentAssets * 0.3)
-    whyBits.push('moderate bridge drawdown')
-  if (results.successRate >= 80) whyBits.push('high success probability')
-  const finalBits = whyBits.length ? whyBits : ['balanced assumptions']
-
-  return { score, label, why: finalBits.join(' + '), whyBits: finalBits, components }
+  return { score, band: getPlanHealth(results.successRate), components, withdrawalRate }
 }

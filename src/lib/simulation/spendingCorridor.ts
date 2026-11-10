@@ -5,7 +5,7 @@ import type {
   WithdrawalStrategy,
 } from '@/types'
 import { GK_CAPITAL_PRESERVATION_CUT, GK_PROSPERITY_RAISE } from '@/lib/simulation/engine'
-import { buildCashFlowSeries } from '@/lib/simulation/cashFlows'
+import { budgetAnnualAt, buildCashFlowSeries } from '@/lib/simulation/cashFlows'
 
 /**
  * The spending corridor: what a withdrawal strategy *promises*, next to what
@@ -24,6 +24,12 @@ import { buildCashFlowSeries } from '@/lib/simulation/cashFlows'
  * **today's** euros. Deflating them for the nominal view is the caller's job
  * (`plannedPathsAtDisplayUnit`), because only the results know the realised
  * price level.
+ *
+ * Both sides of the picture are *total* spending. The band is what was paid in
+ * each year (baseline plus scheduled flows, less any shortfall); the planned
+ * lines are the rule's bound on the baseline **plus that age's scheduled
+ * expenses**, which the engine pays on top of the rule. Leaving them out made
+ * the median sit above its own "ceiling" in every year with care costs.
  */
 
 /** The one caveat the corridor cannot express on its own. */
@@ -31,11 +37,12 @@ export type CorridorGuaranteeCaveat = 'portfolioMustLast' | 'none'
 
 export interface PlannedSpendingPaths {
   /**
-   * Lowest monthly spending the rule can produce at each age, in today's euros.
-   * `null` where the strategy defines no floor.
+   * Lowest monthly spending the plan asks for at each age, in today's euros:
+   * the rule's lower bound on the baseline plus the scheduled expenses of that
+   * age. `null` where the strategy defines no floor.
    */
   floor: Array<number | null>
-  /** Highest monthly spending the rule can produce, same units. `null` if unbounded. */
+  /** Highest monthly spending the plan asks for, same units. `null` if unbounded. */
   ceiling: Array<number | null>
   hasFloor: boolean
   hasCeiling: boolean
@@ -48,19 +55,53 @@ export interface PlannedSpendingPaths {
 }
 
 /**
- * The plan's own lifetime spending budget in today's euros per month.
+ * The plan's own lifetime spending budget in today's euros per month, as it
+ * stands in the first retirement year — the amount every memory-carrying rule
+ * starts from.
  *
  * Read from the cash-flow series rather than `customExpenses`, so it is exactly
  * the number the engine puts into `baselineAnnualExpenseThisYear` — a windowed
- * or one-off flow is intentionally not part of it, in either place.
+ * or one-off flow is intentionally not part of it, in either place. For a plan
+ * whose budget items are all inflation-linked without growth it is simply
+ * their sum; an item with its own growth has grown until retirement, and a
+ * fixed-euro item has lost purchasing power until then.
  */
 export function baselineMonthlySpending(params: SimulationParams): number {
+  const { budgetMonthly } = plannedBudget(params)
+  const retirementOffset = Math.max(0, params.retirementAge - params.currentAge)
+  return budgetMonthly[Math.min(retirementOffset, budgetMonthly.length - 1)] ?? 0
+}
+
+/**
+ * The two parts of what a plan asks to spend, per year offset and in today's
+ * euros per month: the lifetime budget the withdrawal rule governs, and the
+ * scheduled expenses (windows, one-offs) the engine pays on top of it.
+ *
+ * A nominally fixed amount is worth less every year; it is deflated with the
+ * plan's central inflation assumption — exact while `inflationVolatility` is
+ * 0, the plan's own expectation otherwise.
+ */
+function plannedBudget(params: SimulationParams): {
+  budgetMonthly: number[]
+  scheduledMonthly: number[]
+} {
   const flows = buildCashFlowSeries(
     params.cashFlows ?? [],
     params.currentAge,
     Math.max(params.currentAge, params.endAge)
   )
-  return flows.baselineMonthly + flows.baselineAnnual / 12
+  const inflation = 1 + Math.max(-0.99, params.averageInflation)
+  const today = (linked: number, fixed: number, offset: number) =>
+    (linked + fixed / Math.pow(inflation, offset)) / 12
+  return {
+    budgetMonthly: flows.expenseLinked.map((_, offset) => {
+      const budget = budgetAnnualAt(flows, offset)
+      return today(budget.linked, budget.fixed, offset)
+    }),
+    scheduledMonthly: flows.expenseLinked.map((linked, offset) =>
+      today(linked, flows.expenseFixed[offset], offset)
+    ),
+  }
 }
 
 /** Per-year real growth factors of a strategy's lower and upper bound. */
@@ -115,8 +156,13 @@ export function buildPlannedSpendingPaths(
   ages: readonly number[]
 ): PlannedSpendingPaths {
   const retirementAge = Math.max(params.currentAge, params.retirementAge)
-  const baseline = baselineMonthlySpending(params)
+  const { budgetMonthly, scheduledMonthly } = plannedBudget(params)
+  const firstYearBudget = budgetMonthly[retirementAge - params.currentAge] ?? 0
   const { floor: floorFactor, ceiling: ceilingFactor } = corridorFactors(params)
+  // Fixed real spending has no memory: it pays each year's own budget, which
+  // only differs from the first year's when an item grows or is a fixed euro
+  // amount. The other rules carry last year forward from the first budget.
+  const followsBudget = params.withdrawalStrategy === 'fixedReal'
   const explicitFloor =
     params.withdrawalStrategy === 'percentOfPortfolio'
       ? Math.max(0, params.spendingFloorReal) / 12
@@ -135,13 +181,17 @@ export function buildPlannedSpendingPaths(
     // Year 0 of retirement spends the budget under every memory-carrying rule,
     // so the corridor opens there and widens by one factor per year after it.
     const yearsIn = age - retirementAge
+    const offset = age - params.currentAge
+    // Scheduled expenses ride on top of the rule, in the band and here alike.
+    const scheduled = scheduledMonthly[offset] ?? 0
+    const baseline = followsBudget ? (budgetMonthly[offset] ?? firstYearBudget) : firstYearBudget
 
-    if (explicitFloor > 0) floor.push(explicitFloor)
+    if (explicitFloor > 0) floor.push(explicitFloor + scheduled)
     else if (floorFactor === null) floor.push(null)
-    else floor.push(baseline * Math.pow(floorFactor, yearsIn))
+    else floor.push(baseline * Math.pow(floorFactor, yearsIn) + scheduled)
 
     if (ceilingFactor === null) ceiling.push(null)
-    else ceiling.push(baseline * Math.pow(ceilingFactor, yearsIn))
+    else ceiling.push(baseline * Math.pow(ceilingFactor, yearsIn) + scheduled)
   })
 
   const hasFloor = floor.some((value) => value !== null && value > 0)
@@ -193,6 +243,15 @@ export interface SpendingCorridorPoint {
    * older build) or with an empty portfolio.
    */
   withdrawalRateMean: number | null
+  /**
+   * The rate the withdrawal rule itself worked with at this age: mean
+   * portfolio-funded baseline spending ÷ mean portfolio the rule measured
+   * (see `AnnualCashFlow.ruleWithdrawal`). Net of pensions and other income,
+   * before capital gains tax and without scheduled expenses — so under
+   * `percentOfPortfolio` it reads exactly the configured rate. `null` for
+   * results booked before the engine recorded it, or with an empty portfolio.
+   */
+  ruleWithdrawalRate: number | null
 }
 
 /** Gross withdrawal ÷ opening assets of one year's mean cash flow, or null if undefined. */
@@ -201,6 +260,24 @@ export function meanWithdrawalRate(
 ): number | null {
   if (!cashFlow || !(cashFlow.openingAssets > 0)) return null
   const rate = cashFlow.portfolioWithdrawal / cashFlow.openingAssets
+  return Number.isFinite(rate) ? rate : null
+}
+
+/**
+ * The withdrawal rule's own rate for one year's mean cash flow: what the rule
+ * took out of the portfolio for the baseline budget ÷ the portfolio value it
+ * measured. `null` when the row predates the two fields or the portfolio is
+ * empty.
+ */
+export function ruleWithdrawalRate(
+  cashFlow: Pick<AnnualCashFlow, 'ruleWithdrawal' | 'rulePortfolio'> | undefined
+): number | null {
+  if (!cashFlow) return null
+  const { ruleWithdrawal, rulePortfolio } = cashFlow
+  if (ruleWithdrawal === undefined || rulePortfolio === undefined || !(rulePortfolio > 0)) {
+    return null
+  }
+  const rate = ruleWithdrawal / rulePortfolio
   return Number.isFinite(rate) ? rate : null
 }
 
@@ -249,6 +326,10 @@ const realSpendingAt = (results: SimulationResults) =>
  * Deliberately reads the *real* spending series: comparing a nominal euro at 60
  * with a nominal euro at 90 is how a plan looks like it is spending more every
  * year while its purchasing power falls.
+ *
+ * That series is **funded** spending (requested minus shortfall), so the four
+ * strategies are ranked on what each one actually paid out: a rule that asks
+ * for a generous budget and then runs dry does not get credit for the asking.
  */
 export function summarizeStrategyOutcome(
   params: SimulationParams,
@@ -372,6 +453,7 @@ export function buildSpendingCorridor(
       floor: paths.floor[index] ?? null,
       ceiling: paths.ceiling[index] ?? null,
       withdrawalRateMean: meanWithdrawalRate(results.cashFlowMeans?.[index]),
+      ruleWithdrawalRate: ruleWithdrawalRate(results.cashFlowMeans?.[index]),
     })
   })
 

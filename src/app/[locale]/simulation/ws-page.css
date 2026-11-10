@@ -491,6 +491,12 @@
 .ws-bar-saved svg {
   color: var(--ok);
 }
+/* Focus lands here after Save / Discard (keyboard), so it shows a ring. */
+.ws-bar-saved:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+  border-radius: var(--ui-radius);
+}
 .ws-bar-menu {
   grid-area: menu;
 }
@@ -523,6 +529,18 @@
 /* ------------------------------------------------------------------ */
 /* Main column and sections                                            */
 /* ------------------------------------------------------------------ */
+
+/* Whatever the browser scrolls into view inside the page — a control reached
+   with Tab, a find-in-page hit — lands below the result bar (and the chip
+   row) and above the phones' fixed section bar instead of behind them
+   (WCAG 2.4.11). A scroll margin on the targets, not scroll-padding on the
+   document: with root padding, focusing a control *in* the sticky bar sat
+   inside the padded band and made Chrome scroll the page by a screen. The
+   sections below keep their own (larger) margins for jumps. */
+.ws-main * {
+  scroll-margin-top: calc(var(--ws-sticky-top) + 8px);
+  scroll-margin-bottom: calc(var(--ws-scroll-pad-bottom, 0px) + 8px);
+}
 
 .ws-main {
   grid-area: main;
@@ -1703,6 +1721,24 @@
 .ws-panel-footer [data-testid='edit-panel-done'] {
   flex: none;
 }
+/* Short viewports (a phone in landscape, 400 % zoom: 1280×1024 becomes
+   320×256): a fixed header and footer left ~40px for the form. Below 480px
+   of height the whole panel scrolls as one — header and footer move with the
+   fields — and the description gives its lines to the form. */
+@media (max-height: 480px) {
+  .ws-panel {
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .ws-panel-body {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+  .ws-panel-description {
+    display: none;
+  }
+}
 /* Phones: the bar is behind the sheet, so the sheet header carries the live
    result — the same figure, the same tween. */
 .ws-panel-mini {
@@ -2501,4 +2537,17 @@ body:has(.ws-page) .workspace-menu-display .workspace-euro button {
 }
 .ws-bar .ws-bar-save-as[aria-disabled='true']:hover {
   color: var(--ui-muted);
+}
+
+/* Toasts stay clear of an open edit panel's footer: they move left of a
+   docked or overlay panel and above the phone sheet's Fertig row. Action
+   toasts no longer time out, so covering "Fertig" would be for good. */
+body:has(.ws-page[data-panel-mode='docked'][data-panel-open]) {
+  --toast-right: calc(clamp(var(--ui-panel-width), 38vw, 560px) + 1rem);
+}
+body:has(.ws-page[data-panel-mode='overlay'][data-panel-open]) {
+  --toast-right: calc(min(clamp(var(--ui-sheet-width), 50vw, 520px), 100vw - 48px) + 1rem);
+}
+body:has(.ws-page[data-panel-mode='sheet'][data-panel-open]) {
+  --toast-bottom: calc(104px + env(safe-area-inset-bottom));
 }

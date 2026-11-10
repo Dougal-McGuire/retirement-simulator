@@ -2,28 +2,14 @@
 
 import { useCallback } from 'react'
 import { useFormatter } from 'next-intl'
-import { useCompactCurrency } from '@/lib/hooks/useCompactCurrency'
+import { useMoney } from '@/lib/hooks/useMoney'
 
 /** Currency, compact-currency and percent formatters shared by the charts. */
 export function useChartFormatters() {
   const format = useFormatter()
-
-  const formatCurrency = useCallback(
-    (value: number) =>
-      format.number(value, {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }),
-    [format]
-  )
-
-  const compactCurrency = useCompactCurrency()
-  const formatCurrencyShort = useCallback(
-    (value: number) => compactCurrency(value),
-    [compactCurrency]
-  )
+  const money = useMoney()
+  const formatCurrency = money.full
+  const formatCurrencyShort = money.compact
 
   const formatPercent = useCallback(
     (value: number | null) =>

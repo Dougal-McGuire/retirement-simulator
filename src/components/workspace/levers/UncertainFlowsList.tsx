@@ -5,9 +5,9 @@ import { ArrowRight } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import type { CashFlow, SimulationParams } from '@/types'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
+import { flowWindowLabel, monthFormatter } from '@/lib/plans/flowWindow'
 import { isCashFlowEnabled } from '@/lib/simulation/cashFlows'
 import { selectUncertainFlows, toggleCashFlow } from '@/lib/simulation/uncertainFlows'
-import { useCompactCurrency } from '@/lib/hooks/useCompactCurrency'
 import { useSimulationParams, useSimulationStore } from '@/lib/stores/simulationStore'
 import { useNearViewport } from '../useNearViewport'
 import { SaturatedCallout, WorstDecileUnit } from './SaturatedCallout'
@@ -18,6 +18,7 @@ import {
   type FlowImpact,
   type FlowMeasurement,
 } from './useFlowMeasurements'
+import { useMoney } from '@/lib/hooks/useMoney'
 
 type Tone = 'ok' | 'danger' | 'neutral'
 const toneOf = (rounded: number): Tone => (rounded > 0 ? 'ok' : rounded < 0 ? 'danger' : 'neutral')
@@ -74,7 +75,7 @@ const UncertainFlowsView = memo(function UncertainFlowsView({
   const tc = useTranslations('setup.cashFlows')
   const tScenarios = useTranslations('planDashboard.scenarios')
   const format = useFormatter()
-  const compactCurrency = useCompactCurrency()
+  const money = useMoney()
   const { openEditor } = useWorkspace()
 
   const { flows, hidden } = useMemo(() => selectUncertainFlows(params), [params])
@@ -108,8 +109,7 @@ const UncertainFlowsView = memo(function UncertainFlowsView({
           ? tl('waiting')
           : null
 
-  const formatCurrency = (value: number) =>
-    format.number(value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+  const formatCurrency = money.full
   const formatPercent = (value: number) =>
     format.number(value / 100, {
       style: 'percent',
@@ -120,28 +120,15 @@ const UncertainFlowsView = memo(function UncertainFlowsView({
 
   const nameOf = (flow: CashFlow) => cashFlowDisplayName(flow, (key) => tc(`defaults.${key}`))
 
-  const periodOf = (flow: CashFlow) => {
-    if (flow.kind === 'pension' && flow.startAge === undefined) {
-      return flow.endAge === undefined
-        ? tc('window.from', { age: params.legalRetirementAge })
-        : tc('window.range', { from: params.legalRetirementAge, to: flow.endAge })
-    }
-    if (flow.frequency === 'once')
-      return tc('window.at', { age: flow.startAge ?? params.currentAge })
-    if (flow.startAge !== undefined && flow.endAge !== undefined) {
-      return tc('window.range', { from: flow.startAge, to: flow.endAge })
-    }
-    if (flow.startAge !== undefined) return tc('window.from', { age: flow.startAge })
-    if (flow.endAge !== undefined) return tc('window.until', { age: flow.endAge })
-    return tc('window.lifetime')
-  }
+  const formatMonth = monthFormatter(format)
+  const periodOf = (flow: CashFlow) => flowWindowLabel(flow, params, tc, { formatMonth })
 
   const effectOf = (impact: FlowImpact, saturated: boolean) => {
     if (saturated) {
       const rounded = Math.round(impact.worstDecileDelta)
       return {
         tone: toneOf(rounded),
-        delta: `${sign(rounded)}${compactCurrency(Math.abs(rounded))}`,
+        delta: `${sign(rounded)}${money.compact(Math.abs(rounded))}`,
         result: formatCurrency(impact.worstDecileEnd),
       }
     }
@@ -187,9 +174,9 @@ const UncertainFlowsView = memo(function UncertainFlowsView({
         <h3 id="levers-flows-title" className="ws-levers-title">
           {tf('title')}
         </h3>
-        <p className="ws-levers-status" role="status">
-          {status}
-        </p>
+        {/* Visual only: a live region here spoke "measuring" after every edit;
+            settled results are announced once by the page (ResultAnnouncer). */}
+        <p className="ws-levers-status">{status}</p>
       </header>
       <p className="ws-levers-lede">{tf('description')}</p>
 

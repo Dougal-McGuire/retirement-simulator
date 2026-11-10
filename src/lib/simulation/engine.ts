@@ -1,5 +1,6 @@
 import {
   AnnualCashFlow,
+  DEFAULT_CAPITAL_GAINS_TAX,
   SimulationParams,
   SimulationResults,
   PercentileData,
@@ -472,6 +473,24 @@ export const GK_LOWER_GUARDRAIL = 0.8
 export const GK_CAPITAL_PRESERVATION_CUT = 0.1
 export const GK_PROSPERITY_RAISE = 0.1
 
+/**
+ * A year counts as unfunded once its shortfall exceeds this share of the
+ * spending requested for it. See `docs/specs/2026-11-09-withdrawal-rules-with-income.md`:
+ * 1 % is small enough that no household would call the year a failure
+ * (€50 a month on a €5,000 budget) and large enough to absorb rounding between
+ * an indexed pension and an indexed budget that are meant to be equal.
+ */
+export const UNFUNDED_SPENDING_TOLERANCE = 0.01
+
+/**
+ * Vanguard dynamic spending. The rule governs what the *portfolio* pays:
+ * what the household can afford this year is its other income plus
+ * `withdrawalRate` of the portfolio, and the two guardrails limit how far
+ * spending may move from last year's inflation-adjusted level to get there.
+ *
+ *   affordable = nonPortfolioIncome + withdrawalRate × portfolio
+ *   spending   = clamp(affordable, prev × π × (1 + floorRate), prev × π × (1 + ceilingRate))
+ */
 export function calculateVanguardDynamicAnnualSpending({
   priorYearPortfolioValue,
   previousAnnualSpending,
@@ -479,6 +498,7 @@ export function calculateVanguardDynamicAnnualSpending({
   withdrawalRate,
   ceilingRate,
   floorRate,
+  nonPortfolioIncome = 0,
 }: {
   priorYearPortfolioValue: number
   previousAnnualSpending: number
@@ -486,8 +506,11 @@ export function calculateVanguardDynamicAnnualSpending({
   withdrawalRate: number
   ceilingRate: number
   floorRate: number
+  /** Net pensions and recurring income of the year (nominal). Default 0. */
+  nonPortfolioIncome?: number
 }): number {
-  const targetAnnualSpending = Math.max(0, priorYearPortfolioValue * withdrawalRate)
+  const targetAnnualSpending =
+    Math.max(0, priorYearPortfolioValue * withdrawalRate) + Math.max(0, nonPortfolioIncome)
   const inflationAdjustedPreviousSpending = Math.max(0, previousAnnualSpending * inflationFactor)
   const lowerBound = inflationAdjustedPreviousSpending * (1 + floorRate)
   const upperBound = inflationAdjustedPreviousSpending * (1 + ceilingRate)
@@ -502,15 +525,23 @@ export function calculateVanguardDynamicAnnualSpending({
 /**
  * Guyton-Klinger: inflation-linked spending with two guardrails.
  *
- * Each year the previous withdrawal is carried forward with inflation, and the
- * resulting *current withdrawal rate* (tentative withdrawal ÷ portfolio) is
- * compared against the plan's initial rate:
+ * Each year the previous spending is carried forward with inflation, and the
+ * resulting *portfolio withdrawal rate* — the part of that spending the
+ * portfolio has to pay, (tentative spending − other income) ÷ portfolio — is
+ * compared against the plan's configured rate:
  *
- * - **Capital preservation.** Rate drifted more than 20% above the initial one
- *   → the inflation raise is skipped *and* spending is cut by 10%.
- * - **Prosperity.** Rate sits more than 20% below the initial one → spending
- *   gets the inflation raise plus 10%.
- * - Otherwise the withdrawal simply keeps its purchasing power.
+ * - **Capital preservation.** Rate drifted more than 20% above the configured
+ *   one → the inflation raise is skipped *and* spending is cut by 10%.
+ * - **Prosperity.** Rate sits more than 20% below the configured one →
+ *   spending gets the inflation raise plus 10%.
+ * - Otherwise spending simply keeps its purchasing power.
+ *
+ * The reference is the *configured* rate, not a rate measured in the first
+ * retirement year. A measured rate goes stale the day a pension starts: the
+ * draw of a bridge year (no pension yet) says nothing about the years after.
+ * Against the configured rate a pension start can only ever look like
+ * prosperity — spending then climbs by 10% a year until the portfolio pays at
+ * least 0.8 × rate again — and never like a reason to cut.
  *
  * Deliberate simplifications versus the published rule set, all in the
  * direction of "fewer knobs, same shape":
@@ -534,11 +565,14 @@ export function calculateGuytonKlingerAnnualSpending({
   previousAnnualSpending,
   inflationFactor,
   initialWithdrawalRate,
+  nonPortfolioIncome = 0,
 }: {
   priorYearPortfolioValue: number
   previousAnnualSpending: number
   inflationFactor: number
   initialWithdrawalRate: number
+  /** Net pensions and recurring income of the year (nominal). Default 0. */
+  nonPortfolioIncome?: number
 }): number {
   const previous = Math.max(0, previousAnnualSpending)
   const inflationAdjusted = previous * inflationFactor
@@ -547,7 +581,11 @@ export function calculateGuytonKlingerAnnualSpending({
   // just keeps its purchasing power and the funding logic handles the rest.
   if (priorYearPortfolioValue <= 0 || initialWithdrawalRate <= 0) return inflationAdjusted
 
-  const currentRate = inflationAdjusted / priorYearPortfolioValue
+  // The rate the guardrails watch is the portfolio's share of the spending:
+  // a pension that pays most of the budget leaves the portfolio a small draw,
+  // however large the budget is.
+  const currentRate =
+    (inflationAdjusted - Math.max(0, nonPortfolioIncome)) / priorYearPortfolioValue
 
   if (currentRate > initialWithdrawalRate * GK_UPPER_GUARDRAIL) {
     // Capital preservation: no inflation raise this year, and 10% off.
@@ -563,21 +601,25 @@ export function calculateGuytonKlingerAnnualSpending({
 }
 
 /**
- * Pure percentage-of-portfolio: spend `withdrawalRate` of the prior year-end
- * portfolio, every year, with no memory of last year's spending.
+ * Pure percentage-of-portfolio: the portfolio pays `withdrawalRate` of its
+ * prior year-end value, every year, with no memory of last year's spending.
+ * The household spends that on top of its other income:
  *
- * Mathematically this rule can never deplete the portfolio — it only ever takes
- * a fraction of what is left — so its risk shows up as *spending* risk instead:
- * a 40% crash cuts the household's income by 40% the following year. The
- * optional `floorAnnualReal` (today's euros, re-priced with this path's own
- * `inflationIndex`) is the answer to that, and it is the only way this strategy
- * can run out of money.
+ *   spending = nonPortfolioIncome + withdrawalRate × portfolio
+ *
+ * The rule on its own only ever takes a fraction of what is left, so its risk
+ * shows up as *spending* risk: a 40% crash cuts the portfolio's part of the
+ * household's income by 40% the following year. It can still run dry in two
+ * ways, both outside the percentage itself: the optional `floorAnnualReal`
+ * (today's euros, re-priced with this path's own `inflationIndex`), and the
+ * plan's scheduled expenses, which the engine pays on top of the rule.
  */
 export function calculatePercentOfPortfolioAnnualSpending({
   priorYearPortfolioValue,
   withdrawalRate,
   floorAnnualReal,
   inflationIndex,
+  nonPortfolioIncome = 0,
 }: {
   priorYearPortfolioValue: number
   withdrawalRate: number
@@ -585,8 +627,12 @@ export function calculatePercentOfPortfolioAnnualSpending({
   floorAnnualReal: number
   /** Cumulative price level of this path, relative to the plan's first year. */
   inflationIndex: number
+  /** Net pensions and recurring income of the year (nominal). Default 0. */
+  nonPortfolioIncome?: number
 }): number {
-  const target = Math.max(0, priorYearPortfolioValue) * Math.max(0, withdrawalRate)
+  const target =
+    Math.max(0, priorYearPortfolioValue) * Math.max(0, withdrawalRate) +
+    Math.max(0, nonPortfolioIncome)
   const floor = Math.max(0, floorAnnualReal) * Math.max(0, inflationIndex)
   return Math.max(target, floor)
 }
@@ -597,9 +643,18 @@ export function calculatePercentOfPortfolioAnnualSpending({
  * Returns the household's ordinary living costs for this year in nominal euros.
  * Scheduled cash flows are added by the caller and never pass through here.
  *
+ * Every rule except `fixedReal` governs the part of that spending the
+ * *portfolio* pays: the year's net non-portfolio income (`nonPortfolioIncome`,
+ * pensions and recurring income after their taxes) is what the household has
+ * anyway, and the rule decides how much the portfolio adds. The same income is
+ * also a floor: no rule sets spending below `min(budget, income)` — cutting a
+ * household below both its own budget and the money it receives regardless
+ * would protect nothing. See `docs/specs/2026-11-09-withdrawal-rules-with-income.md`.
+ *
  * Consumes no randomness, which is what lets a new strategy be added without
- * disturbing the common-random-numbers scenario set: `fixedReal` and
- * `vanguardDynamic` still evaluate exactly the arithmetic they always did.
+ * disturbing the common-random-numbers scenario set, and with no
+ * non-portfolio income every rule evaluates exactly the arithmetic it always
+ * did.
  */
 export function applyWithdrawalStrategy({
   strategy,
@@ -608,6 +663,7 @@ export function applyWithdrawalStrategy({
   previousAnnualSpending,
   inflationFactor,
   inflationIndex,
+  nonPortfolioIncome = 0,
   params,
 }: {
   strategy: SimulationParams['withdrawalStrategy']
@@ -620,35 +676,55 @@ export function applyWithdrawalStrategy({
   inflationFactor: number
   /** Cumulative price level since the plan's first year. */
   inflationIndex: number
+  /**
+   * This year's net income that does not come out of the portfolio: pensions
+   * and recurring income after their taxes, nominal. One-off income is not
+   * part of it — the engine pays it into the portfolio. Default 0.
+   */
+  nonPortfolioIncome?: number
   params: SimulationParams
 }): number {
+  const income = Math.max(0, nonPortfolioIncome)
+  // What the household receives anyway is never withheld from a budget it has.
+  const incomeFloor = Math.min(Math.max(0, baselineAnnualSpending), income)
   switch (strategy) {
     case 'vanguardDynamic':
       return previousAnnualSpending === null
         ? baselineAnnualSpending
-        : calculateVanguardDynamicAnnualSpending({
-            priorYearPortfolioValue,
-            previousAnnualSpending,
-            inflationFactor,
-            withdrawalRate: params.dsWithdrawalRate,
-            ceilingRate: params.dsCeilingRate,
-            floorRate: params.dsFloorRate,
-          })
+        : Math.max(
+            incomeFloor,
+            calculateVanguardDynamicAnnualSpending({
+              priorYearPortfolioValue,
+              previousAnnualSpending,
+              inflationFactor,
+              withdrawalRate: params.dsWithdrawalRate,
+              ceilingRate: params.dsCeilingRate,
+              floorRate: params.dsFloorRate,
+              nonPortfolioIncome: income,
+            })
+          )
     case 'guytonKlinger':
       return previousAnnualSpending === null
         ? baselineAnnualSpending
-        : calculateGuytonKlingerAnnualSpending({
-            priorYearPortfolioValue,
-            previousAnnualSpending,
-            inflationFactor,
-            initialWithdrawalRate: params.dsWithdrawalRate,
-          })
+        : Math.max(
+            incomeFloor,
+            calculateGuytonKlingerAnnualSpending({
+              priorYearPortfolioValue,
+              previousAnnualSpending,
+              inflationFactor,
+              initialWithdrawalRate: params.dsWithdrawalRate,
+              nonPortfolioIncome: income,
+            })
+          )
     case 'percentOfPortfolio':
+      // income + rate × portfolio is never below the income, so the floor
+      // holds by construction.
       return calculatePercentOfPortfolioAnnualSpending({
         priorYearPortfolioValue,
         withdrawalRate: params.dsWithdrawalRate,
         floorAnnualReal: params.spendingFloorReal,
         inflationIndex,
+        nonPortfolioIncome: income,
       })
     case 'fixedReal':
     default:
@@ -656,20 +732,46 @@ export function applyWithdrawalStrategy({
   }
 }
 
-function normalizeSimulationParams(params: SimulationParams): SimulationParams {
-  const currentAge = Math.round(clamp(sanitizeFiniteNumber(params.currentAge, 55), 18, 100))
+/** Youngest plan age the engine accepts — the same bound the editor and the wizard use. */
+export const MIN_CURRENT_AGE = 16
+
+/**
+ * Upper bound on Monte Carlo paths per run. The editor stops at 10,000; this
+ * is the engine's own stop for anything that reaches it another way (an
+ * imported plan, a hand-edited store), where 10⁷ runs would just hang the
+ * worker.
+ */
+export const MAX_SIMULATION_RUNS = 20_000
+
+/**
+ * The parameter set the engine actually simulates: every scalar forced into
+ * its valid range, the flow list reconciled with the legacy arrays and the
+ * projections rewritten from it. Idempotent.
+ *
+ * It only ever repairs values that are not usable as they are. It does **not**
+ * move anything the user dated: a flow keeps its start and end age even when
+ * they lie outside `currentAge..endAge` (the series builder decides what of it
+ * falls inside the horizon), and the statutory age may lie before `currentAge`
+ * — that is simply a pension already in payment. Clamping those used to charge
+ * expired expenses and tax a ten-year-old pension as if it started today.
+ *
+ * Exported so "do these results belong to these parameters?" can compare like
+ * with like: `results.params` is this function's output.
+ */
+export function normalizeSimulationParams(params: SimulationParams): SimulationParams {
+  const currentAge = Math.round(
+    clamp(sanitizeFiniteNumber(params.currentAge, 55), MIN_CURRENT_AGE, 100)
+  )
   const legalRetirementAge = Math.round(
-    clamp(sanitizeFiniteNumber(params.legalRetirementAge, 67), currentAge, 100)
+    clamp(sanitizeFiniteNumber(params.legalRetirementAge, 67), MIN_CURRENT_AGE, 100)
   )
   const retirementAge = Math.round(
     clamp(sanitizeFiniteNumber(params.retirementAge, 60), currentAge, 100)
   )
+  // The horizon covers the plan's own years. It is not stretched to the
+  // statutory age: a plan that ends before the pension starts has no pension.
   const endAge = Math.round(
-    clamp(
-      sanitizeFiniteNumber(params.endAge, 90),
-      Math.max(currentAge, retirementAge, legalRetirementAge),
-      120
-    )
+    clamp(sanitizeFiniteNumber(params.endAge, 90), Math.max(currentAge, retirementAge), 120)
   )
 
   const customExpenses = Array.isArray(params.customExpenses)
@@ -693,29 +795,25 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
         })
         .map((income) => ({
           ...income,
-          age: Math.round(clamp(income.age, currentAge, endAge)),
+          // Rounded, never clamped: an age outside the horizon has to stay
+          // what it is, or the value-matched flow behind this entry would be
+          // dropped and re-created without its id and tax treatment.
+          age: Math.round(income.age),
           amount: Math.max(0, income.amount),
         }))
     : []
 
   // Cash flows are the source of truth; the two legacy arrays above are folded
   // back in (so `{...params, customExpenses: [...]}` still means what it says)
-  // and then rewritten as projections of the reconciled list.
+  // and then rewritten as projections of the reconciled list. Their ages are
+  // left exactly as written — see the function comment.
   const cashFlows = reconcileCashFlows({
     cashFlows: params.cashFlows,
     customExpenses,
     oneTimeIncomes,
     monthlyPension: params.monthlyPension,
     currentAge,
-  }).map((flow) => ({
-    ...flow,
-    ...(flow.startAge !== undefined
-      ? { startAge: Math.round(clamp(flow.startAge, currentAge, endAge)) }
-      : {}),
-    ...(flow.endAge !== undefined
-      ? { endAge: Math.round(clamp(flow.endAge, currentAge, endAge)) }
-      : {}),
-  }))
+  })
 
   return {
     ...params,
@@ -736,7 +834,11 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
     roiVolatility: clamp(sanitizeFiniteNumber(params.roiVolatility, 0.15), 0, 1),
     averageInflation: clamp(sanitizeFiniteNumber(params.averageInflation, 0.025), -0.1, 0.3),
     inflationVolatility: clamp(sanitizeFiniteNumber(params.inflationVolatility, 0.01), 0, 0.3),
-    capitalGainsTax: clamp(sanitizeFiniteNumber(params.capitalGainsTax, 26.25), 0, 100),
+    capitalGainsTax: clamp(
+      sanitizeFiniteNumber(params.capitalGainsTax, DEFAULT_CAPITAL_GAINS_TAX),
+      0,
+      100
+    ),
     taxAllowanceAnnual: clamp(sanitizeFiniteNumber(params.taxAllowanceAnnual, 0), 0, 100000),
     householdType: normalizeHouseholdType(params.householdType),
     equityFundExemption: clamp(sanitizeFiniteNumber(params.equityFundExemption, 0), 0, 1),
@@ -756,7 +858,11 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
     dsCeilingRate: clamp(sanitizeFiniteNumber(params.dsCeilingRate, 0.05), 0, 0.15),
     dsFloorRate: clamp(sanitizeFiniteNumber(params.dsFloorRate, -0.025), -0.15, 0),
     spendingFloorReal: Math.max(0, sanitizeFiniteNumber(params.spendingFloorReal, 0)),
-    simulationRuns: Math.max(1, Math.round(sanitizeFiniteNumber(params.simulationRuns, 1))),
+    simulationRuns: clamp(
+      Math.round(sanitizeFiniteNumber(params.simulationRuns, 1)),
+      1,
+      MAX_SIMULATION_RUNS
+    ),
   }
 }
 
@@ -783,14 +889,16 @@ function normalizeSimulationParams(params: SimulationParams): SimulationParams {
  * simulation no longer rebuilds the same Map and expense totals 7 500 times.
  */
 type SimulationSchedule = {
-  /** Base-year (un-inflated) monthly expense total. */
+  /** Base-year (un-inflated) monthly total of the plain budget items. */
   baseMonthlyExpense: number
-  /** Base-year (un-inflated) annual expense total. */
+  /** Base-year (un-inflated) annual total of the plain budget items. */
   baseAnnualExpense: number
   /**
-   * Windowed / one-off / nominally fixed cash flows, expanded per year offset
-   * in today's euros. Split from the two totals above because those are what
-   * the guardrails act on — see `runSingleSimulation`.
+   * Everything else, expanded per year offset in today's euros: scheduled
+   * flows (windows, single payments, income), and the budget items that have
+   * a growth rate or a fixed euro amount (`baselineExtra*`). The budget —
+   * the two totals above plus those extras — is what the withdrawal rule
+   * acts on; scheduled flows ride on top of it. See `runSingleSimulation`.
    */
   flows: CashFlowSeries
   effectiveRetirementAge: number
@@ -807,10 +915,11 @@ type SimulationSchedule = {
 }
 
 function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
-  // Every recurring, lifetime, inflation-linked expense lands in the two base
-  // totals (the model the plan has always had); everything a `CashFlow` can say
-  // beyond that — an age window, a single payment, extra real growth, a fixed
-  // nominal amount, income — is expanded per age.
+  // Every lifetime recurring expense is retirement budget. The plain ones
+  // (inflation-linked, no growth) land in the two base totals — the model the
+  // plan has always had; one with its own growth or a fixed euro amount gets a
+  // value per year. Everything else a `CashFlow` can say — an age window, a
+  // single payment, income — is scheduled and expanded per age.
   const flows = buildCashFlowSeries(
     params.cashFlows ?? [],
     params.currentAge,
@@ -837,10 +946,21 @@ function runSingleSimulation(
   random: RandomSource
 ): {
   cashFlowHistory: AnnualCashFlow[]
+  /** Balance at the *end* of each age's year. */
   assetHistory: number[]
   spendingHistory: number[]
-  /** Cumulative inflation from the start of the plan up to each age. */
+  /**
+   * Price level at the *start* of each age's year (index 0 is 1): what that
+   * year's flows — spending, income, withdrawals — are priced at.
+   */
   inflationIndexHistory: number[]
+  /**
+   * Price level at the *end* of each age's year, i.e. the next year's opening
+   * level: what a closing balance is worth in.
+   */
+  closingPriceLevelHistory: number[]
+  /** Net and tax of one-off income credited at the very end of the horizon (nominal). */
+  endOfHorizon: { income: number; tax: number }
   failed: boolean
   depletionIndex: number | null
   /** Everything sold out of the portfolio over the run, before tax. */
@@ -852,6 +972,8 @@ function runSingleSimulation(
   const assetHistory: number[] = []
   const spendingHistory: number[] = []
   const inflationIndexHistory: number[] = []
+  const closingPriceLevelHistory: number[] = []
+  const endOfHorizon = { income: 0, tax: 0 }
   let currentAssets = params.currentAssets
   let costBasis = params.currentAssets // Track original investment amount
   let currentAnnualSavings = params.annualSavings
@@ -860,7 +982,13 @@ function runSingleSimulation(
 
   let currentMonthlyExpense = baseMonthlyExpense
   let currentAnnualExpense = baseAnnualExpense
-  let runFailed = false
+  /**
+   * Index of the first year the plan could not pay for: its shortfall exceeded
+   * `UNFUNDED_SPENDING_TOLERANCE` of the spending requested for it. `null`
+   * while every year so far was funded. A balance of exactly zero is not a
+   * failure on its own — a household living on its pension has no portfolio
+   * and no gap.
+   */
   let depletionIndex: number | null = null
   let previousDynamicAnnualSpending: number | null = null
   let dynamicSpendingInflationFactor = 1
@@ -933,6 +1061,11 @@ function runSingleSimulation(
     let portfolioContribution = 0
     const savings = age < effectiveRetirementAge ? currentAnnualSavings : 0
     yearShortfall = 0
+    /** What the plan asked to spend this year; `yearShortfall` of it went unpaid. */
+    let requestedSpending = 0
+    /** The rule's own numbers for the ledger: what it took, and of what. */
+    let ruleWithdrawal = 0
+    let rulePortfolio = 0
     inflationIndexHistory.push(inflationIndex)
     // A new tax year: the allowance is use-it-or-lose-it.
     allowanceRemaining = annualAllowance
@@ -969,13 +1102,14 @@ function runSingleSimulation(
         portfolioContribution += netContribution
         currentAssets += netContribution
         costBasis += netContribution // Track additional investments
-      } else if (withdrawNet(-netContribution) > 0 || currentAssets <= 0) {
-        // The plan could not fund a scheduled expense out of savings or assets.
-        runFailed = true
+      } else {
+        // A scheduled expense the year's savings do not cover is sold for;
+        // what the portfolio cannot raise is this year's shortfall.
+        withdrawNet(-netContribution)
         currentAssets = Math.max(0, currentAssets)
       }
       // Only scheduled expenses are portfolio spending before retirement.
-      spendingHistory.push(extraExpense / 12)
+      requestedSpending = extraExpense
 
       // Inflate expenses so that retirement starts with age-adjusted spending
       const inflationFactor = sampler.nextInflationFactor(yearIndex, run, random)
@@ -987,7 +1121,15 @@ function runSingleSimulation(
       currentAnnualSavings = Math.max(0, currentAnnualSavings * savingsGrowthFactor)
     } else {
       // Distribution phase (retirement years)
-      const baselineAnnualExpenseThisYear = currentMonthlyExpense * 12 + currentAnnualExpense
+      // The budget: the plain items at this year's price level, plus the
+      // items with their own growth or a fixed euro amount. The extras are
+      // zero for a plan without such items, which leaves the sum bit-identical
+      // to the two-total model.
+      const baselineAnnualExpenseThisYear =
+        currentMonthlyExpense * 12 +
+        currentAnnualExpense +
+        flows.baselineExtraLinked[yearIndex] * inflationIndex +
+        flows.baselineExtraFixed[yearIndex]
       const priorYearPortfolioValue = Math.max(0, currentAssets)
       /**
        * The guardrailed baseline: ordinary, lifetime living costs only.
@@ -1000,7 +1142,15 @@ function runSingleSimulation(
        * Every rule except `percentOfPortfolio` needs a previous year to work
        * from, so the first retirement year always spends the plan's own budget.
        * `percentOfPortfolio` has no memory and starts responding immediately.
+       *
+       * Pensions and recurring income are `pension` / `income` cash flows,
+       * already netted of income tax and expanded per age in `extraIncome` —
+       * see `buildCashFlowSeries`. They are what the household has without
+       * touching the portfolio, so the rule sees them: it decides the part of
+       * the baseline the portfolio pays. One-off income is not in here; it
+       * was paid into the portfolio above and is part of `priorYearPortfolioValue`.
        */
+      const annualIncome = extraIncome
       const guardrailedAnnualSpending: number = applyWithdrawalStrategy({
         strategy: params.withdrawalStrategy,
         baselineAnnualSpending: baselineAnnualExpenseThisYear,
@@ -1008,14 +1158,14 @@ function runSingleSimulation(
         previousAnnualSpending: previousDynamicAnnualSpending,
         inflationFactor: dynamicSpendingInflationFactor,
         inflationIndex,
+        nonPortfolioIncome: annualIncome,
         params,
       })
+      ruleWithdrawal = Math.max(0, guardrailedAnnualSpending - annualIncome)
+      rulePortfolio = priorYearPortfolioValue
 
       const totalAnnualExpenseThisYear = guardrailedAnnualSpending + extraExpense
-
-      // Pensions are `pension` cash flows, already netted of income tax and
-      // expanded per age in `extraIncome` — see `buildCashFlowSeries`.
-      const annualIncome = extraIncome
+      requestedSpending = totalAnnualExpenseThisYear
 
       // Calculate how much we need to withdraw from investments
       const netNeeded = totalAnnualExpenseThisYear - annualIncome
@@ -1026,18 +1176,11 @@ function runSingleSimulation(
       currentAssets = Math.max(0, currentAssets * roiFactor)
 
       if (netNeeded > 0) {
-        // We need to sell investments to cover expenses, with tax gross-up on gains portion
-        if (currentAssets <= 0) {
-          yearShortfall += netNeeded
-          runFailed = true
-          currentAssets = 0
-        } else {
-          withdrawNet(netNeeded)
-          if (currentAssets <= 0) {
-            runFailed = true
-            currentAssets = 0
-          }
-        }
+        // We need to sell investments to cover expenses, with tax gross-up on
+        // gains portion; `withdrawNet` books whatever it cannot raise as this
+        // year's shortfall.
+        withdrawNet(netNeeded)
+        currentAssets = Math.max(0, currentAssets)
       } else {
         // Surplus income: reinvest surplus and increase cost basis accordingly
         const surplus = -netNeeded
@@ -1045,10 +1188,6 @@ function runSingleSimulation(
         currentAssets = currentAssets + surplus
         costBasis += surplus
       }
-
-      // Store total monthly-equivalent spending (includes annualized annual expenses)
-      const monthlyEquivalentSpending = totalAnnualExpenseThisYear / 12
-      spendingHistory.push(monthlyEquivalentSpending)
 
       // Apply inflation to expenses for next year
       const inflationFactor = sampler.nextInflationFactor(yearIndex, run, random)
@@ -1061,30 +1200,64 @@ function runSingleSimulation(
         previousDynamicAnnualSpending = guardrailedAnnualSpending
         dynamicSpendingInflationFactor = inflationFactor
       }
-
-      // Check for failure (running out of money)
-      if (currentAssets <= 0) {
-        runFailed = true
-        currentAssets = 0
-      }
     }
+
+    // What was actually spent: a depleted path pays for what its income
+    // covers, not for the budget it asked for. Percentiles, the corridor and
+    // the strategy comparison all read this series; the ledger keeps the
+    // request and the shortfall side by side.
+    spendingHistory.push(Math.max(0, requestedSpending - yearShortfall) / 12)
+
+    // The run fails in the first year it leaves a material part of its
+    // spending unpaid — not when the balance touches zero.
+    if (
+      depletionIndex === null &&
+      yearShortfall > requestedSpending * UNFUNDED_SPENDING_TOLERANCE
+    ) {
+      depletionIndex = yearIndex
+    }
+
+    // A one-off booked for the last year arrives at the end of it, like every
+    // other one-off arrives at the end of its own year: it is part of what is
+    // left, and too late to pay for anything. Priced at the year's closing
+    // price level — the level the next year would have opened at.
+    let endOfHorizonIncome = 0
+    let endOfHorizonIncomeTax = 0
+    if (age === params.endAge) {
+      const atEnd = flows.oneTimeIncomeAtEnd
+      endOfHorizonIncome = atEnd.netLinked * inflationIndex + atEnd.netFixed
+      endOfHorizonIncomeTax = atEnd.taxLinked * inflationIndex + atEnd.taxFixed
+      if (endOfHorizonIncome > 0) {
+        portfolioContribution += endOfHorizonIncome
+        currentAssets += endOfHorizonIncome
+        costBasis += endOfHorizonIncome
+      }
+      endOfHorizon.income = endOfHorizonIncome
+      endOfHorizon.tax = endOfHorizonIncomeTax
+    }
+    // Both branches above have applied this year's inflation by now.
+    closingPriceLevelHistory.push(inflationIndex)
 
     const yearPriceLevel = inflationIndexHistory[yearIndex]
     const incomeTax =
-      flows.incomeTaxLinked[yearIndex] * yearPriceLevel + flows.incomeTaxFixed[yearIndex]
+      flows.incomeTaxLinked[yearIndex] * yearPriceLevel +
+      flows.incomeTaxFixed[yearIndex] +
+      endOfHorizonIncomeTax
     const pensionTax =
       flows.pensionTaxLinked[yearIndex] * yearPriceLevel + flows.pensionTaxFixed[yearIndex]
     const oneOffIncomeTax =
       flows.oneTimeIncomeTaxLinked[yearIndex] * yearPriceLevel +
-      flows.oneTimeIncomeTaxFixed[yearIndex]
+      flows.oneTimeIncomeTaxFixed[yearIndex] +
+      endOfHorizonIncomeTax
+    const oneOffIncomeNet = scheduledIncome + endOfHorizonIncome
     cashFlowHistory.push({
       openingAssets,
       investmentReturn,
       savings,
-      incomeGross: extraIncome + scheduledIncome + incomeTax,
+      incomeGross: extraIncome + oneOffIncomeNet + incomeTax,
       incomeTax,
       capitalGainsTax: taxPaid - taxesBefore,
-      expenses: spendingHistory[yearIndex] * 12,
+      expenses: requestedSpending,
       portfolioWithdrawal: grossWithdrawn - withdrawalsBefore,
       portfolioContribution,
       shortfall: yearShortfall,
@@ -1094,15 +1267,13 @@ function runSingleSimulation(
         flows.pensionNetFixed[yearIndex] +
         pensionTax,
       pensionTax,
-      oneOffIncomeGross: scheduledIncome + oneOffIncomeTax,
+      oneOffIncomeGross: oneOffIncomeNet + oneOffIncomeTax,
       oneOffIncomeTax,
       scheduledExpenses: extraExpense,
+      ruleWithdrawal,
+      rulePortfolio,
     })
     assetHistory.push(currentAssets)
-
-    if (runFailed && depletionIndex === null) {
-      depletionIndex = assetHistory.length - 1
-    }
   }
 
   return {
@@ -1110,7 +1281,9 @@ function runSingleSimulation(
     assetHistory,
     spendingHistory,
     inflationIndexHistory,
-    failed: runFailed,
+    closingPriceLevelHistory,
+    endOfHorizon,
+    failed: depletionIndex !== null,
     depletionIndex,
     grossWithdrawn,
     taxPaid,
@@ -1192,17 +1365,23 @@ export function runMonteCarloSimulation(
     const random = sharedRandom ?? mulberry32(mixSeed(baseSeed, run))
     const result = runSingleSimulation(normalizedParams, schedule, sampler, run, random)
 
+    const lastIndex = result.cashFlowHistory.length - 1
     result.cashFlowHistory.forEach((row, index) => {
       const nominal = (cashFlowMeans[index] ??= { ...row })
       const real = (cashFlowMeansReal[index] ??= { ...row })
+      const realRow = deflateLedgerRow(
+        row,
+        result.inflationIndexHistory[index],
+        result.closingPriceLevelHistory[index],
+        index === lastIndex ? result.endOfHorizon : undefined
+      )
       for (const key of Object.keys(row) as (keyof AnnualCashFlow)[]) {
         if (run === 0) {
           nominal[key] = 0
           real[key] = 0
         }
-        const value = row[key] ?? 0
-        nominal[key] = (nominal[key] ?? 0) + value / effectiveRuns
-        real[key] = (real[key] ?? 0) + value / result.inflationIndexHistory[index] / effectiveRuns
+        nominal[key] = (nominal[key] ?? 0) + (row[key] ?? 0) / effectiveRuns
+        real[key] = (real[key] ?? 0) + (realRow[key] ?? 0) / effectiveRuns
       }
     })
     assetRuns.push(result.assetHistory)
@@ -1210,7 +1389,13 @@ export function runMonteCarloSimulation(
     // Deflate each path by *its own* realised inflation before percentiles are
     // taken. Deflating the nominal percentile band by an average price level
     // would mix quantiles of two different distributions; this does not.
-    const realAssets = deflatePath(result.assetHistory, result.inflationIndexHistory)
+    //
+    // `assetHistory[i]` is the balance at the END of age i's year, so it is
+    // worth what money is worth at the end of that year: the closing price
+    // level. (Dividing by the opening level made a portfolio that exactly
+    // keeps pace with inflation look as if it gained a year's inflation.)
+    // Spending is paid during the year at the opening level, and stays there.
+    const realAssets = deflatePath(result.assetHistory, result.closingPriceLevelHistory)
     if (run < SAMPLE_PATH_COUNT) {
       sampleAssetPaths.push(result.assetHistory)
       sampleAssetPathsReal.push(realAssets)
@@ -1242,8 +1427,10 @@ export function runMonteCarloSimulation(
   const spendingPercentiles = calculatePercentiles(spendingRuns)
   const assetPercentilesReal = calculatePercentiles(assetRunsReal)
   const spendingPercentilesReal = calculatePercentiles(spendingRunsReal)
-  // Median realised price level per age. Lets the UI express nominally fixed
-  // amounts (a pension in euros) in today's money without re-running anything.
+  // Median realised price level per age — at the START of that age's year,
+  // which is what the year's flows are priced at. Lets the UI express
+  // nominally fixed amounts (a pension in euros) in today's money without
+  // re-running anything.
   const inflationIndexP50 = calculatePercentiles(inflationIndexRuns).p50
 
   // Calculate success rate
@@ -1283,6 +1470,51 @@ function deflatePath(values: number[], inflationIndex: number[]): number[] {
     const level = inflationIndex[index]
     return level > 0 ? value / level : value
   })
+}
+
+/**
+ * One booked year in today's euros, on the same conventions as the series:
+ *
+ * - everything that *moves* during the year (income, taxes, spending, sales,
+ *   contributions, the rule's numbers) and the opening balance are priced at
+ *   the year's opening level;
+ * - the closing balance is priced at the closing level, so it equals the next
+ *   row's opening balance and the real asset series;
+ * - the investment return is what is left: closing − opening − contributions +
+ *   withdrawals. That is the *real* return — net of what inflation took off
+ *   the balance during the year — and it keeps the row's asset identity true
+ *   in real terms. A portfolio that earns exactly inflation has a real return
+ *   of zero, not of one year's inflation.
+ *
+ * One-off income credited at the very end of the horizon is the one flow that
+ * arrives at the closing level; it is re-priced accordingly.
+ */
+function deflateLedgerRow(
+  row: AnnualCashFlow,
+  openingLevel: number,
+  closingLevel: number,
+  endOfHorizon?: { income: number; tax: number }
+): AnnualCashFlow {
+  const opening = openingLevel > 0 ? openingLevel : 1
+  const closing = closingLevel > 0 ? closingLevel : 1
+  const real = { ...row }
+  for (const key of Object.keys(row) as (keyof AnnualCashFlow)[]) {
+    real[key] = (row[key] ?? 0) / opening
+  }
+  if (endOfHorizon && (endOfHorizon.income > 0 || endOfHorizon.tax > 0)) {
+    // Priced at the opening level above; move these parts to the closing one.
+    const shift = 1 / closing - 1 / opening
+    const gross = endOfHorizon.income + endOfHorizon.tax
+    real.incomeGross += gross * shift
+    real.incomeTax += endOfHorizon.tax * shift
+    real.portfolioContribution += endOfHorizon.income * shift
+    if (real.oneOffIncomeGross !== undefined) real.oneOffIncomeGross += gross * shift
+    if (real.oneOffIncomeTax !== undefined) real.oneOffIncomeTax += endOfHorizon.tax * shift
+  }
+  real.closingAssets = row.closingAssets / closing
+  real.investmentReturn =
+    real.closingAssets - real.openingAssets - real.portfolioContribution + real.portfolioWithdrawal
+  return real
 }
 
 /**
@@ -1417,6 +1649,7 @@ export function taxContext(params: SimulationParams): PensionContext {
     pensionTaxablePortion: params.pensionTaxablePortion,
     pensionTaxRate: params.pensionTaxRate,
     householdType: params.householdType === 'couple' ? 'couple' : 'single',
+    expectedInflation: params.averageInflation,
   }
 }
 

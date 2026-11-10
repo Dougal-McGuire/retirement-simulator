@@ -2,16 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
-import type { CashFlow, Plan, SimulationParams, SimulationResults } from '@/types'
+import type { Plan, SimulationParams, SimulationResults } from '@/types'
 import { MAX_COMPARISON_PLANS } from '@/types'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import {
   buildFlowDiffRows,
   comparisonFingerprint,
+  flowIndexing,
   type FlowDiffRow,
 } from '@/lib/simulation/planDiff'
-import { isCashFlowEnabled } from '@/lib/simulation/cashFlows'
+import {
+  isCashFlowEnabled,
+  pensionStartAge,
+  STATUTORY_PENSION_FLOW_ID,
+} from '@/lib/simulation/cashFlows'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
+import { flowWindowLabel, monthFormatter } from '@/lib/plans/flowWindow'
 import { effectiveRunCount } from '@/lib/simulation/context'
 import { planDisplayName } from '@/lib/plans/planName'
 import {
@@ -23,7 +29,8 @@ import {
 import { useComparisonStore, useSetComparisonSelection } from '@/lib/stores/comparisonStore'
 import { buildCompactKpis, type CompactKpis } from './metrics'
 import { CompareFanChart, type CompareFanSeries } from './CompareFanChart'
-import { formatEuroDelta, formatMillionsEuro, formatPpDelta, formatThousandsEuro } from './format'
+import { formatEuroDelta, formatMillionsEuro, formatThousandsEuro } from './format'
+import { createCompareRunQueue, type CompareRunJob, type CompareRunQueue } from './compareRunQueue'
 import { Skeleton } from '@/components/workspace/Skeleton'
 
 const ALT_COLORS = ['var(--viz-3)', 'var(--viz-5)'] as const
@@ -52,6 +59,7 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
   const tPlans = useTranslations('plans')
   const tSwitch = useTranslations('plans.comparison.flowSwitch')
   const tFlows = useTranslations('setup.cashFlows')
+  const tScenarios = useTranslations('planDashboard.scenarios')
   const format = useFormatter()
   const locale = useLocale()
   const plans = usePlans()
@@ -108,35 +116,44 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
     Record<string, { fingerprint: string; results: SimulationResults }>
   >({})
   const [running, setRunning] = useState(false)
-  const runIdRef = useRef(0)
+
+  // One queue for the view's life: each plan runs once per fingerprint, however
+  // often the effect below asks (it asks again whenever a result lands).
+  const queueRef = useRef<CompareRunQueue<SimulationParams> | null>(null)
+  useEffect(() => {
+    const queue = createCompareRunQueue<SimulationParams, SimulationResults>({
+      run: async (params) => {
+        const { runSimulationInClient } = await import('@/lib/simulation/workerClient')
+        return runSimulationInClient(params)
+      },
+      onResult: (id, fingerprint, results) =>
+        setRunsById((current) => ({ ...current, [id]: { fingerprint, results } })),
+      onRunningChange: setRunning,
+    })
+    queueRef.current = queue
+    return () => {
+      queue.dispose()
+      queueRef.current = null
+    }
+  }, [])
+
+  const staleJobs = useMemo<CompareRunJob<SimulationParams>[]>(
+    () =>
+      selectedPlans.flatMap((plan) => {
+        const params = paramsFor(plan)
+        const fingerprint = comparisonFingerprint(params)
+        return runsById[plan.id]?.fingerprint === fingerprint
+          ? []
+          : [{ id: plan.id, fingerprint, params }]
+      }),
+    [selectedPlans, runsById, paramsFor]
+  )
 
   useEffect(() => {
-    const stale = selectedPlans.filter((plan) => {
-      const entry = runsById[plan.id]
-      return !entry || entry.fingerprint !== comparisonFingerprint(paramsFor(plan))
-    })
-    if (stale.length === 0) return
-
-    const runId = ++runIdRef.current
-    setRunning(true)
-    const timer = setTimeout(async () => {
-      try {
-        const { runSimulationInClient } = await import('@/lib/simulation/workerClient')
-        for (const plan of stale) {
-          const params = paramsFor(plan)
-          const results = await runSimulationInClient(params)
-          if (runIdRef.current !== runId) return
-          setRunsById((current) => ({
-            ...current,
-            [plan.id]: { fingerprint: comparisonFingerprint(params), results },
-          }))
-        }
-      } finally {
-        if (runIdRef.current === runId) setRunning(false)
-      }
-    }, 200)
+    if (staleJobs.length === 0) return
+    const timer = setTimeout(() => queueRef.current?.request(staleJobs), 200)
     return () => clearTimeout(timer)
-  }, [selectedPlans, runsById, paramsFor])
+  }, [staleJobs])
 
   const ready: PlanRun[] = useMemo(
     () =>
@@ -251,8 +268,20 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
       },
       {
         key: 'pension',
-        label: t('rows.pension', { age: format.number(ready[0].params.legalRetirementAge) }),
-        values: ready.map((run) => t('perMonth', { amount: euro(run.params.monthlyPension) })),
+        label: t('rows.pension'),
+        // Each plan's own start: duplicating a plan and moving its statutory
+        // pension from 67 to 63 changes the result, so it has to show here.
+        values: ready.map((run) => {
+          const amount = euro(run.params.monthlyPension)
+          const statutory = (run.params.cashFlows ?? []).find(
+            (flow) => flow.id === STATUTORY_PENSION_FLOW_ID
+          )
+          if (!statutory || !isCashFlowEnabled(statutory) || run.params.monthlyPension <= 0) {
+            return t('perMonth', { amount })
+          }
+          const age = pensionStartAge(statutory, run.params.legalRetirementAge)
+          return t('pensionFrom', { amount, age: format.number(age) })
+        }),
       },
     ]
   }, [ready, t, format])
@@ -265,18 +294,7 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
   const visibleFlowRows = showAllFlows ? flowRows : flowRows.slice(0, MAX_FLOW_ROWS)
   const hiddenFlowRows = flowRows.length - MAX_FLOW_ROWS
 
-  const flowPeriod = (flow: CashFlow, params: SimulationParams) => {
-    if (flow.frequency === 'once') {
-      return tFlows('window.at', { age: flow.startAge ?? params.currentAge })
-    }
-    const from = flow.startAge ?? (flow.kind === 'pension' ? params.legalRetirementAge : undefined)
-    if (from !== undefined && flow.endAge !== undefined) {
-      return tFlows('window.range', { from, to: flow.endAge })
-    }
-    if (from !== undefined) return tFlows('window.from', { age: from })
-    if (flow.endAge !== undefined) return tFlows('window.until', { age: flow.endAge })
-    return tFlows('window.lifetime')
-  }
+  const formatMonth = monthFormatter(format)
 
   const flowCell = (row: FlowDiffRow, index: number) => {
     const flow = row.flows[index]
@@ -289,17 +307,33 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
       )
     }
     // Same amount and window, only the switch differs: say just that.
-    if (row.change === 'switch' && !row.termsDiffer) return tSwitch(row.values[index])
+    if (row.change === 'switch' && !row.termsDiffer && !row.indexingDiffers) {
+      return tSwitch(row.values[index])
+    }
     const off = !isCashFlowEnabled(flow)
+    const indexing = flowIndexing(flow)
     return (
       <span className="compare-flow-cell">
         <span className="compare-flow-amount">
           {t(`flow.${flow.frequency}`, { amount: euro(flow.amount) })}
         </span>
         <span className="compare-flow-period">
-          {flowPeriod(flow, ready[index].params)}
+          {flowWindowLabel(flow, ready[index].params, tFlows, { formatMonth })}
           {off && ` · ${tSwitch('off')}`}
         </span>
+        {row.indexingDiffers && (
+          <span className="compare-flow-period" data-testid="compare-flow-indexing">
+            {t(indexing.inflationLinked ? 'flow.linked' : 'flow.fixed')}
+            {indexing.growthRate !== 0 &&
+              ` · ${t('flow.growth', {
+                rate: format.number(indexing.growthRate, {
+                  style: 'percent',
+                  maximumFractionDigits: 2,
+                  signDisplay: 'always',
+                }),
+              })}`}
+          </span>
+        )}
       </span>
     )
   }
@@ -373,7 +407,7 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
         </button>
         <div className="compare-header-end">
           <span className="compare-meta">
-            {running || !runsLabel
+            {running || staleJobs.length > 0 || !runsLabel
               ? t('running')
               : t('meta', { count: ready.length, runs: runsLabel })}
           </span>
@@ -398,7 +432,14 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
                 baseValue: percentValue(base.kpis.successRate),
                 altValue: percentValue(firstAlt.kpis.successRate),
                 delta: firstAlt.kpis.successRate - base.kpis.successRate,
-                text: (d: number) => formatPpDelta(d, locale),
+                // The catalog's unit ("Pkt." / "pts"), as in the result bar.
+                text: (d: number) =>
+                  tScenarios('deltaPoints', {
+                    value: `${d < 0 ? '−' : '+'}${format.number(Math.abs(d), {
+                      minimumFractionDigits: Math.abs(d) >= 10 ? 0 : 1,
+                      maximumFractionDigits: Math.abs(d) >= 10 ? 0 : 1,
+                    })}`,
+                  }),
                 toneNegative: 'danger' as const,
               },
               {

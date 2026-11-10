@@ -138,10 +138,14 @@ describe('Engine math correctness', () => {
     const expectedMonthlyExpenseAtRetirement =
       baseMonthlyExpense * Math.pow(1 + inflationMean, retirementAge - currentAge)
 
-    expect(results.spendingPercentiles.p50[retirementIndex]).toBeCloseTo(
+    // The budget the plan asks for is in the ledger. This plan has no assets
+    // and no income, so nothing of it is paid — and since spending percentiles
+    // report what was paid (requested − shortfall), they read 0 here.
+    expect(results.cashFlowMeans![retirementIndex].expenses / 12).toBeCloseTo(
       expectedMonthlyExpenseAtRetirement,
       6
     )
+    expect(results.spendingPercentiles.p50[retirementIndex]).toBe(0)
     const currentAgeIndex = results.ages.indexOf(currentAge)
     expect(results.spendingPercentiles.p50[currentAgeIndex]).toBeCloseTo(0, 6)
   })

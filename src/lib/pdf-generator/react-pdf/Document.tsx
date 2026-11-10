@@ -2,7 +2,6 @@ import React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
 import type { Style } from '@react-pdf/types'
 import { styles, tokens, page as pageConfig } from './styles'
-import './fonts'
 
 interface ReportDocumentProps {
   children: React.ReactNode

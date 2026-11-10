@@ -3,7 +3,8 @@
 import { memo } from 'react'
 import { useTranslations } from 'next-intl'
 import { CashflowCard } from '@/components/charts/CashflowCard'
-import { useSimulationResults } from '@/lib/stores/simulationStore'
+import { useUsableResults } from '@/components/workspace/useUsableResults'
+import { SectionBoundary } from '@/components/errors/SectionBoundary'
 import { LazyMount } from '../LazyMount'
 import { Skeleton } from '../Skeleton'
 import { useWorkspace } from '../WorkspaceProvider'
@@ -51,7 +52,7 @@ function CashflowSkeleton() {
  */
 export const CashflowSection = memo(function CashflowSection() {
   const t = useTranslations('workspace')
-  const results = useSimulationResults()
+  const results = useUsableResults()
   const { openEditor } = useWorkspace()
   return (
     <WorkspaceSection
@@ -61,13 +62,14 @@ export const CashflowSection = memo(function CashflowSection() {
     >
       <LazyMount minHeight={CASHFLOW_RESERVED_HEIGHT} fallback={<CashflowSkeleton />}>
         {results ? (
-          <MemoCashflowCard params={results.params} results={results} onEdit={openEditor} />
+          <SectionBoundary name="chart-cashflow">
+            <MemoCashflowCard params={results.params} results={results} onEdit={openEditor} />
+          </SectionBoundary>
         ) : (
           <>
             <CashflowSkeleton />
-            <p className="sr-only" role="status">
-              {t('computing')}
-            </p>
+            {/* Not a live region: the result section already says it once. */}
+            <p className="sr-only">{t('computing')}</p>
           </>
         )}
       </LazyMount>

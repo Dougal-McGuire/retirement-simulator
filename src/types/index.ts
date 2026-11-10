@@ -1,3 +1,5 @@
+import { besteuerungsanteil } from '@/lib/simulation/germanTax'
+
 /**
  * The withdrawal-strategy library.
  *
@@ -6,15 +8,22 @@
  *
  * - `fixedReal`: spend the plan's budget, inflation-linked, whatever the market
  *   does. Maximum spending stability, maximum depletion risk.
- * - `vanguardDynamic`: aim at `dsWithdrawalRate` of the prior year-end
- *   portfolio, but never move more than `dsCeilingRate` up or `dsFloorRate`
- *   down versus last year's inflation-adjusted spending.
+ * - `vanguardDynamic`: what is affordable is the year's other income plus
+ *   `dsWithdrawalRate` of the prior year-end portfolio; spending moves towards
+ *   it, but never more than `dsCeilingRate` up or `dsFloorRate` down versus
+ *   last year's inflation-adjusted spending.
  * - `guytonKlinger`: inflation-linked like `fixedReal`, with two guardrails
- *   that cut or raise spending by 10% once the realised withdrawal rate has
- *   drifted ±20% away from `dsWithdrawalRate`.
- * - `percentOfPortfolio`: spend `dsWithdrawalRate` of the portfolio every year,
- *   full stop. Cannot deplete, but spending swings with the market — unless the
- *   optional `spendingFloorReal` puts a floor under it.
+ *   that cut or raise spending by 10% once the portfolio's withdrawal rate
+ *   (spending minus other income, over the portfolio) has drifted ±20% away
+ *   from `dsWithdrawalRate`.
+ * - `percentOfPortfolio`: the portfolio pays `dsWithdrawalRate` of itself every
+ *   year, on top of the other income. The rule alone cannot deplete it — a
+ *   `spendingFloorReal` or the plan's scheduled expenses can — and spending
+ *   swings with the market.
+ *
+ * "Other income" is the year's net pensions and recurring income. The rules
+ * govern the portfolio-funded part of spending only; see
+ * `docs/specs/2026-11-09-withdrawal-rules-with-income.md`.
  */
 export const WITHDRAWAL_STRATEGIES = [
   'fixedReal',
@@ -86,7 +95,7 @@ export interface SimulationParams {
   roiVolatility: number
   averageInflation: number
   inflationVolatility: number
-  /** Abgeltungsteuer incl. Soli, in percentage points (e.g. 26.25). */
+  /** Abgeltungsteuer incl. Soli, in percentage points (e.g. 26.375). */
   capitalGainsTax: number
 
   // German investment & pension taxation
@@ -158,9 +167,10 @@ export interface SimulationParams {
   // Withdrawal strategy
   withdrawalStrategy: WithdrawalStrategy
   /**
-   * Target withdrawal rate. Read by `vanguardDynamic` (the rate it aims at),
-   * `guytonKlinger` (the *initial* rate its guardrails are measured against)
-   * and `percentOfPortfolio` (the rate it spends outright). Ignored by
+   * Target withdrawal rate: the share of the portfolio a rule takes per year,
+   * on top of pensions and recurring income. Read by `vanguardDynamic` (the
+   * rate it aims at), `guytonKlinger` (the rate its guardrails are measured
+   * against) and `percentOfPortfolio` (the rate it takes outright). Ignored by
    * `fixedReal`.
    */
   dsWithdrawalRate: number
@@ -219,11 +229,29 @@ export interface AnnualCashFlow {
   oneOffIncomeTax?: number
   /** Part of `expenses` from scheduled flows (windows, one-offs); the rest is the baseline budget. */
   scheduledExpenses?: number
+  /**
+   * The withdrawal rule's own numbers, so a displayed withdrawal rate is the
+   * rate the rule used and not a re-derivation: the part of the baseline
+   * spending the portfolio pays (net of pensions and recurring income, before
+   * capital gains tax, without scheduled expenses) and the portfolio value the
+   * rule measured it against (prior year-end assets plus the year's one-off
+   * deposits). Both 0 before retirement. `ruleWithdrawal ÷ rulePortfolio` of
+   * the mean rows is the mean rule rate; under `percentOfPortfolio` without a
+   * binding floor it is `dsWithdrawalRate` at every age.
+   */
+  ruleWithdrawal?: number
+  rulePortfolio?: number
 }
 
 export interface SimulationResults {
   ages: number[]
   assetPercentiles: PercentileData
+  /**
+   * Monthly-equivalent spending that was actually **paid** in each year: the
+   * requested spending minus that year's shortfall. A path whose portfolio is
+   * gone shows what its income still covers, not the budget it asked for.
+   * (`cashFlowMeans[].expenses` keeps the request, next to the shortfall.)
+   */
   spendingPercentiles: PercentileData
   /**
    * Same series expressed in today's purchasing power. Each Monte Carlo path is
@@ -231,25 +259,39 @@ export interface SimulationResults {
    * these are genuine quantiles of the real-terms distribution rather than the
    * nominal band divided by an average price level.
    *
+   * The two series sit at different points of the year and are deflated
+   * accordingly. An asset value is the balance at the **end** of that age's
+   * year and is divided by the price level at the end of that year. Spending
+   * is paid **during** the year, at the level the year opened with. A
+   * portfolio that earns exactly inflation therefore reads flat in real terms.
+   *
    * Optional: results persisted before this field existed lack it, and the UI
    * falls back to the nominal series.
    */
   assetPercentilesReal?: PercentileData
   spendingPercentilesReal?: PercentileData
   /**
-   * Median realised price level per age, relative to the plan's first year
-   * (index 0 is always 1). Used to express nominally fixed amounts — a pension
-   * quoted in today's euros — in real terms without re-running the simulation.
+   * Median realised price level at the **start** of each age's year, relative
+   * to the plan's first year (index 0 is always 1): what that year's flows are
+   * priced at. Used to express nominally fixed amounts — a pension quoted in
+   * euros — in real terms without re-running the simulation. A closing
+   * balance of age `i` belongs to the level of index `i + 1`.
    */
   inflationIndexP50?: number[]
   /**
-   * Share of runs (0..100) that met the plan's goal: never depleted **and**,
-   * when `legacyTargetReal` is set, left at least that much in today's euros.
+   * Share of runs (0..100) that met the plan's goal: every year's spending was
+   * funded **and**, when `legacyTargetReal` is set, at least that much was
+   * left in today's euros.
+   *
+   * "Funded" means no year's shortfall exceeded 1 % of the spending requested
+   * for it (`UNFUNDED_SPENDING_TOLERANCE`). The balance reaching zero is not a
+   * failure by itself: a household whose pension covers its budget succeeds
+   * with no portfolio at all.
    */
   successRate: number
   /**
-   * Share of runs (0..100) that merely never depleted, ignoring any bequest
-   * goal. Equal to `successRate` when `legacyTargetReal` is 0.
+   * Share of runs (0..100) in which every year's spending was funded, ignoring
+   * any bequest goal. Equal to `successRate` when `legacyTargetReal` is 0.
    *
    * Optional: results persisted before this field existed lack it, and every
    * consumer falls back to `successRate`.
@@ -262,8 +304,10 @@ export interface SimulationResults {
    */
   withdrawalTaxDrag?: number
   /**
-   * Fraction of runs (0..1) whose assets were exhausted at or before each age.
-   * Optional because results persisted before this field existed lack it.
+   * Fraction of runs (0..1) that had their first unfunded year (same 1 %
+   * tolerance as `successRate`) at or before each age — "the money lasts
+   * until". Optional because results persisted before this field existed lack
+   * it.
    */
   depletionByAge?: number[]
   /**
@@ -277,7 +321,13 @@ export interface SimulationResults {
   sampleAssetPathsReal?: number[][]
   /** Per-age arithmetic means of actual booked annual money movements. */
   cashFlowMeans?: AnnualCashFlow[]
-  /** Deflated per path before averaging (not divided by median inflation). */
+  /**
+   * Deflated per path before averaging (not divided by median inflation).
+   * Flows and the opening balance at the year's opening price level, the
+   * closing balance at its closing level; `investmentReturn` is the real
+   * return (closing − opening − contributions + withdrawals), so both ledger
+   * identities hold in real terms too.
+   */
   cashFlowMeansReal?: AnnualCashFlow[]
   params: SimulationParams
 }
@@ -311,7 +361,10 @@ export interface MarketAssumptionsStep {
   simulationRuns: number
 }
 
-// Saved setup interface (legacy snapshot shape, kept as a view over plans)
+/**
+ * A pre-plan parameter snapshot. Nothing creates these any more: the shape only
+ * describes what the one-time legacy import reads (`bootstrapPlans`).
+ */
 export interface SavedSetup {
   id: string
   name: string
@@ -339,6 +392,14 @@ export interface Plan {
 /** Upper bound on stored plans (10 legacy setups + base plan + headroom). */
 export const MAX_PLANS = 12
 
+/** Sync bookkeeping a cloud-sync merge hands to `applySyncedPlans`. */
+export interface PlanSyncMeta {
+  deletedPlans?: Record<string, number>
+  syncedPlanStamps?: Record<string, number>
+  /** Local plan id -> the id that plan lives under after the merge. */
+  renamedIds?: Record<string, string>
+}
+
 /** Maximum number of plans that can be compared side by side. */
 export const MAX_COMPARISON_PLANS = 3
 
@@ -359,6 +420,19 @@ export interface SimulationStore {
   isDirty: boolean
   /** Last known success rate per plan id, used to enrich the plan switcher. */
   planSuccessRates: Record<string, number>
+  /**
+   * Version of the calculation the remembered rates come from
+   * (`CALC_VERSION` in `src/lib/simulation/calcVersion.ts`).
+   */
+  calcVersion: number
+  /**
+   * The rates an older calculation had remembered, kept until the user has
+   * seen the "calculation corrected" notice; `null` when there is nothing to
+   * explain.
+   */
+  ratesBeforeCalcChange: Record<string, number> | null
+  /** Closes the "calculation corrected" notice for good. */
+  dismissCalcNotice: () => void
   results: SimulationResults | null
   /**
    * Wall-clock time `results` were produced. Feeds the simulation context so
@@ -367,9 +441,20 @@ export interface SimulationStore {
   resultsComputedAt: number | null
   isLoading: boolean
   error: string | null
-  savedSetups: SavedSetup[]
   plans: Plan[]
   activePlanId: string
+  /**
+   * Plans deleted on this device (id -> time), so cloud sync can tell "deleted
+   * here" from "never seen here" and a deletion is not undone by another
+   * device. Persisted and synced; see `docs/specs/2026-11-09-sync-protocol.md`.
+   */
+  deletedPlans: Record<string, number>
+  /**
+   * `updatedAt` of every plan as the account last held it — the base cloud
+   * sync merges against (which side changed since the last sync). Persisted,
+   * device-local, written only by the sync loop.
+   */
+  syncedPlanStamps: Record<string, number>
   autoRunSuspended: boolean
   pendingRun: boolean
 
@@ -409,19 +494,18 @@ export interface SimulationStore {
    * Unsaved edits are never discarded: while a working copy is dirty the active
    * plan (and the params on screen) stay put, and only the rest of the list is
    * reconciled. Returns true when anything actually changed.
+   *
+   * `sync` carries what the merge decided besides the plan list: the merged
+   * deletion tombstones, the new sync base, and the ids of plans this device
+   * kept under a new id (conflict copies) — the selection, and an unsaved
+   * edit, follow such a plan to its new id.
    */
-  applySyncedPlans: (plans: Plan[], activePlanId: string) => boolean
+  applySyncedPlans: (plans: Plan[], activePlanId: string, sync?: PlanSyncMeta) => boolean
 
   // Actions
   updateParams: (partial: Partial<SimulationParams>) => void
   runSimulation: () => Promise<void>
   setAutoRunSuspended: (suspended: boolean) => void
-  saveToStorage: () => void
-  loadFromStorage: () => void
-  saveSetup: (name: string) => void
-  loadSetup: (id: string) => void
-  deleteSetup: (id: string) => void
-  getSavedSetups: () => SavedSetup[]
   clearResults: () => void
 }
 
@@ -502,13 +586,35 @@ export interface CashFlow {
   /** Amount per occurrence, in today's euros. */
   amount: number
   frequency: CashFlowFrequency
-  /** First age the flow applies to. Undefined = from `currentAge`. */
+  /**
+   * First age the flow applies to. Undefined = from `currentAge` (a pension:
+   * from `legalRetirementAge`).
+   *
+   * The ages are kept exactly as written, also when they lie outside the
+   * plan's `currentAge..endAge`: the engine counts the part of a recurring
+   * flow that falls inside, and a single payment only if its age does. An age
+   * before `currentAge` is the past — nothing is moved to today. For a pension
+   * it is how "already in payment since 65" is said, and what its tax cohort
+   * is read from.
+   *
+   * A recurring **expense** with neither `startAge` nor `endAge` is the
+   * retirement budget: paid out of salary while working, charged from
+   * `retirementAge` on and governed by the withdrawal rule — whatever its
+   * `growthRate` or `inflationLinked` say. Giving an expense a window is what
+   * makes it "scheduled": charged in exactly those years, working years
+   * included, on top of the rule.
+   */
   startAge?: number
   /** Last age the flow applies to. Undefined = through `endAge`; ignored for `once`. */
   endAge?: number
   /** Default true. False pins the amount to a fixed nominal € figure. */
   inflationLinked?: boolean
-  /** Extra real growth per year on top of inflation (0 by default). */
+  /**
+   * Extra growth per year (0 by default): on top of inflation for a linked
+   * flow, nominal for a fixed one. Compounds from the flow's first year in the
+   * plan; for the retirement budget that is the plan's first year, so the
+   * item has grown by the time retirement starts.
+   */
   growthRate?: number
   /**
    * Pension flows only: the share of this pension that counts as taxable
@@ -547,11 +653,36 @@ declare global {
   }
 }
 
+/**
+ * Abgeltungsteuer including the solidarity surcharge, in percentage points:
+ * 25 % × 1.055 = 26.375 % — the figure the tax tooltip quotes. (Without church
+ * tax; the shipped default used to be 26.25, which is no statutory rate.)
+ */
+export const DEFAULT_CAPITAL_GAINS_TAX = 26.375
+
+/**
+ * The calendar year the shipped default plan is written for. Only used to
+ * read the default plan's own cohort from the tax tables below, so the
+ * defaults stay one fixed plan instead of drifting with the wall clock.
+ */
+export const DEFAULT_PLAN_BASE_YEAR = 2026
+const DEFAULT_CURRENT_AGE = 55
+const DEFAULT_LEGAL_RETIREMENT_AGE = 67
+
+/**
+ * Besteuerungsanteil of the default plan's own statutory pension: 55 in 2026,
+ * pension from 67, i.e. a 2038 start — 90 %. The default used to be 0.83,
+ * the share of a pension that started in 2024.
+ */
+export const DEFAULT_PENSION_TAXABLE_PORTION = besteuerungsanteil(
+  DEFAULT_PLAN_BASE_YEAR + (DEFAULT_LEGAL_RETIREMENT_AGE - DEFAULT_CURRENT_AGE)
+)
+
 // Default values
 export const DEFAULT_PARAMS: SimulationParams = {
-  currentAge: 55,
+  currentAge: DEFAULT_CURRENT_AGE,
   retirementAge: 60,
-  legalRetirementAge: 67,
+  legalRetirementAge: DEFAULT_LEGAL_RETIREMENT_AGE,
   endAge: 90,
   currentAssets: 630000,
   annualSavings: 48000,
@@ -562,11 +693,11 @@ export const DEFAULT_PARAMS: SimulationParams = {
   roiVolatility: 0.15,
   averageInflation: 0.025,
   inflationVolatility: 0.01,
-  capitalGainsTax: 26.25,
+  capitalGainsTax: DEFAULT_CAPITAL_GAINS_TAX,
   taxAllowanceAnnual: 1000,
   householdType: 'single',
   equityFundExemption: 0.3,
-  pensionTaxablePortion: 0.83,
+  pensionTaxablePortion: DEFAULT_PENSION_TAXABLE_PORTION,
   pensionTaxRate: 0.18,
   legacyTargetReal: 0,
   marketModel: 'monteCarlo',
@@ -686,7 +817,10 @@ export const DEFAULT_PARAMS: SimulationParams = {
     },
   ],
   withdrawalStrategy: 'vanguardDynamic',
-  dsWithdrawalRate: 0.05,
+  // 4%, not the 5% of the first releases: the rate is what the portfolio pays
+  // on top of pensions and other income (see the strategy notes above), and at
+  // 5% the shipped default plan ran dry in almost one path in five.
+  dsWithdrawalRate: 0.04,
   dsCeilingRate: 0.05,
   dsFloorRate: -0.025,
   // Neutral: no floor, so adding the parameter changed no shipped scenario.

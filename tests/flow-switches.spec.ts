@@ -362,13 +362,41 @@ test.describe('Stellschrauben: uncertain items', () => {
     await expect(list.getByTestId('uncertain-flows-saturated')).toHaveCount(0)
     await expect(list.getByTestId('worst-decile-unit')).toHaveCount(0)
 
-    // Without the care costs the example succeeds (nearly) always: every row
-    // now compares the worst decile's end assets — and says so.
+    // A plan that succeeds (nearly) always: every row now compares the worst
+    // decile's end assets — and says so.
+    //
+    // This used to be reached by switching the care costs off. That only
+    // saturated the example while its withdrawal rule banked the pension
+    // instead of spending it (docs/specs/2026-11-09-withdrawal-rules-with-
+    // income.md); since the rule spends it, removing one expense no longer
+    // lifts the example to 99 %. The saturation is what this test is about,
+    // so it is set up directly — the same example with €5M — and no longer
+    // depends on how the example happens to be tuned.
+    await page.evaluate(() => {
+      const key = 'retirement-simulator-store'
+      const parsed = JSON.parse(window.localStorage.getItem(key)!)
+      const state = parsed.state
+      const active = state.plans.find((plan: { id: string }) => plan.id === state.activePlanId)
+      active.params = { ...active.params, currentAssets: 5_000_000 }
+      state.params = active.params
+      state.draftParams = null
+      // Computed for the plan as it was: the page runs the new one on load.
+      state.results = null
+      window.localStorage.setItem(key, JSON.stringify(parsed))
+    })
+    await page.reload()
+    await waitForResults(page)
+    await openSection(page, 'levers')
+    await waitMeasured(list)
+    const callout = list.getByTestId('uncertain-flows-saturated')
+    await expect(callout).toBeVisible()
+
+    // Switching an item off keeps the plan saturated and re-measures the item
+    // the other way round ("mit:"), still in worst-decile euros.
     const care = list.locator('[data-flow-id="demo-care"]')
     await care.getByTestId('uncertain-flow-switch').click()
     await expect(care).toHaveAttribute('data-enabled', 'false')
     await waitMeasured(list)
-    const callout = list.getByTestId('uncertain-flows-saturated')
     await expect(callout).toBeVisible()
     await expect(callout).toContainText(
       /^Erfolgsquote bereits [\d,]+\s% — verglichen wird das Vermögen im schlechtesten Zehntel\.$/
@@ -376,7 +404,7 @@ test.describe('Stellschrauben: uncertain items', () => {
     await expect(care.getByTestId('uncertain-flow-delta')).toHaveText(/^mit: [+−±][\d.,]+/)
     await expect(care.getByTestId('worst-decile-unit')).toHaveText('schlechtestes Zehntel')
     await expect(care.locator('.sr-only')).toHaveText(
-      /^Mit „Pflegekosten“: Vermögen im schlechtesten Zehntel [+−±].+\s€, ergibt .+\s€$/
+      /^Mit „Pflegekosten“: Vermögen im schlechtesten Zehntel [+−±].+€, ergibt .+\s€$/
     )
     await expect(care.locator('.sr-only')).not.toContainText('Erfolgsquote')
     const inheritance = list.locator('[data-flow-id="demo-inheritance"]')
@@ -435,13 +463,13 @@ test.describe('Stellschrauben: uncertain items', () => {
 })
 
 /**
- * axe-core is not a dependency of this repo; point AXE_CORE_PATH at an
- * `axe.min.js` (axe-core ≥ 4.10) to run the accessibility checks.
+ * axe-core is a devDependency; AXE_CORE_PATH can point at another
+ * `axe.min.js` (axe-core ≥ 4.10) to check against a different version.
  */
-const AXE_PATH = process.env.AXE_CORE_PATH
+const AXE_PATH = process.env.AXE_CORE_PATH ?? require.resolve('axe-core/axe.min.js')
 
 test.describe('accessibility', () => {
-  test.skip(!AXE_PATH || !existsSync(AXE_PATH), 'set AXE_CORE_PATH to an axe.min.js')
+  test.skip(!existsSync(AXE_PATH), `axe-core not found at ${AXE_PATH}`)
 
   async function axeViolations(page: Page, selector: string) {
     await page.addScriptTag({ content: readFileSync(AXE_PATH!, 'utf8') })
@@ -679,5 +707,60 @@ test.describe('compare: flows that set two plans apart', () => {
       .locator('.compare-table')
       .evaluate((element) => element.scrollWidth <= element.clientWidth + 1)
     expect(fits).toBe(true)
+  })
+
+  test('shows a moved statutory pension start in both the pension row and a flow row', async ({
+    page,
+  }) => {
+    test.setTimeout(90000)
+    await page.setViewportSize({ width: 1366, height: 890 })
+    await openDemoPlan(page)
+    // A copy of the example plan whose only change: the statutory pension
+    // starts at 63 instead of the plan's statutory age 67.
+    await page.evaluate(() => {
+      const key = 'retirement-simulator-store'
+      const parsed = JSON.parse(window.localStorage.getItem(key)!)
+      const state = parsed.state
+      const base = state.plans.find((plan: { id: string }) => plan.id === state.activePlanId)
+      type Flow = { id: string } & Record<string, unknown>
+      const cashFlows = (base.params.cashFlows as Flow[]).map((flow) =>
+        flow.id === 'pension-statutory' ? { ...flow, startAge: 63 } : flow
+      )
+      const { nameKey: _nameKey, ...plan } = base
+      void _nameKey
+      state.plans.push({
+        ...plan,
+        id: 'pension-early',
+        name: 'Rente mit 63',
+        params: { ...base.params, cashFlows },
+      })
+      window.localStorage.setItem(key, JSON.stringify(parsed))
+    })
+    await page.goto('/de/simulation#compare')
+    await page.reload()
+    const view = page.getByTestId('compare-view')
+    const early = view.getByRole('button', { name: 'Rente mit 63' })
+    if ((await early.getAttribute('aria-pressed')) !== 'true') await early.click()
+    await expect(early).toHaveAttribute('aria-pressed', 'true')
+    const other = view.getByRole('button', { name: 'Basisplan' })
+    if ((await other.getAttribute('aria-pressed')) === 'true') await other.click()
+    await expect(other).toHaveAttribute('aria-pressed', 'false')
+
+    // The pension row: each plan's own start, highlighted as a change.
+    const pensionRow = view
+      .locator('tbody tr:not([data-testid="compare-flow-row"])')
+      .filter({ has: page.locator('td', { hasText: /^Gesetzliche Rente$/ }) })
+    await expect(pensionRow).toBeVisible({ timeout: 45000 })
+    await expect(pensionRow).toHaveClass(/ds-row--behind/)
+    const amount = (await pensionRow.locator('td').nth(1).innerText()).split('/')[0]
+    await expect(pensionRow.locator('td').nth(1)).toHaveText(`${amount}/Mon. ab 67`)
+    await expect(pensionRow.locator('td').nth(2)).toHaveText(`${amount}/Mon. ab 63`)
+
+    // …and the flow row that names what moved.
+    const flowRow = view.getByTestId('compare-flow-row').filter({ hasText: 'Gesetzliche Rente' })
+    await expect(flowRow).toHaveCount(1)
+    await expect(flowRow).toHaveAttribute('data-flow-change', 'terms')
+    await expect(flowRow.locator('td').nth(1)).toContainText('Ab Alter 67')
+    await expect(flowRow.locator('td').nth(2)).toContainText('Ab Alter 63')
   })
 })

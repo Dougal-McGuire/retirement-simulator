@@ -1,11 +1,10 @@
 import type { CashFlow, SimulationParams } from '@/types'
 import {
   applyCashFlows,
-  isCashFlowEnabled,
   pensionStartAge,
   STATUTORY_PENSION_FLOW_ID,
-  withCashFlowEnabled,
 } from '@/lib/simulation/cashFlows'
+import { toggleFlow } from '@/lib/plans/flowOps'
 
 /**
  * "Unsichere Posten": the flows a plan could plausibly be without — an
@@ -24,14 +23,21 @@ export function isEventLikeFlow(flow: CashFlow): boolean {
   return flow.frequency === 'once' || flow.startAge !== undefined || flow.endAge !== undefined
 }
 
-/** Years a flow pays within the plan horizon (a single payment counts once). */
+/**
+ * Years a flow pays within the plan horizon, by the engine's own rule (see
+ * `buildCashFlowSeries`): a recurring flow is cut to the overlap of its window
+ * with `currentAge..endAge`, a single payment counts once and only when the
+ * age it is booked for lies inside — one in the past has already happened.
+ */
 function yearsInHorizon(flow: CashFlow, params: SimulationParams): number {
   const first =
     flow.kind === 'pension'
       ? pensionStartAge(flow, params.legalRetirementAge)
       : (flow.startAge ?? params.currentAge)
+  if (flow.frequency === 'once') {
+    return first >= params.currentAge && first <= params.endAge ? 1 : 0
+  }
   const start = Math.max(params.currentAge, first)
-  if (flow.frequency === 'once') return start <= params.endAge ? 1 : 0
   const last = Math.min(params.endAge, flow.endAge ?? params.endAge)
   return Math.max(0, last - start + 1)
 }
@@ -72,11 +78,7 @@ export function selectUncertainFlows(
 }
 
 /** The flow list with one flow switched the other way. */
-export function toggleCashFlow(flows: readonly CashFlow[], id: string): CashFlow[] {
-  return flows.map((flow) =>
-    flow.id === id ? withCashFlowEnabled(flow, !isCashFlowEnabled(flow)) : flow
-  )
-}
+export const toggleCashFlow = toggleFlow
 
 /**
  * The plan with one flow switched: "without it" for a switched-on flow,

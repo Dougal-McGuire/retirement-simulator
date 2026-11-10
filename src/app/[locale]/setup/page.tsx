@@ -15,12 +15,10 @@ import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
 import { CashFlowList } from '@/components/forms/fields/CashFlowList'
 import {
   addOneOffIncome,
-  createFlowId,
   oneOffIncomeEntries,
-  removeFlow,
-  toggleFlow,
   updateOneOffIncome,
 } from '@/components/forms/fields/oneOffIncomeFlows'
+import { createFlowId, removeFlow, toggleFlow } from '@/lib/plans/flowOps'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import { buildCashFlowTemplates } from '@/components/forms/fields/cashFlowTemplates'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
@@ -40,9 +38,17 @@ import type { CashFlow, OneTimeIncome } from '@/types'
 import { WorkspaceAccountMenu, WorkspaceBrand } from '@/components/workspace/WorkspaceShell'
 import { InfoTip } from '@/components/ui/info-tip'
 import { cn } from '@/lib/utils'
+import { safeGetItem, safeRemoveItem, safeSetItem } from '@/lib/storage/safeStorage'
+import { hardenPersistence } from '@/lib/storage/hardenPersistence'
+import { StorageNotice } from '@/components/errors/StorageNotice'
+import { useMoney } from '@/lib/hooks/useMoney'
 import { parseSetupProgressStep } from './setupProgress'
 import '../simulation/workspace.css'
 import './setup-shell.css'
+
+// Before any component can set state: a full quota must not throw out of a
+// store update (see `hardenPersistence`).
+hardenPersistence()
 
 const STEP_KEYS = ['personal', 'assets', 'expenses', 'market'] as const
 
@@ -115,13 +121,8 @@ export default function SetupPage() {
 
   const activeStepKey = STEP_KEYS[currentStep]
 
-  const formatCurrency = (value: number, minimumFractionDigits = 0) =>
-    format.number(value, {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits,
-      maximumFractionDigits: Math.max(0, minimumFractionDigits),
-    })
+  const money = useMoney()
+  const formatCurrency = money.full
 
   const formatPercent = (value: number, maximumFractionDigits = 1) =>
     format.number(value, {
@@ -135,7 +136,7 @@ export default function SetupPage() {
 
   // Load saved currentStep on mount (formData is already from params)
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
+    const saved = safeGetItem(STORAGE_KEY)
     if (!saved) {
       setProgressLoaded(true)
       return
@@ -153,7 +154,7 @@ export default function SetupPage() {
   useEffect(() => {
     if (!progressLoaded) return
 
-    localStorage.setItem(
+    safeSetItem(
       STORAGE_KEY,
       JSON.stringify({
         currentStep,
@@ -186,7 +187,7 @@ export default function SetupPage() {
 
   const finishSetup = () => {
     // Data is already in simulation store, just clear progress and navigate
-    localStorage.removeItem(STORAGE_KEY)
+    safeRemoveItem(STORAGE_KEY)
     startNavigation(() => {
       router.push('/simulation')
     })
@@ -350,7 +351,7 @@ export default function SetupPage() {
                   data-testid="wizard-timeline-chip"
                   data-stale={timelineStale || undefined}
                   className={cn(
-                    'rounded-sm border-2 border-dashed border-ink/30 bg-accent/5 px-3 py-2 text-xs font-medium leading-relaxed text-ink',
+                    'rounded-sm border border-dashed border-ink/30 bg-accent/5 px-3 py-2 text-xs font-medium leading-relaxed text-ink',
                     // The chip describes the last accepted ages; while a field
                     // is refusing input it is not describing what is on screen.
                     timelineStale && 'opacity-40 grayscale'
@@ -366,7 +367,7 @@ export default function SetupPage() {
                 role="alert"
                 data-testid="wizard-timeline-issues"
                 className={cn(
-                  'rounded-sm flex items-start gap-3 border-2 px-4 py-3',
+                  'rounded-sm flex items-start gap-3 border px-4 py-3',
                   ageIssues.some((issue) => issue.severity === 'error')
                     ? 'border-danger bg-danger/10'
                     : 'border-viz-orange bg-viz-orange/10'
@@ -484,11 +485,11 @@ export default function SetupPage() {
               />
             </div>
 
-            <div className="rounded-sm space-y-4 border-2 border-border bg-card px-4 py-5 shadow-sm sm:px-5">
+            <div className="rounded-sm space-y-4 border border-border bg-card px-4 py-5 shadow-sm sm:px-5">
               <div className="flex items-center gap-2">
-                <h5 className="text-[0.72rem] font-extrabold   text-ink">
+                <h3 className="setup-subheading text-[0.72rem] font-extrabold   text-ink">
                   {t('assets.oneTimeIncomes.title')}
-                </h5>
+                </h3>
                 <InfoTip
                   content={t('assets.oneTimeIncomes.help')}
                   label={t('assets.oneTimeIncomes.title')}
@@ -531,14 +532,7 @@ export default function SetupPage() {
                 onUpdate={handleUpdateOneTimeIncome}
                 onRemove={handleRemoveOneTimeIncome}
                 onToggle={handleToggleOneTimeIncome}
-                formatCurrency={(value) =>
-                  format.number(value, {
-                    style: 'currency',
-                    currency: 'EUR',
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
-                  })
-                }
+                formatCurrency={money.full}
               />
             </div>
           </div>
@@ -599,7 +593,7 @@ export default function SetupPage() {
               helpText={t('market.averageInflation.help')}
             />
 
-            <div className="rounded-sm flex items-center justify-between gap-3 border-2 border-dashed border-ink/30 bg-accent/5 px-4 py-3">
+            <div className="rounded-sm flex items-center justify-between gap-3 border border-dashed border-ink/30 bg-accent/5 px-4 py-3">
               <span className="text-xs font-medium text-muted-foreground">
                 {t('market.realReturn')}
               </span>
@@ -766,6 +760,7 @@ export default function SetupPage() {
               <p>{t('header.subtitle')}</p>
             </div>
           </div>
+          <StorageNotice />
 
           {/* Live preview of the plan being typed. The wizard suspends the
               store's auto-run, so without this the first number a user ever
@@ -777,6 +772,7 @@ export default function SetupPage() {
               <CardHeader className="border-b border-border bg-card">
                 <div className="flex items-center gap-2">
                   <CardTitle
+                    as="h2"
                     ref={stepHeadingRef}
                     tabIndex={-1}
                     className="text-xl font-extrabold   text-ink"
@@ -886,7 +882,7 @@ export default function SetupPage() {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') handleFirstRunFinish()
                 }}
-                className="rounded-sm mt-2 h-11 border-2 border-border bg-card px-3 py-2 text-[0.78rem] font-semibold"
+                className="rounded-sm mt-2 h-11 border border-border bg-card px-3 py-2 text-[0.78rem] font-semibold"
               />
             </div>
           )}

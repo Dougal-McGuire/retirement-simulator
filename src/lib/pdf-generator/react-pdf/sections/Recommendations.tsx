@@ -2,8 +2,13 @@ import React from 'react'
 import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
 import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
-import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
-import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
+import type { ReportContent, ReportLeverEffects } from '@/lib/pdf-generator/reportTypes'
+import {
+  fmtCurrency,
+  fmtNumber,
+  fmtPercent,
+  fmtRatioPercent,
+} from '@/lib/pdf-generator/formatters'
 import { allPensionsSwitchedOff } from '@/lib/pdf-generator/pensionSwitch'
 import { buildEuroUnitCopy } from '@/lib/pdf-generator/euroUnitCopy'
 
@@ -34,63 +39,103 @@ function impactVisual(impact: string, isGerman: boolean) {
   }
 }
 
+type LeverId = ReportLeverEffects['levers'][number]['id']
+
+/** The three stress levers, named as the app names them (formal German). */
+const LEVER_NAMES: Record<LeverId, { de: string; en: string }> = {
+  laterRetirement: {
+    de: 'Zwei Jahre später in den Ruhestand',
+    en: 'Retire two years later',
+  },
+  moreSavings: {
+    de: 'Sparleistung um 10 % erhöhen',
+    en: 'Raise annual savings by 10%',
+  },
+  lowerSpending: {
+    de: 'Laufende Ausgaben um 10 % senken',
+    en: 'Cut recurring spending by 10%',
+  },
+}
+
+/** "+2,6 pp" / "±0,0 pp" / "−1,2 pp" — always signed, one decimal. */
+function signedPoints(points: number, locale: string): string {
+  const rounded = Math.round(points * 10) / 10
+  const sign = rounded > 0 ? '+' : rounded < 0 ? '−' : '±'
+  const digits = fmtNumber(Math.abs(rounded), {
+    locale,
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
+  return `${sign}${digits} pp`
+}
+
+function signedMoney(amount: number, locale: string): string {
+  const rounded = Math.round(amount)
+  const sign = rounded > 0 ? '+' : rounded < 0 ? '−' : '±'
+  return `${sign}${fmtCurrency(Math.abs(rounded), locale)}`
+}
+
 export function Recommendations({ content, sectionNumber = '05' }: RecommendationsProps) {
-  const { recommendations, profile, expenses, finances, projections } = content
+  const { recommendations, profile, expenses, finances, projections, simulation } = content
   const isGerman = content.locale !== 'en'
   const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
 
-  // The section is a single page by design: the levers table and the 90-day
-  // plan below always fit, so the card list is capped to what is left over.
-  const maxCards = recommendations.primary.length >= 4 ? 3 : 5
-  const list = recommendations.primary.slice(0, maxCards)
-  const hiddenCount = Math.max(0, recommendations.primary.length - list.length)
-  const uplifts = recommendations.uplifts.slice(0, 3)
-  // The uplift table and the lever table answer the same question ("what
-  // changes if I act"), so only one of them is ever shown: the modelled uplift
-  // when the payload carries it, the arithmetic levers otherwise.
-  const showLevers = uplifts.length === 0
-
   const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
   const { person } = profile
-  // The bridge need is derived, so it follows the report's euro unit.
+  // Every amount below says which euro it is in: derived amounts follow the
+  // report's unit, entered ones are today's euros in either mode.
   const unitCopy = buildEuroUnitCopy(content.units, content.locale)
-  const bridgeYears = Math.max(0, person.pensionAge - person.retireAge)
+  const bridge = profile.bridge
+  const bridgeYears = bridge ? Math.max(0, bridge.endAge - bridge.startAge + 1) : 0
 
   /**
-   * Deterministic lever arithmetic — no re-simulation, just the direct effect
-   * each lever has on the two numbers that drive the outcome: the annual gap
-   * the portfolio has to cover, and the cash needed across the bridge years.
-   * Labelled as arithmetic in the caption so it is never mistaken for a run.
+   * What the levers do — **measured**. Each row is one full simulation on the
+   * same paths and at the same run count as the report's own result, the very
+   * runs behind the app's lever list. When that measurement is not available
+   * the table is omitted: there is no formula to fall back on, and the
+   * "direct arithmetic" table that used to stand in here mixed today's euros
+   * with future ones.
    */
-  const gapToday = Math.max(0, annualSpend - finances.monthlyPension * 12)
-  const bridgeNeed = profile.bridge?.cashNeedEUR ?? annualSpend * bridgeYears
-  const perBridgeYear = bridgeYears > 0 ? bridgeNeed / bridgeYears : annualSpend
-  const levers: Array<{ lever: string; gap: string; bridge: string }> = [
-    {
-      lever: isGerman ? 'Zwei Jahre später in Rente' : 'Retire two years later',
-      gap: isGerman
-        ? `+${fmtCurrency(finances.annualSavings * 2, locale)} zusätzlich gespart`
-        : `+${fmtCurrency(finances.annualSavings * 2, locale)} extra saved`,
-      bridge:
-        bridgeYears >= 2
-          ? `−${fmtCurrency(Math.min(bridgeNeed, perBridgeYear * 2), locale)}`
-          : isGerman
-            ? 'keine Überbrückung nötig'
-            : 'no bridge required',
-    },
-    {
-      lever: isGerman ? 'Jahresbudget um 10 % senken' : 'Cut the annual budget by 10%',
-      gap: `−${fmtCurrency(annualSpend * 0.1, locale)}`,
-      bridge: `−${fmtCurrency(bridgeNeed * 0.1, locale)}`,
-    },
-    {
-      lever: isGerman ? 'Sparrate um 10 % erhöhen' : 'Raise the savings rate by 10%',
-      gap: isGerman
-        ? `+${fmtCurrency(finances.annualSavings * 0.1, locale)} pro Jahr investiert`
-        : `+${fmtCurrency(finances.annualSavings * 0.1, locale)} invested per year`,
-      bridge: isGerman ? 'unverändert' : 'unchanged',
-    },
-  ]
+  const measured = recommendations.levers ?? null
+  const leverRows = measured
+    ? [...measured.levers]
+        .map((lever) => ({
+          ...lever,
+          worstDecileDelta: lever.worstDecileEndEUR - measured.baseWorstDecileEndEUR,
+        }))
+        .sort(
+          (a, b) => b.deltaPoints - a.deltaPoints || b.worstDecileDelta - a.worstDecileDelta
+        )
+    : []
+  const isHistorical = simulation.marketModel === 'historical'
+  const pathsPhrase = isHistorical
+    ? isGerman
+      ? `denselben ${fmtNumber(simulation.effectiveRuns, { locale })} historischen Startjahren`
+      : `the same ${fmtNumber(simulation.effectiveRuns, { locale })} historical start years`
+    : isGerman
+      ? `denselben ${fmtNumber(simulation.effectiveRuns, { locale })} Zufallspfaden`
+      : `the same ${fmtNumber(simulation.effectiveRuns, { locale })} random paths`
+
+  /**
+   * The section is one page. The fixed parts (header, callout, lever table,
+   * 90-day plan) leave room for a certain amount of recommendation text; how
+   * many cards that is depends on how long their bodies are, so the cards are
+   * counted by the lines they will take rather than by a constant.
+   */
+  const CARD_LINE_BUDGET = measured ? 15 : 21
+  // 8 pt body text on a ~430 pt measure; German wraps a little earlier.
+  const CHARS_PER_LINE = isGerman ? 106 : 112
+  // Category line and title, then the body.
+  const cardLines = (body: string) => 2 + Math.max(1, Math.ceil(body.length / CHARS_PER_LINE))
+  const list: typeof recommendations.primary = []
+  let usedLines = 0
+  for (const rec of recommendations.primary) {
+    const lines = cardLines(rec.body)
+    if (list.length > 0 && usedLines + lines > CARD_LINE_BUDGET) break
+    list.push(rec)
+    usedLines += lines
+  }
+  const hiddenCount = Math.max(0, recommendations.primary.length - list.length)
 
   /**
    * A short, concrete review agenda. Every row is derived from this plan's own
@@ -100,24 +145,24 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
     {
       when: isGerman ? '0–30 Tage' : 'Days 0–30',
       what: isGerman ? 'Liquiditätspuffer festlegen' : 'Set the cash buffer',
-      detail: profile.bridge
+      detail: bridge
         ? isGerman
-          ? `${fmtCurrency(profile.bridge.cashNeedEUR, locale)}${unitCopy.amountQualifier} für ${fmtNumber(bridgeYears, { locale })} Überbrückungsjahre einplanen; die ersten ${fmtNumber(profile.bridge.cashBucketYears ?? 2, { locale })} Jahre schwankungsarm halten.`
-          : `Earmark ${fmtCurrency(profile.bridge.cashNeedEUR, locale)}${unitCopy.amountQualifier} for ${fmtNumber(bridgeYears, { locale })} bridge years; hold the first ${fmtNumber(profile.bridge.cashBucketYears ?? 2, { locale })} years in low-volatility assets.`
+          ? `Für die ${fmtNumber(bridgeYears, { locale })} Überbrückungsjahre entnimmt der Plan ${fmtCurrency(bridge.cashNeedEUR, locale)}${unitCopy.amountQualifier}; die ersten ${fmtNumber(bridge.cashBucketYears ?? 2, { locale })} Jahre davon schwankungsarm halten.`
+          : `Over the ${fmtNumber(bridgeYears, { locale })} bridge years the plan withdraws ${fmtCurrency(bridge.cashNeedEUR, locale)}${unitCopy.amountQualifier}; hold the first ${fmtNumber(bridge.cashBucketYears ?? 2, { locale })} years of it in low-volatility assets.`
         : isGerman
-          ? `Zwölf Monatsausgaben (${fmtCurrency(annualSpend, locale)} p.a.) als Puffer bereitstellen.`
-          : `Hold twelve months of spending (${fmtCurrency(annualSpend, locale)} p.a.) as a buffer.`,
+          ? `Zwölf Monatsausgaben (${fmtCurrency(annualSpend, locale)} p.a.${unitCopy.inputQualifier}) als Puffer bereitstellen.`
+          : `Hold twelve months of spending (${fmtCurrency(annualSpend, locale)} p.a.${unitCopy.inputQualifier}) as a buffer.`,
     },
     {
       when: isGerman ? '30–60 Tage' : 'Days 30–60',
-      what: isGerman ? 'Eine Maßnahme mit hoher Wirkung umsetzen' : 'Implement one high-impact action',
+      what: isGerman ? 'Eine Maßnahme umsetzen' : 'Implement one action',
       detail: list[0]
         ? isGerman
-          ? `Beginnen Sie mit „${list[0].title}“ — die Maßnahme mit der größten erwarteten Wirkung.`
-          : `Start with "${list[0].title}" — the action with the largest expected effect.`
+          ? `Beginnen Sie mit „${list[0].title}“ — der am höchsten eingestuften Maßnahme.`
+          : `Start with "${list[0].title}" — the highest-ranked action.`
         : isGerman
-          ? 'Priorisieren Sie die Maßnahme mit dem größten Hebel auf die Erfolgsquote.'
-          : 'Prioritise the action with the largest leverage on the success rate.',
+          ? 'Priorisieren Sie den Hebel mit der größten simulierten Wirkung auf die Erfolgsquote.'
+          : 'Prioritise the lever with the largest simulated effect on the success rate.',
     },
     {
       when: isGerman ? '60–90 Tage' : 'Days 60–90',
@@ -134,8 +179,8 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
           ? `Rentenbescheid (die Rente ist im Plan derzeit ausgeschaltet), Ausgabenliste und Planungshorizont bis ${person.horizonAge} überprüfen.`
           : `Revisit the pension statement (the pension is currently switched off in the plan), the expense list and the horizon at age ${person.horizonAge}.`
         : isGerman
-          ? `Rentenbescheid, Ausgabenliste (${fmtCurrency(finances.monthlyPension, locale)} monatliche Rente heute) und Planungshorizont bis ${person.horizonAge} überprüfen.`
-          : `Revisit the pension statement, the expense list (${fmtCurrency(finances.monthlyPension, locale)} monthly pension today) and the horizon at age ${person.horizonAge}.`,
+          ? `Rentenbescheid (eingegeben: ${fmtCurrency(finances.monthlyPension, locale)} monatlich, brutto), Ausgabenliste und Horizont bis ${person.horizonAge} prüfen.`
+          : `Revisit the pension statement (entered: ${fmtCurrency(finances.monthlyPension, locale)} monthly, gross), the expense list and the horizon at age ${person.horizonAge}.`,
     },
   ]
 
@@ -156,7 +201,7 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
         style={[
           styles.callout,
           projections.exhaustionAge ? styles.calloutWarning : styles.calloutSuccess,
-          { marginBottom: 10 },
+          { marginBottom: 7 },
         ]}
       >
         <Text
@@ -167,11 +212,11 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
         <Text style={{ fontSize: 8, color: tokens.colors.ink[700], lineHeight: 1.45 }}>
           {projections.exhaustionAge
             ? isGerman
-              ? `Das Stressszenario läuft ab Alter ${fmtNumber(projections.exhaustionAge, { locale })} leer. Die wirksamsten Hebel sind ein späterer Ruhestandsbeginn als ${person.retireAge} und eine Senkung des Jahresbudgets von ${fmtCurrency(annualSpend, locale)}; beides wirkt direkt auf die Entnahmerate.`
-              : `The stress scenario runs dry from age ${fmtNumber(projections.exhaustionAge, { locale })}. The strongest levers are retiring later than ${person.retireAge} and trimming the ${fmtCurrency(annualSpend, locale)} annual budget; both act directly on the withdrawal rate.`
+              ? `Im Stressszenario sind die Ausgaben ab Alter ${fmtNumber(projections.exhaustionAge, { locale })} nicht mehr gedeckt. Die wirksamsten Hebel sind ein späterer Ruhestandsbeginn als ${person.retireAge} und eine Senkung des Jahresbudgets von ${fmtCurrency(annualSpend, locale)}${unitCopy.inputQualifier}; beides wirkt direkt auf die Entnahmerate.`
+              : `In the stress scenario spending is no longer funded from age ${fmtNumber(projections.exhaustionAge, { locale })}. The strongest levers are retiring later than ${person.retireAge} and trimming the annual budget of ${fmtCurrency(annualSpend, locale)}${unitCopy.inputQualifier}; both act directly on the withdrawal rate.`
             : isGerman
-              ? `Der Plan trägt auch im Stressszenario bis Alter ${person.horizonAge}. Der Fokus liegt daher auf Absicherung: Liquiditätspuffer für die Überbrückungsjahre und regelmäßige Überprüfung der Annahmen.`
-              : `The plan holds to age ${person.horizonAge} even under stress. The focus is therefore protective: keep the bridge-year liquidity buffer and revisit the assumptions regularly.`}
+              ? `Der Plan trägt auch im Stressszenario bis Alter ${person.horizonAge}. Im Fokus steht daher die Absicherung: ${bridge ? 'Liquiditätspuffer für die Überbrückungsjahre und ' : ''}regelmäßige Überprüfung der Annahmen.`
+              : `The plan holds to age ${person.horizonAge} even under stress. The focus is therefore protective: ${bridge ? 'keep the bridge-year liquidity buffer and ' : ''}revisit the assumptions regularly.`}
         </Text>
       </View>
 
@@ -194,8 +239,8 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
                 {
                   borderLeftWidth: 2.5,
                   borderLeftColor: tag.color,
-                  marginBottom: 6,
-                  paddingVertical: 7,
+                  marginBottom: 4,
+                  paddingVertical: 5,
                   paddingHorizontal: 9,
                 },
               ]}
@@ -276,101 +321,63 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
       {hiddenCount > 0 && (
         <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 6 }}>
           {isGerman
-            ? `${list.length} von ${recommendations.primary.length} Maßnahmen nach Wirkung priorisiert; die vollständige Liste zeigt die App.`
-            : `${list.length} of ${recommendations.primary.length} measures shown, ranked by effect; the app lists them all.`}
+            ? `${list.length} von ${recommendations.primary.length} Maßnahmen nach Einstufung priorisiert; die vollständige Liste zeigt die App.`
+            : `${list.length} of ${recommendations.primary.length} measures shown, by ranking; the app lists them all.`}
         </Text>
       )}
 
-      {uplifts.length > 0 && (
-        <View style={[styles.card, { marginTop: 4, marginBottom: 8 }]}>
+      {measured && leverRows.length > 0 && (
+        <View style={[styles.card, { marginTop: 2, marginBottom: 6, paddingVertical: 7 }]}>
           <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
-            {isGerman ? 'Erwartete Wirkung auf die Erfolgsquote' : 'Expected Effect on the Success Rate'}
+            {isGerman ? 'Simulierte Wirkung der Hebel' : 'Simulated Effect of the Levers'}
           </Text>
-          <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 4 }}>
+          <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 4, lineHeight: 1.4 }}>
             {isGerman
-              ? `Modellschätzung in Prozentpunkten, ausgehend von heute ${fmtPercent(profile.success.successRate, 1, locale)}.`
-              : `Model estimate in percentage points, starting from today's ${fmtPercent(profile.success.successRate, 1, locale)}.`}
+              ? `Simuliert, nicht geschätzt: je Hebel ein vollständiger Lauf auf ${pathsPhrase} wie das Ergebnis dieses Berichts (${fmtRatioPercent(measured.baseSuccessRatePct / 100, 1, locale)}). Wirkung in Prozentpunkten (pp) der Erfolgsquote; P10-Endvermögen ${unitCopy.tag}.`
+              : `Simulated, not estimated: one full run per lever on ${pathsPhrase} as this report's own result (${fmtRatioPercent(measured.baseSuccessRatePct / 100, 1, locale)}). Effect in percentage points (pp) of the success rate; P10 end assets ${unitCopy.tag}.`}
           </Text>
           <Table>
             <TableRow header>
-              <TableCell header width="58%">
-                {isGerman ? 'Maßnahme' : 'Action'}
+              <TableCell header width="40%">
+                {isGerman ? 'Hebel' : 'Lever'}
               </TableCell>
-              <TableCell header width="20%" align="right">
-                {isGerman ? 'Wirkung' : 'Uplift'}
+              <TableCell header width="19%" align="right">
+                {isGerman ? 'Simuliert' : 'Simulated'}
               </TableCell>
-              <TableCell header width="22%" align="right">
+              <TableCell header width="17%" align="right">
                 {isGerman ? 'Neue Quote' : 'Resulting rate'}
               </TableCell>
+              <TableCell header width="24%" align="right">
+                {isGerman ? 'P10-Endvermögen' : 'P10 end assets'}
+              </TableCell>
             </TableRow>
-            {uplifts.map((uplift, index) => {
-              const base = profile.success.successRate * 100
-              const low = Math.min(100, base + uplift.upliftMin)
-              const high = Math.min(100, base + uplift.upliftMax)
-              return (
-                <TableRow key={`${uplift.title}-${index}`} alt={index % 2 === 1}>
-                  <TableCell width="58%">{uplift.title}</TableCell>
-                  <TableCell width="20%" align="right">
-                    <Text style={{ fontWeight: 600, color: tokens.colors.ink[900] }}>
-                      {uplift.upliftMin === uplift.upliftMax
-                        ? `+${fmtNumber(uplift.upliftMin, { locale })} pp`
-                        : `+${fmtNumber(uplift.upliftMin, { locale })}–${fmtNumber(uplift.upliftMax, { locale })} pp`}
-                    </Text>
-                  </TableCell>
-                  <TableCell width="22%" align="right">
-                    {low === high
-                      ? `${fmtNumber(low, { locale, maximumFractionDigits: 0 })}${isGerman ? ' %' : '%'}`
-                      : `${fmtNumber(low, { locale, maximumFractionDigits: 0 })}–${fmtNumber(high, { locale, maximumFractionDigits: 0 })}${isGerman ? ' %' : '%'}`}
-                  </TableCell>
-                </TableRow>
-              )
-            })}
+            {leverRows.map((lever, index) => (
+              <TableRow key={lever.id} alt={index % 2 === 1}>
+                <TableCell width="40%">
+                  <Text style={{ fontSize: 7.5, fontWeight: 600, color: tokens.colors.ink[900] }}>
+                    {LEVER_NAMES[lever.id][isGerman ? 'de' : 'en']}
+                  </Text>
+                </TableCell>
+                <TableCell width="19%" align="right">
+                  <Text style={{ fontSize: 7.5, fontWeight: 600, color: tokens.colors.ink[900] }}>
+                    {signedPoints(lever.deltaPoints, locale)}
+                  </Text>
+                </TableCell>
+                <TableCell width="17%" align="right">
+                  <Text style={{ fontSize: 7.5 }}>
+                    {fmtRatioPercent(lever.successRatePct / 100, 1, locale)}
+                  </Text>
+                </TableCell>
+                <TableCell width="24%" align="right">
+                  <Text style={{ fontSize: 7.5 }}>{signedMoney(lever.worstDecileDelta, locale)}</Text>
+                </TableCell>
+              </TableRow>
+            ))}
           </Table>
         </View>
       )}
 
-      {showLevers && (
-      <View style={[styles.card, { marginTop: 4, marginBottom: 8 }]}>
-        <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
-          {isGerman ? 'Wirkung der wichtigsten Hebel' : 'Effect of the Main Levers'}
-        </Text>
-        <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 4 }}>
-          {isGerman
-            ? `Direkte Rechnung auf Basis der aktuellen Eingaben — keine erneute Simulation. Ausgangslage: ${fmtCurrency(gapToday, locale)} Lücke pro Jahr, ${fmtCurrency(bridgeNeed, locale)} Überbrückungsbedarf${unitCopy.amountQualifier}.`
-            : `Direct arithmetic on the current inputs — not a re-run of the simulation. Baseline: ${fmtCurrency(gapToday, locale)} gap per year, ${fmtCurrency(bridgeNeed, locale)} bridge need${unitCopy.amountQualifier}.`}
-        </Text>
-        <Table>
-          <TableRow header>
-            <TableCell header width="42%">
-              {isGerman ? 'Hebel' : 'Lever'}
-            </TableCell>
-            <TableCell header width="32%" align="right">
-              {isGerman ? 'Wirkung auf Jahresbedarf' : 'Effect on annual need'}
-            </TableCell>
-            <TableCell header width="26%" align="right">
-              {isGerman ? 'Überbrückungsbedarf' : 'Bridge need'}
-            </TableCell>
-          </TableRow>
-          {levers.map((lever, index) => (
-            <TableRow key={lever.lever} alt={index % 2 === 1}>
-              <TableCell width="42%">
-                <Text style={{ fontSize: 7.5, fontWeight: 600, color: tokens.colors.ink[900] }}>
-                  {lever.lever}
-                </Text>
-              </TableCell>
-              <TableCell width="32%" align="right">
-                <Text style={{ fontSize: 7.5 }}>{lever.gap}</Text>
-              </TableCell>
-              <TableCell width="26%" align="right">
-                <Text style={{ fontSize: 7.5 }}>{lever.bridge}</Text>
-              </TableCell>
-            </TableRow>
-          ))}
-        </Table>
-      </View>
-      )}
-
-      <View style={[styles.card, { marginTop: 0, marginBottom: 8 }]}>
+      <View style={[styles.card, { marginTop: 0, marginBottom: 0, paddingVertical: 7 }]}>
         <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
           {isGerman ? '90-Tage-Umsetzungsplan' : '90-Day Implementation Plan'}
         </Text>
@@ -405,7 +412,6 @@ export function Recommendations({ content, sectionNumber = '05' }: Recommendatio
           ))}
         </Table>
       </View>
-
     </View>
   )
 }

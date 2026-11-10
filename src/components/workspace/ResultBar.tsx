@@ -1,7 +1,6 @@
 'use client'
 
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import dynamic from 'next/dynamic'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { Check, CircleAlert, CopyPlus, LoaderCircle, RotateCw, Save, Undo2 } from 'lucide-react'
 import { MAX_PLANS, type Plan } from '@/types'
@@ -20,26 +19,27 @@ import { useComparisonStore, useSetComparisonSelection } from '@/lib/stores/comp
 import { planDisplayName } from '@/lib/plans/planName'
 import { DashboardTools } from '@/components/simulation-compact/DashboardTools'
 import { buildCompactKpis } from '@/components/simulation-compact/metrics'
-import { formatBarEuro } from '@/components/simulation-compact/format'
-import { ActionToast } from '@/components/ui/action-toast'
-import { toast, TOAST_DURATION } from '@/components/ui/toast'
+import { SectionBoundary } from '@/components/errors/SectionBoundary'
+import { lazyComponent } from '@/components/lazy/lazyComponent'
+import { showActionToast } from '@/components/ui/action-toast'
+import { toast } from '@/components/ui/toast'
 import { AnimatedNumber } from './AnimatedNumber'
 import { PlanMenu } from './PlanMenu'
 import { Skeleton } from './Skeleton'
 import { selectResultsStale, useRunStatus, type RunStatus } from './useRunStatus'
 import { useSavedSuccessDelta } from './useSavedSuccessDelta'
+import { useUsableStoreResults } from './useUsableResults'
 import { useWorkspace } from './WorkspaceProvider'
+import { useMoney } from '@/lib/hooks/useMoney'
 
-const PlanManagerDialog = dynamic(
-  () => import('./PlanManagerDialog').then((module) => module.PlanManagerDialog),
-  { ssr: false }
+// Client-only and retryable (see `lazyComponent`): a dialog whose chunk does
+// not arrive shows a small floating message with "Try again" instead of
+// taking the page down.
+const PlanManagerDialog = lazyComponent(() =>
+  import('./PlanManagerDialog').then((module) => module.PlanManagerDialog)
 )
-const SaveDraftAsPlanDialog = dynamic(
-  () =>
-    import('@/components/plans/SaveDraftAsPlanDialog').then(
-      (module) => module.SaveDraftAsPlanDialog
-    ),
-  { ssr: false }
+const SaveDraftAsPlanDialog = lazyComponent(() =>
+  import('@/components/plans/SaveDraftAsPlanDialog').then((module) => module.SaveDraftAsPlanDialog)
 )
 
 /**
@@ -72,7 +72,7 @@ const BarKpis = memo(function BarKpis() {
   const t = useTranslations('workspace')
   const format = useFormatter()
   const locale = useLocale()
-  const results = useSimulationStore((state) => state.results)
+  const results = useUsableStoreResults()
   const displayReal = useDisplayReal()
   const delta = useSavedSuccessDelta()
 
@@ -89,7 +89,7 @@ const BarKpis = memo(function BarKpis() {
       }),
     [format]
   )
-  const formatEnd = useCallback((value: number) => formatBarEuro(value, locale), [locale])
+  const formatEnd = useMoney().compact
   const rate = results ? Math.round(results.successRate * 10) / 10 : null
   const rateValue = rate === null ? undefined : String(rate)
   const end = kpis ? Math.round(kpis.medianEndWealth) : null
@@ -163,14 +163,14 @@ const BarRun = memo(function BarRun({
   const loading = useSimulationLoading()
   const run = useSimulationStore((state) => state.runSimulation)
   const StatusIcon = statusIcon[status]
+  // Not a live region: announcing every auto-run ("Berechne …", "Aktualisiert")
+  // talked over typing. The page's `ResultAnnouncer` speaks settled results.
   return (
     <div className="ws-bar-run">
       <span
         className="workspace-run-state ws-bar-status"
         data-state={status}
         data-testid="run-status"
-        role="status"
-        aria-live="polite"
         title={t(`status.${status}`)}
       >
         <StatusIcon size={16} aria-hidden="true" />
@@ -224,6 +224,29 @@ const BarDraft = memo(function BarDraft({
   const limitHint = tp('switcher.limit', { max: MAX_PLANS })
   const limitHintId = useId()
 
+  // ---- Focus after Save / Discard ------------------------------------------
+  // Both buttons unmount once the plan is clean, which dropped keyboard focus
+  // to <body>. When the action came from inside this cluster, focus moves to
+  // the "Gespeichert" marker that takes their place (and is announced).
+  const clusterRef = useRef<HTMLDivElement>(null)
+  const savedRef = useRef<HTMLSpanElement>(null)
+  const refocusRef = useRef(false)
+  const noteFocus = () => {
+    refocusRef.current = Boolean(clusterRef.current?.contains(document.activeElement))
+  }
+  useEffect(() => {
+    if (dirty || !refocusRef.current) return
+    refocusRef.current = false
+    // Below 1280 px the marker is hidden: the plan menu trigger (which names
+    // the plan just saved) is the nearest stop instead.
+    const marker = savedRef.current
+    const target =
+      marker && marker.getClientRects().length > 0
+        ? marker
+        : document.querySelector<HTMLElement>('[data-testid="plan-menu-trigger"]')
+    target?.focus({ preventScroll: true })
+  }, [dirty])
+
   // ---- Discard with undo (moved verbatim from WorkspaceHeader) ------------
 
   // The "discarded" toast belongs to the plan it names: once another plan is
@@ -241,36 +264,28 @@ const BarDraft = memo(function BarDraft({
   // is snapshotted first and written back (still unsaved) on undo — as long as
   // the same plan is still active, so an undo can never land on another plan.
   const discard = () => {
+    noteFocus()
     const { params: snapshot, activePlanId: planId } = useSimulationStore.getState()
     revert()
     if (discardToastRef.current) toast.dismiss(discardToastRef.current.id)
-    const id = toast(
-      (instance) => (
-        <ActionToast
-          testId="plan-discarded-toast"
-          message={t('discardedToast', { name: activeName })}
-          actions={[
-            {
-              label: tp('actions.undo'),
-              tone: 'primary',
-              testId: 'plan-discarded-toast-undo',
-              onClick: () => {
-                toast.dismiss(instance.id)
-                discardToastRef.current = null
-                if (useSimulationStore.getState().activePlanId !== planId) return
-                updateParams(snapshot)
-              },
-            },
-          ]}
-        />
-      ),
-      { duration: TOAST_DURATION }
-    )
+    const id = showActionToast({
+      testId: 'plan-discarded-toast',
+      message: t('discardedToast', { name: activeName }),
+      undo: {
+        label: tp('actions.undo'),
+        testId: 'plan-discarded-toast-undo',
+        run: () => {
+          discardToastRef.current = null
+          if (useSimulationStore.getState().activePlanId !== planId) return
+          updateParams(snapshot)
+        },
+      },
+    })
     discardToastRef.current = { id, planId }
   }
 
   return (
-    <div className="ws-bar-draft">
+    <div className="ws-bar-draft" ref={clusterRef}>
       {dirty ? (
         <>
           <span className="ws-bar-marker" data-state="dirty">
@@ -296,7 +311,10 @@ const BarDraft = memo(function BarDraft({
             className="workspace-button workspace-button-primary ws-bar-save"
             data-testid="command-save"
             aria-label={tp('dirty.ariaSave', { name: activeName })}
-            onClick={() => save()}
+            onClick={() => {
+              noteFocus()
+              save()
+            }}
           >
             <Save size={16} aria-hidden="true" />
             {tc('saveButton')}
@@ -327,7 +345,13 @@ const BarDraft = memo(function BarDraft({
           </button>
         </>
       ) : (
-        <span className="ws-bar-saved" data-state="saved">
+        <span
+          ref={savedRef}
+          className="ws-bar-saved"
+          data-state="saved"
+          data-testid="bar-saved"
+          tabIndex={-1}
+        >
           <Check size={14} aria-hidden="true" />
           {t('saved')}
         </span>
@@ -340,7 +364,7 @@ const BarDraft = memo(function BarDraft({
 
 /** The report reads current results only; stale ones are withheld (as before). */
 const BarMenu = memo(function BarMenu() {
-  const results = useSimulationStore((state) => state.results)
+  const results = useUsableStoreResults()
   const stale = useSimulationStore(selectResultsStale)
   const loading = useSimulationLoading()
   return (
@@ -475,19 +499,37 @@ export function ResultBar() {
       <BarMenu />
 
       {managerMounted && (
-        <PlanManagerDialog
-          open={managerOpen}
-          onOpenChange={setManagerOpen}
-          returnFocusRef={planTriggerRef}
-        />
+        <SectionBoundary
+          name="plan-manager"
+          variant="floating"
+          onDismiss={() => {
+            setManagerOpen(false)
+            setManagerMounted(false)
+          }}
+        >
+          <PlanManagerDialog
+            open={managerOpen}
+            onOpenChange={setManagerOpen}
+            returnFocusRef={planTriggerRef}
+          />
+        </SectionBoundary>
       )}
       {saveAsMounted && (
-        <SaveDraftAsPlanDialog
-          open={saveAsOpen}
-          onOpenChange={setSaveAsOpen}
-          returnFocusRef={saveAsInvokerRef}
-          onCompare={compareWithNew}
-        />
+        <SectionBoundary
+          name="save-as-plan"
+          variant="floating"
+          onDismiss={() => {
+            setSaveAsOpen(false)
+            setSaveAsMounted(false)
+          }}
+        >
+          <SaveDraftAsPlanDialog
+            open={saveAsOpen}
+            onOpenChange={setSaveAsOpen}
+            returnFocusRef={saveAsInvokerRef}
+            onCompare={compareWithNew}
+          />
+        </SectionBoundary>
       )}
     </header>
   )

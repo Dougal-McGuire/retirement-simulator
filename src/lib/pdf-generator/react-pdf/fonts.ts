@@ -1,59 +1,70 @@
 import { Font } from '@react-pdf/renderer'
-import fs from 'fs'
-import path from 'path'
 
-// Font configuration for react-pdf.
-//
-// The report uses Inter (SIL Open Font License, bundled locally in ./fonts)
-// for a contemporary, adviser-grade typographic voice. If the font files are
-// unavailable for any reason we fall back to the built-in Helvetica so PDF
-// generation never breaks.
-
+/**
+ * Fonts of the PDF report.
+ *
+ * The report is set in Inter (SIL Open Font License, the TTFs live in
+ * `./fonts`). This module only knows the *family*; where the four files come
+ * from is the caller's business, because that differs by runtime:
+ *
+ * - the browser registers URLs of the app's own static assets
+ *   (see `fontAssets.ts` and `client/loadReportFonts.ts`);
+ * - Node (the render test) registers file paths.
+ *
+ * There is deliberately no fallback family. The built-in Helvetica has no
+ * glyph for the narrow no-break space German figures use ("1.234 €"), so a
+ * report that silently fell back would be wrong on every page; a font that
+ * cannot be loaded is an error the caller reports and the user retries.
+ */
 export const SANS = 'Inter'
-export const SANS_FALLBACK = 'Helvetica'
 
-let fontsRegistered = false
-let interAvailable = false
-
-function fontPath(file: string): string {
-  return path.join(process.cwd(), 'src', 'lib', 'pdf-generator', 'react-pdf', 'fonts', file)
+/** One source per weight the report uses: a URL in the browser, a path in Node. */
+export interface ReportFontSources {
+  regular: string
+  medium: string
+  semibold: string
+  bold: string
 }
 
-export function registerFonts(): void {
-  if (fontsRegistered) return
+let registered: ReportFontSources | null = null
+let hyphenationDisabled = false
 
-  // Disable hyphenation for cleaner text rendering
-  Font.registerHyphenationCallback((word) => [word])
+const sameSources = (a: ReportFontSources, b: ReportFontSources) =>
+  a.regular === b.regular && a.medium === b.medium && a.semibold === b.semibold && a.bold === b.bold
 
-  try {
-    const regular = fontPath('Inter-Regular.ttf')
-    const medium = fontPath('Inter-Medium.ttf')
-    const semibold = fontPath('Inter-SemiBold.ttf')
-    const bold = fontPath('Inter-Bold.ttf')
-
-    if ([regular, medium, semibold, bold].every((file) => fs.existsSync(file))) {
-      Font.register({
-        family: SANS,
-        fonts: [
-          { src: regular, fontWeight: 400 },
-          { src: medium, fontWeight: 500 },
-          { src: semibold, fontWeight: 600 },
-          { src: bold, fontWeight: 700 },
-        ],
-      })
-      interAvailable = true
-    }
-  } catch {
-    interAvailable = false
+/**
+ * Registers the report family. Idempotent for the same sources; different
+ * sources replace the earlier registration (react-pdf resolves the first
+ * source it finds for a weight, so a stale one must not stay in the list).
+ */
+export function registerReportFonts(sources: ReportFontSources): void {
+  if (!hyphenationDisabled) {
+    // Whole words only: hyphenated figures and names read badly in a report.
+    Font.registerHyphenationCallback((word) => [word])
+    hyphenationDisabled = true
   }
+  if (registered && sameSources(registered, sources)) return
 
-  fontsRegistered = true
+  const families = Font.getRegisteredFonts() as Record<string, unknown>
+  delete families[SANS]
+  Font.register({
+    family: SANS,
+    fonts: [
+      { src: sources.regular, fontWeight: 400 },
+      { src: sources.medium, fontWeight: 500 },
+      { src: sources.semibold, fontWeight: 600 },
+      { src: sources.bold, fontWeight: 700 },
+    ],
+  })
+  registered = sources
 }
 
-// Register fonts on module load
-registerFonts()
+/** True once `registerReportFonts` has run. */
+export function reportFontsRegistered(): boolean {
+  return registered !== null
+}
 
-/** Family name to use in styles (falls back to Helvetica when Inter is missing). */
+/** Family name used by every style in the report. */
 export function sansFamily(): string {
-  return interAvailable ? SANS : SANS_FALLBACK
+  return SANS
 }

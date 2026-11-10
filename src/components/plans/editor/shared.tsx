@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import type { NumberFormatOptions } from 'next-intl'
 import { useFormatter, useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
+import { useMoney } from '@/lib/hooks/useMoney'
 
 /**
  * Pieces every assumption panel shares. Moved verbatim out of the old
@@ -136,17 +137,7 @@ export function useEditorFormat() {
   const tSetup = useTranslations('setup')
   const format = useFormatter()
 
-  const currency = useMemo<NumberFormatOptions>(
-    () => ({
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }),
-    []
-  )
-
-  const formatCurrency = (value: number) => format.number(value, currency)
+  const formatCurrency = useMoney().full
   const formatPercent = (value: number, maximumFractionDigits = 1) =>
     format.number(value, { style: 'percent', minimumFractionDigits: 0, maximumFractionDigits })
   const formatInteger = (value: number) =>

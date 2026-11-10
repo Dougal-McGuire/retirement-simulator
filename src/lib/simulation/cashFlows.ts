@@ -80,6 +80,14 @@ const optionalAge = (value: unknown): number | undefined => {
  * disabled flow is outside their subset: the projection omits it and
  * {@link reconcileCashFlows} carries it through untouched instead of dropping
  * it for being absent from the array.
+ *
+ * This is also **the** line between the retirement budget and scheduled
+ * flows, for the engine and for every reader of its results: a lifetime
+ * recurring expense is living costs — paid out of salary while working,
+ * governed by the withdrawal rule from retirement on — whatever its growth
+ * rate or indexing says. Only an age window or a single payment makes an
+ * expense "scheduled" (charged in the years it names, working years
+ * included, outside the rule).
  */
 export function isLifetimeExpenseFlow(flow: CashFlow): boolean {
   return isCashFlowEnabled(flow) && hasLifetimeExpenseShape(flow)
@@ -100,7 +108,8 @@ export function isOnceIncomeFlow(flow: CashFlow): boolean {
   return isCashFlowEnabled(flow) && hasOnceIncomeShape(flow)
 }
 
-function hasOnceIncomeShape(flow: CashFlow): boolean {
+/** One-off income by shape alone, on or off. */
+export function hasOnceIncomeShape(flow: CashFlow): boolean {
   return flow.kind === 'income' && flow.frequency === 'once'
 }
 
@@ -135,6 +144,14 @@ export interface PensionContext {
    * year the German pension tables are keyed by. Defaults to this year.
    */
   baseYear?: number
+  /**
+   * The plan's expected inflation per year (0.025). Puts nominally fixed
+   * amounts and today's-euro amounts on one scale before income tax is
+   * assessed on their sum. Default 0: a euro is a euro in every year, which
+   * is right for a caller without a price assumption and for a plan whose
+   * taxed flows are all quoted the same way.
+   */
+  expectedInflation?: number
 }
 
 export const currentBaseYear = (): number => new Date().getFullYear()
@@ -322,17 +339,17 @@ export function withStatutoryPension(flows: readonly CashFlow[], amount: number)
 }
 
 /**
- * A lifetime expense with no per-flow overrides: exactly the thing the engine's
- * inflation-indexed spending baseline (and the Vanguard guardrails) has always
- * modelled. Everything else is scheduled per age and rides on top.
+ * A lifetime expense without overrides: inflation-linked, no growth of its own.
+ * These are summed into the two base totals the engine has always carried;
+ * a lifetime expense with a growth rate or a fixed euro amount is the same
+ * kind of thing (retirement budget) but needs a value per year.
+ *
+ * Deliberately not exported: whether a flow is budget or scheduled is decided
+ * by its shape alone — {@link isLifetimeExpenseFlow} — everywhere. This only
+ * picks how a budget flow is stored.
  */
-export function isBaselineExpenseFlow(flow: CashFlow): boolean {
-  return (
-    isLifetimeExpenseFlow(flow) &&
-    flow.inflationLinked !== false &&
-    (flow.growthRate === undefined || flow.growthRate === 0)
-  )
-}
+const hasPlainBudgetTerms = (flow: CashFlow): boolean =>
+  flow.inflationLinked !== false && (flow.growthRate === undefined || flow.growthRate === 0)
 
 export function sanitizeCashFlow(entry: unknown, fallbackId: string): CashFlow | null {
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null
@@ -675,16 +692,44 @@ export function applyCashFlows<T extends SimulationParams>(params: T): T {
 
 /** Per-age base amounts in today's euros, split by how inflation treats them. */
 export interface CashFlowSeries {
-  /** Base-year monthly expense total handled by the spending baseline. */
-  baselineMonthly: number
-  /** Base-year annual expense total handled by the spending baseline. */
-  baselineAnnual: number
   /**
-   * age -> one-off income credited at the *following* age (legacy convention),
-   * in today's euros, split the same way as the recurring series.
+   * The retirement budget — every lifetime recurring expense — in three parts.
+   * `baselineMonthly` / `baselineAnnual` are the base-year totals of the plain
+   * ones (inflation-linked, no growth of their own): one figure each for the
+   * whole plan. A lifetime expense with a growth rate or a fixed euro amount
+   * has a different value every year and sits in `baselineExtra*`, per year
+   * offset and per year (linked: today's euros; fixed: nominal euros). Growth
+   * compounds from the plan's first year, so the budget arrives at retirement
+   * already grown.
+   *
+   * Use {@link budgetAnnualAt} unless the two totals are needed separately.
+   */
+  baselineMonthly: number
+  baselineAnnual: number
+  baselineExtraLinked: number[]
+  baselineExtraFixed: number[]
+  /**
+   * Age a one-off income is **credited** at -> its net amount, in today's
+   * euros, split the same way as the recurring series. The crediting age is
+   * the one *after* the age it is booked for (the long-standing convention:
+   * the money arrives at the end of its year). A payment booked for `endAge`
+   * has no following year and is in `oneTimeIncomeAtEnd` instead.
    */
   oneTimeIncomeLinkedByAge: ReadonlyMap<number, number>
   oneTimeIncomeFixedByAge: ReadonlyMap<number, number>
+  /**
+   * One-off income booked for `endAge` itself: credited at the end of the
+   * final year, so it counts towards what is left but cannot pay for that
+   * year. Net amounts and their income tax; the tax is *not* part of
+   * `incomeTax*` / `oneTimeIncomeTax*`, which are priced at the year's
+   * opening price level while this is priced at its closing one.
+   */
+  oneTimeIncomeAtEnd: {
+    netLinked: number
+    netFixed: number
+    taxLinked: number
+    taxFixed: number
+  }
   /** Extra income per year offset, re-priced with inflation in the loop. */
   incomeLinked: number[]
   /** Extra income per year offset, fixed in nominal euros. */
@@ -720,11 +765,46 @@ export interface FlowTaxSummary {
 }
 
 /**
+ * The retirement budget of one year offset, per year: `linked` in today's
+ * euros (re-priced with the path's price level by the caller), `fixed` in
+ * nominal euros.
+ */
+export function budgetAnnualAt(
+  series: Pick<
+    CashFlowSeries,
+    'baselineMonthly' | 'baselineAnnual' | 'baselineExtraLinked' | 'baselineExtraFixed'
+  >,
+  offset: number
+): { linked: number; fixed: number } {
+  return {
+    linked:
+      series.baselineMonthly * 12 +
+      series.baselineAnnual +
+      (series.baselineExtraLinked[offset] ?? 0),
+    fixed: series.baselineExtraFixed[offset] ?? 0,
+  }
+}
+
+/**
  * Expands the flow list into per-age totals.
  *
  * Everything here is in today's euros: the year loop multiplies by that path's
  * realised price level, which is what makes an inflation-linked flow and a
  * nominally fixed one differ by a single factor at the point of use.
+ *
+ * **The horizon is `currentAge..endAge` and nothing is pulled into it.** A flow
+ * whose window lies wholly outside is not part of the plan's future: tuition
+ * that ended last year, a roof repaired three years ago, an inheritance already
+ * received, care costs after the last simulated year. A recurring flow that
+ * overlaps the horizon is cut to the overlap; a single payment counts only
+ * when the age it is booked for is inside. Callers pass flows as the user wrote
+ * them — clamping a start age to `currentAge` first is exactly what used to
+ * charge those expired flows.
+ *
+ * A pension that started before `currentAge` pays from `currentAge` but keeps
+ * its own start for everything that depends on it: the cohort year of its tax
+ * tables, the reference years of its frozen allowances, and the index of its
+ * extra growth.
  */
 export function buildCashFlowSeries(
   flows: readonly CashFlow[],
@@ -740,6 +820,8 @@ export function buildCashFlowSeries(
   const incomeTaxFixed = new Array<number>(years).fill(0)
   const expenseLinked = new Array<number>(years).fill(0)
   const expenseFixed = new Array<number>(years).fill(0)
+  const baselineExtraLinked = new Array<number>(years).fill(0)
+  const baselineExtraFixed = new Array<number>(years).fill(0)
   const pensionNetLinked = new Array<number>(years).fill(0)
   const pensionNetFixed = new Array<number>(years).fill(0)
   const pensionTaxLinked = new Array<number>(years).fill(0)
@@ -748,6 +830,7 @@ export function buildCashFlowSeries(
   const oneTimeIncomeTaxFixed = new Array<number>(years).fill(0)
   const oneTimeIncomeLinkedByAge = new Map<number, number>()
   const oneTimeIncomeFixedByAge = new Map<number, number>()
+  const oneTimeIncomeAtEnd = { netLinked: 0, netFixed: 0, taxLinked: 0, taxFixed: 0 }
   const taxByFlow = new Map<string, FlowTaxSummary>()
 
   let baselineMonthly = 0
@@ -760,10 +843,12 @@ export function buildCashFlowSeries(
   interface Expanded {
     flow: CashFlow
     linked: boolean
-    /** Year offsets and the gross amount in each. */
+    /**
+     * Gross amount per year offset. For a one-off income (`once`) the offset
+     * is the year it is *booked* for; it is credited one year later.
+     */
     gross: number[]
-    /** First offset the flow pays in, or -1. */
-    firstOffset: number
+    once: boolean
     /** Pension only: taxable part of the gross per offset. */
     taxable?: number[]
   }
@@ -775,9 +860,21 @@ export function buildCashFlowSeries(
     if (!isCashFlowEnabled(flow)) continue
     const amount = Math.max(0, flow.amount)
 
-    if (isBaselineExpenseFlow(flow)) {
-      if (flow.frequency === 'annual') baselineAnnual += amount
-      else baselineMonthly += amount
+    // The retirement budget: every lifetime recurring expense, by shape. The
+    // engine charges it from retirement on and hands it to the withdrawal
+    // rule; before that it is paid out of salary and never touches the plan.
+    if (isLifetimeExpenseFlow(flow)) {
+      if (hasPlainBudgetTerms(flow)) {
+        if (flow.frequency === 'annual') baselineAnnual += amount
+        else baselineMonthly += amount
+        continue
+      }
+      const perYear = flow.frequency === 'monthly' ? amount * 12 : amount
+      const growth = flow.growthRate ?? 0
+      const target = flow.inflationLinked !== false ? baselineExtraLinked : baselineExtraFixed
+      for (let offset = 0; offset < years; offset++) {
+        target[offset] += growth === 0 ? perYear : perYear * Math.pow(1 + growth, offset)
+      }
       continue
     }
 
@@ -787,18 +884,15 @@ export function buildCashFlowSeries(
     const isPension = isPensionFlow(flow)
 
     // One-off income keeps its long-standing convention: it lands at the start
-    // of the year *after* the age it is booked for. Changing that would move
-    // every existing plan's numbers.
+    // of the year *after* the age it is booked for — i.e. at the end of its own
+    // year. Changing that would move every existing plan's numbers. A payment
+    // booked before today has already happened; one booked after the horizon
+    // never does.
     if (isOnceIncomeFlow(flow)) {
-      const depositAge = (flow.startAge ?? currentAge) + 1
-      if (depositAge < currentAge || depositAge > endAge) continue
-      gross[depositAge - currentAge] = amount
-      expanded.push({
-        flow,
-        linked: flow.inflationLinked !== false,
-        gross,
-        firstOffset: depositAge - currentAge,
-      })
+      const bookedAge = flow.startAge ?? currentAge
+      if (bookedAge < currentAge || bookedAge > endAge) continue
+      gross[bookedAge - currentAge] = amount
+      expanded.push({ flow, linked: flow.inflationLinked !== false, gross, once: true })
       continue
     }
 
@@ -808,9 +902,20 @@ export function buildCashFlowSeries(
     const originalStart = isPension
       ? pensionStartAge(flow, pension.legalRetirementAge)
       : (flow.startAge ?? currentAge)
+
+    // A single payment (a one-off expense) happens at its own age or not at
+    // all: one that lies in the past is not moved to today.
+    if (flow.frequency === 'once') {
+      if (originalStart < currentAge || originalStart > endAge) continue
+      gross[originalStart - currentAge] = perYear
+      expanded.push({ flow, linked, gross, once: false })
+      continue
+    }
+
+    // A recurring flow is cut to the part of its window inside the horizon.
     const start = Math.max(currentAge, originalStart)
     const growthStart = isPension ? originalStart : start
-    const last = flow.frequency === 'once' ? start : Math.min(endAge, flow.endAge ?? endAge)
+    const last = Math.min(endAge, flow.endAge ?? endAge)
     if (start > endAge || last < start) continue
 
     // Extra growth compounds from the first year regardless of indexing:
@@ -835,30 +940,82 @@ export function buildCashFlowSeries(
       }
     }
 
-    expanded.push({ flow, linked, gross, firstOffset: start - currentAge, taxable })
+    expanded.push({ flow, linked, gross, once: false, taxable })
   }
 
-  // The year's other taxable income, which is what taxed income flows are
-  // taxed on top of: pensions' taxable parts plus every ordinary-income flow.
+  // ---------------------------------------------------------------------
+  // Income tax on taxed income flows
+  //
+  // One assessment per year, and that year is the one a flow is *booked* for
+  // (a one-off's `gross` is indexed that way): a severance paid at 66 is taxed
+  // with the income of 66, not with the pension that starts the year after —
+  // whether it is taxed as ordinary income or under the one-fifth rule.
+  //
+  // The year's tax base is put on one scale first. Linked flows are quoted in
+  // today's euros, fixed ones in the nominal euros of their year; adding the
+  // two and running the sum through today's tariff taxes a fixed pension as
+  // if its euros were today's (in year 20 at 2.5 % that overstates it by
+  // 64 %) and pushes everything on top of it up the progression. So fixed
+  // amounts are deflated to today's euros with the plan's expected inflation
+  // — the tariff is assumed to be indexed, see `germanTax.ts` — the tax is
+  // computed in today's euros, split over the flows by their share of the
+  // base, and a fixed flow's share is turned back into the euros of its year.
+  //
+  // Approximation: the deflator is the plan's *expected* price level, the
+  // same for every path, while the engine re-prices linked flows with each
+  // path's realised one. On a path with more inflation than expected a fixed
+  // amount is worth a little less than assumed here, and vice versa.
+  // ---------------------------------------------------------------------
+  const expectedInflation = 1 + clamp(pension.expectedInflation ?? 0, -0.5, 1)
+  /** Expected price level at the start of year `offset`, relative to today. */
+  const priceLevel = (offset: number) =>
+    expectedInflation === 1 ? 1 : Math.pow(expectedInflation, offset)
+  /** An amount of `entry`, quoted in its own unit, in today's euros. */
+  const inTodaysEuros = (entry: Expanded, value: number, offset: number) =>
+    entry.linked ? value : value / priceLevel(offset)
+
+  const taxedAs = (entry: Expanded) =>
+    entry.flow.kind === 'income' &&
+    (entry.flow.taxTreatment === 'ordinary' || entry.flow.taxTreatment === 'oneFifth')
+      ? entry.flow.taxTreatment
+      : null
+
+  // Today's euros per year: the pensions' taxable parts, all ordinary income
+  // and all income under the one-fifth rule.
   const pensionBase = new Array<number>(years).fill(0)
   const ordinaryGross = new Array<number>(years).fill(0)
+  const oneFifthGross = new Array<number>(years).fill(0)
   for (const entry of expanded) {
-    if (entry.taxable) {
-      entry.taxable.forEach((value, offset) => {
-        pensionBase[offset] += value
-      })
-    } else if (entry.flow.kind === 'income' && entry.flow.taxTreatment === 'ordinary') {
-      entry.gross.forEach((value, offset) => {
-        ordinaryGross[offset] += value
-      })
-    }
+    const treatment = taxedAs(entry)
+    const bucket = entry.taxable
+      ? pensionBase
+      : treatment === 'ordinary'
+        ? ordinaryGross
+        : treatment === 'oneFifth'
+          ? oneFifthGross
+          : null
+    if (!bucket) continue
+    ;(entry.taxable ?? entry.gross).forEach((value, offset) => {
+      if (value > 0) bucket[offset] += inTodaysEuros(entry, value, offset)
+    })
   }
 
+  // Ordinary income is taxed jointly on top of the pensions. Everything under
+  // the one-fifth rule in a year is one extraordinary sum (§ 34 EStG is
+  // applied to the year's total, not per payment) on top of both — two lump
+  // sums of 100,000 pay what one of 200,000 pays.
+  const ordinaryTax = ordinaryGross.map((total, offset) =>
+    ordinaryIncomeTax(total, pensionBase[offset], splitting)
+  )
+  const oneFifthTax = oneFifthGross.map((total, offset) =>
+    oneFifthRuleTax(total, pensionBase[offset] + ordinaryGross[offset], splitting)
+  )
+
   for (const entry of expanded) {
-    const { flow, linked, gross } = entry
+    const { flow, linked, gross, once } = entry
     const isPension = isPensionFlow(flow)
     const income = flow.kind === 'income' || isPension
-    const once = isOnceIncomeFlow(flow)
+    const treatment = taxedAs(entry)
     const target = once
       ? null
       : income
@@ -876,55 +1033,61 @@ export function buildCashFlowSeries(
 
       let tax = 0
       if (isPension && entry.taxable) {
+        // A flat effective rate on the taxable part: the same in any unit.
         tax = entry.taxable[offset] * pensionRate
-      } else if (flow.kind === 'income' && flow.taxTreatment === 'ordinary') {
-        // Every ordinary-income flow of the year is taxed jointly on top of the
-        // pensions; each carries its share of that tax.
-        const total = ordinaryGross[offset]
-        const jointTax = ordinaryIncomeTax(total, pensionBase[offset], splitting)
-        tax = total > 0 ? (jointTax * amount) / total : 0
-      } else if (flow.kind === 'income' && flow.taxTreatment === 'oneFifth') {
-        // A one-off is taxed in the year it is booked for, not the year the
-        // engine credits it.
-        const taxYear = once ? Math.max(0, offset - 1) : offset
-        const rest = pensionBase[taxYear] + ordinaryGross[taxYear]
-        tax = oneFifthRuleTax(amount, rest, splitting)
+      } else if (treatment) {
+        // The flow's share of the year's joint tax, back in its own unit.
+        const total = (treatment === 'ordinary' ? ordinaryGross : oneFifthGross)[offset]
+        const jointTax = (treatment === 'ordinary' ? ordinaryTax : oneFifthTax)[offset]
+        const share = total > 0 ? inTodaysEuros(entry, amount, offset) / total : 0
+        tax = jointTax * share * (linked ? 1 : priceLevel(offset))
+      }
+
+      const net = Math.max(0, amount - tax)
+      if (tax > 0 && !taxByFlow.has(flow.id)) {
+        taxByFlow.set(flow.id, { age: currentAge + offset, gross: amount, tax, net })
+      }
+
+      if (once) {
+        // Booked for the horizon's last year: there is no following year to
+        // credit it in, so it is handed over separately (see the interface).
+        if (offset + 1 >= years) {
+          if (linked) {
+            oneTimeIncomeAtEnd.netLinked += net
+            oneTimeIncomeAtEnd.taxLinked += tax
+          } else {
+            oneTimeIncomeAtEnd.netFixed += net
+            oneTimeIncomeAtEnd.taxFixed += tax
+          }
+          continue
+        }
+        const credited = offset + 1
+        ;(linked ? incomeTaxLinked : incomeTaxFixed)[credited] += tax
+        ;(linked ? oneTimeIncomeTaxLinked : oneTimeIncomeTaxFixed)[credited] += tax
+        const age = currentAge + credited
+        onceTarget.set(age, (onceTarget.get(age) ?? 0) + net)
+        continue
       }
 
       if (income) (linked ? incomeTaxLinked : incomeTaxFixed)[offset] += tax
-      const net = Math.max(0, amount - tax)
       if (isPension) {
         const pensionTax = linked ? pensionTaxLinked : pensionTaxFixed
         const pensionNet = linked ? pensionNetLinked : pensionNetFixed
         pensionTax[offset] += tax
         pensionNet[offset] += net
-      } else if (once) {
-        const onceTax = linked ? oneTimeIncomeTaxLinked : oneTimeIncomeTaxFixed
-        onceTax[offset] += tax
       }
-      if (tax > 0 && !taxByFlow.has(flow.id)) {
-        taxByFlow.set(flow.id, {
-          age: currentAge + offset - (once ? 1 : 0),
-          gross: amount,
-          tax,
-          net,
-        })
-      }
-
-      if (once) {
-        const age = currentAge + offset
-        onceTarget.set(age, (onceTarget.get(age) ?? 0) + net)
-      } else if (target) {
-        target[offset] += net
-      }
+      if (target) target[offset] += net
     }
   }
 
   return {
     baselineMonthly,
     baselineAnnual,
+    baselineExtraLinked,
+    baselineExtraFixed,
     oneTimeIncomeLinkedByAge,
     oneTimeIncomeFixedByAge,
+    oneTimeIncomeAtEnd,
     incomeLinked,
     incomeFixed,
     incomeTaxLinked,

@@ -6,6 +6,17 @@ import {
   withdrawalStrategySummary,
 } from '@/lib/pdf-generator/withdrawalStrategy'
 import { buildEuroUnitCopy } from '@/lib/pdf-generator/euroUnitCopy'
+import { planScoreGlossary } from '@/lib/pdf-generator/planScoreCopy'
+
+/**
+ * A year counts as funded while its shortfall stays within this share of the
+ * spending the plan asked for — the engine's `UNFUNDED_SPENDING_TOLERANCE`
+ * (`src/lib/simulation/engine.ts`), which the success rate and the depletion
+ * data are counted with. Mirrored rather than imported: the report's glossary
+ * quotes it, and importing it would pull the whole engine into the report
+ * worker's bundle. `methodologyCopy.test.ts` fails if the two ever differ.
+ */
+export const UNFUNDED_SPENDING_TOLERANCE = 0.01
 
 /**
  * Every sentence in the report that describes *how the number was produced*.
@@ -25,6 +36,15 @@ export interface MethodologyCopy {
   units: string
   /** Glossary entry for the success rate, matching the success definition. */
   successRate: string
+  /** Glossary entry for the plan score, with the weights actually applied. */
+  planScore: string
+  /**
+   * Glossary entry for the withdrawal rate — the wording of
+   * `firstYearWithdrawalRate`, the one definition every surface uses.
+   */
+  withdrawalRate: string
+  /** Glossary entry for the bridge phase — the wording of `computeBridgeAnalysis`. */
+  bridge: string
   /** "Limits of the model" bullets, in print order. */
   limitations: string[]
 }
@@ -45,14 +65,23 @@ export function buildMethodologyCopy(content: ReportContent): MethodologyCopy {
    * answers. With a bequest goal active it answers a strictly harder one, so
    * both numbers are printed with their own labels rather than one ambiguous
    * "share of successful runs".
+   *
+   * A run succeeds when every year's spending was paid — by income and
+   * portfolio together. That is the engine's definition; a portfolio at zero
+   * is not a failure while pensions and income pay the budget, so the entry
+   * does not speak of capital "surviving".
    */
+  const tolerance = fmtPercent(UNFUNDED_SPENDING_TOLERANCE, 0, intlLocale)
+  const funded = isGerman
+    ? `die Ausgaben bis Alter ${profile.person.horizonAge} in jedem Jahr gedeckt sind — aus Einnahmen und Depot zusammen; eine Lücke bis ${tolerance} der Jahresausgaben gilt noch als gedeckt`
+    : `every year's spending to age ${profile.person.horizonAge} is funded — by income and portfolio together; a gap of up to ${tolerance} of a year's spending still counts as funded`
   const successRate = isGerman
     ? legacyConditioned
-      ? `Anteil der Läufe, in denen das Vermögen bis Alter ${profile.person.horizonAge} reicht UND am Ende mindestens ${money(simulation.legacyTargetReal)} in heutiger Kaufkraft übrig bleiben: ${pct(simulation.successRate)}. Ohne Nachlassziel, also reines Überleben des Kapitals: ${pct(simulation.depletionSuccessRate)}.`
-      : `Anteil der Läufe, in denen das Vermögen bis Alter ${profile.person.horizonAge} nicht aufgebraucht ist (reines Überleben des Kapitals — dieser Plan hat kein Nachlassziel): ${pct(simulation.successRate)}.`
+      ? `Anteil der Läufe, in denen ${funded} UND am Ende mindestens ${money(simulation.legacyTargetReal)} in heutiger Kaufkraft übrig bleiben: ${pct(simulation.successRate)}. Ohne Nachlassziel: ${pct(simulation.depletionSuccessRate)}.`
+      : `Anteil der Läufe, in denen ${funded}: ${pct(simulation.successRate)}. Dieser Plan hat kein Nachlassziel.`
     : legacyConditioned
-      ? `Share of runs in which capital lasts to age ${profile.person.horizonAge} AND at least ${money(simulation.legacyTargetReal)} in today's euros is left at the end: ${pct(simulation.successRate)}. Without the bequest goal — plain survival of the capital — the figure is ${pct(simulation.depletionSuccessRate)}.`
-      : `Share of runs in which capital is not exhausted before age ${profile.person.horizonAge} (plain survival — this plan sets no bequest goal): ${pct(simulation.successRate)}.`
+      ? `Share of runs in which ${funded} AND at least ${money(simulation.legacyTargetReal)} in today's euros is left at the end: ${pct(simulation.successRate)}. Without the bequest goal the figure is ${pct(simulation.depletionSuccessRate)}.`
+      : `Share of runs in which ${funded}: ${pct(simulation.successRate)}. This plan sets no bequest goal.`
 
   const strategyClause = isGerman
     ? `In der Entnahmephase kommt die Strategie „${withdrawalStrategyLabel(assumptions.withdrawalStrategy, true)}“ zur Anwendung — ${withdrawalStrategySummary(assumptions.withdrawalStrategy, true)}`
@@ -65,11 +94,11 @@ export function buildMethodologyCopy(content: ReportContent): MethodologyCopy {
    */
   const modelText = isHistorical
     ? isGerman
-      ? `Die Analyse ist ein historischer Backtest: keine Zufallsziehung, sondern ${runsLabel} Durchläufe der tatsächlichen Marktgeschichte ${simulation.historicalFirstYear}–${simulation.historicalLastYear} — einer je möglichem Startjahr. Jeder Pfad übernimmt Aktien-, Anleihe- und Inflationsentwicklung dieser Jahre in ihrer echten Reihenfolge; die oben genannten Rendite-, Volatilitäts- und Inflationsannahmen werden in diesem Modus nicht verwendet. Das Ergebnis ist deterministisch: dieselben Eingaben liefern denselben Wert. ${strategyClause} Kapitalerträge werden mit ${capGains} besteuert (Details unter „Grenzen des Modells“).`
-      : `This analysis is a historical backtest: no random draws, but ${runsLabel} replays of real market history from ${simulation.historicalFirstYear} to ${simulation.historicalLastYear} — one per available start year. Each path takes the equity, bond and inflation outcomes of those years in their actual order; the return, volatility and inflation assumptions quoted elsewhere are not used in this mode. The result is deterministic: identical inputs give an identical figure. ${strategyClause} Capital gains are taxed at ${capGains} (details under "Limits of the Model").`
+      ? `Die Analyse ist ein historischer Backtest: keine Zufallsziehung, sondern ${runsLabel} Durchläufe der tatsächlichen Marktgeschichte ${simulation.historicalFirstYear}–${simulation.historicalLastYear} — einer je möglichem Startjahr. Jeder Pfad übernimmt Aktien-, Anleihe- und Inflationsentwicklung dieser Jahre in ihrer echten Reihenfolge; die oben genannten Rendite-, Volatilitäts- und Inflationsannahmen werden in diesem Modus nicht verwendet. Das Ergebnis ist deterministisch: dieselben Eingaben liefern denselben Wert. ${strategyClause} Zur Besteuerung siehe „Grenzen des Modells“.`
+      : `This analysis is a historical backtest: no random draws, but ${runsLabel} replays of real market history from ${simulation.historicalFirstYear} to ${simulation.historicalLastYear} — one per available start year. Each path takes the equity, bond and inflation outcomes of those years in their actual order; the return, volatility and inflation assumptions quoted elsewhere are not used in this mode. The result is deterministic: identical inputs give an identical figure. ${strategyClause} For taxes see "Limits of the Model".`
     : isGerman
-      ? `Die Analyse basiert auf einer Monte-Carlo-Simulation mit ${runsLabel} Läufen. Marktrenditen werden als lognormalverteilte Zufallsgrößen mit einem Erwartungswert von ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} p.a. und einer Volatilität von ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)} modelliert; die Inflation folgt einem Erwartungswert von ${fmtPercent(assumptions.inflation, 1, intlLocale)} bei ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)} Volatilität. Die Pfade stammen aus einem festen Zufallsstrom (${simulation.seedLabel || 'fester Startwert'}), damit Parameteränderungen vergleichbar bleiben. ${strategyClause} Kapitalerträge werden mit ${capGains} besteuert (Details unter „Grenzen des Modells“).`
-      : `The analysis is based on a Monte Carlo simulation with ${runsLabel} runs. Market returns are modelled as lognormally distributed random variables with an expected value of ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} p.a. and a volatility of ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}; inflation follows an expected value of ${fmtPercent(assumptions.inflation, 1, intlLocale)} with ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)} volatility. Paths come from one fixed random stream (${simulation.seedLabel || 'fixed seed'}) so that parameter changes stay comparable. ${strategyClause} Capital gains are taxed at ${capGains} (details under "Limits of the Model").`
+      ? `Die Analyse basiert auf einer Monte-Carlo-Simulation mit ${runsLabel} Läufen. Marktrenditen werden als lognormalverteilte Zufallsgrößen mit einem Erwartungswert von ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} p.a. und einer Volatilität von ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)} modelliert; die Inflation folgt einem Erwartungswert von ${fmtPercent(assumptions.inflation, 1, intlLocale)} bei ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)} Volatilität. Die Pfade stammen aus einem festen Zufallsstrom (${simulation.seedLabel || 'fester Startwert'}), damit Parameteränderungen vergleichbar bleiben. ${strategyClause} Zur Besteuerung siehe „Grenzen des Modells“.`
+      : `The analysis is based on a Monte Carlo simulation with ${runsLabel} runs. Market returns are modelled as lognormally distributed random variables with an expected value of ${fmtPercent(assumptions.expectedReturn, 1, intlLocale)} p.a. and a volatility of ${fmtPercent(assumptions.returnVolatility, 1, intlLocale)}; inflation follows an expected value of ${fmtPercent(assumptions.inflation, 1, intlLocale)} with ${fmtPercent(assumptions.inflationVolatility, 1, intlLocale)} volatility. Paths come from one fixed random stream (${simulation.seedLabel || 'fixed seed'}) so that parameter changes stay comparable. ${strategyClause} For taxes see "Limits of the Model".`
 
   // How the printed euros relate to the simulated ones — per-path deflation in
   // real mode, exactly as the app does it.
@@ -124,19 +153,45 @@ export function buildMethodologyCopy(content: ReportContent): MethodologyCopy {
       ? 'Renditen und Inflation werden als unabhängig gezogen; historische Autokorrelation und Sequenzrisiken im Übergangsjahr werden nicht nachgebildet.'
       : 'Returns and inflation are drawn independently; historical autocorrelation and sequence-of-returns effects around the transition year are not reproduced.'
 
+  // The engine tracks gains only from the plan's first year: whatever is in
+  // the portfolio today counts as cost basis. A long-held portfolio therefore
+  // pays more tax on its first withdrawals than the simulation books.
+  const costBasisLimitation = isGerman
+    ? 'Für das heutige Depot werden keine unrealisierten Kursgewinne unterstellt (der eingegebene Bestand gilt als Anschaffungswert); enthält es bereits Gewinne, fällt die Steuer auf frühe Entnahmen höher aus als berechnet.'
+    : "Today's portfolio is assumed to carry no unrealised gains (the capital entered counts as cost basis); where it already holds gains, the tax on early withdrawals is higher than calculated."
+
   const limitations = isGerman
     ? [
         marketLimitation,
         taxLimitation,
+        costBasisLimitation,
         'Die Rentenhöhe wird nominal fortgeschrieben; abweichende Rentenanpassungen ändern die Ergebnisse.',
-        'Ausgaben werden mit der Inflationsannahme fortgeschrieben; Pflegekosten oder einmalige Sonderausgaben sind nur enthalten, soweit sie erfasst wurden.',
+        'Ausgaben folgen der Inflationsannahme; Pflegekosten oder einmalige Sonderausgaben sind nur enthalten, soweit sie erfasst wurden.',
       ]
     : [
         marketLimitation,
         taxLimitation,
+        costBasisLimitation,
         'The pension is carried forward in nominal terms; different indexation would change the outcome.',
         'Spending is indexed with the inflation assumption; care costs and one-off items are only included where they were entered.',
       ]
 
-  return { methodology, units, successRate, limitations }
+  const pathsWord = isHistorical
+    ? isGerman
+      ? 'Startjahre'
+      : 'start years'
+    : isGerman
+      ? 'Läufe'
+      : 'runs'
+  // One definition, one wording — see `firstYearWithdrawalRate`.
+  const withdrawalRate = isGerman
+    ? `Was das Depot im ersten Ruhestandsjahr auszahlt (nach Renten und anderen Einnahmen, einschließlich der Steuern auf realisierte Kursgewinne), geteilt durch das Depot zu Beginn dieses Jahres; beides Mittelwerte über alle ${pathsWord}.`
+    : `What the portfolio pays out in the first retirement year (after pensions and other income, including the tax on realised gains), divided by the portfolio at the start of that year; both means across all ${pathsWord}.`
+  // One definition, one wording — see `computeBridgeAnalysis`.
+  const bridge = isGerman
+    ? `Die Ruhestandsjahre vor Beginn der Hauptrente (der gesetzlichen Rente, sofern der Plan sie berücksichtigt, sonst der größten Rente). Der Überbrückungsbedarf ist die Summe dessen, was das Depot in diesen Jahren auszahlt, im Mittel der ${pathsWord}; andere Einnahmen sind bereits abgezogen.`
+    : `The retirement years before the main pension starts (the statutory pension where the plan counts it, otherwise the largest pension). The bridge need is the sum of what the portfolio pays out in those years, as the mean across ${pathsWord}; other income is already netted.`
+  const planScore = planScoreGlossary(profile.success.components, isGerman ? 'de' : 'en')
+
+  return { methodology, units, successRate, planScore, withdrawalRate, bridge, limitations }
 }

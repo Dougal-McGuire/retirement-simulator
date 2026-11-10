@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { buildFanGeometry, FAN_H, FAN_W } from './fanGeometry'
-import { formatAxisEuro } from './format'
 import {
   clampChartRange,
   sliceChartRange,
   type ChartIndexRange,
 } from '@/components/charts/chartRange'
+import { useMoney } from '@/lib/hooks/useMoney'
 
 export interface CompareFanSeries {
   id: string
@@ -81,8 +81,8 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
     setInspectIndex(Math.round(ratio * Math.max(0, visibleBase.ages.length - 1)))
   }
 
-  const euro = (value: number) =>
-    format.number(value, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+  const money = useMoney()
+  const euro = money.full
 
   const inspectX = inspectIndex == null ? 0 : geometry.x(inspectIndex) / FAN_W
 
@@ -183,7 +183,7 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
         </svg>
         {geometry.gridLines.map((grid) => (
           <span key={grid.value} className="ws-chart-ylabel" style={{ top: grid.topPct }}>
-            {formatAxisEuro(grid.value, locale)}
+            {money.axis(grid.value)}
           </span>
         ))}
         <div className="ws-chart-legend" style={{ color: 'var(--ui-text)' }}>
@@ -233,7 +233,7 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
             min={0}
             max={length - 1}
             value={safeRange.startIndex}
-            aria-label={tAssets('aria.brush', { startAge: firstAge, endAge: lastAge })}
+            aria-label={tAssets('aria.brushStart', { startAge: firstAge, endAge: lastAge })}
             onChange={(event) =>
               setRange({
                 startIndex: Math.min(Number(event.target.value), safeRange.endIndex),
@@ -246,7 +246,7 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
             min={0}
             max={length - 1}
             value={safeRange.endIndex}
-            aria-label={tAssets('aria.brush', { startAge: firstAge, endAge: lastAge })}
+            aria-label={tAssets('aria.brushEnd', { startAge: firstAge, endAge: lastAge })}
             onChange={(event) =>
               setRange({
                 startIndex: safeRange.startIndex,

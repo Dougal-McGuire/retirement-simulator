@@ -190,7 +190,7 @@ export function OneTimeIncomeList({
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder={strings.namePlaceholder}
-                className="rounded-sm h-10 border-2 border-border px-2 text-[0.68rem] font-semibold "
+                className="rounded-sm h-10 border border-border px-2 text-[0.68rem] font-semibold "
                 aria-label={getIncomeControlLabel(strings.nameLabel, income)}
               />
               <Input
@@ -206,7 +206,7 @@ export function OneTimeIncomeList({
                     setEditAge(String(clamped))
                   }
                 }}
-                className="rounded-sm h-10 border-2 border-border px-2 text-[0.68rem] font-semibold "
+                className="rounded-sm h-10 border border-border px-2 text-[0.68rem] font-semibold "
                 aria-label={getIncomeControlLabel(strings.ageLabel, income)}
               />
             </div>
@@ -228,7 +228,7 @@ export function OneTimeIncomeList({
                   setEditAmount(editAmountField.format(clamped))
                 }
               }}
-              className="rounded-sm h-10 border-2 border-border px-2 text-[0.68rem] font-semibold  text-right"
+              className="rounded-sm h-10 border border-border px-2 text-[0.68rem] font-semibold  text-right"
               aria-label={getIncomeControlLabel(strings.amountLabel, income)}
             />
           </td>
@@ -391,7 +391,7 @@ export function OneTimeIncomeList({
                 value={draftName}
                 placeholder={strings.namePlaceholder}
                 onChange={(event) => setDraftName(event.target.value)}
-                className="rounded-sm h-11 w-full border-2 border-border px-3 py-2 text-[0.68rem] font-semibold  "
+                className="rounded-sm h-11 w-full border border-border px-3 py-2 text-[0.68rem] font-semibold  "
                 required
               />
             </div>
@@ -417,7 +417,7 @@ export function OneTimeIncomeList({
                     setDraftAge(String(clamped))
                   }
                 }}
-                className="rounded-sm h-11 w-full border-2 border-border px-3 py-2 text-[0.68rem] font-semibold  "
+                className="rounded-sm h-11 w-full border border-border px-3 py-2 text-[0.68rem] font-semibold  "
               />
             </div>
 
@@ -445,7 +445,7 @@ export function OneTimeIncomeList({
                     setDraftAmount(draftAmountField.format(clamped))
                   }
                 }}
-                className="rounded-sm h-11 w-full border-2 border-border px-3 py-2 text-[0.68rem] font-semibold  "
+                className="rounded-sm h-11 w-full border border-border px-3 py-2 text-[0.68rem] font-semibold  "
               />
             </div>
           </div>

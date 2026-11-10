@@ -63,7 +63,7 @@ export function EquityGlideSparkline({
         role="img"
         aria-label={label}
         preserveAspectRatio="none"
-        className="rounded-sm h-12 w-full border-2 border-border bg-card"
+        className="rounded-sm h-12 w-full border border-border bg-card"
       >
         <title>{label}</title>
         {/* Half-way reference: the fixed 0-100% scale is only readable with one. */}

@@ -23,6 +23,7 @@ import {
   statutoryPensionMonthly,
 } from '@/lib/simulation/cashFlows'
 import { isDefaultCashFlowNameKey, legacySeededExpenseNameKey } from '@/lib/plans/cashFlowName'
+import { isRecord } from '@/lib/isRecord'
 
 type NumericParamKey = keyof Omit<
   SimulationParams,
@@ -77,8 +78,8 @@ const numericParamKeys = [
   'simulationRuns',
 ] satisfies NumericParamKey[]
 
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+// Re-exported: the store and the server-side plan store import it from here.
+export { isRecord }
 
 const toPersistedParams = (params: unknown): PersistedParams =>
   isRecord(params) ? (params as PersistedParams) : {}

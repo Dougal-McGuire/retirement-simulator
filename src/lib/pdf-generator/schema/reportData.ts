@@ -6,32 +6,49 @@ export type ReportLocale = z.infer<typeof ReportLocaleSchema>
 
 export const DEFAULT_REPORT_LOCALE: ReportLocale = 'de'
 
-// Validation schemas with min/max ranges
+/**
+ * The shape of the report payload.
+ *
+ * The report is built and rendered in the browser from the app's own plan and
+ * results; nothing untrusted passes through here any more, and the app does
+ * not parse with these schemas at run time (the types are what it uses). They
+ * describe the shape and document the units, and the tests parse transformer
+ * output with them.
+ *
+ * The bounds are therefore only what makes a value meaningful — a non-negative
+ * amount, an age a human can have. They used to double as a server-side
+ * gatekeeper with arbitrary caps (retirement not before 50, horizon not below
+ * 70, no expense category above 10,000 € a month), which refused reports for
+ * plans the app itself happily simulates.
+ */
+const age = () => z.number().min(0).max(150)
+const amount = () => z.number().min(0)
+
 export const PersonSchema = z.object({
-  currentAge: z.number().min(18).max(100),
-  retireAge: z.number().min(50).max(80),
-  pensionAge: z.number().min(60).max(80),
-  horizonAge: z.number().min(70).max(120),
+  currentAge: age(),
+  retireAge: age(),
+  pensionAge: age(),
+  horizonAge: age(),
 })
 
 export const FinancesSchema = z.object({
-  currentAssetsEUR: z.number().min(0).max(100_000_000),
-  annualSavingsEUR: z.number().min(0).max(1_000_000),
-  expectedMonthlyPensionEUR: z.number().min(0).max(50_000),
+  currentAssetsEUR: amount(),
+  annualSavingsEUR: amount(),
+  expectedMonthlyPensionEUR: amount(),
 })
 
 export const SpendingSchema = z.object({
   monthly: z.object({
-    health: z.number().min(0).max(10_000),
-    food: z.number().min(0).max(10_000),
-    entertainment: z.number().min(0).max(10_000),
-    shopping: z.number().min(0).max(10_000),
-    utilities: z.number().min(0).max(10_000),
+    health: amount(),
+    food: amount(),
+    entertainment: amount(),
+    shopping: amount(),
+    utilities: amount(),
   }),
   annual: z.object({
-    vacations: z.number().min(0).max(100_000),
-    homeRepairs: z.number().min(0).max(100_000),
-    car: z.number().min(0).max(100_000),
+    vacations: amount(),
+    homeRepairs: amount(),
+    car: amount(),
   }),
   custom: z
     .array(
@@ -41,7 +58,7 @@ export const SpendingSchema = z.object({
         // Translation key for a flow the app seeded, so the report can print
         // "Lebensmittel" instead of "Groceries". Absent once renamed.
         nameKey: z.string().max(64).optional(),
-        amount: z.number().min(0).max(1_000_000),
+        amount: amount(),
         interval: z.enum(['monthly', 'annual']),
       })
     )
@@ -58,10 +75,10 @@ export const SpendingSchema = z.object({
         kind: z.enum(['income', 'expense', 'pension']),
         name: z.string(),
         nameKey: z.string().max(64).optional(),
-        amount: z.number().min(0).max(100_000_000),
+        amount: amount(),
         frequency: z.enum(['monthly', 'annual', 'once']),
-        startAge: z.number().min(0).max(120).optional(),
-        endAge: z.number().min(0).max(120).optional(),
+        startAge: age().optional(),
+        endAge: age().optional(),
         inflationLinked: z.boolean().optional(),
         growthRate: z.number().min(-1).max(1).optional(),
         taxablePortion: z.number().min(0).max(1).optional(),
@@ -82,7 +99,7 @@ export const SpendingSchema = z.object({
         kind: z.enum(['income', 'expense', 'pension']),
         name: z.string(),
         nameKey: z.string().max(64).optional(),
-        amount: z.number().min(0).max(100_000_000),
+        amount: amount(),
         frequency: z.enum(['monthly', 'annual', 'once']),
       })
     )
@@ -91,10 +108,10 @@ export const SpendingSchema = z.object({
 })
 
 export const AssumptionsSchema = z.object({
-  roiMean: z.number().min(-0.2).max(0.3),
-  roiStdev: z.number().min(0).max(0.5),
-  inflationMean: z.number().min(-0.05).max(0.15),
-  inflationStdev: z.number().min(0).max(0.1),
+  roiMean: z.number().min(-1).max(10),
+  roiStdev: z.number().min(0).max(10),
+  inflationMean: z.number().min(-1).max(10),
+  inflationStdev: z.number().min(0).max(10),
   // Sourced from the app's own strategy list so a new strategy cannot ship
   // without the report being able to name it.
   withdrawalStrategy: z.enum(WITHDRAWAL_STRATEGIES).default('vanguardDynamic'),
@@ -106,8 +123,8 @@ export const AssumptionsSchema = z.object({
   glidePathEnabled: z.boolean().default(false),
   equityAllocationStart: z.number().min(0).max(1).default(0.8),
   equityAllocationEnd: z.number().min(0).max(1).default(0.4),
-  bondReturn: z.number().min(-0.2).max(0.3).default(0.03),
-  bondVolatility: z.number().min(0).max(0.5).default(0.06),
+  bondReturn: z.number().min(-1).max(10).default(0.03),
+  bondVolatility: z.number().min(0).max(10).default(0.06),
   dsWithdrawalRate: z.number().min(0).max(1).default(0.05),
   dsCeilingRate: z.number().min(0).max(1).default(0.05),
   dsFloorRate: z.number().min(-1).max(0).default(-0.025),
@@ -139,7 +156,7 @@ export const AssumptionsSchema = z.object({
   pensionTaxablePortion: z.number().min(0).max(1).default(0),
   pensionTaxRate: z.number().min(0).max(1).default(0),
   legacyTargetReal: z.number().min(0).default(0),
-  mcRuns: z.number().min(100).max(100_000),
+  mcRuns: z.number().min(1),
 })
 
 /**
@@ -154,14 +171,16 @@ export const AssumptionsSchema = z.object({
 export const SimulationSchema = z.object({
   marketModel: z.enum(['monteCarlo', 'historical']).default('monteCarlo'),
   /** Paths really run: `simulationRuns` under Monte Carlo, 125 under historical. */
-  effectiveRuns: z.number().min(1).max(1_000_000),
+  effectiveRuns: z.number().min(1),
   successDefinition: z.enum(['legacyConditioned', 'depletion']).default('depletion'),
   successRatePct: z.number().min(0).max(100),
+  /** Runs in which every year's spending was funded, bequest goal aside. */
   depletionSuccessRatePct: z.number().min(0).max(100),
+  /** Runs with at least one year whose spending was not funded. */
   depletionRiskPct: z.number().min(0).max(100).default(0),
   successCount: z.number().min(0),
   /** Simulated years, taken from the engine's age grid (inclusive of both ends). */
-  horizonYears: z.number().min(1).max(120),
+  horizonYears: z.number().min(1).max(151),
   legacyTargetReal: z.number().min(0).default(0),
   seedLabel: z.string().default(''),
   paramsFingerprint: z.string().default(''),
@@ -184,17 +203,28 @@ export const ProjectionsSchema = z.object({
   milestones: z.array(MilestoneSchema),
   successRatePct: z.number().min(0).max(100),
   /**
-   * Ratios of a plan amount to projected assets, computed once on today's
-   * euros so the Nominal / Heutige € switch can never change them (a ratio has
-   * no unit; the budget is in today's euros, so the assets must be too).
-   * Optional: older payloads omit it and the report derives the ratios from
-   * `milestones` as before.
+   * The report's stress case, read from the engine's depletion data
+   * (`depletionByAge`): the age by which a tenth of the runs has had a year
+   * whose spending could not be paid. `null` when fewer than a tenth ever do;
+   * absent when the results carry no depletion data.
+   *
+   * Deliberately not "the age the P10 balance reaches zero": a portfolio at
+   * zero is no failure while pensions and income pay the budget.
+   */
+  stressShortfallAge: z.number().nullable().optional(),
+  /**
+   * Unit-free ratios, read from the engine's ledger so the Nominal /
+   * Heutige € switch can never change them. `null` where the ledger cannot
+   * state one; the report then prints a dash, never an estimate.
    */
   ratios: z
     .object({
-      /** Annual budget ÷ median assets at retirement. */
+      /**
+       * Portfolio withdrawal ÷ opening portfolio in the first retirement
+       * year — `firstYearWithdrawalRate` in `src/lib/insights/ledger.ts`.
+       */
       firstYearWithdrawalRate: z.number().nullable(),
-      /** Bridge cash need ÷ median assets at retirement. */
+      /** Bridge withdrawals ÷ portfolio at the start of retirement (both real). */
       bridgeShareOfRetirementAssets: z.number().nullable(),
     })
     .optional(),
@@ -208,46 +238,134 @@ export const RecommendationSchema = z.object({
   impact: z.enum(['High', 'Medium', 'Low']),
 })
 
+/** The stress levers `buildScenarioParams` builds — the same three as the app. */
+export const LeverIdSchema = z.enum(['laterRetirement', 'moreSavings', 'lowerSpending'])
+
+/**
+ * What each lever does to this plan, **measured**: one full simulation per
+ * lever on the same paths and at the same run count as the report's own
+ * result. Absent when the measurement was not possible — the report then
+ * prints no lever table rather than an estimate.
+ */
+export const LeverEffectsSchema = z.object({
+  /** Success rate (0..100) the deltas are measured against. */
+  baseSuccessRatePct: z.number().min(0).max(100),
+  /** P10 terminal assets of the base run, in the report's unit. */
+  baseWorstDecileEndEUR: z.number(),
+  levers: z
+    .array(
+      z.object({
+        id: LeverIdSchema,
+        successRatePct: z.number().min(0).max(100),
+        /** Percentage points against `baseSuccessRatePct`. */
+        deltaPoints: z.number(),
+        /** P10 terminal assets under the lever, in the report's unit. */
+        worstDecileEndEUR: z.number(),
+      })
+    )
+    .max(3),
+})
+
 export const SummarySchema = z
   .object({
     planHealthScore: z.number().min(0).max(100),
-    planHealthLabel: z.enum(['Strong', 'Moderate', 'Needs Attention']),
-    planHealthWhy: z.string().optional(),
-    planHealthWhyBits: z.array(z.string()).optional(),
     /**
-     * Itemised inputs of `planHealthScore`, so the report can show how the
-     * score was reached. Optional: older payloads simply omit the breakdown.
+     * `getPlanHealth(successRate)` — the app's one grading of a plan. Carried
+     * as the band id; the report prints its own (formal) label for it.
      */
+    planHealthBand: z.enum(['strong', 'watch', 'strained']),
+    /** Itemised inputs of `planHealthScore`; their weights sum to 1. */
     planHealthComponents: z
       .array(
         z.object({
-          id: z.enum(['success', 'spending', 'liquidity']),
+          id: z.enum(['success', 'withdrawal']),
           value: z.number().min(0).max(100),
           weight: z.number().min(0).max(1),
         })
       )
-      .optional(),
-    successProbabilityPct: z.number().min(0).max(100),
-    bridge: z.object({
-      startAge: z.number(),
-      endAge: z.number(),
-      cashNeedEUR: z.number(),
-      cashBucketYears: z.number().optional(),
-      cashBucketSharePct: z.number().optional(),
-      portfolioSharePct: z.number().optional(),
-    }),
-    topActions: z.array(z.string()).default([]),
-    topActionsDetailed: z
-      .array(
-        z.object({
-          title: z.string(),
-          upliftMin: z.number(),
-          upliftMax: z.number(),
-        })
-      )
       .default([]),
+    /** The rate behind the `withdrawal` component; `null` when not readable. */
+    planHealthWithdrawalRate: z.number().nullable().default(null),
+    successProbabilityPct: z.number().min(0).max(100),
+    /**
+     * The retirement years before the main pension pays, and what the ledger
+     * withdrew from the portfolio in them (report unit). Absent when the plan
+     * has no such years, or the results carry no ledger to read the amount
+     * from.
+     */
+    bridge: z
+      .object({
+        startAge: z.number(),
+        endAge: z.number(),
+        /** Age the main pension starts. */
+        pensionAge: z.number(),
+        mainPension: z.enum(['statutory', 'other']),
+        cashNeedEUR: z.number(),
+        cashBucketYears: z.number().optional(),
+        cashBucketSharePct: z.number().optional(),
+        portfolioSharePct: z.number().optional(),
+      })
+      .optional(),
+    topActions: z.array(z.string()).default([]),
+    leverEffects: LeverEffectsSchema.optional(),
   })
   .optional()
+
+const LedgerPhaseSchema = z.object({
+  firstAge: z.number(),
+  lastAge: z.number(),
+  years: z.number(),
+  /** Mean per year paid into (+) or out of (−) the portfolio, before returns. */
+  netPortfolioFlow: z.number(),
+  incomeGross: z.number(),
+  expenses: z.number(),
+})
+
+/**
+ * Figures read from the engine's ledger (per-age means of what was actually
+ * booked), every amount in the report's unit. Each part is `null` when the
+ * ledger cannot state it; the whole block is absent for results stored before
+ * the ledger existed. Nothing here is recomputed from the inputs.
+ */
+export const LedgerSchema = z.object({
+  firstRetirementYear: z
+    .object({
+      age: z.number(),
+      openingAssets: z.number(),
+      portfolioWithdrawal: z.number(),
+      expenses: z.number(),
+    })
+    .nullable(),
+  /** The first retirement year in which the main pension pays. */
+  pensionYear: z
+    .object({
+      age: z.number(),
+      firstPensionYear: z.boolean(),
+      expenses: z.number(),
+      pensionGross: z.number(),
+      pensionNet: z.number(),
+      portfolioWithdrawal: z.number(),
+      coverage: z.number().nullable(),
+    })
+    .nullable(),
+  /** Spending booked over the retirement years only. */
+  retirementSpending: z
+    .object({
+      total: z.number(),
+      /** Part of `total` from scheduled flows; `null` when not itemised. */
+      scheduled: z.number().nullable(),
+      shortfall: z.number(),
+      firstAge: z.number(),
+      lastAge: z.number(),
+      years: z.number(),
+    })
+    .nullable(),
+  phases: z.object({
+    accumulation: LedgerPhaseSchema.nullable(),
+    bridge: LedgerPhaseSchema.nullable(),
+    pension: LedgerPhaseSchema.nullable(),
+  }),
+})
 
 /**
  * The euro the projected figures are printed in — the app's Nominal / Heutige €
@@ -272,6 +390,7 @@ export const ReportDataSchema = z.object({
   assumptions: AssumptionsSchema,
   simulation: SimulationSchema.optional(),
   projections: ProjectionsSchema,
+  ledger: LedgerSchema.optional(),
   summary: SummarySchema,
   recommendations: z.array(RecommendationSchema),
   units: EuroUnitSchema.optional(),
@@ -300,4 +419,6 @@ export type Projections = z.infer<typeof ProjectionsSchema>
 export type Recommendation = z.infer<typeof RecommendationSchema>
 export type ReportData = z.infer<typeof ReportDataSchema>
 export type Summary = z.infer<typeof SummarySchema>
+export type Ledger = z.infer<typeof LedgerSchema>
+export type LeverEffects = z.infer<typeof LeverEffectsSchema>
 export type EuroUnitData = z.infer<typeof EuroUnitSchema>

@@ -101,9 +101,12 @@ export function useWorkspaceHash(api: WorkspaceHashApi): void {
       )
     }
     let releaseHold: (() => void) | undefined
-    const unsubscribe = useSimulationStore.persist.hasHydrated()
-      ? (applyInitial(), undefined)
-      : useSimulationStore.persist.onFinishHydration(applyInitial)
+    // No `persist` API without web storage: the store is in memory and ready.
+    const persist = useSimulationStore.persist
+    const unsubscribe =
+      (persist?.hasHydrated() ?? true)
+        ? (applyInitial(), undefined)
+        : persist.onFinishHydration(applyInitial)
 
     // Same as a landing: the target is measured before the sections the
     // scroll passes have mounted (on phones they grow as it goes by), so keep

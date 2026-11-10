@@ -24,6 +24,8 @@ tmp/
 # that is not gitignored, and the binary Turbopack caches inside these folders
 # produce corrupted utility class candidates.
 /.next-*/
+# Their generated tsconfigs (see next.config.ts)
+/tsconfig.next-*.json
 /out/
 
 # production
@@ -54,6 +56,19 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# build info (generated at build time)
-src/lib/build-info/build-info.json
+# Playwright output (uploaded as CI artifacts, never committed)
 test-results/
+test-results-dev/
+playwright-report/
+playwright-report-dev/
+blob-report/
+
+# logs
+*.log
+
+# Throwaway probe tests written during reviews
+/src/__scratch_*/
+
+# Claude Code: per-agent worktrees and machine-local settings
+/.claude/worktrees/
+/.claude/settings.local.json

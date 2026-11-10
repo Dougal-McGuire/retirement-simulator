@@ -16,18 +16,23 @@ import { usePlans, useSavePlanDraft, useSetActivePlan } from '@/lib/stores/simul
 
 /**
  * Asks before switching away from a plan with unsaved edits — the working copy
- * is the only place those edits exist. Shared by the header plan menu and the
- * plan manager so both paths offer the same three choices.
+ * is the only place those edits exist. Shared by the header plan menu, the
+ * plan manager and the landing page's example button, so every path offers the
+ * same three choices.
  */
 export function PlanSwitchGuard({
   pendingPlanId,
   activeName,
   onDone,
+  onSwitched,
   onCloseAutoFocus,
 }: {
   pendingPlanId: string | null
   activeName: string
+  /** The dialog is closing, whatever the choice was. */
   onDone: () => void
+  /** The switch happened (saved or discarded) — not called on cancel. */
+  onSwitched?: (planId: string) => void
   onCloseAutoFocus?: (event: Event) => void
 }) {
   const t = useTranslations('plans')
@@ -43,7 +48,9 @@ export function PlanSwitchGuard({
       toast.success(t('dirty.savedToast', { name: activeName }))
     }
     onDone()
-    if (target) setActivePlan(target)
+    if (!target) return
+    setActivePlan(target)
+    onSwitched?.(target)
   }
 
   return (

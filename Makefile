@@ -24,8 +24,15 @@ commit: ## Stage and commit all current changes. Override with MSG="...".
 push: ## Push the current branch to its upstream.
 	git push
 
-deploy: ## Sync, commit, and push the current branch.
+deploy: ## Sync, commit, and push the current branch (asks for CONFIRM=1).
 	$(MAKE) sync
+	@bash scripts/check-untracked.sh
+	@if [ "$(CONFIRM)" != "1" ]; then \
+		echo "make deploy would commit and push these changes to $$(git rev-parse --abbrev-ref HEAD):"; \
+		git status --short; \
+		echo "Re-run with CONFIRM=1 to go ahead."; \
+		exit 1; \
+	fi
 	$(MAKE) commit
 	$(MAKE) push
 

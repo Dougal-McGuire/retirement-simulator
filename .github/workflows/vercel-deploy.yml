@@ -1,13 +1,8 @@
 name: Vercel Deployment
 
-env:
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-permissions:
-  contents: read
-  issues: write
-  pull-requests: write
+# verify (no secrets) ──► deploy (Vercel; production on main, preview on PRs)
+# webkit (iPad WebKit E2E, informational, never blocks)
+# report-failure (main only: opens or updates one tracking issue)
 
 on:
   push:
@@ -15,88 +10,279 @@ on:
   pull_request:
     branches: [main]
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+# Every job states what it needs.
+permissions: {}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # A newer push to a PR supersedes the older run; on main every commit
+  # finishes (a cancelled production deploy would leave prod half-way).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    name: Verify (lint, types, unit, E2E)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
         with:
-          version: 10.15.1
+          persist-credentials: false
+
+      - name: Setup pnpm (version from package.json "packageManager")
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '24.14.0'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
+          node-version-file: .nvmrc
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate build info
-        run: pnpm build-info
-
-      - name: Run lint
+      - name: Lint
         run: pnpm lint
 
-      - name: Run typecheck
+      - name: Typecheck
         run: pnpm typecheck
 
-      - name: Run unit tests
-        run: pnpm test
+      - name: Unit tests (with coverage floors)
+        run: pnpm test:coverage
 
-      - name: Install Playwright
+      - name: Audit production dependencies (informational)
+        continue-on-error: true
+        run: pnpm audit --prod --audit-level=high
+
+      - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run E2E tests
+      # CI=true (set by Actions) makes playwright.config.ts build the app and
+      # run `next start`: the gate tests the bundle that ships, retries flaky
+      # tests twice and records traces/screenshots of failures.
+      - name: E2E against the production build
         run: pnpm test:e2e
 
+      # React's commit inspection needs the development build; the spec skips
+      # on a production server, so it gets its own `next dev` run.
+      - name: E2E render-isolation check (dev server)
+        if: ${{ !cancelled() }}
+        env:
+          PW_DEV_SERVER: '1'
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-dev
+        run: pnpm test:e2e tests/perf-render.spec.ts --output=test-results-dev
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            playwright-report-dev/
+            test-results/
+            test-results-dev/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  webkit:
+    name: E2E on iPad WebKit (non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Informational until the suite is stable on WebKit: a red result here
+    # never blocks a deploy (deploy only needs `verify`).
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps webkit
+      - name: E2E against the production build (webkit-ipad)
+        run: pnpm test:e2e:webkit
+      - name: Upload WebKit report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-webkit-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  deploy:
+    name: Deploy to Vercel
+    needs: verify
+    # Pushes to main, and PRs from branches of this repository (fork PRs get
+    # no secrets and are verified only).
+    if: >-
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write # the preview comment
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      # Pinned: bump deliberately (Dependabot does not see global CLI installs).
+      VERCEL_CLI_VERSION: 65.12.1
+      VERCEL_TARGET: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+      # The commit being deployed (a PR's head, not the merge commit).
+      COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
       - name: Install Vercel CLI
-        run: npm install -g vercel@latest
+        run: npm install --global "vercel@${VERCEL_CLI_VERSION}"
 
-      - name: Pull Vercel Environment Information
+      - name: Pull Vercel environment (${{ env.VERCEL_TARGET }})
+        run: vercel pull --yes --environment="$VERCEL_TARGET" --token="$VERCEL_TOKEN"
+
+      # The pages are prerendered, so the sign-in / cloud-sync switches are
+      # fixed by the env pulled above. Production refuses a build that would
+      # hide them while the runtime API has them (scripts/check-deploy-env.mjs).
+      - name: Check the pulled env
+        env:
+          REQUIRE_AUTH: ${{ vars.DEPLOY_REQUIRE_AUTH }}
+          REQUIRE_CLOUD_STORE: ${{ vars.DEPLOY_REQUIRE_CLOUD_STORE }}
         run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
-            vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          if [[ "$VERCEL_TARGET" == "production" ]]; then
+            node scripts/check-deploy-env.mjs .vercel/.env.production.local --require
           else
-            vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+            node scripts/check-deploy-env.mjs .vercel/.env.preview.local
           fi
 
-      - name: Build Project Artifacts
+      - name: Build
+        env:
+          # Sent as `x-build-id` by /api/plans; VERCEL_GIT_COMMIT_SHA only
+          # exists on Vercel's own builders, not in this runner.
+          NEXT_PUBLIC_BUILD_ID: ${{ env.COMMIT_SHA }}
         run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
-            vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          if [[ "$VERCEL_TARGET" == "production" ]]; then
+            vercel build --prod --token="$VERCEL_TOKEN"
           else
-            vercel build --token=${{ secrets.VERCEL_TOKEN }}
+            vercel build --token="$VERCEL_TOKEN"
           fi
 
-      - name: Deploy Project Artifacts
+      - name: Deploy
         id: deploy
         run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "Deploying to production..."
-            DEPLOYMENT_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
-            echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
-            echo "environment=production" >> $GITHUB_OUTPUT
+          if [[ "$VERCEL_TARGET" == "production" ]]; then
+            url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
           else
-            echo "Deploying preview..."
-            DEPLOYMENT_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
-            echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
-            echo "environment=preview" >> $GITHUB_OUTPUT
+            url="$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")"
           fi
+          echo "deployment_url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed $COMMIT_SHA to $VERCEL_TARGET: $url" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Comment PR with deployment URL
+      # Production must answer with the commit that was just deployed. Checks
+      # the public domain (repository variable PRODUCTION_URL) when set, since
+      # deployment URLs can sit behind Vercel's deployment protection.
+      - name: Smoke test production build id
+        if: env.VERCEL_TARGET == 'production'
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment_url }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: |
+          base="${PRODUCTION_URL:-$DEPLOYMENT_URL}"
+          base="${base%/}"
+          for attempt in $(seq 1 12); do
+            got="$(curl -sS -o /dev/null -D - "$base/api/plans" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-build-id" {print $2}')"
+            if [[ "$got" == "$COMMIT_SHA" ]]; then
+              echo "x-build-id matches $COMMIT_SHA at $base"
+              exit 0
+            fi
+            echo "attempt $attempt: x-build-id '${got}' at $base, want $COMMIT_SHA"
+            sleep 10
+          done
+          echo "::error title=Smoke test failed::$base/api/plans does not report build $COMMIT_SHA"
+          exit 1
+
+      - name: Comment the preview URL on the PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment_url }}
         with:
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `🚀 Preview deployment ready!\n\n**Deployment URL:** ${{ steps.deploy.outputs.deployment_url }}\n\nThe changes in this PR have been deployed and are ready for review.`
+            const marker = '<!-- vercel-preview-deployment -->'
+            const sha = (process.env.COMMIT_SHA || '').slice(0, 7)
+            const body = [
+              marker,
+              `**Preview deployment** for ${sha}: ${process.env.DEPLOYMENT_URL}`,
+              '',
+              'Updated on every push to this PR.',
+            ].join('\n')
+            const { owner, repo } = context.repo
+            const issue_number = context.issue.number
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
             })
+            const existing = comments.find(
+              (comment) => comment.user?.type === 'Bot' && comment.body?.includes(marker),
+            )
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body })
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body })
+            }
+
+  report-failure:
+    name: Report a blocked production deploy
+    needs: [verify, deploy]
+    if: >-
+      always() && github.event_name == 'push' &&
+      (needs.verify.result == 'failure' || needs.deploy.result == 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          VERIFY_RESULT: ${{ needs.verify.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+        run: |
+          prefix="Production deploy blocked"
+          body="$(printf '%s\n\n- Commit: %s\n- Run: %s\n- verify: %s, deploy: %s\n\nProduction stays on the previous deployment until a later push to main passes. The run has the Playwright report as an artifact.' \
+            "Main failed the deploy pipeline." "$SHA" "$RUN_URL" "$VERIFY_RESULT" "$DEPLOY_RESULT")"
+          existing="$(gh issue list --state open --search "\"$prefix\" in:title" --json number,title \
+            --jq "map(select(.title | startswith(\"$prefix\"))) | first | .number // empty")"
+          if [[ -n "$existing" ]]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$prefix: ${SHA:0:7}" --body "$body"
+          fi

@@ -6,8 +6,8 @@ import { Loader2 } from 'lucide-react'
 import { InfoTip } from '@/components/ui/info-tip'
 import { useSimulationParams } from '@/lib/stores/simulationStore'
 import { isPreviewable } from '@/lib/validation/fieldValidation'
-import { useCompactCurrency } from '@/lib/hooks/useCompactCurrency'
 import { cn } from '@/lib/utils'
+import { useMoney } from '@/lib/hooks/useMoney'
 
 /**
  * Run budget for the wizard strip.
@@ -38,7 +38,7 @@ export function WizardLiveResult({ className }: { className?: string }) {
   const t = useTranslations('setup.liveResult')
   const format = useFormatter()
   const params = useSimulationParams()
-  const formatCurrency = useCompactCurrency()
+  const formatCurrency = useMoney().compact
 
   const [preview, setPreview] = useState<PreviewState | null>(null)
   const [isComputing, setIsComputing] = useState(false)

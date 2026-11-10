@@ -2,7 +2,15 @@
 
 import { Fragment, useMemo, useState } from 'react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
-import { ArrowDownRight, ArrowUpRight, Edit2, Landmark, Plus, Trash2 } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowDownRight,
+  ArrowUpRight,
+  Edit2,
+  Landmark,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import {
   type CashFlow,
   CASHFLOW_FREQUENCIES,
@@ -27,21 +35,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { toast, TOAST_DURATION } from '@/components/ui/toast'
-import { ActionToast } from '@/components/ui/action-toast'
+import { toast } from '@/components/ui/toast'
+import { showActionToast } from '@/components/ui/action-toast'
 import { useGroupedNumber } from './useGroupedNumber'
 import { FlowOffTag, FlowSwitch } from './FlowSwitch'
-import { createFlowId } from './oneOffIncomeFlows'
+import { createFlowId, removeFlow, toggleFlow } from '@/lib/plans/flowOps'
+import { flowWindowLabel, monthFormatter } from '@/lib/plans/flowWindow'
+import {
+  cashFlowDraftIssues,
+  isCompleteMonth,
+  joinMonth,
+  splitMonth,
+  type CashFlowDraftIssue,
+} from './cashFlowDraftValidation'
+import { focusField } from '@/components/workspace/edit/focusField'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import {
   buildCashFlowSeries,
   currentBaseYear,
   isCashFlowEnabled,
-  withCashFlowEnabled,
   yearForAge,
   type PensionContext,
 } from '@/lib/simulation/cashFlows'
 import { cn } from '@/lib/utils'
+import { useMoney } from '@/lib/hooks/useMoney'
 
 /**
  * One editor for every money movement in a plan.
@@ -157,6 +174,8 @@ const draftFromFlow = (
   storedName: flow.name,
 })
 
+const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'] as const
+
 const parseAge = (value: string): number | undefined => {
   const trimmed = value.trim()
   if (trimmed === '') return undefined
@@ -188,6 +207,8 @@ export function CashFlowList({
   const [editDraft, setEditDraft] = useState<DraftState>(() => emptyDraft())
   const [editingId, setEditingId] = useState<string | null>(null)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  /** Issues of the last refused save, per form ('new' or the flow's id). */
+  const [issues, setIssues] = useState<Record<string, CashFlowDraftIssue[]>>({})
 
   const safeFlows = Array.isArray(flows) ? flows : []
   const horizon = Math.max(1, endAge - currentAge)
@@ -204,18 +225,9 @@ export function CashFlowList({
     [safeFlows, currentAge, endAge, taxContext]
   )
 
-  const formatMonth = (value: string) => {
-    const [year, month] = value.split('-').map(Number)
-    return format.dateTime(new Date(year, month - 1, 1), { month: 'short', year: 'numeric' })
-  }
+  const formatMonth = monthFormatter(format)
 
-  const formatCurrency = (value: number) =>
-    format.number(value, {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })
+  const formatCurrency = useMoney().full
 
   /** Seeded flows follow the UI language; user-named ones render verbatim. */
   const displayName = (flow: CashFlow) => cashFlowDisplayName(flow, (key) => t(`defaults.${key}`))
@@ -272,11 +284,21 @@ export function CashFlowList({
     return { income, expense, pension }
   }, [safeFlows])
 
-  const commitDraft = (state: DraftState, id?: string) => {
+  /**
+   * Saves the draft, or returns why it cannot be saved (the form then stays
+   * open with those fields marked — it used to reset and lose the entry).
+   */
+  const commitDraft = (state: DraftState, id?: string): CashFlowDraftIssue[] => {
     const name = state.name.trim()
     const parsedAmount = (id ? editAmountField : amountField).parse(state.amount)
-    const amount = Number.isFinite(parsedAmount) ? Math.max(0, Math.round(parsedAmount)) : 0
-    if (!name || amount <= 0) return
+    const found = cashFlowDraftIssues({
+      name,
+      amount: parsedAmount,
+      startDate: state.startDate,
+      once: state.frequency === 'once' && state.kind !== 'pension',
+    })
+    if (found.length > 0) return found
+    const amount = Math.max(0, Math.round(parsedAmount))
 
     const growth = Number(state.growthRate.trim())
     const taxable = Number(state.taxablePortion.trim())
@@ -284,10 +306,7 @@ export function CashFlowList({
     const once = state.frequency === 'once' && !pension
     // A calendar month pins a one-off to a plan year: the year sets the age,
     // the month is kept for display.
-    const startDate =
-      once && /^\d{4}-(0[1-9]|1[0-2])$/.test(state.startDate.trim())
-        ? state.startDate.trim()
-        : undefined
+    const startDate = once && isCompleteMonth(state.startDate) ? state.startDate.trim() : undefined
     const startAge =
       startDate !== undefined
         ? Math.min(
@@ -337,20 +356,69 @@ export function CashFlowList({
     }
 
     onChange(id ? safeFlows.map((entry) => (entry.id === id ? flow : entry)) : [...safeFlows, flow])
+    return []
   }
+
+  /**
+   * Focuses a field of the form: inside the edit panel through `focusField`
+   * (scrolls the panel body only, never the window), elsewhere (the setup
+   * wizard) with the nearest scroll that respects reduced motion.
+   */
+  const focusFormField = (fieldId: string) => {
+    if (typeof window === 'undefined') return
+    window.requestAnimationFrame(() => {
+      const el = document.getElementById(fieldId)
+      if (!el) return
+      const body = el.closest<HTMLElement>('.ws-panel-body')
+      if (body) {
+        focusField(fieldId, body)
+        return
+      }
+      el.focus({ preventScroll: true })
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      el.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' })
+    })
+  }
+
+  const FIELD_PREFIX: Record<CashFlowDraftIssue, string> = {
+    name: 'cashflow-name',
+    amount: 'cashflow-amount',
+    date: 'cashflow-date',
+  }
+
+  /** Saves the form, or marks what blocks it and focuses the first such field. */
+  const submitDraft = (state: DraftState, id?: string): boolean => {
+    const key = id ?? 'new'
+    const found = commitDraft(state, id)
+    setIssues((current) => {
+      if (found.length === 0 && !current[key]) return current
+      const next = { ...current }
+      if (found.length > 0) next[key] = found
+      else delete next[key]
+      return next
+    })
+    if (found.length > 0) focusFormField(`${FIELD_PREFIX[found[0]]}-${key}`)
+    return found.length === 0
+  }
+
+  /** Editing a marked field clears its mark. */
+  const clearIssue = (key: string, issue: CashFlowDraftIssue) =>
+    setIssues((current) => {
+      if (!current[key]?.includes(issue)) return current
+      const rest = current[key].filter((entry) => entry !== issue)
+      const next = { ...current }
+      if (rest.length > 0) next[key] = rest
+      else delete next[key]
+      return next
+    })
 
   /** On/off is an ordinary edit: the draft changes, the result recomputes. */
   const handleToggle = (id: string) => {
-    onChange(
-      safeFlows.map((entry) =>
-        entry.id === id ? withCashFlowEnabled(entry, !isCashFlowEnabled(entry)) : entry
-      )
-    )
+    onChange(toggleFlow(safeFlows, id))
   }
 
   const handleAdd = () => {
-    commitDraft(draft)
-    setDraft(emptyDraft(draft.kind))
+    if (submitDraft(draft)) setDraft(emptyDraft(draft.kind))
   }
 
   /**
@@ -378,40 +446,29 @@ export function CashFlowList({
     setEditDraft(draftFromFlow(flow, editAmountField.format, flow.name, legalRetirementAge))
     setEditingId(flow.id)
 
-    if (typeof window !== 'undefined') {
-      window.requestAnimationFrame(() => {
-        const target = document.getElementById(`cashflow-start-${flow.id}`)
-        target?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-        target?.focus({ preventScroll: true })
-      })
-    }
+    // Scrolls the panel body only (never the window) and respects reduced motion.
+    focusFormField(`cashflow-start-${flow.id}`)
 
-    toast(
-      (instance) => (
-        <ActionToast
-          testId="cashflow-template-toast"
-          message={t('templates.added', { name: template.name })}
-          actions={[
-            {
-              label: t('templates.undo'),
-              tone: 'primary',
-              testId: 'cashflow-template-undo',
-              onClick: () => {
-                toast.dismiss(instance.id)
-                setEditingId(null)
-                onChange(previous)
-              },
-            },
-          ]}
-        />
-      ),
-      { duration: TOAST_DURATION }
-    )
+    showActionToast({
+      testId: 'cashflow-template-toast',
+      message: t('templates.added', { name: template.name }),
+      undo: {
+        label: t('templates.undo'),
+        testId: 'cashflow-template-undo',
+        run: () => {
+          setEditingId(null)
+          onChange(previous)
+        },
+      },
+    })
   }
 
   const handleRemove = (id: string) => {
-    onChange(safeFlows.filter((flow) => flow.id !== id))
+    onChange(removeFlow(safeFlows, id))
     if (editingId === id) setEditingId(null)
+    clearIssue(id, 'name')
+    clearIssue(id, 'amount')
+    clearIssue(id, 'date')
   }
 
   const frequencyLabel = (frequency: CashFlowFrequency) => t(`frequency.${frequency}`)
@@ -419,27 +476,8 @@ export function CashFlowList({
   const signedAmount = (flow: CashFlow) =>
     `${flow.kind === 'expense' ? '−' : '+'}${formatCurrency(flow.amount)}`
 
-  const windowLabel = (flow: CashFlow) => {
-    // A pension's unset start means the plan's statutory age — resolve it so
-    // every row reads the same way.
-    if (flow.kind === 'pension' && flow.startAge === undefined) {
-      return flow.endAge === undefined
-        ? t('window.from', { age: legalRetirementAge })
-        : t('window.range', { from: legalRetirementAge, to: flow.endAge })
-    }
-    if (flow.frequency === 'once') {
-      const age = flow.startAge ?? currentAge
-      return flow.startDate
-        ? t('window.atDate', { date: formatMonth(flow.startDate), age })
-        : t('window.at', { age })
-    }
-    if (flow.startAge === undefined && flow.endAge === undefined) return t('window.lifetime')
-    if (flow.startAge !== undefined && flow.endAge !== undefined) {
-      return t('window.range', { from: flow.startAge, to: flow.endAge })
-    }
-    if (flow.startAge !== undefined) return t('window.from', { age: flow.startAge })
-    return t('window.until', { age: flow.endAge ?? endAge })
-  }
+  const windowLabel = (flow: CashFlow) =>
+    flowWindowLabel(flow, { currentAge, legalRetirementAge }, t, { formatMonth })
 
   /** Left offset / width of a flow's bar as a share of the plan horizon. */
   const barGeometry = (flow: CashFlow) => {
@@ -457,19 +495,68 @@ export function CashFlowList({
     return { left: `${left}%`, width: `${Math.min(100 - left, width)}%` }
   }
 
+  /** Per-form validation marks and the month/year selects' state. */
+  const draftFormContext = (
+    state: DraftState,
+    setState: (next: DraftState) => void,
+    id?: string
+  ) => {
+    const key = id ?? 'new'
+    const formIssues = issues[key] ?? []
+    const invalid = (issue: CashFlowDraftIssue) => formIssues.includes(issue)
+    const errorId = (issue: CashFlowDraftIssue) => `${FIELD_PREFIX[issue]}-${key}-error`
+    const errorText = (issue: CashFlowDraftIssue) =>
+      invalid(issue) ? (
+        <p
+          id={errorId(issue)}
+          className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-danger"
+          data-testid={`${FIELD_PREFIX[issue]}-${key}-error`}
+        >
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {t(`errors.${issue}`)}
+        </p>
+      ) : null
+    const { year: dateYear, month: dateMonth } = splitMonth(state.startDate)
+    const firstYear = baseYear
+    const lastYear = baseYear + Math.max(0, endAge - currentAge)
+    const years = Array.from({ length: lastYear - firstYear + 1 }, (_, index) =>
+      String(firstYear + index)
+    )
+    if (dateYear !== '' && !years.includes(dateYear)) years.unshift(dateYear)
+    const setDate = (year: string, month: string) => {
+      clearIssue(key, 'date')
+      const value = joinMonth(year, month)
+      // The age follows the year immediately, so the two fields never
+      // disagree while the form is open.
+      const parsedYear = Number(year)
+      const derived =
+        year !== '' && Number.isFinite(parsedYear)
+          ? String(Math.min(endAge, Math.max(currentAge, currentAge + parsedYear - baseYear)))
+          : state.startAge
+      setState({ ...state, startDate: value, startAge: derived })
+    }
+    return { key, invalid, errorId, errorText, dateYear, dateMonth, years, setDate }
+  }
+
   const renderDraftForm = (
     state: DraftState,
     setState: (next: DraftState) => void,
     field: ReturnType<typeof useGroupedNumber>,
-    id?: string
+    id?: string,
+    // Derived per call (a default parameter keeps this an expression body).
+    { key, invalid, errorId, errorText, dateYear, dateMonth, years, setDate } = draftFormContext(
+      state,
+      setState,
+      id
+    )
   ) => (
     <form
       className="grid grid-cols-1 gap-4"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault()
         if (id) {
-          commitDraft(state, id)
-          setEditingId(null)
+          if (submitDraft(state, id)) setEditingId(null)
         } else {
           handleAdd()
         }
@@ -499,7 +586,7 @@ export function CashFlowList({
               })
             }
             className={cn(
-              'rounded-sm inline-flex items-center gap-1.5 border-2 border-border px-3 py-1.5 text-xs font-semibold   transition-colors',
+              'rounded-sm inline-flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs font-semibold   transition-colors',
               state.kind === kind
                 ? 'bg-muted text-ink border-accent'
                 : 'bg-card text-muted-foreground hover:bg-muted'
@@ -527,9 +614,18 @@ export function CashFlowList({
             type="text"
             value={state.name}
             placeholder={t('fields.namePlaceholder')}
-            onChange={(event) => setState({ ...state, name: event.target.value })}
-            className="rounded-sm h-11 border-2 border-border px-3 text-xs font-semibold  "
+            aria-invalid={invalid('name') || undefined}
+            aria-describedby={invalid('name') ? errorId('name') : undefined}
+            onChange={(event) => {
+              clearIssue(key, 'name')
+              setState({ ...state, name: event.target.value })
+            }}
+            className={cn(
+              'rounded-sm h-11 border border-border px-3 text-xs font-semibold  ',
+              invalid('name') && 'border-danger'
+            )}
           />
+          {errorText('name')}
         </div>
 
         <div className="flex flex-col">
@@ -546,9 +642,18 @@ export function CashFlowList({
             inputMode="numeric"
             autoComplete="off"
             value={state.amount}
-            onChange={(event) => setState({ ...state, amount: field.handleChange(event).display })}
-            className="rounded-sm h-11 border-2 border-border px-3 text-xs font-semibold  "
+            aria-invalid={invalid('amount') || undefined}
+            aria-describedby={invalid('amount') ? errorId('amount') : undefined}
+            onChange={(event) => {
+              clearIssue(key, 'amount')
+              setState({ ...state, amount: field.handleChange(event).display })
+            }}
+            className={cn(
+              'rounded-sm h-11 border border-border px-3 text-xs font-semibold  ',
+              invalid('amount') && 'border-danger'
+            )}
           />
+          {errorText('amount')}
         </div>
 
         <div className="flex flex-col">
@@ -566,7 +671,7 @@ export function CashFlowList({
           >
             <SelectTrigger
               id={`cashflow-frequency-${id ?? 'new'}`}
-              className="rounded-sm h-11 border-2 border-border"
+              className="rounded-sm h-11 border border-border"
             >
               <SelectValue />
             </SelectTrigger>
@@ -595,39 +700,67 @@ export function CashFlowList({
             value={state.startAge}
             placeholder={String(state.kind === 'pension' ? legalRetirementAge : currentAge)}
             onChange={(event) => setState({ ...state, startAge: event.target.value })}
-            className="rounded-sm h-11 border-2 border-border px-3 text-xs font-semibold"
+            className="rounded-sm h-11 border border-border px-3 text-xs font-semibold"
           />
         </div>
 
         {state.frequency === 'once' && state.kind !== 'pension' && (
-          <div className="flex flex-col">
-            <Label
-              htmlFor={`cashflow-date-${id ?? 'new'}`}
-              className="mb-2 text-xs font-semibold  "
+          // Two selects instead of <input type="month">, which desktop Safari
+          // and Firefox render as a free text box that silently dropped
+          // anything not typed as YYYY-MM. Stored as "YYYY-MM" all the same.
+          <fieldset
+            className="flex min-w-0 flex-col"
+            aria-describedby={[`cashflow-date-${key}-hint`, invalid('date') ? errorId('date') : '']
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <legend className="mb-2 text-xs font-semibold">{t('fields.startDate')}</legend>
+            <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-2">
+              <select
+                id={`cashflow-date-${key}`}
+                aria-label={t('fields.startMonth')}
+                aria-invalid={invalid('date') || undefined}
+                value={dateMonth}
+                onChange={(event) => setDate(dateYear, event.target.value)}
+                className={cn(
+                  'rounded-sm h-11 min-w-0 border border-border bg-card px-2 text-xs font-semibold',
+                  invalid('date') && dateMonth === '' && 'border-danger'
+                )}
+              >
+                <option value="">{t('fields.noMonth')}</option>
+                {MONTHS.map((month) => (
+                  <option key={month} value={month}>
+                    {format.dateTime(new Date(2000, Number(month) - 1, 1), { month: 'long' })}
+                  </option>
+                ))}
+              </select>
+              <select
+                id={`cashflow-date-year-${key}`}
+                aria-label={t('fields.startYear')}
+                aria-invalid={invalid('date') || undefined}
+                value={dateYear}
+                onChange={(event) => setDate(event.target.value, dateMonth)}
+                className={cn(
+                  'rounded-sm h-11 min-w-0 border border-border bg-card px-2 text-xs font-semibold tabular-nums',
+                  invalid('date') && dateYear === '' && 'border-danger'
+                )}
+              >
+                <option value="">{t('fields.noYear')}</option>
+                {years.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span
+              id={`cashflow-date-${key}-hint`}
+              className="mt-1 text-xs font-medium text-muted-foreground"
             >
-              {t('fields.startDate')}
-            </Label>
-            <Input
-              id={`cashflow-date-${id ?? 'new'}`}
-              type="month"
-              value={state.startDate}
-              onChange={(event) => {
-                const value = event.target.value
-                // The age follows the year immediately, so the two fields never
-                // disagree while the form is open.
-                const year = Number(value.slice(0, 4))
-                const derived =
-                  Number.isFinite(year) && value.length >= 4
-                    ? String(Math.min(endAge, Math.max(currentAge, currentAge + year - baseYear)))
-                    : state.startAge
-                setState({ ...state, startDate: value, startAge: derived })
-              }}
-              className="rounded-sm h-11 border-2 border-border px-3 text-xs font-semibold"
-            />
-            <span className="mt-1 text-xs font-medium text-muted-foreground">
               {t('fields.startDateHint')}
             </span>
-          </div>
+            {errorText('date')}
+          </fieldset>
         )}
 
         {state.frequency !== 'once' && (
@@ -644,13 +777,13 @@ export function CashFlowList({
               value={state.endAge}
               placeholder={String(endAge)}
               onChange={(event) => setState({ ...state, endAge: event.target.value })}
-              className="rounded-sm h-11 border-2 border-border px-3 text-xs font-semibold"
+              className="rounded-sm h-11 border border-border px-3 text-xs font-semibold"
             />
           </div>
         )}
       </div>
 
-      <div className="rounded-sm space-y-3 border-2 border-dashed border-ink/40 px-3 py-3">
+      <div className="rounded-sm space-y-3 border border-dashed border-ink/40 px-3 py-3">
         <button
           type="button"
           onClick={() => setAdvancedOpen((open) => !open)}
@@ -666,7 +799,7 @@ export function CashFlowList({
                 type="checkbox"
                 checked={state.inflationLinked}
                 onChange={(event) => setState({ ...state, inflationLinked: event.target.checked })}
-                className="rounded-sm mt-0.5 h-4 w-4 border-2 border-border accent-accent"
+                className="rounded-sm mt-0.5 h-4 w-4 border border-border accent-accent"
               />
               <span>
                 {t('fields.inflationLinked')}
@@ -694,7 +827,7 @@ export function CashFlowList({
                 value={state.growthRate}
                 placeholder="0"
                 onChange={(event) => setState({ ...state, growthRate: event.target.value })}
-                className="rounded-sm h-10 border-2 border-border px-3 text-xs font-semibold"
+                className="rounded-sm h-10 border border-border px-3 text-xs font-semibold"
               />
               <span className="mt-1 text-xs font-medium text-muted-foreground">
                 {t('fields.growthRateHint')}
@@ -716,7 +849,7 @@ export function CashFlowList({
                 >
                   <SelectTrigger
                     id={`cashflow-pension-tax-${id ?? 'new'}`}
-                    className="rounded-sm h-11 border-2 border-border text-xs "
+                    className="rounded-sm h-11 border border-border text-xs "
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -755,7 +888,7 @@ export function CashFlowList({
                 >
                   <SelectTrigger
                     id={`cashflow-tax-${id ?? 'new'}`}
-                    className="rounded-sm h-11 border-2 border-border text-xs "
+                    className="rounded-sm h-11 border border-border text-xs "
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -786,7 +919,7 @@ export function CashFlowList({
                 value={state.note}
                 placeholder={t('fields.notePlaceholder')}
                 onChange={(event) => setState({ ...state, note: event.target.value })}
-                className="rounded-sm h-10 border-2 border-border px-3 text-xs font-medium normal-case "
+                className="rounded-sm h-10 border border-border px-3 text-xs font-medium normal-case "
               />
             </div>
             {state.kind === 'pension' && state.pensionTaxMode === 'share' && (
@@ -807,7 +940,7 @@ export function CashFlowList({
                   value={state.taxablePortion}
                   placeholder={String(Math.round((tax.pensionTaxablePortion ?? 0) * 100))}
                   onChange={(event) => setState({ ...state, taxablePortion: event.target.value })}
-                  className="rounded-sm h-10 border-2 border-border px-3 text-xs font-semibold"
+                  className="rounded-sm h-10 border border-border px-3 text-xs font-semibold"
                 />
                 <span className="mt-1 text-xs font-medium text-muted-foreground">
                   {t('fields.taxablePortionHint', {
@@ -839,7 +972,12 @@ export function CashFlowList({
             variant="outline"
             size="sm"
             className="h-11"
-            onClick={() => setEditingId(null)}
+            onClick={() => {
+              clearIssue(key, 'name')
+              clearIssue(key, 'amount')
+              clearIssue(key, 'date')
+              setEditingId(null)
+            }}
           >
             {t('actions.cancel')}
           </Button>
@@ -900,7 +1038,7 @@ export function CashFlowList({
                     >
                       {displayName(flow)}
                     </span>
-                    <span className="rounded-sm relative h-3 border-2 border-ink/20 bg-muted/40">
+                    <span className="rounded-sm relative h-3 border border-ink/20 bg-muted/40">
                       {/* Switched off: the same window, hatched grey — still
                           planned, not counted. */}
                       <span
@@ -1183,7 +1321,7 @@ export function CashFlowList({
                 key={template.key}
                 type="button"
                 onClick={() => handleAddTemplate(template)}
-                className="rounded-sm border-2 border-dashed border-border bg-card/50 px-3 py-2 text-left text-xs font-semibold   text-ink transition-colors hover:-translate-x-[1px] hover:-translate-y-[1px] hover:bg-amber/15 hover:shadow-sm"
+                className="rounded-sm border border-dashed border-border bg-card/50 px-3 py-2 text-left text-xs font-semibold   text-ink transition-colors hover:-translate-x-[1px] hover:-translate-y-[1px] hover:bg-amber/15 hover:shadow-sm"
               >
                 <span className="flex items-center gap-1.5">
                   {template.kind === 'pension' ? (

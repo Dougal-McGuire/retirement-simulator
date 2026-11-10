@@ -1,6 +1,16 @@
 import { runMonteCarloSimulation } from '@/lib/simulation/engine'
 import { DEFAULT_PARAMS, type SimulationParams } from '@/types'
 
+
+/**
+ * The withdrawal rate the master was frozen at. The shipped default moved from
+ * 5% to 4% on 2026-11-10 — a change of one default, not of the engine — and
+ * the master keeps the rate its arrays (and the history of exceptions above)
+ * were produced with, so that every frozen number here still documents an
+ * engine change and nothing else.
+ */
+const MASTER_WITHDRAWAL_RATE = 0.05
+
 /**
  * Golden master for the simulation engine.
  *
@@ -10,7 +20,7 @@ import { DEFAULT_PARAMS, type SimulationParams } from '@/types'
  * schedule construction, switching to per-age distribution tables and extracting
  * the `MarketSampler` seam all left every digit untouched.
  *
- * Two deliberate exceptions are on the record.
+ * Four deliberate exceptions are on the record.
  *
  * 1. Replacing the pairwise expense inflation (`expense *= factor` each year)
  *    with an explicit `inflationIndex` accumulator re-associated a
@@ -26,62 +36,114 @@ import { DEFAULT_PARAMS, type SimulationParams } from '@/types'
  *    pension is worth ~15% less after income tax than the old model assumed
  *    and the allowance only claws a little of that back.
  *
- *    The old master is NOT gone — it lives on below as `NEUTRAL_TAX_*`, and the
- *    neutrality suite at the bottom proves the new engine reproduces it
- *    *bit-for-bit* when the three new shelters are set to zero. That is the
- *    invariant that matters: the new maths is a strict superset of the old, and
- *    only the defaults moved.
+ *    The old master lives on below as `NEUTRAL_TAX_*`: with the three shelters
+ *    set to zero the engine lands on the same arrays as the untaxed model.
+ *
+ * 3. **Withdrawal rules and non-portfolio income (2026-11-09) regenerated both
+ *    masters** — see docs/specs/2026-11-09-withdrawal-rules-with-income.md.
+ *    The shipped default is `vanguardDynamic` with a €5,000 pension from 67.
+ *    The rule used to aim the *whole* budget at 5% of the portfolio and bank
+ *    whatever the pension paid beyond that; it now treats pension + 5% of the
+ *    portfolio as affordable. Which fix moved what, and in which direction:
+ *
+ *    - Rule sees the pension (1a). Ages 55–66 have no pension, so the first
+ *      twelve asset values are the old ones to the bit. From 67 the household
+ *      spends more (median 6,150 → 6,538 €/month at 67, 9,785 → 10,428 at 90)
+ *      and the portfolio stops piling up (median at 90: 1.99M → 0.75M nominal).
+ *      The headline success rate falls from 95.2% to 82.0%: the 95% was the
+ *      rule under-spending the pension, not the plan being safe.
+ *    - Spending is what was paid (1b). The median at 66 dips by a euro
+ *      (6,131.34 → 6,130.01): a few paths are out of money before the pension
+ *      starts and now count with what they could pay, not with the budget.
+ *    - Success is "every year funded" (1d). No path of this plan changes side:
+ *      a depleted path here always has a real gap.
+ *
+ *    `NEUTRAL_TAX_*` moved for the same reason (98.4% → 82.4%). The two old
+ *    properties of that suite still hold and are still asserted: zeroing the
+ *    shelters changes nothing before retirement, and the taxed default is
+ *    worse off than the untaxed one. What replaces "bit-for-bit the previous
+ *    master" as the proof that nothing else changed is
+ *    `engine-incomeRules.test.ts`: every rule without non-portfolio income,
+ *    and `fixedReal` with a pension, still reproduce arrays captured before
+ *    this change, to the bit.
+ *
+ * 4. **Units and defaults (2026-11-09), two separate moves on top of 3.** The
+ *    numbers quoted in 3 are the state after 3 alone; these came after:
+ *
+ *    - Real series deflated at the closing price level. Only the two `*_REAL`
+ *      arrays moved, every value down by its path's inflation of that year
+ *      (first value 716,768 → 699,468 = ÷ 1.0247; last 312,686 → 301,457).
+ *      The nominal arrays and the success rate did not change by a bit: an
+ *      asset value is an end-of-year balance and used to be divided by the
+ *      price level the year *started* with.
+ *    - Shipped defaults: Abgeltungsteuer 26.25 → 26.375 (25% × 1.055) and
+ *      Besteuerungsanteil 0.83 → 0.90 (the default plan's own 2038 cohort).
+ *      Both cost the plan a little, as they must: the first sale at 60 leaves
+ *      1,137,679 → 1,137,661; the net pension is 4,253 → 4,190 nominal, so
+ *      median spending at 67 is 6,538 → 6,535 and the median at 90 is
+ *      749,893 → 728,558. Success 82.0% → 81.0%. `NEUTRAL_TAX_*` zeroes the
+ *      pension tax, so it only feels the tax rate (696,554 → 692,854 at 90,
+ *      success unchanged at 82.4%).
  *
  * Anything larger than IEEE noise on the arrays below means the model changed,
  * not the code shape.
  */
-const GOLDEN_SUCCESS_RATE = 95.19999999999999
+const GOLDEN_SUCCESS_RATE = 81
 
-/** Plain survival — identical to the headline while no bequest goal is set. */
-const GOLDEN_DEPLETION_SUCCESS_RATE = 95.19999999999999
+/** The success rate before exception 3, kept to pin the direction of the move. */
+const PRE_INCOME_RULES_SUCCESS_RATE = 95.19999999999999
+
+/** After exception 3 and before exception 4, for the same purpose. */
+const PRE_DEFAULTS_SUCCESS_RATE = 82
+const PRE_CLOSING_LEVEL_FIRST_REAL_ASSET = 716768.0824648819
+
+/** Every year funded — identical to the headline while no bequest goal is set. */
+const GOLDEN_DEPLETION_SUCCESS_RATE = 81
 
 const GOLDEN_ASSET_P50 = [
   716768.0824648819, 818737.6930871948, 920072.2086195959, 1028865.8117413269, 1135993.9795322642,
-  1137678.9656626824, 1143543.3440610718, 1116886.8435436154, 1092872.120073712, 1092489.3910282506,
-  1083354.3684869208, 1095960.198653765, 1107468.2722729961, 1154976.0942231254, 1211423.7793128018,
-  1231832.4435736684, 1267729.3450453938, 1328115.9062277158, 1361583.9317446477, 1389556.024890189,
-  1458187.3305580444, 1484278.0187074933, 1457799.9169038082, 1490253.4800004796,
-  1568398.8513580859, 1600410.1800498762, 1642446.511231116, 1690581.6288668425, 1768391.9275086888,
-  1769255.612920539, 1845861.5483840602, 1836800.576934477, 1896287.6952252216, 1936757.3894884577,
-  1971528.202716438, 1989643.8032696173,
+  1137661.4051795956, 1143504.2940429081, 1116831.5875930954, 1092806.9643631503, 1092357.817524585,
+  1083159.7834740872, 1095750.7402813798, 1100245.8769108248, 1132012.2074179521,
+  1167912.1351498612, 1165048.471162288, 1163432.2216331516, 1184010.2525935941, 1166456.626391402,
+  1157569.5009488296, 1142299.299738308, 1130844.3460824348, 1077497.0543941727, 1080592.5626686844,
+  1074179.4675180216, 1067815.0723548713, 1025696.7113860286, 1019541.7150046134, 982412.772636744,
+  936460.6931403556, 929281.7801376183, 853034.9955264605, 855686.801863848, 781552.7954705227,
+  745239.1276905681, 728558.4967093476,
 ]
 
 const GOLDEN_SPENDING_P50 = [
-  0, 0, 0, 0, 0, 5936.6132317049, 5982.785466675953, 6020.463142205898, 6039.048235648967,
-  6061.1261598838955, 6085.857957469536, 6131.341925183422, 6150.457231040132, 6200.496731823969,
-  6253.426416261831, 6288.517724133613, 6368.124015121256, 6476.788613167288, 6560.028834469563,
-  6606.741962349988, 6729.0073042762815, 6791.64694887296, 6960.587941947974, 7144.914941382835,
-  7216.027360158354, 7442.865602984046, 7577.6488449447825, 7833.758737976996, 7973.8261273671615,
-  8406.226548424675, 8695.128790506089, 8854.348360747976, 8972.782173200038, 9116.08912574683,
-  9418.8010262657, 9785.331079236243,
+  0, 0, 0, 0, 0, 5936.6132317049, 5982.785466675953, 6020.463142205898, 6038.876349551629,
+  6061.063021416857, 6085.857957469536, 6130.013495157862, 6534.851768298283, 7013.650288552903,
+  7519.878273612318, 8030.516567328519, 8478.51442793745, 8899.224615750418, 9302.738635826681,
+  9524.502163090108, 9607.003289576243, 9787.86906494097, 9865.06201270386, 9897.630730506862,
+  9998.242744763722, 10014.903390348823, 10115.339074330932, 10289.797302732804, 10369.595287233124,
+  10370.954019638479, 10447.213650248195, 10475.925399871976, 10401.374893091352,
+  10437.169778458752, 10378.827426022279, 10361.510075983657,
 ]
 
 const GOLDEN_ASSET_P50_REAL = [
-  716768.0824648819, 799377.0553905154, 877025.7868880231, 952308.4307907815, 1025276.6720397244,
-  1006602.342264011, 983494.2387517195, 936879.2110007589, 903127.6084099528, 865902.2059298146,
-  844635.8818542839, 835652.655562782, 809870.995305126, 827665.6936219339, 855141.399744655,
-  856649.419548142, 842157.9777352369, 858396.3613900885, 881991.3559451613, 883584.6450643805,
-  907254.5210966861, 871883.075646811, 842018.0501017163, 835692.7467572463, 880483.7100754424,
-  892333.4838259197, 867922.5839777094, 875148.0717186423, 884815.8563182948, 889420.6515419288,
-  893270.5909289559, 859753.1611422411, 855547.7505013046, 859438.7769416547, 860685.2501599399,
-  856841.2728152322,
+  699468.3919606075, 780917.596544655, 854412.5108916954, 928561.9666068478, 1003832.2497581345,
+  980751.1468310445, 957167.7786379954, 908737.3962512249, 877590.7672093344, 845332.3855890131,
+  823425.346134747, 817169.836156819, 781130.3173967169, 796507.1094599576, 805929.2359123789,
+  784549.0690898366, 752521.9246648725, 741131.6725185234, 730921.7521987872, 708017.9630700655,
+  689378.7223450834, 655035.5388029821, 604860.298358513, 581136.5051818439, 571358.5155475105,
+  559535.3925434481, 530704.7320462877, 514157.2447641416, 489450.8301008957, 451575.65351431794,
+  434499.11055335304, 388482.1883128998, 375658.22897487425, 337864.47374968446, 320590.94352585124,
+  297413.8564251394,
 ]
 
 /**
- * The pre-tax-realism master (round 3, waves 1–2): every gain taxable, no
- * allowance, pension untaxed. Retained so the switch to German tax rules can be
- * shown to be additive rather than a rewrite.
+ * The untaxed model (round 3, waves 1–2): every gain taxable, no allowance,
+ * pension untaxed. Retained so the German tax rules can be shown to be
+ * additive rather than a rewrite. Regenerated with exception 3 above (was
+ * 98.4%): an untaxed pension is still a pension the rule now spends.
  */
-const NEUTRAL_TAX_SUCCESS_RATE = 98.4
+const NEUTRAL_TAX_SUCCESS_RATE = 82.39999999999999
 
 /** The parameter overrides that turn all three new shelters off. */
 const NEUTRAL_TAX_PARAMS: SimulationParams = {
   ...DEFAULT_PARAMS,
+  dsWithdrawalRate: MASTER_WITHDRAWAL_RATE,
   taxAllowanceAnnual: 0,
   equityFundExemption: 0,
   pensionTaxablePortion: 0,
@@ -90,34 +152,34 @@ const NEUTRAL_TAX_PARAMS: SimulationParams = {
 
 const NEUTRAL_TAX_ASSET_P50 = [
   716768.0824648819, 818737.6930871948, 920072.2086195959, 1028865.8117413269, 1135993.9795322642,
-  1135658.044401965, 1139092.7274209508, 1110405.4007620523, 1084553.573352633, 1077991.5500493266,
-  1062876.9515199568, 1073095.0801767842, 1092922.4567722324, 1152618.4145005308,
-  1211007.4885365926, 1236222.3977184263, 1292189.762808388, 1358329.5114643327, 1398742.4414391727,
-  1445954.4187410423, 1511599.4966939506, 1547762.1736060516, 1538097.8443663428,
-  1593088.0914316515, 1693574.6100072279, 1699369.743672867, 1783290.9368618955, 1843060.0049768696,
-  1933593.6085277977, 1963938.855340557, 2016473.6036516882, 2019214.025774107, 2097100.765872324,
-  2164125.6111311708, 2169097.6168036, 2289204.4390095957,
+  1135629.6990646168, 1139023.6811633282, 1110315.1029980679, 1084454.8076362372,
+  1077779.3181055575, 1062563.427650597, 1072751.3749246867, 1085953.402467071, 1130411.8427868106,
+  1167805.0899162996, 1173854.499791574, 1178314.2234488518, 1206267.2987728748, 1182431.5913651022,
+  1179667.1859902893, 1156477.024351562, 1123993.6080493291, 1075591.3755405983, 1071796.0314562942,
+  1069895.9292193064, 1055788.2384585824, 1012072.2456007428, 985562.7108473, 945780.6624947003,
+  906518.9490369083, 899581.4619155796, 799715.9443280376, 769513.563771006, 721485.3559016865,
+  694699.8155255918, 692854.4924559023,
 ]
 
 const NEUTRAL_TAX_SPENDING_P50 = [
   0, 0, 0, 0, 0, 5936.6132317049, 5982.785466675953, 6020.463142205898, 6035.541625796759,
-  6060.474337773732, 6080.258688546337, 6119.025454800576, 6135.550918755403, 6187.17163113853,
-  6237.03483976073, 6286.332576651171, 6351.749975648486, 6502.017835093635, 6569.109580707434,
-  6614.97823822184, 6772.728577511777, 6953.439158001334, 7139.643006953865, 7296.7156948641805,
-  7411.182587866855, 7657.377554215278, 7802.698945015869, 8071.921625653749, 8322.261805630547,
-  8702.7629959406, 9073.484455841215, 9214.03355968045, 9363.423784462782, 9753.670166861777,
-  9988.524468569878, 10358.452262732317,
+  6060.474337773732, 6080.258688546337, 6116.687907717935, 6571.8370070767705, 7039.488114687655,
+  7554.324140196208, 8086.525849163456, 8674.314293386404, 9178.646887653973, 9666.870499891946,
+  10034.613264730815, 10327.676623462183, 10435.56932879541, 10598.719150559054, 10619.256208266179,
+  10689.476395615144, 10742.479477686778, 10797.78175094556, 11034.037137437823, 11080.55615531639,
+  11090.26821284332, 11128.46254360815, 11127.881544077318, 11138.449415514542, 11110.916105452705,
+  11020.66623097103, 11060.588781605613,
 ]
 
 const NEUTRAL_TAX_ASSET_P50_REAL = [
-  716768.0824648819, 799377.0553905154, 877025.7868880231, 952308.4307907815, 1025276.6720397244,
-  1004908.5613481908, 979676.3305175486, 930214.375949379, 894126.0178031197, 854721.8306849324,
-  829327.9316953707, 818878.4552405439, 799978.5490612274, 823713.8336748119, 856916.8138211846,
-  868241.5249008476, 859764.6676493324, 887845.6618336554, 903632.0027524617, 911350.023950768,
-  938525.0602845865, 912405.9149504007, 887015.3261179831, 873613.236978079, 939863.4854425879,
-  948701.92019007, 930122.8407997328, 940231.9781684269, 983606.3964632398, 967657.6858739151,
-  971975.8166187797, 954056.3838781384, 957314.6493805537, 961203.7741468524, 954275.9958661976,
-  976367.3793028386,
+  699468.3919606075, 780917.596544655, 854412.5108916954, 928561.9666068478, 1003832.2497581345,
+  979025.3445600589, 953360.6722151295, 902419.8760218674, 870076.3801508732, 833368.7052337532,
+  810532.4793843935, 798545.3436864179, 770121.6461855362, 794353.9820630006, 804585.2545030371,
+  795621.6712899392, 765604.306432205, 750245.6602197267, 740525.2668910697, 714981.9457769457,
+  692276.3383822828, 642818.6035881287, 607663.057934525, 576791.490167659, 572251.1317462889,
+  546919.7460073234, 527224.2256038523, 496087.02920863096, 473378.9590341552, 440289.82248432015,
+  416802.2563811288, 370768.28809694794, 342277.57130979636, 311656.6201067419, 296435.39565916196,
+  280413.9295216913,
 ]
 
 /**
@@ -140,11 +202,11 @@ const GOLDEN_PARAMS: SimulationParams = {
   roiVolatility: 0.15,
   averageInflation: 0.025,
   inflationVolatility: 0.01,
-  capitalGainsTax: 26.25,
+  capitalGainsTax: 26.375,
   taxAllowanceAnnual: 1000,
   householdType: 'single',
   equityFundExemption: 0.3,
-  pensionTaxablePortion: 0.83,
+  pensionTaxablePortion: 0.9,
   pensionTaxRate: 0.18,
   legacyTargetReal: 0,
   marketModel: 'monteCarlo',
@@ -274,11 +336,39 @@ describe('engine golden master (DEFAULT_PARAMS)', () => {
     // If this is the only failure in the file, DEFAULT_PARAMS changed on
     // purpose: copy the new defaults into GOLDEN_PARAMS and regenerate the
     // arrays above from `runMonteCarloSimulation(DEFAULT_PARAMS)`.
-    expect(DEFAULT_PARAMS).toEqual(GOLDEN_PARAMS)
+    //
+    // One field is exempt, see MASTER_WITHDRAWAL_RATE.
+    expect({ ...DEFAULT_PARAMS, dsWithdrawalRate: MASTER_WITHDRAWAL_RATE }).toEqual(GOLDEN_PARAMS)
+    expect(DEFAULT_PARAMS.dsWithdrawalRate).toBe(0.04)
   })
 
   it('freezes the headline success rate', () => {
     expect(results.successRate).toBe(GOLDEN_SUCCESS_RATE)
+  })
+
+  it('moved the way exception 3 says it did', () => {
+    // The pension is spent instead of banked: fewer paths survive, the median
+    // household spends more from the pension age on and leaves less behind.
+    expect(GOLDEN_SUCCESS_RATE).toBeLessThan(PRE_INCOME_RULES_SUCCESS_RATE)
+    const pensionIndex = GOLDEN_PARAMS.legalRetirementAge - GOLDEN_PARAMS.currentAge
+    // Median spending at 67 and median assets at 90 before the change.
+    expect(GOLDEN_SPENDING_P50[pensionIndex]).toBeGreaterThan(6150.457231040132)
+    expect(GOLDEN_ASSET_P50[GOLDEN_ASSET_P50.length - 1]).toBeLessThan(1989643.8032696173)
+  })
+
+  it('moved the way exception 4 says it did', () => {
+    // More tax on sales and on the pension: a little worse, never better.
+    expect(GOLDEN_SUCCESS_RATE).toBeLessThan(PRE_DEFAULTS_SUCCESS_RATE)
+    expect(PRE_DEFAULTS_SUCCESS_RATE - GOLDEN_SUCCESS_RATE).toBeLessThan(2)
+    // The first real value is the first year's closing balance, worth one
+    // year's inflation less than the nominal figure it used to equal.
+    expect(GOLDEN_ASSET_P50[0]).toBe(PRE_CLOSING_LEVEL_FIRST_REAL_ASSET)
+    expect(GOLDEN_ASSET_P50_REAL[0]).toBeLessThan(GOLDEN_ASSET_P50[0])
+    expect(GOLDEN_ASSET_P50[0] / GOLDEN_ASSET_P50_REAL[0]).toBeCloseTo(1.025, 2)
+    // Every real value is an end-of-year balance in end-of-year money.
+    GOLDEN_ASSET_P50_REAL.forEach((value, index) => {
+      expect(value).toBeLessThan(GOLDEN_ASSET_P50[index])
+    })
   })
 
   it('freezes the depletion-only success rate', () => {
@@ -307,27 +397,35 @@ describe('engine golden master (DEFAULT_PARAMS)', () => {
 })
 
 /**
- * The regeneration receipt: with every German shelter zeroed, the engine has to
- * land on the *previous* golden master to the last bit. If this suite fails, the
- * tax work changed the untaxed model too — which was never the intent.
+ * The untaxed model, frozen: with every German shelter zeroed the engine has to
+ * land on these arrays to the last bit. If this suite fails and the one above
+ * does not, tax code changed the untaxed model too — which is never the intent.
  */
-describe('tax neutrality against the pre-tax-realism master', () => {
+describe('tax neutrality: the untaxed master', () => {
   const results = runMonteCarloSimulation(NEUTRAL_TAX_PARAMS)
 
-  it('reproduces the old headline success rate', () => {
+  it('freezes the untaxed headline success rate', () => {
     expect(results.successRate).toBe(NEUTRAL_TAX_SUCCESS_RATE)
   })
 
-  it('reproduces the old median asset series bit-for-bit', () => {
+  it('freezes the untaxed median asset series bit-for-bit', () => {
     expect(results.assetPercentiles.p50).toEqual(NEUTRAL_TAX_ASSET_P50)
   })
 
-  it('reproduces the old median spending series bit-for-bit', () => {
+  it('freezes the untaxed median spending series bit-for-bit', () => {
     expect(results.spendingPercentiles.p50).toEqual(NEUTRAL_TAX_SPENDING_P50)
   })
 
-  it("reproduces the old real (today's euros) median asset series bit-for-bit", () => {
+  it("freezes the untaxed real (today's euros) median asset series bit-for-bit", () => {
     expect(results.assetPercentilesReal?.p50).toEqual(NEUTRAL_TAX_ASSET_P50_REAL)
+  })
+
+  it('differs from the taxed default only once money is taken out', () => {
+    // Nothing is sold and no pension is paid while the plan is still saving,
+    // so the shelters cannot matter there.
+    const working = GOLDEN_PARAMS.retirementAge - GOLDEN_PARAMS.currentAge
+    expect(NEUTRAL_TAX_ASSET_P50.slice(0, working)).toEqual(GOLDEN_ASSET_P50.slice(0, working))
+    expect(NEUTRAL_TAX_ASSET_P50[working]).not.toBe(GOLDEN_ASSET_P50[working])
   })
 
   it('is strictly worse off once the shelters are switched on', () => {

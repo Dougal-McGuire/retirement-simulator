@@ -3,9 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { HelpCircle, AlertTriangle, AlertCircle } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { InfoTip } from '@/components/ui/info-tip'
+import { AlertTriangle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { evaluateNumericDraft, type RangeIssue } from '@/lib/validation/fieldValidation'
 import { useGroupedNumber } from './useGroupedNumber'
@@ -140,8 +139,12 @@ export function LabeledNumberInput({
   const restValue = groupThousands ? grouped.format(value) : String(value)
   const displayValue = isEditing || rangeIssue !== null ? draftValue : restValue
 
+  // The latest callback, for handlers and the unmount cleanup; updated after
+  // commit rather than during render.
   const notifyInvalid = useRef(onInvalidChange)
-  notifyInvalid.current = onInvalidChange
+  useEffect(() => {
+    notifyInvalid.current = onInvalidChange
+  }, [onInvalidChange])
 
   // Mirrored in a ref so the parent notification happens in the event handler
   // rather than inside a state updater, which React may replay during render.
@@ -244,7 +247,6 @@ export function LabeledNumberInput({
   }
   const describedBy = descriptionIds.length > 0 ? descriptionIds.join(' ') : undefined
   const foldedHelp = Boolean(helpText) && helpPlacement === 'tooltip'
-  const tUi = useTranslations('ui')
 
   return (
     <div
@@ -256,37 +258,19 @@ export function LabeledNumberInput({
           {label}
         </Label>
         {(tooltip || foldedHelp) && (
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="cursor-help rounded-full focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
-                  aria-label={tooltipAriaLabel ?? tUi('fieldHelp', { label })}
-                >
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/70 transition-colors hover:text-ink" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="top"
-                className="rounded-sm max-w-xs border-2 border-border bg-card px-3 py-2 text-ink shadow-sm"
-              >
-                {tooltip && (
-                  <p className="text-xs font-medium normal-case leading-relaxed">{tooltip}</p>
-                )}
+          <InfoTip
+            label={label}
+            ariaLabel={tooltipAriaLabel}
+            iconClassName="text-muted-foreground/70"
+            content={
+              <>
+                {tooltip && <p>{tooltip}</p>}
                 {foldedHelp && (
-                  <p
-                    className={cn(
-                      'text-xs font-medium normal-case leading-relaxed',
-                      tooltip && 'mt-1.5 text-muted-foreground'
-                    )}
-                  >
-                    {helpText}
-                  </p>
+                  <p className={cn(tooltip && 'mt-1.5 text-muted-foreground')}>{helpText}</p>
                 )}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+              </>
+            }
+          />
         )}
       </div>
       <div className="relative">
@@ -347,7 +331,7 @@ export function LabeledNumberInput({
           data-testid={`${id}-validation-message`}
           role={validationState === 'error' ? 'alert' : 'status'}
           className={cn(
-            'rounded-sm flex items-start gap-2 border-2 px-3 py-2 text-xs font-medium leading-relaxed',
+            'rounded-sm flex items-start gap-2 border px-3 py-2 text-xs font-medium leading-relaxed',
             validationState === 'error' && 'border-danger/60 bg-danger/10 text-danger',
             validationState === 'warning' && 'border-viz-orange/60 bg-viz-orange/10 text-ink'
           )}

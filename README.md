@@ -1,32 +1,58 @@
+# Retirement Simulator
+
+A retirement planner for German households (UI in German and English). It runs a
+Monte Carlo simulation (500 runs by default, lognormal market returns) from today
+through retirement and shows how likely the money lasts, what the spending
+corridor looks like, and which levers move the result.
+
+- **One-page workspace** (`/de/simulation`): a sticky result bar with the success
+  rate over five sections — Ergebnis, Annahmen, Geldfluss, Entnahme,
+  Stellschrauben. Assumptions open in an edit panel; every edit recomputes live
+  into a working copy that you save or discard. Plan comparison is a page mode
+  (`#compare`). See `docs/specs/2026-09-28-one-page-workspace.md`.
+- **Plans**: up to 12 named plans, stored in `localStorage` (per Google account
+  when signed in).
+- **Cloud sync** (optional): with Google sign-in and an Upstash Redis store, plans
+  follow the account across devices. A schema guard (`x-plan-schema` header) stops
+  an outdated tab or server from overwriting newer plan data and asks for a reload.
+- **Flow switches**: any income, expense or pension can be switched off without
+  deleting it (`docs/specs/2026-09-28-flow-switches.md`); "Unsichere Posten"
+  measures what each uncertain item is worth.
+- **PDF report** built in the browser (React PDF in a worker); the plan is not
+  sent anywhere to make it.
+- **Build id**: `NEXT_PUBLIC_BUILD_ID` (set to the commit by the deploy workflow)
+  is sent as `x-build-id`; a tab running an older bundle offers a reload.
+
 ## Tech Stack
 
 - Node.js 24.14.0, pnpm 10, TypeScript 5
-- Next.js 16 (App Router) with Turbopack
-- Tailwind CSS 4 + shadcn/ui
-- zod
+- Next.js 16.4 (App Router) with Turbopack, React 19
+- Tailwind CSS 4 + shadcn/ui, Recharts
+- Zustand, zod, next-intl
+- Auth.js (next-auth v5) + Upstash Redis REST, both optional
 - React PDF (`@react-pdf/renderer`) for report generation
 - Jest + ts-jest for unit tests; Playwright for E2E
 
 ## Prerequisites
 
-- Node.js 24.14.0 or newer on the Node 24 line (see `package.json#engines`)
+- Node.js 24.14.0 or newer on the Node 24 line (see `package.json#engines`, `.nvmrc`)
 - pnpm >= 10 (`corepack enable` recommended)
 
 ## Development
 
 ```bash
-pnpm dev        # Start dev server (Turbopack)
-pnpm build      # Production build
-pnpm start      # Serve the production build
-pnpm test       # Run unit tests
-pnpm test:e2e   # Run Playwright E2E (auto-starts local app)
+pnpm dev             # Start dev server (Turbopack, :3000)
+pnpm build           # Production build
+pnpm start           # Serve the production build
+pnpm lint            # ESLint
+pnpm typecheck       # tsc --noEmit
+pnpm test            # Jest unit tests (pnpm test:coverage enforces coverage floors)
+pnpm test:e2e        # Playwright E2E, Chromium (starts its own dev server)
+pnpm test:e2e:webkit # Playwright E2E on iPad WebKit
 ```
 
-To free port 3000 and start dev quickly:
-
-```bash
-./dev.sh
-```
+To free port 3000 and start dev quickly: `./dev.sh`. See `CONTRIBUTING.md` for
+the E2E options and `DEPLOYMENT.md` for the CI/CD pipeline.
 
 ## Google Authentication & Account Sync
 
@@ -108,8 +134,9 @@ Stop here and redeploy if you only want per-account separation on one device.
 #### Then: redeploy
 
 The configured/unconfigured decision is resolved at build time, so
-**changing any of these variables requires a redeploy** (Deployments → ⋯ →
-Redeploy) before it takes effect.
+**changing any of these variables requires a redeploy** (re-run the deploy
+workflow, or push) before it takes effect. The production deploy fails if the
+pulled env lacks any of them (see `DEPLOYMENT.md`).
 
 Verify: sign in on device 1, create a plan, sign in with the *same* Google
 account on device 2 — the plan is there, and the account menu reads
@@ -117,22 +144,36 @@ account on device 2 — the plan is there, and the account menu reads
 
 ### How sync behaves
 
+The protocol is written down in
+[`docs/specs/2026-11-09-sync-protocol.md`](docs/specs/2026-11-09-sync-protocol.md).
+In short:
+
 - Storage is one JSON blob per account under the Redis key
-  `plans:v1:<hash-of-account-id>` — the raw account id or e-mail never becomes a
-  key. Blobs above 256 kB are rejected.
-- Reconciliation is **last write wins per plan**, keyed on the plan's
-  `updatedAt`: two devices editing *different* plans both keep their work; two
-  devices editing the *same* plan keep whichever was saved last. There is no
-  field-level merge and no conflict prompt.
+  `plans:v1:<hash-of-account-id>` (plus `…:meta` for its revision) — the raw
+  account id or e-mail never becomes a key. Blobs above 256 kB are rejected.
+  Preview and development deployments prefix the key with `VERCEL_ENV`, so they
+  never touch production data even when they share its credentials.
+- Plans are merged **per plan** against what the device last synced: a plan
+  changed on one device only wins; a plan changed on two devices is kept
+  **twice** — the account's version, and this device's as "… (copy from this
+  device)". There is no field-level merge.
+- A deleted plan stays deleted on every device (the deletion is remembered for
+  180 days); a plan that was edited elsewhere in the meantime survives.
 - First sign-in on a device with local plans and an empty account **seeds** the
   account; a fresh device with an untouched workspace **adopts** the account's
-  plans; otherwise the two sets are merged by plan id (capped at `MAX_PLANS`,
-  oldest dropped first, never the plan you are looking at).
-- Pushes are debounced ~2 s after a plan changes; pulls happen when the tab
-  regains focus. Unsaved slider edits (the working copy) stay on the device
-  until you save them into a plan.
+  plans; otherwise the two sets are merged. Nothing is dropped to honour the
+  `MAX_PLANS` limit: what does not fit stays where it is, and the account menu
+  says so.
+- Every write names the revision of the account it is based on; if another
+  device wrote in between, the write is refused and the tab merges again.
+  Nothing is pushed before a pull has succeeded.
+- Pushes are debounced ~2 s after a plan changes (and flushed when the tab is
+  hidden or closed, and before sign-out); pulls happen when the tab regains
+  focus. Unsaved slider edits (the working copy) stay on the device until you
+  save them into a plan. The selected plan is per device.
 - Every failure — offline, storage down, expired session — silently degrades to
-  device-local behaviour and retries on the next change.
+  device-local behaviour and retries on the next change or focus. A storage
+  read that fails is never mistaken for an empty account.
 
 ### Environment variables
 
@@ -203,6 +244,8 @@ lives in the browser and is not protected from anyone with access to it.
 
 ## PDF Generation
 
-The active PDF route is `/api/generate-pdf`, which validates report payloads, maps them into report content, and renders the final document with React PDF.
-
-The legacy HTML print route under `src/app/reports/[id]/print` is retained for older experiments and should not be treated as the primary PDF pipeline.
+The report is built in the browser; there is no report endpoint. "Generate
+Report" lazy-loads `src/lib/pdf-generator/client/generateReportPdf.ts`, which
+maps the plan and its results into report content and renders the document with
+React PDF in a dedicated worker. The only requests are GETs for that chunk, the
+worker bundle and the four font files, all from the app's own origin.

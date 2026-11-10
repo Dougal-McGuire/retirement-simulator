@@ -1,10 +1,10 @@
 'use client'
 
 import type { ComponentType } from 'react'
-import dynamic from 'next/dynamic'
 import type { AssumptionPanel } from '@/components/plans/planSections'
 import { PersonalGroup } from '@/components/plans/editor/PersonalGroup'
 import { SavingsGroup } from '@/components/plans/editor/SavingsGroup'
+import { lazyComponent } from '@/components/lazy/lazyComponent'
 
 const loadFlows = () =>
   import('@/components/plans/editor/FlowsGroup').then((module) => module.FlowsGroup)
@@ -23,8 +23,10 @@ function PanelSkeleton() {
   )
 }
 
-const FlowsGroup = dynamic(loadFlows, { ssr: false, loading: PanelSkeleton })
-const MarketGroup = dynamic(loadMarket, { ssr: false, loading: PanelSkeleton })
+// Client-only and retryable: a chunk that does not arrive throws to the
+// panel body's `SectionBoundary`, whose "Try again" loads it afresh.
+const FlowsGroup = lazyComponent(loadFlows, PanelSkeleton)
+const MarketGroup = lazyComponent(loadMarket, PanelSkeleton)
 
 /** Which component renders each assumption panel's body. */
 export const PANEL_CONTENT: Record<AssumptionPanel, ComponentType> = {
@@ -36,6 +38,7 @@ export const PANEL_CONTENT: Record<AssumptionPanel, ComponentType> = {
 
 /** Starts loading the code-split panel bodies (called on idle). */
 export function preloadPanelContent(): void {
-  void loadFlows()
-  void loadMarket()
+  // A failed preload is not an error yet: opening the panel retries.
+  FlowsGroup.preload().catch(() => {})
+  MarketGroup.preload().catch(() => {})
 }

@@ -14,6 +14,7 @@ import {
 } from '@/lib/stores/simulationStore'
 import { InlineSlider } from '@/components/simulation-compact/InlineSlider'
 import { useWorkspace } from '../WorkspaceProvider'
+import { useMoney } from '@/lib/hooks/useMoney'
 
 const sameExpenses = (left: CustomExpense[], right: CustomExpense[]) =>
   JSON.stringify(left) === JSON.stringify(right)
@@ -54,12 +55,6 @@ export const QuickLevers = memo(function QuickLevers({ onHoldChange }: QuickLeve
   const emittedRef = useRef<CustomExpense[] | null>(null)
 
   const expenses = params.customExpenses ?? []
-  if (
-    scaleBaseRef.current &&
-    (!emittedRef.current || !sameExpenses(emittedRef.current, expenses))
-  ) {
-    scaleBaseRef.current = null
-  }
 
   const planParams = activePlan?.params
   const planExpenses = planParams?.customExpenses ?? expenses
@@ -67,6 +62,15 @@ export const QuickLevers = memo(function QuickLevers({ onHoldChange }: QuickLeve
   const planCombined = useMemo(() => calculateCombinedExpenses(planExpenses), [planExpenses])
 
   const scaleExpenses = (targetMonthly: number) => {
+    // Expenses changed elsewhere since this drag last wrote them (an edit, a
+    // plan switch): scale from the new amounts. Checked here, in the
+    // handler, rather than by writing the ref during render.
+    if (
+      scaleBaseRef.current &&
+      (!emittedRef.current || !sameExpenses(emittedRef.current, expenses))
+    ) {
+      scaleBaseRef.current = null
+    }
     const base =
       scaleBaseRef.current ??
       (combined.combinedMonthly > 0
@@ -133,13 +137,8 @@ export const QuickLevers = memo(function QuickLevers({ onHoldChange }: QuickLeve
 
   // ---- Formatting and ranges -----------------------------------------------
 
-  const currency = (value: number) =>
-    format.number(value, {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })
+  const money = useMoney()
+  const currency = money.full
   const percent = (value: number, digits = 1) =>
     format.number(value, { style: 'percent', maximumFractionDigits: digits })
   const resetLabel = (label: string) => tl('reset', { label })

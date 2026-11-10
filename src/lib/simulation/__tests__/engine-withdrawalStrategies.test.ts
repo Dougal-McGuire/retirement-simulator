@@ -224,9 +224,10 @@ describe('the strategies in the engine', () => {
     expect(new Set(medians).size).toBe(WITHDRAWAL_STRATEGIES.length)
   })
 
-  it('never depletes under percent-of-portfolio without a floor', () => {
-    // The rule can only ever take a fraction of what is left, so the portfolio
-    // is mathematically unkillable. This is the flip side of its spending risk.
+  it('never depletes under percent-of-portfolio without a floor or scheduled expenses', () => {
+    // The rule alone can only ever take a fraction of what is left. The
+    // default plan has nothing scheduled on top of it, so here the portfolio
+    // is unkillable; `engine-incomeRules.test.ts` has the plan where it is not.
     const results = runMonteCarloSimulation(
       fastParams({ withdrawalStrategy: 'percentOfPortfolio', spendingFloorReal: 0 })
     )
@@ -241,15 +242,18 @@ describe('the strategies in the engine', () => {
     const rich = runMonteCarloSimulation(
       fastParams({ withdrawalStrategy: 'percentOfPortfolio', dsWithdrawalRate: 0.06 })
     )
+    const firstIndex = lean.ages.indexOf(DEFAULT_PARAMS.retirementAge)
     const lastIndex = lean.ages.length - 1
 
-    // Twice the rate, more spending and less left over — in every quantile.
-    expect(rich.spendingPercentiles.p50[lastIndex]).toBeGreaterThan(
-      lean.spendingPercentiles.p50[lastIndex]
+    // Twice the rate: twice the spending on day one, and less left over at the
+    // end. (Not more spending at the end: by 90 six percent of what a 6% rule
+    // has left is less than three percent of what a 3% rule has left — the
+    // pension is spent under both now, no longer reinvested to refill either.)
+    expect(rich.spendingPercentiles.p50[firstIndex]).toBeCloseTo(
+      lean.spendingPercentiles.p50[firstIndex] * 2,
+      6
     )
-    expect(rich.assetPercentiles.p50[lastIndex]).toBeLessThan(
-      lean.assetPercentiles.p50[lastIndex]
-    )
+    expect(rich.assetPercentiles.p50[lastIndex]).toBeLessThan(lean.assetPercentiles.p50[lastIndex])
   })
 
   it('lets a real floor turn percent-of-portfolio back into a plan that can fail', () => {
@@ -274,13 +278,19 @@ describe('the strategies in the engine', () => {
 
     const retirementIndex = results.ages.indexOf(params.retirementAge)
     const first = real!.p50[retirementIndex]
+    const firstNominal = results.spendingPercentiles.p50[retirementIndex]
 
-    // Each year the rule can move real spending by at most −10% / +10%, so the
-    // median path cannot escape the compounding corridor around year one.
+    // A raise is inflation plus 10%, so real spending climbs by at most 10% a
+    // year. A cut skips the inflation raise *and* takes 10% off, so it is the
+    // nominal amount that falls by at most 10% a year (in real terms a cut
+    // year loses the year's inflation on top). The median path cannot escape
+    // either side of that compounding corridor around year one.
     real!.p50.slice(retirementIndex).forEach((value, offset) => {
       expect(value).toBeLessThanOrEqual(first * Math.pow(1 + GK_PROSPERITY_RAISE, offset) * 1.001)
+    })
+    results.spendingPercentiles.p50.slice(retirementIndex).forEach((value, offset) => {
       expect(value).toBeGreaterThanOrEqual(
-        first * Math.pow(1 - GK_CAPITAL_PRESERVATION_CUT, offset) * 0.999
+        firstNominal * Math.pow(1 - GK_CAPITAL_PRESERVATION_CUT, offset) * 0.999
       )
     })
   })

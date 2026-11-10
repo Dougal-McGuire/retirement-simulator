@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { SegmentedRadio } from '@/components/ui/segmented-radio'
 import { useDisplayReal, useSetDisplayReal } from '@/lib/stores/displayStore'
 
 /**
@@ -14,17 +15,16 @@ export function EuroDisplay({ testId = 'display-toggle' }: { testId?: string }) 
   const real = useDisplayReal()
   const setReal = useSetDisplayReal()
   return (
-    <div className="workspace-euro" role="radiogroup" aria-label={t('label')} data-testid={testId}>
-      {[false, true].map((value) => (
-        <button
-          key={String(value)}
-          role="radio"
-          aria-checked={real === value}
-          onClick={() => setReal(value)}
-        >
-          {t(value ? 'real' : 'nominal')}
-        </button>
-      ))}
-    </div>
+    <SegmentedRadio
+      className="workspace-euro"
+      ariaLabel={t('label')}
+      testId={testId}
+      value={real}
+      onChange={setReal}
+      options={[
+        { value: false, label: t('nominal') },
+        { value: true, label: t('real') },
+      ]}
+    />
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
 import { useRunStatus } from './useRunStatus'
@@ -37,13 +37,14 @@ export function useSavedSuccessDelta(): SavedSuccessDelta {
   const running = status === 'running'
 
   const raw = savedSuccessDelta({ isDirty, savedRate, rate })
-  const settled = useRef<number | null>(null)
-  useEffect(() => {
-    if (!running) settled.current = raw
-  }, [raw, running])
+  // The last value seen while no run was in flight. Derived state updated
+  // during render (React's "storing information from previous renders"
+  // pattern) instead of a ref read during render.
+  const [settled, setSettled] = useState<number | null>(null)
+  if (!running && settled !== raw) setSettled(raw)
 
   // Clean again (saved or discarded): nothing to compare, even mid-run.
-  const shown = !isDirty ? null : running ? (settled.current ?? null) : raw
+  const shown = !isDirty ? null : running ? settled : raw
   if (shown === null) {
     return { delta: null, tone: 'neutral', text: null, short: null, pending: running }
   }

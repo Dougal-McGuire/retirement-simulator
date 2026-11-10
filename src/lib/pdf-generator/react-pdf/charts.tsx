@@ -62,7 +62,8 @@ function svgCurrency(value: number, intlLocale: string): string {
 /**
  * One palette for every figure in the report: the app's blue carries the data,
  * the percentile bounds are neutral dashed ink, and red is reserved for the
- * single semantic it has throughout the document — capital depletion.
+ * single semantic it has throughout the document — the stress case can no
+ * longer pay for the plan's spending.
  */
 const CHART_COLORS = {
   band: tokens.colors.accent[100],
@@ -85,7 +86,11 @@ interface ProjectionChartProps {
   locale?: string
   retireAge?: number
   pensionAge?: number
-  /** Age at which the P10 path first hits zero, marked in red when present. */
+  /**
+   * Age by which a tenth of the runs can no longer pay for a year's spending
+   * (`projections.exhaustionAge`), marked in red when present. Not the age the
+   * P10 balance reaches zero — that is visible in the band itself.
+   */
   depletionAge?: number
   /** Which euro the values are in, e.g. "€ · nominal"; printed right of the legend. */
   unitLabel?: string
@@ -247,7 +252,7 @@ export function ProjectionChart({
           />
           <Path d={p50Path} stroke={CHART_COLORS.median} strokeWidth={2} fill="none" />
 
-          {/* Depletion point — the only place red appears in a figure. */}
+          {/* Where the stress case goes short — the only place red appears in a figure. */}
           {depletionAge !== undefined && depletionAge >= minAge && depletionAge <= maxAge && (
             <G>
               <Line
@@ -263,7 +268,9 @@ export function ProjectionChart({
                 y={y(0) + 17}
                 style={{ fontSize: 6, fill: CHART_COLORS.risk, textAnchor: 'end' }}
               >
-                {isGerman ? `P10 erschöpft ${depletionAge}` : `P10 depleted ${depletionAge}`}
+                {isGerman
+                  ? `Stressfall: Lücke ab ${depletionAge}`
+                  : `Stress case: shortfall from ${depletionAge}`}
               </SvgText>
             </G>
           )}
@@ -487,9 +494,11 @@ export function CoverSparkline({
             {svgCurrency(last.p50, intlLocale)}
           </SvgText>
 
-          {/* Age + value context at both ends */}
+          {/* Age + value context at both ends. The first point is the median at
+              the END of the first plan year (a year of savings and returns
+              in), not today's capital — so it is not labelled "today". */}
           <SvgText x={0} y={chartHeight + 12} style={{ fontSize: 6, fill: tokens.colors.ink[500] }}>
-            {axisLabel(minAge, isGerman ? 'heute' : 'today')}
+            {axisLabel(minAge, isGerman ? 'Median zum Jahresende' : 'median at year-end')}
           </SvgText>
           <SvgText x={0} y={chartHeight + 20.5} style={{ fontSize: 6.5, fontWeight: 600, fill: tokens.colors.ink[700] }}>
             {svgCurrency(first.p50, intlLocale)}

@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@config '../../tailwind.config.ts';
+@config '../../tailwind.config.mts';
 
 @layer base {
   * {
@@ -8,30 +8,22 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: var(--theme-font-body);
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      sans-serif;
     min-height: 100vh;
     position: relative;
     font-weight: 500;
-    letter-spacing: var(--theme-letter-spacing-body);
     line-height: 1.7;
   }
-  /* Enhanced focus indicators for accessibility - WCAG 2.1 Level AA */
+  /* Visible focus for every focusable element (WCAG 2.1 AA). */
   *:focus-visible {
-    outline: 2px solid var(--theme-focus);
+    outline: 2px solid var(--ui-accent);
     outline-offset: 2px;
     transition: outline 0.15s ease;
-  }
-  /* Ensure interactive elements have visible focus */
-  button:focus-visible,
-  a:focus-visible,
-  input:focus-visible,
-  select:focus-visible,
-  textarea:focus-visible,
-  [role='button']:focus-visible,
-  [role='tab']:focus-visible,
-  [tabindex='0']:focus-visible {
-    outline: 2px solid var(--theme-focus);
-    outline-offset: 2px;
   }
   /* Page background */
   body::before {
@@ -40,19 +32,7 @@
     inset: 0;
     z-index: -2;
     pointer-events: none;
-    background: var(--theme-bg-layer);
-  }
-  /* Background pattern (disabled in the shared interface tokens). */
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-image: var(--theme-pattern-image);
-    background-size: var(--theme-pattern-size);
-    mix-blend-mode: var(--theme-pattern-blend);
-    opacity: var(--theme-pattern-opacity);
+    background: hsl(var(--background));
   }
   h1,
   h2,
@@ -60,15 +40,18 @@
   h4,
   h5,
   h6 {
-    font-family: var(--theme-font-heading);
-    letter-spacing: var(--theme-heading-spacing);
-    text-transform: var(--theme-heading-transform);
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      sans-serif;
+    letter-spacing: 0;
+    text-transform: none;
     font-weight: 700;
     line-height: 1.2;
   }
   h1 {
     font-weight: 900;
-    letter-spacing: var(--theme-h1-spacing);
   }
   p {
     color: hsl(var(--foreground) / 0.85);
@@ -81,36 +64,16 @@
 }
 
 @layer components {
-  .app-surface {
-    background-color: var(--surface);
-    border: var(--theme-border-width) solid var(--line);
-    border-radius: var(--theme-radius-panel);
-    box-shadow: var(--shadow-sm);
-  }
-  .app-surface-muted {
-    background-color: var(--gray-100);
-    border: var(--theme-border-width) solid var(--line);
-    border-radius: var(--theme-radius-panel);
-    box-shadow: var(--shadow-sm);
-  }
   .app-chip {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
     padding: 0.35rem 0.85rem;
-    border: var(--theme-border-width) solid var(--line);
-    border-radius: var(--theme-radius-chip);
+    border: 1px solid var(--line);
     background-color: hsl(var(--secondary));
     color: hsl(var(--secondary-foreground));
     font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: var(--theme-control-transform);
-    letter-spacing: var(--theme-chip-spacing);
-    box-shadow: none;
-  }
-  .app-divider {
-    width: 100%;
-    border-bottom: var(--theme-border-width) solid var(--line);
+    text-transform: none;
   }
 }
 /* Animation classes */
@@ -125,15 +88,6 @@
       transform: translate3d(0, 0, 0);
     }
   }
-
-  @keyframes shimmer {
-    0% {
-      transform: translateX(-100%);
-    }
-    100% {
-      transform: translateX(100%);
-    }
-  }
   .animate-fade-in {
     animation: fadeInUp 0.2s ease-out forwards;
   }
@@ -144,34 +98,6 @@
   .animate-fade-in-more-delayed {
     animation: fadeInUp 0.2s ease-out forwards 0.2s;
     opacity: 0;
-  }
-  .animate-shimmer {
-    animation: shimmer 2s infinite;
-  }
-  /* Loading sweep used by skeletons (kept out of arbitrary Tailwind values so the
-     generated stylesheet stays small and parseable). */
-  .skeleton-sweep {
-    background-image: linear-gradient(
-      120deg,
-      transparent 0%,
-      rgb(var(--accent-rgb) / 0.12) 40%,
-      rgb(var(--accent-rgb) / 0.12) 60%,
-      transparent 100%
-    );
-    animation: shimmer 2s linear infinite;
-  }
-  .skeleton-sweep-soft {
-    background-image: linear-gradient(
-      115deg,
-      transparent 0%,
-      rgb(var(--accent-rgb) / 0.07) 45%,
-      rgb(var(--accent-rgb) / 0.1) 55%,
-      transparent 100%
-    );
-    animation-duration: 2.4s;
-  }
-  /* Mobile-adapted borders */
-  @media (max-width: 768px) {
   }
 }
 /* Range navigator (Recharts brush) — styled as a deliberate control rather
@@ -193,400 +119,22 @@
   font-weight: 700;
   letter-spacing: 0.06em;
 }
-/* Shared page and panel layout. */
-html .app-page {
+.app-page {
   padding-bottom: clamp(3rem, 6vw, 5rem);
-}
-html .theme-container {
-  max-width: min(92rem, calc(100vw - 1.5rem));
-}
-html .theme-page-header {
-  padding-top: clamp(1rem, 3vw, 2.5rem);
-  padding-bottom: clamp(1rem, 3vw, 2rem);
-}
-/* Portalled dialogs and selects keep the positioning of their UI primitives. */
-html .theme-hero,
-html .theme-sidebar,
-html .theme-panel-card {
-  position: relative;
-}
-html .theme-hero,
-html .theme-sidebar,
-html .theme-panel-card,
-html [data-slot='select-content'],
-html [data-slot='dialog-content'] {
-  border-radius: var(--theme-radius-panel) !important;
-  clip-path: var(--theme-panel-clip);
-  backdrop-filter: var(--theme-card-backdrop);
-  -webkit-backdrop-filter: var(--theme-card-backdrop);
-}
-html .theme-hero {
-  padding: var(--theme-panel-padding) !important;
-  transform: var(--theme-hero-transform);
-}
-html .theme-page-grid {
-  gap: var(--theme-page-gap) !important;
-}
-html .theme-content > * + * {
-  margin-top: var(--theme-content-gap) !important;
-}
-html .theme-panel-card {
-  transform: var(--theme-panel-transform);
-}
-html .theme-panel-header {
-  padding: var(--theme-card-header-padding) !important;
-}
-html .theme-panel-body {
-  padding: var(--theme-card-body-padding) !important;
-}
-html .ds-control,
-html [data-slot='select-trigger'],
-html [data-slot='select-item'],
-html input,
-html textarea,
-html [role='tab'] {
-  border-radius: var(--theme-radius-control) !important;
-  text-transform: var(--theme-control-transform) !important;
-  letter-spacing: var(--theme-ui-letter-spacing) !important;
-}
-html .ds-control:hover,
-html [data-slot='select-trigger']:hover {
-  transform: translate(var(--theme-hover-x), var(--theme-hover-y)) !important;
-}
-html .app-chip,
-html .theme-badge-row > span,
-html .theme-progress-block > div:first-child > span {
-  border-radius: var(--theme-radius-chip) !important;
-  text-transform: var(--theme-control-transform) !important;
-  letter-spacing: var(--theme-chip-spacing) !important;
-  box-shadow: var(--shadow-sm) !important;
-}
-html .border-2 {
-  border-width: var(--theme-border-thin) !important;
-}
-html .border-3:not(.theme-hero):not(.theme-sidebar):not(.theme-panel-card),
-html .border-2 {
-  border-radius: var(--theme-radius-control);
 }
 /* The closing call-to-action is a deep slab in both colour schemes. The
    example-plan caption would otherwise inherit the page's muted grey (~2.6:1
    on the slab); tie the muted ink inside it to the slab's own foreground
    token and keep it opaque enough (90%) to clear AA at the caption's size. */
-.landing-cta .text-muted-foreground,
-html .landing-cta .text-muted-foreground {
-  color: color-mix(in srgb, var(--landing-cta-fg) 90%, transparent) !important;
+.landing-cta .text-muted-foreground {
+  color: color-mix(in srgb, var(--landing-cta-fg) 90%, transparent);
 }
 /* Chart milestone labels ("RETIREMENT", "PENSION STARTS") are uppercased by an
-   inline style on the Recharts reference line, which no class-based rule can
+   inline style on the Recharts reference line, which only !important can
    reach. The interface reads in sentence case throughout. */
 html text.recharts-label {
   text-transform: none !important;
   letter-spacing: 0.03em !important;
-}
-html .theme-panel-header {
-  background-color: rgb(var(--ink-rgb) / 0.018);
-  border-bottom-color: var(--line) !important;
-}
-/* Data-first: the panels are quiet containers, the numbers are the subject. */
-html .theme-hero,
-html .theme-panel-card,
-html .theme-sidebar {
-  box-shadow: var(--shadow-sm) !important;
-}
-html .theme-hero {
-  box-shadow: var(--shadow-sm) !important;
-}
-html .theme-progress-bar {
-  height: 0.5rem !important;
-}
-html .app-chip,
-html .theme-badge-row > span {
-  font-weight: 600;
-  box-shadow: none !important;
-}
-html .theme-step-list > * + * {
-  margin-top: 0.5rem !important;
-}
-
-@media (min-width: 1024px) {
-  /* Keep setup sections visible beside the form on desktop. */
-  html .theme-setup-grid {
-    grid-template-columns: 296px minmax(0, 1fr) !important;
-  }
-  /* The dashboard is a single full-width column: plan editing
-     is its own tab, so nothing has to be squeezed into a sidebar. */
-  html .theme-simulation-grid {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-  html .theme-hero-top {
-    align-items: center !important;
-  }
-}
-
-@media (max-width: 767px) {
-  html .theme-hero {
-    transform: none;
-  }
-}
-/* Print Styles for PDF Generation */
-@page {
-  size: A4;
-  margin: 15mm;
-}
-
-@media print {
-  /* Hide interactive elements and navigation */
-  header:not([data-print-visible]),
-  nav:not([data-print-visible]),
-  footer:not([data-print-visible]),
-  .no-print,
-  .print-hidden {
-    display: none !important;
-  }
-  /* Show print-only elements */
-  .print-only {
-    display: block !important;
-  }
-  /* Page break control */
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    break-after: avoid;
-    page-break-after: avoid;
-    orphans: 3;
-    widows: 3;
-  }
-  p {
-    orphans: 3;
-    widows: 3;
-  }
-  .report-section {
-    break-inside: avoid;
-    page-break-inside: avoid;
-    margin-bottom: 2rem;
-  }
-  .card,
-  .chart-container {
-    break-inside: avoid;
-    page-break-inside: avoid;
-    margin-bottom: 1.5rem;
-  }
-  .page-break-before {
-    break-before: page;
-    page-break-before: always;
-    padding-top: 0;
-  }
-  .page-break-after {
-    break-after: page;
-    page-break-after: always;
-  }
-  /* Ensure colors and backgrounds print correctly */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
-  }
-  /* Optimize tables for print */
-  table {
-    break-inside: avoid;
-    page-break-inside: avoid;
-    width: 100%;
-    border-collapse: collapse;
-  }
-  thead {
-    display: table-header-group;
-  }
-  tr {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  /* Ensure proper spacing */
-  .report-page {
-    margin: 0;
-    padding: 0;
-    background: white;
-    width: 100%;
-  }
-  /* Typography adjustments for print */
-  body {
-    font-size: 11pt;
-    line-height: 1.6;
-    color: #000;
-    background: white;
-    font-family:
-      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  }
-  /* Adjust heading sizes for print */
-  h1 {
-    font-size: 24pt;
-    margin-bottom: 12pt;
-    font-weight: 700;
-  }
-  h2 {
-    font-size: 18pt;
-    margin-bottom: 10pt;
-    margin-top: 16pt;
-    font-weight: 600;
-  }
-  h3 {
-    font-size: 14pt;
-    margin-bottom: 8pt;
-    margin-top: 12pt;
-    font-weight: 600;
-  }
-  h4 {
-    font-size: 12pt;
-    margin-bottom: 6pt;
-    margin-top: 10pt;
-    font-weight: 600;
-  }
-  /* Chart containers and content scaling for print */
-  .chart-container {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow: visible !important;
-    box-sizing: border-box;
-  }
-  /* Ensure charts don't get truncated */
-  .chart-container canvas {
-    max-width: 100% !important;
-    width: 100% !important;
-    height: auto !important;
-  }
-  /* Adjust chart heights for print */
-  .chart-container > div {
-    height: 400px !important;
-  }
-  /* Prevent text cutoff in charts */
-  .chart-container * {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  }
-  /* Additional spacing for better layout */
-  .report-section {
-    margin-bottom: 2mm;
-  }
-  /* Ensure proper page margins */
-  .print-only {
-    margin-bottom: 8px;
-  }
-  /* Grid layouts for print */
-  .grid {
-    display: grid !important;
-    gap: 0.75rem;
-  }
-  /* Prevent grid items from breaking */
-  .grid > * {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  /* Chart sizing for print */
-  .recharts-responsive-container {
-    min-height: 200px !important;
-    max-height: 300px !important;
-    width: 100% !important;
-    margin: 0.5rem 0;
-  }
-  /* Ensure chart text is readable */
-  .recharts-text {
-    font-size: 8pt !important;
-  }
-  /* Ensure backgrounds print properly */
-  .bg-blue-50 {
-    background-color: rgb(239 246 255) !important;
-    -webkit-print-color-adjust: exact !important;
-  }
-  .bg-green-50 {
-    background-color: rgb(240 253 244) !important;
-    -webkit-print-color-adjust: exact !important;
-  }
-  .bg-yellow-50 {
-    background-color: rgb(254 252 232) !important;
-    -webkit-print-color-adjust: exact !important;
-  }
-  .bg-red-50 {
-    background-color: rgb(254 242 242) !important;
-    -webkit-print-color-adjust: exact !important;
-  }
-  .bg-gray-50 {
-    background-color: rgb(249 250 251) !important;
-    -webkit-print-color-adjust: exact !important;
-  }
-  .bg-purple-50 {
-    background-color: rgb(250 245 255) !important;
-    -webkit-print-color-adjust: exact !important;
-  }
-  /* Text sizing for readability */
-  .text-xs {
-    font-size: 8pt !important;
-  }
-  .text-sm {
-    font-size: 9pt !important;
-  }
-  .text-base {
-    font-size: 10pt !important;
-  }
-  .text-lg {
-    font-size: 12pt !important;
-  }
-  .text-xl {
-    font-size: 14pt !important;
-  }
-  .text-2xl {
-    font-size: 16pt !important;
-  }
-  .text-3xl {
-    font-size: 20pt !important;
-  }
-  /* Spacing adjustments */
-  .p-8 {
-    padding: 12pt !important;
-  }
-  .p-6 {
-    padding: 10pt !important;
-  }
-  .p-4 {
-    padding: 8pt !important;
-  }
-  .mb-8 {
-    margin-bottom: 12pt !important;
-  }
-  .mb-6 {
-    margin-bottom: 10pt !important;
-  }
-  .mb-4 {
-    margin-bottom: 8pt !important;
-  }
-}
-.scrollbar-invisible {
-  scrollbar-width: none;
-}
-.scrollbar-invisible::-webkit-scrollbar {
-  display: none;
-}
-/* Custom scrollbar styles for parameter sidebar */
-.scrollbar-thin {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) transparent;
-}
-.scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
-}
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb);
-  border-radius: 3px;
-  transition: background-color 0.2s;
-}
-.scrollbar-thin:hover::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-hover);
-}
-.scrollbar-track-transparent::-webkit-scrollbar-track {
-  background: transparent;
 }
 /* Setup wizard: step content transition */
 @keyframes wizard-step-in {
@@ -660,19 +208,14 @@ html .theme-step-list > * + * {
 .landing-cta-link:hover {
   color: var(--landing-cta-fg);
 }
-/*
- * Landing typography: themes widen every heading and every `tracking-*`
- * utility (via an !important rule further up), which turns the marketing page
- * into all-caps shouting. Pin the landing's display/label tracking to sane
- * values in every theme. The paired selectors match the theme rule's
- * specificity and win on source order.
- */
+/* Landing typography: the display, label and body tracking (unlayered, so
+   it outranks the `tracking-*` utilities and the chip's own spacing). */
 .landing-typeset .landing-display {
-  letter-spacing: 0.005em !important;
+  letter-spacing: 0.005em;
 }
 .landing-typeset .landing-label {
-  letter-spacing: 0.055em !important;
+  letter-spacing: 0.055em;
 }
 .landing-typeset .landing-body {
-  letter-spacing: 0.005em !important;
+  letter-spacing: 0.005em;
 }

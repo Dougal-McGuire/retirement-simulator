@@ -1,8 +1,9 @@
 import type { AnnualCashFlow, CashFlow, SimulationParams } from '@/types'
 import {
+  budgetAnnualAt,
   buildCashFlowSeries,
-  isBaselineExpenseFlow,
   isCashFlowEnabled,
+  isLifetimeExpenseFlow,
   isOnceIncomeFlow,
   isPensionFlow,
 } from './cashFlows'
@@ -201,7 +202,9 @@ const add = (a: readonly number[], b: readonly number[]) => a.map((value, i) => 
 function primaryCategory(flow: CashFlow): PrimaryCategory {
   if (isPensionFlow(flow)) return 'pension'
   if (flow.kind === 'income') return isOnceIncomeFlow(flow) ? 'oneOffIncome' : 'otherIncome'
-  return isBaselineExpenseFlow(flow) ? 'baselineSpending' : 'scheduledExpenses'
+  // The same line the engine draws: a lifetime recurring expense is budget,
+  // whatever its growth or indexing; a window or a single payment is scheduled.
+  return isLifetimeExpenseFlow(flow) ? 'baselineSpending' : 'scheduledExpenses'
 }
 
 /**
@@ -228,9 +231,13 @@ export function buildFlowTracks(params: SimulationParams): FlowTracks {
     let linked: boolean
 
     if (category === 'baselineSpending') {
-      const annual = series.baselineMonthly * 12 + series.baselineAnnual
-      gross = new Array<number>(years).fill(annual)
-      linked = true
+      // One flow, so exactly one of the two parts is non-zero: a budget item
+      // is either inflation-linked or a fixed euro amount.
+      gross = Array.from({ length: years }, (_, offset) => {
+        const budget = budgetAnnualAt(series, offset)
+        return budget.linked + budget.fixed
+      })
+      linked = flow.inflationLinked !== false
     } else if (category === 'pension') {
       const pensionTax = add(series.pensionTaxLinked, series.pensionTaxFixed)
       gross = add(add(series.pensionNetLinked, series.pensionNetFixed), pensionTax)
@@ -245,7 +252,14 @@ export function buildFlowTracks(params: SimulationParams): FlowTracks {
           (series.oneTimeIncomeLinkedByAge.get(params.currentAge + offset) ?? 0) +
           (series.oneTimeIncomeFixedByAge.get(params.currentAge + offset) ?? 0)
       )
-      linked = series.oneTimeIncomeLinkedByAge.size > 0
+      // Booked for the last year: the engine books it in that year's row.
+      const atEnd = series.oneTimeIncomeAtEnd
+      if (years > 0) {
+        tax[years - 1] += atEnd.taxLinked + atEnd.taxFixed
+        gross[years - 1] += atEnd.netLinked + atEnd.netFixed + atEnd.taxLinked + atEnd.taxFixed
+      }
+      linked =
+        series.oneTimeIncomeLinkedByAge.size > 0 || atEnd.netLinked > 0 || atEnd.taxLinked > 0
     } else if (category === 'otherIncome') {
       tax = add(series.incomeTaxLinked, series.incomeTaxFixed)
       gross = add(add(series.incomeLinked, series.incomeFixed), tax)

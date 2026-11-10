@@ -24,8 +24,8 @@ import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
 import { PlanSwitchGuard } from '@/components/plans/PlanSwitchGuard'
 import { planDisplayName } from '@/lib/plans/planName'
 import { suggestDuplicateName } from '@/lib/stores/plans'
-import { toast, TOAST_DURATION } from '@/components/ui/toast'
-import { ActionToast } from '@/components/ui/action-toast'
+import { toast } from '@/components/ui/toast'
+import { showActionToast } from '@/components/ui/action-toast'
 import {
   useActivePlanId,
   useCreatePlan,
@@ -38,6 +38,7 @@ import {
   useRevertPlanDraft,
   useSavePlanDraft,
   useSetActivePlan,
+  useSimulationStore,
 } from '@/lib/stores/simulationStore'
 import { cn } from '@/lib/utils'
 
@@ -117,9 +118,22 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
   }
 
   const restorePlan = (name: string, params: SimulationParams) => {
-    const restoredId = createPlan(name, params)
-    if (restoredId) toast.success(t('deleted.restored', { name }))
-    else toast.error(t('deleted.restoreFailed'))
+    // The undo toast outlives the delete by seconds, and the user keeps
+    // working: by now there may be unsaved edits on the plan that took over.
+    // Activating the restored plan would drop them, so it then comes back in
+    // the background. Read from the store — this closure is as old as the toast.
+    const current = useSimulationStore.getState()
+    const editing = current.isDirty
+      ? current.plans.find((plan) => plan.id === current.activePlanId)
+      : undefined
+
+    const restoredId = createPlan(name, params, { activate: !editing })
+    if (!restoredId) toast.error(t('deleted.restoreFailed'))
+    else if (editing)
+      toast.success(
+        t('deleted.restoredInBackground', { name, active: planDisplayName(editing, t) })
+      )
+    else toast.success(t('deleted.restored', { name }))
   }
 
   const handleDelete = (plan: Plan) => {
@@ -127,26 +141,15 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
     const params = plan.params
     deletePlan(plan.id)
     setDeleteOpen(false)
-    toast(
-      (instance) => (
-        <ActionToast
-          testId="plan-deleted-toast"
-          message={t('deleted.toast', { name })}
-          actions={[
-            {
-              label: t('actions.undo'),
-              tone: 'primary',
-              testId: 'plan-deleted-toast-undo',
-              onClick: () => {
-                toast.dismiss(instance.id)
-                restorePlan(name, params)
-              },
-            },
-          ]}
-        />
-      ),
-      { duration: TOAST_DURATION }
-    )
+    showActionToast({
+      testId: 'plan-deleted-toast',
+      message: t('deleted.toast', { name }),
+      undo: {
+        label: t('actions.undo'),
+        testId: 'plan-deleted-toast-undo',
+        run: () => restorePlan(name, params),
+      },
+    })
   }
 
   return (
@@ -166,7 +169,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
           <span
             data-testid="plan-dirty-badge"
             className={cn(
-              'rounded-sm inline-flex items-center gap-1.5 border-2 px-2 py-0.5 text-xs font-semibold  ',
+              'rounded-sm inline-flex items-center gap-1.5 border px-2 py-0.5 text-xs font-semibold  ',
               isDirty
                 ? 'border-border bg-amber text-ink'
                 : 'border-ink/30 bg-transparent text-muted-foreground'
@@ -215,7 +218,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
                       </span>
                     </span>
                     {isActive && (
-                      <span className="rounded-sm border-2 border-border bg-accent/10 px-1.5 py-0.5 text-xs font-semibold   text-accent">
+                      <span className="rounded-sm border border-border bg-accent/10 px-1.5 py-0.5 text-xs font-semibold   text-accent">
                         {isDirty ? t('switcher.modified') : t('switcher.active')}
                       </span>
                     )}
@@ -280,7 +283,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
       {isDirty && (
         <div
           data-testid="plan-dirty-actions"
-          className="rounded-sm flex flex-col gap-2 border-2 border-border bg-amber/15 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+          className="rounded-sm flex flex-col gap-2 border border-border bg-amber/15 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
         >
           <p className="text-xs font-semibold leading-relaxed text-ink">{t('dirty.hint')}</p>
           <div className="flex shrink-0 items-center gap-2">

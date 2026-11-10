@@ -4,26 +4,29 @@ import { styles, tokens } from '../styles'
 import { SectionHeader } from '../primitives'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
 import { deriveKeyFindings, type FindingTone } from '@/lib/pdf-generator/insights/keyFindings'
-import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/pdf-generator/formatters'
+import {
+  fmtCurrency,
+  fmtNumber,
+  fmtPercent,
+  fmtRatioPercent,
+} from '@/lib/pdf-generator/formatters'
 import { allPensionsSwitchedOff } from '@/lib/pdf-generator/pensionSwitch'
 import { buildEuroUnitCopy } from '@/lib/pdf-generator/euroUnitCopy'
+import { planBandOfRate, type PlanBand } from '@/lib/pdf-generator/planScoreCopy'
 
 interface ExecutiveSummaryProps {
   content: ReportContent
   sectionNumber?: string
 }
 
-function scoreColor(score: number | null) {
-  if (score === null) return tokens.colors.ink[900]
-  if (score >= 80) return tokens.colors.success[600]
-  if (score >= 60) return tokens.colors.warning[600]
-  return tokens.colors.danger[600]
-}
-
-function rateColor(rate: number) {
-  if (rate >= 0.8) return tokens.colors.success[600]
-  if (rate >= 0.6) return tokens.colors.warning[600]
-  return tokens.colors.danger[600]
+/**
+ * The success rate is coloured by the app's band for it (`getPlanHealth`).
+ * The plan score has no colour of its own: its band is not derived from it.
+ */
+const BAND_COLORS: Record<PlanBand, string> = {
+  strong: tokens.colors.success[600],
+  watch: tokens.colors.warning[600],
+  strained: tokens.colors.danger[600],
 }
 
 const TONE_COLORS: Record<FindingTone, string> = {
@@ -67,26 +70,76 @@ function DataRow({
 }
 
 export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSummaryProps) {
-  const { profile, expenses, assumptions, finances, simulation } = content
+  const { profile, expenses, assumptions, finances, simulation, ledger, projections } = content
   const locale = content.locale === 'en' ? 'en-US' : 'de-DE'
   const isGerman = content.locale !== 'en'
 
   const annualSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
   const pensionAnnual = finances.monthlyPension * 12
   const pensionsOff = allPensionsSwitchedOff(expenses)
-  const annualNetGap = Math.max(0, annualSpend - pensionAnnual)
   const confidence = profile.success.successRate
-  const confidenceColor = rateColor(confidence)
+  const confidenceColor = BAND_COLORS[planBandOfRate(confidence)]
   const findings = deriveKeyFindings(content)
   const unitCopy = buildEuroUnitCopy(content.units, content.locale)
 
-  const componentLabels: Record<'success' | 'spending' | 'liquidity', string> = {
+  const componentLabels: Record<string, string> = {
     success: isGerman ? 'Erfolgsquote' : 'Success rate',
-    spending: isGerman ? 'Entnahmerate' : 'Withdrawal rate',
-    liquidity: isGerman ? 'Liquidität' : 'Liquidity',
+    withdrawal: isGerman ? 'Entnahmerate (1. Ruhestandsjahr)' : 'Withdrawal rate (year 1)',
   }
+  const components = profile.success.components
+  const scoreFormula =
+    components.length > 1
+      ? components
+          .map(
+            (component) =>
+              `${componentLabels[component.id] ?? component.id} × ${fmtRatioPercent(component.weight, 0, locale)}`
+          )
+          .join(' + ')
+      : isGerman
+        ? 'entspricht der Erfolgsquote'
+        : 'equals the success rate'
 
   const perYear = isGerman ? 'pro Jahr' : 'per year'
+  const meanOfRuns =
+    simulation.marketModel === 'historical'
+      ? isGerman
+        ? 'Mittel der Startjahre'
+        : 'mean across start years'
+      : isGerman
+        ? 'Mittel der Läufe'
+        : 'mean across runs'
+
+  // What the portfolio actually pays out once the pension runs — the ledger's
+  // booking for that year, not "budget minus gross pension". Falls back to the
+  // first retirement year for a plan without a pension.
+  const pensionYear = ledger?.pensionYear ?? null
+  const firstYear = ledger?.firstRetirementYear ?? null
+  const withdrawalRow = pensionYear
+    ? {
+        label: isGerman
+          ? `Depotentnahme im Alter ${pensionYear.age}`
+          : `Portfolio withdrawal at age ${pensionYear.age}`,
+        unit: `${
+          pensionYear.firstPensionYear
+            ? isGerman
+              ? 'erstes Rentenjahr'
+              : 'first pension year'
+            : isGerman
+              ? 'Rente läuft'
+              : 'pension paying'
+        }, ${meanOfRuns}, ${unitCopy.tag}`,
+        value: fmtCurrency(pensionYear.portfolioWithdrawal, locale),
+      }
+    : firstYear
+      ? {
+          label: isGerman
+            ? `Depotentnahme im Alter ${firstYear.age}`
+            : `Portfolio withdrawal at age ${firstYear.age}`,
+          unit: `${isGerman ? 'erstes Ruhestandsjahr' : 'first retirement year'}, ${meanOfRuns}, ${unitCopy.tag}`,
+          value: fmtCurrency(firstYear.portfolioWithdrawal, locale),
+        }
+      : null
+  const withdrawalRate = projections.ratios?.firstYearWithdrawalRate ?? null
 
   const { person } = profile
   const medianAt = (age: number) =>
@@ -102,7 +155,7 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
     {
       key: 'pension',
       age: person.pensionAge,
-      label: isGerman ? 'Rentenbeginn' : 'State pension',
+      label: isGerman ? 'Gesetzl. Rentenalter' : 'Statutory pension age',
       emphasis: true,
     },
     { key: 'horizon', age: person.horizonAge, label: isGerman ? 'Planungsende' : 'Horizon' },
@@ -110,6 +163,17 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
   const timeline = timelineStops
     .filter((stop, index, all) => all.findIndex((other) => other.age === stop.age) === index)
     .map((stop) => {
+      // Today is the capital that was entered. Every simulated value is the
+      // end of the year of that age — the first of them already includes a
+      // year of savings and returns.
+      if (stop.key === 'today') {
+        return {
+          ...stop,
+          value: isGerman
+            ? `Vermögen ${fmtCurrency(finances.currentAssets, locale)} (Eingabe)`
+            : `assets ${fmtCurrency(finances.currentAssets, locale)} (as entered)`,
+        }
+      }
       const median = medianAt(stop.age)
       return {
         ...stop,
@@ -117,8 +181,8 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
           median === undefined
             ? '–'
             : isGerman
-              ? `Median ${fmtCurrency(median, locale)}`
-              : `median ${fmtCurrency(median, locale)}`,
+              ? `Median ${fmtCurrency(median, locale)} zum Jahresende`
+              : `median ${fmtCurrency(median, locale)} at year-end`,
       }
     })
 
@@ -174,7 +238,8 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
           </View>
           {/* Counts come from the simulation context, so a historical backtest
               reports 118/125 real start years rather than a fabricated
-              "472 / 500" that no Monte Carlo ever ran. */}
+              "472 / 500" that no Monte Carlo ever ran. The band is the app's
+              grading of this very rate. */}
           <Text style={styles.kpiDescription}>
             {fmtNumber(simulation.successCount, { locale })} /{' '}
             {fmtNumber(simulation.effectiveRuns, { locale })}
@@ -185,19 +250,27 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
               : isGerman
                 ? ' Läufe erfolgreich'
                 : ' successful runs'}
+            {profile.success.label
+              ? isGerman
+                ? ` · Einstufung: ${profile.success.label}`
+                : ` · graded: ${profile.success.label}`
+              : ''}
           </Text>
         </View>
 
         <View style={[styles.cardAccent, { flex: 1, marginRight: 10, marginBottom: 0 }]} wrap={false}>
           <Text style={styles.kpiLabel}>{isGerman ? 'Planungs-Score' : 'Plan Score'}</Text>
-          <Text style={[styles.kpiValue, { color: scoreColor(profile.success.score) }]}>
+          <Text style={styles.kpiValue}>
             {profile.success.score !== null
               ? `${fmtNumber(profile.success.score, { locale })} / 100`
               : '–'}
           </Text>
           <Text style={styles.kpiDescription}>
-            {profile.success.label ?? (isGerman ? 'Nicht verfügbar' : 'Not available')}
-            {isGerman ? ' · identisch zum Dashboard' : ' · same figure as the dashboard'}
+            {profile.success.score !== null
+              ? scoreFormula
+              : isGerman
+                ? 'Nicht verfügbar'
+                : 'Not available'}
           </Text>
         </View>
 
@@ -206,8 +279,8 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
           <Text style={styles.kpiValue}>{fmtCurrency(annualSpend, locale)}</Text>
           <Text style={styles.kpiDescription}>
             {isGerman
-              ? `Ausgaben pro Jahr · ${fmtNumber(simulation.horizonYears, { locale })} Jahre Horizont`
-              : `Spending per year · ${fmtNumber(simulation.horizonYears, { locale })} year horizon`}
+              ? `Ausgaben pro Jahr, ${unitCopy.inputTag} · ${fmtNumber(simulation.horizonYears, { locale })} Jahre Horizont`
+              : `Spending per year, ${unitCopy.inputTag} · ${fmtNumber(simulation.horizonYears, { locale })} year horizon`}
           </Text>
         </View>
       </View>
@@ -220,8 +293,8 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
           </Text>
           <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 8 }}>
             {isGerman
-              ? 'Direkt aus dem Simulationsergebnis abgeleitet — Maßnahmen folgen in Abschnitt 05.'
-              : 'Derived directly from the simulation output — actions follow in section 05.'}
+              ? `Direkt aus dem Simulationsergebnis abgeleitet; Entnahmen, Renten und Ausgaben sind das ${meanOfRuns}. Maßnahmen folgen in Abschnitt 05.`
+              : `Derived directly from the simulation output; withdrawals, pensions and spending are the ${meanOfRuns}. Actions follow in section 05.`}
           </Text>
           {findings.map((finding) => (
             <View key={finding.id} style={{ flexDirection: 'row', marginBottom: 6 }}>
@@ -256,54 +329,69 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
             value={fmtPercent(assumptions.inflation, 1, locale)}
           />
           <DataRow
-            label={isGerman ? 'Rentenzahlung' : 'Pension income'}
+            label={isGerman ? 'Rente laut Eingabe' : 'Pension as entered'}
             unit={
               pensionsOff
                 ? isGerman
                   ? 'keine Rente berücksichtigt'
                   : 'no pension included'
                 : isGerman
-                  ? `${fmtCurrency(finances.monthlyPension, locale)} monatlich`
-                  : `${fmtCurrency(finances.monthlyPension, locale)} monthly`
+                  ? `${fmtCurrency(finances.monthlyPension, locale)} monatlich, brutto`
+                  : `${fmtCurrency(finances.monthlyPension, locale)} monthly, gross`
             }
             value={fmtCurrency(pensionAnnual, locale)}
           />
           <DataRow
-            label={isGerman ? 'Ausgaben' : 'Spending'}
-            unit={perYear}
+            label={isGerman ? 'Ausgaben laut Eingabe' : 'Spending as entered'}
+            unit={`${perYear}, ${unitCopy.inputTag}`}
             value={fmtCurrency(annualSpend, locale)}
+            last={!withdrawalRow && withdrawalRate === null}
           />
-          <DataRow
-            label={isGerman ? 'Verbleibende Lücke' : 'Remaining gap'}
-            unit={
-              isGerman
-                ? `Ausgaben − Rente, ${perYear}`
-                : `spending − pension, ${perYear}`
-            }
-            value={fmtCurrency(annualNetGap, locale)}
-            last
-          />
+          {withdrawalRow && (
+            <DataRow
+              label={withdrawalRow.label}
+              unit={withdrawalRow.unit}
+              value={withdrawalRow.value}
+              last={withdrawalRate === null}
+            />
+          )}
+          {withdrawalRate !== null && (
+            <DataRow
+              label={isGerman ? 'Entnahmerate' : 'Withdrawal rate'}
+              unit={
+                isGerman
+                  ? 'erstes Ruhestandsjahr, Entnahme / Depot'
+                  : 'first retirement year, withdrawal / portfolio'
+              }
+              value={fmtRatioPercent(withdrawalRate, 1, locale)}
+              last
+            />
+          )}
         </View>
       </View>
 
       {/* Score composition — shows the arithmetic behind the number above */}
-      {profile.success.components.length > 0 && profile.success.score !== null && (
+      {components.length > 0 && profile.success.score !== null && (
         <View style={[styles.card, { marginBottom: 10 }]}>
           <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
             {isGerman ? 'Wie der Planungs-Score entsteht' : 'How the Plan Score Is Built'}
           </Text>
           <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 8 }}>
-            {isGerman
-              ? 'Gewichteter Mittelwert dreier Teilwerte, gerundet auf ganze Punkte.'
-              : 'Weighted mean of three sub-scores, rounded to whole points.'}
+            {components.length > 1
+              ? isGerman
+                ? 'Gewichteter Mittelwert der Teilwerte, gerundet auf ganze Punkte. Die Einstufung richtet sich allein nach der Erfolgsquote.'
+                : 'Weighted mean of the sub-scores, rounded to whole points. The grading follows the success rate alone.'
+              : isGerman
+                ? 'Entspricht der Erfolgsquote, gerundet auf ganze Punkte.'
+                : 'Equals the success rate, rounded to whole points.'}
           </Text>
           <View style={{ flexDirection: 'row' }}>
-            {profile.success.components.map((component, index) => (
+            {components.map((component, index) => (
               <View
                 key={component.id}
                 style={{
                   flex: 1,
-                  marginRight: index < profile.success.components.length - 1 ? 12 : 0,
+                  marginRight: index < components.length - 1 ? 12 : 0,
                 }}
               >
                 <View
@@ -315,10 +403,10 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
                   }}
                 >
                   <Text style={{ fontSize: 7.5, color: tokens.colors.ink[700] }}>
-                    {componentLabels[component.id]}
+                    {componentLabels[component.id] ?? component.id}
                   </Text>
                   <Text style={{ fontSize: 7, color: tokens.colors.ink[500] }}>
-                    {fmtPercent(component.weight, 0, locale)}
+                    {fmtRatioPercent(component.weight, 0, locale)}
                   </Text>
                 </View>
                 <View
@@ -334,33 +422,41 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
                   />
                 </View>
                 <Text style={{ fontSize: 7, color: tokens.colors.ink[600], marginTop: 3 }}>
-                  {fmtNumber(Math.round(component.value), { locale })} / 100 ·{' '}
+                  {fmtNumber(component.value, { locale, maximumFractionDigits: 1 })} / 100 ·{' '}
                   {isGerman ? 'Beitrag' : 'contributes'}{' '}
-                  {fmtNumber(Math.round(component.value * component.weight), { locale })}
+                  {fmtNumber(component.value * component.weight, {
+                    locale,
+                    maximumFractionDigits: 1,
+                  })}
                 </Text>
               </View>
             ))}
           </View>
           {profile.success.reasons.length > 0 && (
-            <Text
+            <View
               style={{
-                fontSize: 7.5,
-                color: tokens.colors.ink[500],
-                lineHeight: 1.5,
                 marginTop: 8,
                 paddingTop: 7,
                 borderTopWidth: 0.5,
                 borderTopColor: tokens.colors.ink[200],
               }}
             >
-              {profile.success.reasons.join('  ·  ')}
-            </Text>
+              {profile.success.reasons.map((reason) => (
+                <Text
+                  key={reason}
+                  style={{ fontSize: 7.5, color: tokens.colors.ink[500], lineHeight: 1.5 }}
+                >
+                  {reason}.
+                </Text>
+              ))}
+            </View>
           )}
         </View>
       )}
 
-      {/* Timeline strip: the four dates the whole plan turns on, with the
-          median capital projected at each of them. */}
+      {/* Timeline strip: the four dates the whole plan turns on. Today shows
+          the capital entered; the others the median projected for the end of
+          that year. */}
       {timeline.length > 0 && (
         <View style={{ flexDirection: 'row', marginBottom: 10 }}>
           {timeline.map((stop, index) => (
@@ -402,7 +498,7 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
               >
                 {isGerman ? `Alter ${stop.age}` : `Age ${stop.age}`}
               </Text>
-              <Text style={{ fontSize: 7.5, color: tokens.colors.ink[600], marginTop: 2 }}>
+              <Text style={{ fontSize: 7, color: tokens.colors.ink[600], marginTop: 2 }}>
                 {stop.value}
               </Text>
             </View>
@@ -410,25 +506,9 @@ export function ExecutiveSummary({ content, sectionNumber = '01' }: ExecutiveSum
         </View>
       )}
 
-      {profile.bridge && (
-        <View style={[styles.callout]}>
-          <Text
-            style={{
-              fontSize: 8.5,
-              fontWeight: 600,
-              color: tokens.colors.ink[900],
-              marginBottom: 3,
-            }}
-          >
-            {isGerman ? 'Überbrückungsphase' : 'Bridge Phase'}
-          </Text>
-          <Text style={{ fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
-            {isGerman
-              ? `Zwischen Alter ${profile.bridge.startAge} und ${profile.bridge.endAge} entsteht bis zum Rentenbeginn ein Liquiditätsbedarf von ${fmtCurrency(profile.bridge.cashNeedEUR, locale)}${unitCopy.amountQualifier}. Planen Sie diesen Betrag in liquiden, schwankungsarmen Anlagen ein.`
-              : `Between age ${profile.bridge.startAge} and ${profile.bridge.endAge}, expected bridge liquidity needs are ${fmtCurrency(profile.bridge.cashNeedEUR, locale)}${unitCopy.amountQualifier} until the state pension begins. Keep this amount in liquid, low-volatility assets.`}
-          </Text>
-        </View>
-      )}
+      {/* The bridge has no box of its own any more: the key finding above
+          states its years and its amount, and section 05 says what to do
+          about it. A third copy pushed this section onto a second page. */}
     </View>
   )
 }

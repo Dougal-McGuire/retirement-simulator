@@ -3,6 +3,7 @@
 import { useCallback } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import type { AssumptionKind } from '@/lib/simulation/planDiff'
+import { useMoney } from '@/lib/hooks/useMoney'
 
 /**
  * Renders a raw assumption value in the active locale.
@@ -18,6 +19,7 @@ export function useAssumptionValueFormatter() {
   const tToggle = useTranslations('parameterControls.toggle')
   const tHousehold = useTranslations('parameterControls.fields.householdType.options')
   const tSwitch = useTranslations('plans.comparison.flowSwitch')
+  const money = useMoney()
 
   return useCallback(
     (value: number | string, kind: AssumptionKind): string => {
@@ -34,11 +36,7 @@ export function useAssumptionValueFormatter() {
 
       switch (kind) {
         case 'currency':
-          return format.number(value, {
-            style: 'currency',
-            currency: 'EUR',
-            maximumFractionDigits: 0,
-          })
+          return money.full(value)
         case 'rate':
           return format.number(value, {
             style: 'percent',
@@ -57,6 +55,6 @@ export function useAssumptionValueFormatter() {
           return format.number(value)
       }
     },
-    [format, tStrategy, tMarketModel, tToggle, tHousehold, tSwitch]
+    [format, money, tStrategy, tMarketModel, tToggle, tHousehold, tSwitch]
   )
 }

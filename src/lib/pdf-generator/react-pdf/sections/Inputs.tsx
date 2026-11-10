@@ -9,6 +9,7 @@ import {
   withdrawalStrategyLabel,
   withdrawalStrategyRows,
 } from '@/lib/pdf-generator/withdrawalStrategy'
+import { buildEuroUnitCopy } from '@/lib/pdf-generator/euroUnitCopy'
 
 interface InputsProps {
   content: ReportContent
@@ -21,7 +22,6 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
   const isGerman = content.locale !== 'en'
 
   const baseSpend = expenses.monthlyTotal * 12 + expenses.annualTotal
-  const pensionAnnual = finances.monthlyPension * 12
   // Every pension switched off: none is described as paid or taxed.
   const pensionsOff = allPensionsSwitchedOff(expenses)
   const strategyLabel = withdrawalStrategyLabel(assumptions.withdrawalStrategy, isGerman)
@@ -92,7 +92,9 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
   if (assumptions.taxAllowance > 0) {
     marketRows.push({
       label: isGerman ? 'Sparerpauschbetrag' : 'Tax-free allowance (Sparerpauschbetrag)',
-      value: `${fmtCurrency(assumptions.taxAllowance, locale)} (${
+      // A comma, not brackets: the narrow value column breaks the line after
+      // the amount, and a bracketed word was torn apart there ("(-" / "einzel…").
+      value: `${fmtCurrency(assumptions.taxAllowance, locale)}, ${
         assumptions.householdType === 'couple'
           ? isGerman
             ? 'zusammenveranlagt'
@@ -100,7 +102,7 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
           : isGerman
             ? 'einzelveranlagt'
             : 'single'
-      })`,
+      }`,
     })
   }
   if (assumptions.equityFundExemption > 0) {
@@ -127,35 +129,72 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
   // Only the parameters this strategy actually reads — see `withdrawalStrategy`.
   marketRows.push(...withdrawalStrategyRows(assumptions, locale, isGerman))
 
-  const bridgeYears = Math.max(0, profile.person.pensionAge - profile.person.retireAge)
-  const phaseRows: Array<{ phase: string; ages: string; income: string; flow: string }> = [
-    {
+  /**
+   * The phases of the plan as the engine booked them: per phase, the mean
+   * yearly income and the mean yearly flow into or out of the portfolio, in
+   * the report's unit. This used to be arithmetic on the inputs ("budget minus
+   * gross pension"), which showed −2,900 € a year for a phase in which the
+   * simulation withdrew ten times that. Without a ledger the table is left
+   * out.
+   */
+  const unitCopy = buildEuroUnitCopy(content.units, content.locale)
+  const phases = content.ledger?.phases
+  const meanOfRuns =
+    simulation.marketModel === 'historical'
+      ? isGerman
+        ? 'Mittel der Startjahre'
+        : 'mean across start years'
+      : isGerman
+        ? 'Mittel der Läufe'
+        : 'mean across runs'
+  const signed = (value: number) =>
+    `${value >= 0 ? '+' : '−'}${fmtCurrency(Math.abs(value), locale)}`
+  const span = (phase: { firstAge: number; lastAge: number }) =>
+    phase.firstAge === phase.lastAge ? `${phase.firstAge}` : `${phase.firstAge}–${phase.lastAge}`
+  const incomeNote = (incomeGross: number, none: string) =>
+    incomeGross >= 0.5
+      ? isGerman
+        ? `Einnahmen ${fmtCurrency(incomeGross, locale)} brutto`
+        : `income ${fmtCurrency(incomeGross, locale)} gross`
+      : none
+  const phaseRows: Array<{ phase: string; ages: string; income: string; flow: string }> = []
+  if (phases?.accumulation) {
+    phaseRows.push({
       phase: isGerman ? 'Ansparphase' : 'Accumulation',
-      ages: `${profile.person.currentAge}–${profile.person.retireAge - 1}`,
-      income: isGerman ? 'Erwerbseinkommen' : 'Employment income',
-      flow: `+${fmtCurrency(finances.annualSavings, locale)}`,
-    },
-    ...(bridgeYears > 0
-      ? [
-          {
-            phase: isGerman ? 'Überbrückung' : 'Bridge',
-            ages: `${profile.person.retireAge}–${profile.person.pensionAge - 1}`,
-            income: isGerman ? 'keine Rente' : 'no pension yet',
-            flow: `−${fmtCurrency(baseSpend, locale)}`,
-          },
-        ]
-      : []),
-    {
-      phase: isGerman ? 'Rentenphase' : 'Pension phase',
-      ages: `${profile.person.pensionAge}–${profile.person.horizonAge}`,
+      ages: span(phases.accumulation),
+      income: isGerman ? 'Erwerbseinkommen (Sparleistung)' : 'Employment income (savings)',
+      flow: signed(phases.accumulation.netPortfolioFlow),
+    })
+  }
+  if (phases?.bridge) {
+    phaseRows.push({
+      phase: isGerman ? 'Überbrückung' : 'Bridge',
+      ages: span(phases.bridge),
+      income: incomeNote(
+        phases.bridge.incomeGross,
+        isGerman ? 'noch keine Rente' : 'no pension yet'
+      ),
+      flow: signed(phases.bridge.netPortfolioFlow),
+    })
+  }
+  if (phases?.pension) {
+    phaseRows.push({
+      phase: pensionsOff
+        ? isGerman
+          ? 'Ruhestand'
+          : 'Retirement'
+        : isGerman
+          ? 'Rentenphase'
+          : 'Pension phase',
+      ages: span(phases.pension),
       income: pensionsOff
         ? isGerman
           ? 'keine Rente berücksichtigt'
           : 'no pension included'
-        : `${isGerman ? 'Rente' : 'Pension'} ${fmtCurrency(pensionAnnual, locale)}`,
-      flow: `−${fmtCurrency(Math.max(0, baseSpend - pensionAnnual), locale)}`,
-    },
-  ]
+        : incomeNote(phases.pension.incomeGross, isGerman ? 'keine Einnahmen' : 'no income'),
+      flow: signed(phases.pension.netPortfolioFlow),
+    })
+  }
 
   return (
     <View>
@@ -253,14 +292,15 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
       </View>
 
       {/* Phases: what actually flows in and out of the portfolio, and when */}
+      {phaseRows.length > 0 && (
       <View style={[styles.card, { marginBottom: 12 }]}>
         <Text style={[styles.cardTitle, { marginBottom: 3 }]}>
           {isGerman ? 'Phasen des Plans' : 'Phases of the Plan'}
         </Text>
         <Text style={{ fontSize: 7, color: tokens.colors.ink[500], marginBottom: 4 }}>
           {isGerman
-            ? 'Netto-Fluss zum bzw. aus dem Depot pro Jahr, in heutigen Beträgen und vor Marktrendite.'
-            : 'Net flow to or from the portfolio per year, in today’s amounts and before market returns.'}
+            ? `Wie die Simulation die Jahre gebucht hat: Durchschnitt pro Jahr der Phase, ${meanOfRuns}, ${unitCopy.tag}. Depotfluss vor Marktrendite; Entnahmen einschließlich der Steuern auf Kursgewinne.`
+            : `As the simulation booked the years: average per year of the phase, ${meanOfRuns}, ${unitCopy.tag}. Portfolio flow before market returns; withdrawals include the tax on gains.`}
         </Text>
         <Table>
           <TableRow header>
@@ -302,6 +342,7 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
           ))}
         </Table>
       </View>
+      )}
 
     </View>
   )

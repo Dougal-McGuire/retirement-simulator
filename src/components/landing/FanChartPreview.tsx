@@ -105,15 +105,15 @@ export function FanChartPreview() {
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-[var(--gray-100)] px-4 py-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="hidden items-center gap-1.5 sm:flex" aria-hidden="true">
-              <span className="rounded-sm h-3 w-3 border-2 border-border bg-danger" />
-              <span className="rounded-sm h-3 w-3 border-2 border-border bg-amber" />
-              <span className="rounded-sm h-3 w-3 border-2 border-border bg-ok" />
+              <span className="rounded-sm h-3 w-3 border border-border bg-danger" />
+              <span className="rounded-sm h-3 w-3 border border-border bg-amber" />
+              <span className="rounded-sm h-3 w-3 border border-border bg-ok" />
             </div>
             <p className="landing-label truncate text-[0.66rem] font-bold text-ink">
               {t('windowTitle')}
             </p>
           </div>
-          <span className="rounded-sm landing-label inline-flex shrink-0 items-center gap-2 border-2 border-border bg-ok px-2.5 py-1 text-[0.6rem] font-bold text-on-hue">
+          <span className="rounded-sm landing-label inline-flex shrink-0 items-center gap-2 border border-border bg-ok px-2.5 py-1 text-[0.6rem] font-bold text-on-hue">
             {t('runsChip', { runs: runsLabel })}
           </span>
         </div>
@@ -211,7 +211,7 @@ export function FanChartPreview() {
                 className="pointer-events-none absolute -top-1 -translate-x-1/2"
                 style={{ left: `${percentFor(PREVIEW_PLAN.retirementAge)}%` }}
               >
-                <span className="rounded-sm landing-label border-2 border-border bg-card px-2 py-0.5 text-[0.55rem] font-bold text-ink shadow-sm">
+                <span className="rounded-sm landing-label border border-border bg-card px-2 py-0.5 text-[0.55rem] font-bold text-ink shadow-sm">
                   {t('retirementMarker', { age: PREVIEW_PLAN.retirementAge })}
                 </span>
               </div>
@@ -219,7 +219,7 @@ export function FanChartPreview() {
                 className="pointer-events-none absolute -top-1 hidden -translate-x-1/2 sm:block"
                 style={{ left: `${percentFor(PREVIEW_PLAN.legalRetirementAge)}%` }}
               >
-                <span className="rounded-sm landing-label border-2 border-border bg-card px-2 py-0.5 text-[0.55rem] font-bold text-ink shadow-sm">
+                <span className="rounded-sm landing-label border border-border bg-card px-2 py-0.5 text-[0.55rem] font-bold text-ink shadow-sm">
                   {t('pensionMarker', { age: PREVIEW_PLAN.legalRetirementAge })}
                 </span>
               </div>

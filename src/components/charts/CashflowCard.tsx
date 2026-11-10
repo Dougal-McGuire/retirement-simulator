@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { ChevronRight, PencilLine, PowerOff } from 'lucide-react'
 import type { AnnualCashFlow, CashFlow, SimulationParams, SimulationResults } from '@/types'
 import { assumptionPanel } from '@/components/plans/planSections'
 import type { EditTarget } from '@/components/workspace/WorkspaceProvider'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
+import { flowWindowLabel, monthFormatter } from '@/lib/plans/flowWindow'
 import {
   breakdownLedger,
   buildFlowTracks,
@@ -19,7 +20,6 @@ import {
 import { isOnceIncomeFlow } from '@/lib/simulation/cashFlows'
 import { useDisplayReal } from '@/lib/stores/displayStore'
 import { cn } from '@/lib/utils'
-import { compactCurrencyOptions } from '@/lib/utils/numberFormat'
 import {
   CATEGORY_COLOR,
   CashflowSankey,
@@ -39,6 +39,7 @@ import {
   type LedgerSelection,
   type SankeyNodeId,
 } from './cashflowSankeyModel'
+import { useMoney } from '@/lib/hooks/useMoney'
 
 interface CashflowCardProps {
   params: SimulationParams
@@ -128,16 +129,9 @@ export function CashflowCard({ results, onEdit }: CashflowCardProps) {
     [row, breakdown, expanded, overview]
   )
 
-  const money = useCallback(
-    (value: number) =>
-      format.number(value, {
-        style: 'currency',
-        currency: 'EUR',
-        maximumFractionDigits: 0,
-        minimumFractionDigits: 0,
-      }),
-    [format]
-  )
+  const moneyFormat = useMoney()
+  const money = moneyFormat.full
+
   const editLabel = useCallback(
     (target: EditTarget) =>
       ts('ledger.edit', {
@@ -156,34 +150,21 @@ export function CashflowCard({ results, onEdit }: CashflowCardProps) {
     const itemName = (item: FlowBreakdownItem) =>
       item.flow ? flowName(item.flow) : ts('unassigned')
     const params = results?.params
-    const formatMonth = (value: string) => {
-      const [year, month] = value.split('-').map(Number)
-      return format.dateTime(new Date(year, month - 1, 1), { month: 'short', year: 'numeric' })
-    }
+    const formatMonth = monthFormatter(format)
     const window = (flow: CashFlow) => {
-      const legal = params?.legalRetirementAge ?? 67
-      const currentAge = params?.currentAge ?? 0
-      if (flow.kind === 'pension' && flow.startAge === undefined) {
-        return flow.endAge === undefined
-          ? tFlows('window.from', { age: legal })
-          : tFlows('window.range', { from: legal, to: flow.endAge })
-      }
-      if (flow.frequency === 'once') {
-        const age = flow.startAge ?? currentAge
-        const at = flow.startDate
-          ? tFlows('window.atDate', { date: formatMonth(flow.startDate), age })
-          : tFlows('window.at', { age })
-        // One-off income is credited a year after its booked age.
-        return isOnceIncomeFlow(flow) ? `${at} · ${ts('creditedAt', { age: age + 1 })}` : at
-      }
-      if (flow.startAge === undefined && flow.endAge === undefined) {
-        return tFlows('window.lifetime')
-      }
-      if (flow.startAge !== undefined && flow.endAge !== undefined) {
-        return tFlows('window.range', { from: flow.startAge, to: flow.endAge })
-      }
-      if (flow.startAge !== undefined) return tFlows('window.from', { age: flow.startAge })
-      return tFlows('window.until', { age: flow.endAge ?? params?.endAge ?? 0 })
+      const label = flowWindowLabel(
+        flow,
+        {
+          currentAge: params?.currentAge ?? 0,
+          legalRetirementAge: params?.legalRetirementAge ?? 67,
+        },
+        tFlows,
+        { formatMonth }
+      )
+      // One-off income is credited a year after its booked age.
+      return isOnceIncomeFlow(flow)
+        ? `${label} · ${ts('creditedAt', { age: (flow.startAge ?? params?.currentAge ?? 0) + 1 })}`
+        : label
     }
     return {
       name: (node) => {
@@ -194,10 +175,7 @@ export function CashflowCard({ results, onEdit }: CashflowCardProps) {
       categoryName: (category) => ts(`nodes.${category}`),
       itemName,
       money,
-      labelMoney: (value) =>
-        value >= 10_000_000
-          ? new Intl.NumberFormat(locale, compactCurrencyOptions(value, locale)).format(value)
-          : money(value),
+      labelMoney: (value) => (value >= 10_000_000 ? moneyFormat.compact(value) : money(value)),
       percent: (share) =>
         format.number(share, {
           style: 'percent',
@@ -229,7 +207,19 @@ export function CashflowCard({ results, onEdit }: CashflowCardProps) {
           : { kind: 'none' }
       },
     }
-  }, [results, tFlows, ts, format, money, locale, onEdit, expanded, expandable, editLabel])
+  }, [
+    results,
+    tFlows,
+    ts,
+    format,
+    money,
+    moneyFormat,
+    locale,
+    onEdit,
+    expanded,
+    expandable,
+    editLabel,
+  ])
 
   // A highlight belongs to what was under the pointer; a redrawn diagram
   // (opened, closed, another year) has moved it, so it starts unlit.
@@ -272,13 +262,14 @@ export function CashflowCard({ results, onEdit }: CashflowCardProps) {
     }
   }
 
-  const selectAge = (age: number) => {
+  // Stable, so the memoized "all years" table does not re-render on hover.
+  const selectAge = useCallback((age: number) => {
     setSelection(age)
     const section = sectionRef.current
     if (!section || section.getBoundingClientRect().top >= 0) return
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     section.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
-  }
+  }, [])
 
   const line = (label: string, amount: number, emphasis = false) => (
     <div key={label} className="ws-ledger-line" data-emphasis={emphasis || undefined}>
@@ -286,16 +277,6 @@ export function CashflowCard({ results, onEdit }: CashflowCardProps) {
       <dd>{money(amount)}</dd>
     </div>
   )
-  const columns = [
-    'incomeGross',
-    'incomeTax',
-    'expenses',
-    'portfolioWithdrawal',
-    'capitalGainsTax',
-    'shortfall',
-    'portfolioContribution',
-    'closingAssets',
-  ] as const satisfies readonly (keyof AnnualCashFlow)[]
 
   // One control row for the whole section (the section header above names
   // it): the year, which euros, and — when there are flows to open — "all items".
@@ -437,65 +418,13 @@ export function CashflowCard({ results, onEdit }: CashflowCardProps) {
               {line(t('closingAssets'), row.closingAssets, true)}
             </dl>
           </details>
-          <details className="ws-disclosure">
-            <summary>{t('allYears')}</summary>
-            <div className="ws-disclosure-body">
-              <p className="ws-footnote">{ts('ledger.rowHint')}</p>
-              <div
-                className="ws-cashflow-table"
-                style={{ marginTop: 12 }}
-                tabIndex={0}
-                role="region"
-                aria-label={t('allYears')}
-              >
-                <table>
-                  <caption>{t('tableNote')}</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">{t('age')}</th>
-                      <th scope="col">{t('savings')}</th>
-                      {columns.map((key) => (
-                        <th key={key} scope="col">
-                          {t(key)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {series!.map((entry, i) => {
-                      const isSelected = !selected.sum && selected.index === i
-                      return (
-                        <tr
-                          key={ages[i]}
-                          onClick={() => selectAge(ages[i])}
-                          data-selected={isSelected || undefined}
-                        >
-                          <th scope="row">
-                            {/* The row is clickable for the mouse; this is the keyboard way in. */}
-                            <button
-                              type="button"
-                              className={cn(
-                                'min-h-9 min-w-11 rounded-sm px-1.5 text-left font-semibold underline-offset-2 hover:underline',
-                                isSelected && 'underline'
-                              )}
-                              aria-pressed={isSelected}
-                              aria-label={ts('ledger.selectRow', { age: ages[i] })}
-                            >
-                              {ages[i]}
-                            </button>
-                          </th>
-                          <td>{money(entry.savings)}</td>
-                          {columns.map((key) => (
-                            <td key={key}>{money(entry[key])}</td>
-                          ))}
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </details>
+          <AllYearsTable
+            series={series!}
+            ages={ages}
+            selectedIndex={selected.sum ? -1 : selected.index}
+            money={money}
+            onSelectAge={selectAge}
+          />
           <details className="ws-disclosure">
             <summary>{t('assumptionsTitle')}</summary>
             <div className="ws-disclosure-body ws-footnote" style={{ maxWidth: '72ch' }}>
@@ -508,6 +437,104 @@ export function CashflowCard({ results, onEdit }: CashflowCardProps) {
     </div>
   )
 }
+
+const ALL_YEARS_COLUMNS = [
+  'incomeGross',
+  'incomeTax',
+  'expenses',
+  'portfolioWithdrawal',
+  'capitalGainsTax',
+  'shortfall',
+  'portfolioContribution',
+  'closingAssets',
+] as const satisfies readonly (keyof AnnualCashFlow)[]
+
+/**
+ * "Alle Jahre": one row per age, ~600 formatted cells. Memoized and only
+ * rendered while its <details> is open — hovering the diagram or the
+ * Aufstellung (card-level highlight state) used to re-render the closed table
+ * on every pointer move.
+ */
+const AllYearsTable = memo(function AllYearsTable({
+  series,
+  ages,
+  selectedIndex,
+  money,
+  onSelectAge,
+}: {
+  series: AnnualCashFlow[]
+  ages: number[]
+  selectedIndex: number
+  money: (value: number) => string
+  onSelectAge: (age: number) => void
+}) {
+  const t = useTranslations('cashflowResults')
+  const ts = useTranslations('cashflowSankey')
+  const [open, setOpen] = useState(false)
+  return (
+    <details className="ws-disclosure" onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary>{t('allYears')}</summary>
+      {open && (
+        <div className="ws-disclosure-body">
+          <p className="ws-footnote">{ts('ledger.rowHint')}</p>
+          <div
+            className="ws-cashflow-table"
+            style={{ marginTop: 12 }}
+            tabIndex={0}
+            role="region"
+            aria-label={t('allYears')}
+          >
+            <table>
+              <caption>{t('tableNote')}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{t('age')}</th>
+                  <th scope="col">{t('savings')}</th>
+                  {ALL_YEARS_COLUMNS.map((key) => (
+                    <th key={key} scope="col">
+                      {t(key)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {series.map((entry, i) => {
+                  const isSelected = selectedIndex === i
+                  return (
+                    <tr
+                      key={ages[i]}
+                      onClick={() => onSelectAge(ages[i])}
+                      data-selected={isSelected || undefined}
+                    >
+                      <th scope="row">
+                        {/* The row is clickable for the mouse; this is the keyboard way in. */}
+                        <button
+                          type="button"
+                          className={cn(
+                            'min-h-9 min-w-11 rounded-sm px-1.5 text-left font-semibold underline-offset-2 hover:underline',
+                            isSelected && 'underline'
+                          )}
+                          aria-pressed={isSelected}
+                          aria-label={ts('ledger.selectRow', { age: ages[i] })}
+                        >
+                          {ages[i]}
+                        </button>
+                      </th>
+                      <td>{money(entry.savings)}</td>
+                      {ALL_YEARS_COLUMNS.map((key) => (
+                        <td key={key}>{money(entry[key])}</td>
+                      ))}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </details>
+  )
+})
 
 interface TableProps {
   row: AnnualCashFlow

@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/react/shallow'
 import type { SimulationStore } from '@/types'
 import { areSimulationParamsEqual } from '@/lib/simulation/planInsights'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
+import { isUsableResults } from '@/lib/results/usableResults'
 
 export type RunStatus = 'running' | 'updated' | 'stale' | 'empty'
 
@@ -40,7 +41,7 @@ export function deriveRunStatus(inputs: RunInputs): { status: RunStatus; needsRu
 
 /** Results exist but describe other params than the ones on screen. */
 export const selectResultsStale = (state: SimulationStore): boolean =>
-  state.results !== null && !areSimulationParamsEqual(state.params, state.results.params)
+  isUsableResults(state.results) && !areSimulationParamsEqual(state.params, state.results.params)
 
 /**
  * The store fields run status depends on, already reduced: `busy` stays true
@@ -54,12 +55,12 @@ export const selectRunState = (state: SimulationStore) => ({
     pending: state.pendingRun,
     suspended: state.autoRunSuspended,
     stale: false,
-    hasResults: state.results !== null,
+    hasResults: isUsableResults(state.results),
     error: state.error,
     holding: false,
   }),
   stale: selectResultsStale(state),
-  hasResults: state.results !== null,
+  hasResults: isUsableResults(state.results),
   error: state.error,
 })
 

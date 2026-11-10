@@ -83,35 +83,48 @@ export async function successRate(page: Page): Promise<string | null> {
 // ---- Scrolling -------------------------------------------------------------
 
 /**
- * Resolves once the window has not scrolled for `stableFrames` consecutive
- * animation frames — the end of a smooth index jump (~700 ms) or of an
- * instant one. Observes the scroll position instead of sleeping.
+ * Resolves once the window has stayed put (within 1 px) for `stableFrames`
+ * animation frames AND at least `stableMs` — the end of a smooth index jump
+ * (~700 ms) or of an instant one. Observes the scroll position instead of
+ * sleeping, so it returns as soon as the page is still.
+ *
+ * Both conditions matter on a loaded machine (CI, WebKit): frames get slow
+ * and irregular, so a frame count alone can mistake a stall for rest, and
+ * sub-pixel jitter (fractional `scrollY` while lazy sections mount) must not
+ * restart the count. `timeout` only bounds a page that never settles; it is
+ * generous because waiting longer costs nothing when the scroll does stop.
  */
 export async function waitForScrollSettled(
   page: Page,
-  { stableFrames = 10, timeout = 5000 }: { stableFrames?: number; timeout?: number } = {}
+  {
+    stableFrames = 10,
+    stableMs = 150,
+    timeout = 15_000,
+  }: { stableFrames?: number; stableMs?: number; timeout?: number } = {}
 ) {
   await page.evaluate(
-    ({ stableFrames, timeout }) =>
+    ({ stableFrames, stableMs, timeout }) =>
       new Promise<void>((resolve, reject) => {
         const started = performance.now()
-        let last = window.scrollY
+        let anchor = window.scrollY
+        let anchorSince = started
         let stable = 0
-        const tick = () => {
+        const tick = (now: number) => {
           const y = window.scrollY
-          if (Math.abs(y - last) < 0.5) stable += 1
+          if (Math.abs(y - anchor) <= 1) stable += 1
           else {
             stable = 0
-            last = y
+            anchor = y
+            anchorSince = now
           }
-          if (stable >= stableFrames) resolve()
-          else if (performance.now() - started > timeout)
-            reject(new Error(`scroll still moving after ${timeout} ms`))
+          if (stable >= stableFrames && now - anchorSince >= stableMs) resolve()
+          else if (now - started > timeout)
+            reject(new Error(`scroll still moving after ${timeout} ms (scrollY ${y})`))
           else window.requestAnimationFrame(tick)
         }
         window.requestAnimationFrame(tick)
       }),
-    { stableFrames, timeout }
+    { stableFrames, stableMs, timeout }
   )
 }
 
@@ -124,7 +137,7 @@ export async function settledTop(page: Page, locator: Locator): Promise<number> 
 /** Instant scroll to the top (the phone plan row scrolls away with the page). */
 export async function scrollToTop(page: Page) {
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
-  await waitForScrollSettled(page, { stableFrames: 3 })
+  await waitForScrollSettled(page, { stableFrames: 3, stableMs: 50 })
 }
 
 /** Whether any part of the element is inside the viewport (false when absent). */

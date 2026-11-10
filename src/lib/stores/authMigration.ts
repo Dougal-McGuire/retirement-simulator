@@ -15,6 +15,7 @@
 import { DEFAULT_PARAMS, type SimulationParams } from '@/types'
 import { DEFAULT_PLAN_ID, DEFAULT_PLAN_NAME, DEFAULT_PLAN_NAME_KEY } from '@/lib/stores/plans'
 import { cashFlowSignature, sanitizeCashFlows } from '@/lib/simulation/cashFlows'
+import { isRecord } from '@/lib/isRecord'
 import {
   BASE_PLANS_MIGRATED_KEY,
   BASE_STORE_KEY,
@@ -44,9 +45,6 @@ interface PersistedShape {
     activePlanId?: unknown
   }
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 
 /** Tolerant parse of a Zustand `persist` blob; malformed data reads as absent. */
 export function parsePersistedStore(raw: string | null | undefined): PersistedShape | null {
