@@ -3,6 +3,12 @@ name: Vercel Deployment
 # verify (no secrets) ──► deploy (Vercel; production on main, preview on PRs)
 # webkit (iPad WebKit E2E, informational, never blocks)
 # report-failure (main only: opens or updates one tracking issue)
+#
+# Runners are pinned to ubuntu-24.04, not ubuntu-latest: the pinned Playwright
+# (see .github/dependabot.yml) can only install its browsers and their system
+# packages on an Ubuntu release it knows. When `ubuntu-latest` moved to 26.04,
+# `playwright install --with-deps` failed and no deploy could pass. Move the
+# pin together with the Playwright version.
 
 on:
   push:
@@ -22,7 +28,7 @@ concurrency:
 jobs:
   verify:
     name: Verify (lint, types, unit, E2E)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
       contents: read
@@ -90,7 +96,7 @@ jobs:
 
   webkit:
     name: E2E on iPad WebKit (non-blocking)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     # Informational until the suite is stable on WebKit: a red result here
     # never blocks a deploy (deploy only needs `verify`).
@@ -129,7 +135,7 @@ jobs:
     if: >-
       github.event_name == 'push' ||
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -262,7 +268,7 @@ jobs:
     if: >-
       always() && github.event_name == 'push' &&
       (needs.verify.result == 'failure' || needs.deploy.result == 'failure')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       issues: write
