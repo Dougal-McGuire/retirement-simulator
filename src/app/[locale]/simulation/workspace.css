@@ -397,9 +397,6 @@
 .workspace-run-state[data-state='stale'] svg {
   color: var(--warn);
 }
-.workspace-menu-display {
-  display: none;
-}
 @keyframes workspace-spin {
   to {
     transform: rotate(360deg);

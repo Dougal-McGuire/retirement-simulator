@@ -11,47 +11,43 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
-import type { AssumptionPanel } from '@/components/plans/planSections'
-import { usePanelMode, type PanelMode } from './usePanelMode'
+import type { AssumptionPanel, ColumnGroup } from '@/components/plans/planSections'
+import { DRAWER_OPEN_MIN_WIDTH, usePanelMode, type PanelMode } from './usePanelMode'
 import { useScrollSpy } from './useScrollSpy'
 import { useStickyOffset } from './useStickyOffset'
 import { useWorkspaceHash, type WorkspaceHashApi } from './useWorkspaceHash'
-import {
-  beginProgrammaticScroll,
-  endProgrammaticScroll,
-  useWorkspaceUiStore,
-} from './useWorkspaceUiStore'
+import { beginProgrammaticScroll, useWorkspaceUiStore } from './useWorkspaceUiStore'
 import {
   WORKSPACE_SECTIONS,
   formatWorkspaceHash,
-  isWorkspaceSection,
   parseWorkspaceHash,
   scrollToElement,
   type WorkspaceSectionId,
 } from './workspaceNav'
 
-/** The workspace section an element sits in, if any. */
-function sectionOfElement(el: HTMLElement | null | undefined): WorkspaceSectionId | null {
-  if (!el?.isConnected) return null
-  const id = el.closest<HTMLElement>('[data-section]')?.dataset.section
-  return isWorkspaceSection(id) ? id : null
-}
-
-export type { AssumptionPanel } from '@/components/plans/planSections'
+export type { AssumptionPanel, ColumnGroup } from '@/components/plans/planSections'
 export type { PanelMode } from './usePanelMode'
 
-/** Where an edit affordance leads: a panel (optionally a field in it) or the Entnahme section. */
+/**
+ * Where an edit affordance leads: a group of the control column (optionally a
+ * field in it). `{ section: 'withdrawal' }` is the Entnahme rule, i.e. the
+ * column's `rule` group.
+ */
 export type EditTarget =
   | { panel: AssumptionPanel; fieldId?: string }
   | { section: 'withdrawal'; fieldId?: string }
 
-export type EditorState = { panel: AssumptionPanel; fieldId?: string }
 export type WorkspaceMode = 'plan' | 'compare'
 
 export interface ScrollToSectionOptions {
   /** Focus the section heading (for keyboard and screen-reader users). */
   focus?: boolean
   behavior?: ScrollBehavior
+  /**
+   * Leave the phone's mode as it is. Without it a section jump returns the
+   * phone to "Ansehen", since the canvas is behind "Stellen".
+   */
+  keepColumn?: boolean
 }
 
 export interface ExitCompareOptions {
@@ -59,48 +55,66 @@ export interface ExitCompareOptions {
   section?: WorkspaceSectionId
   /** With `section`: focus its heading (default true). */
   focus?: boolean
+  /** Land in the control column instead: unfold it and focus it ("edit this plan"). */
+  column?: boolean
 }
 
 /**
- * The page-level API every workspace part talks to. Frozen after Phase 1:
- * changes go through the integrator.
+ * The page-level API every workspace part talks to. Which groups are open
+ * and whether the column is unfolded live in `useWorkspaceUiStore`, so that
+ * toggling them does not re-render every consumer of this context.
  */
 export interface WorkspaceApi {
-  /** `plan` (the sections) or `compare` (CompareView in their place). */
+  /** `plan` (head and sections beside the column) or `compare` (CompareView in their place). */
   mode: WorkspaceMode
-  /** How the edit panel presents at this width. */
+  /** How the control column presents at this width. */
   panelMode: PanelMode
-  /** The open assumption panel, or null. */
-  editor: EditorState | null
   /**
-   * Opens a panel (swapping content if one is open), or for
-   * `{ section: 'withdrawal' }` closes any panel and jumps to the Entnahme
-   * section. `invoker` gets focus back on close; when omitted, the focused
-   * element is used; `null` means "fall back to the panel's card".
+   * Opens a group of the control column (unfolding the drawer, or switching
+   * the phone to "Stellen"), scrolls the column to it and focuses the field,
+   * or the group's header when no field is named. `invoker` gets focus back
+   * when the column is folded again; when omitted, the focused element is
+   * used.
    */
   openEditor: (target: EditTarget, invoker?: HTMLElement | null) => void
+  /**
+   * Leaves the column for what led into it (Escape does this): folds the
+   * drawer / returns the phone to "Ansehen" and gives focus back to the
+   * invoker. From 1180 px nothing folds; only the focus returns.
+   */
   closeEditor: () => void
-  /** Scrolls a section under the sticky chrome, marks it current and sets the hash. */
+  /** Opens or closes one group from its header. */
+  toggleGroup: (group: ColumnGroup) => void
+  /**
+   * Unfolds or folds the column (drawer, phone mode). `focus` moves focus
+   * into the column on opening, back to where it came from on closing.
+   */
+  setColumnOpen: (open: boolean, opts?: { focus?: boolean }) => void
+  /** Scrolls a section under the pinned chrome, marks it current and sets the hash. */
   scrollToSection: (id: WorkspaceSectionId, opts?: ScrollToSectionOptions) => void
   /** Enters compare mode (pushes `#compare`). */
   enterCompare: (invoker?: HTMLElement | null) => void
   /** Leaves compare mode: Back if `#compare` has its own entry after one of ours, otherwise in place. */
   exitCompare: (opts?: ExitCompareOptions) => void
-  /** An overlay or sheet panel is open: rail, index and main are inert. */
-  pageInert: boolean
-  /** The phone sheet is open: the result bar is inert too. */
-  barInert: boolean
 }
 
-/** Plumbing for the page shell and the edit panel; not part of the frozen API. */
+/** A request to bring a group (and a field in it) into view in the column. */
+export interface ColumnFocusRequest {
+  group: ColumnGroup
+  fieldId?: string
+  /** Move keyboard focus too (false for a bare section link that only opens the group). */
+  focus: boolean
+  /** Increments with every request, so the same target can be asked for twice. */
+  seq: number
+}
+
+/** Plumbing for the page shell and the control column; not part of the API. */
 export interface WorkspaceInternals {
   pageRef: RefObject<HTMLDivElement | null>
-  /** Element that gets focus back when the panel closes. */
-  invokerRef: RefObject<HTMLElement | null>
-  /** Increments with every `openEditor`: the panel moves focus on each. */
-  focusRequest: number
-  /** Set when a close is followed by a jump elsewhere: no focus return. */
-  suppressReturnFocusRef: RefObject<boolean>
+  /** The latest request to show a group; the column acts on each new `seq`. */
+  focusRequest: ColumnFocusRequest | null
+  /** Drops the element Escape would return to (focus left the column by itself). */
+  forgetInvoker: () => void
 }
 
 const WorkspaceContext = createContext<WorkspaceApi | null>(null)
@@ -146,49 +160,6 @@ function scrollBehavior(requested: ScrollBehavior | undefined): ScrollBehavior {
   return reduce ? 'auto' : (requested ?? 'smooth')
 }
 
-/** How long a docked-panel anchor holds while the page column re-flows. */
-const ANCHOR_HOLD_MS = 1200
-/** Input that means the reader is steering the scroll position themselves. */
-const ANCHOR_RELEASE_EVENTS = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const
-
-/**
- * Keeps `el` at its current viewport position while the page re-flows around
- * it (opening or closing the docked panel narrows or widens the page column).
- *
- * The correction runs from a ResizeObserver on the page column, i.e. after
- * layout and before paint, whenever the re-flow actually lands — not in a
- * React effect, which can run a commit before Radix mounts or unmounts the
- * panel content (it does on every open after the first). It keeps correcting
- * while charts re-measure at the new width, until the reader scrolls, clicks
- * or types, a programmatic jump starts, or the hold times out.
- */
-function holdInPlace(el: HTMLElement, observe: Element[]): () => void {
-  const top = el.getBoundingClientRect().top
-  let released = false
-  const correct = () => {
-    if (released) return
-    if (!el.isConnected || useWorkspaceUiStore.getState().programmaticScroll) {
-      release()
-      return
-    }
-    const delta = el.getBoundingClientRect().top - top
-    if (Math.abs(delta) >= 1) window.scrollBy({ top: delta, behavior: 'instant' })
-  }
-  const observer = new ResizeObserver(correct)
-  const release = () => {
-    if (released) return
-    released = true
-    observer.disconnect()
-    window.clearTimeout(timer)
-    for (const type of ANCHOR_RELEASE_EVENTS) window.removeEventListener(type, release, true)
-  }
-  const timer = window.setTimeout(release, ANCHOR_HOLD_MS)
-  for (const node of observe) observer.observe(node)
-  for (const type of ANCHOR_RELEASE_EVENTS)
-    window.addEventListener(type, release, { capture: true, passive: true })
-  return release
-}
-
 /**
  * Whether stepping Back from the current entry stays on this page and leaves
  * `#compare`, from the Navigation API (`null` where it is missing). False on a
@@ -226,32 +197,34 @@ interface CompareSession {
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const panelMode = usePanelMode()
-  const [editor, setEditor] = useState<EditorState | null>(null)
   const [mode, setMode] = useState<WorkspaceMode>('plan')
-  const [focusRequest, setFocusRequest] = useState(0)
+  const [focusRequest, setFocusRequest] = useState<ColumnFocusRequest | null>(null)
 
   const pageRef = useRef<HTMLDivElement | null>(null)
+  /** Element that gets focus back when the drawer folds or the phone returns to "Ansehen". */
   const invokerRef = useRef<HTMLElement | null>(null)
-  const suppressReturnFocusRef = useRef(false)
   // Synchronous mirrors of state, for handlers that run before a re-render.
-  const editorRef = useRef<EditorState | null>(null)
   const modeRef = useRef<WorkspaceMode>('plan')
   const panelModeRef = useRef<PanelMode>(panelMode)
   const lastHashRef = useRef<string>('')
   const compareRef = useRef<CompareSession | null>(null)
   const pendingExitRef = useRef<ExitCompareOptions | null>(null)
   const exitFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  /** Releases the running docked-panel scroll anchor (see `holdInPlace`). */
-  const releaseAnchorRef = useRef<(() => void) | null>(null)
+  /**
+   * The group the URL names: the last one the reader opened (or a deep link
+   * named). A reload opens it again; closing it takes it out of the hash.
+   */
+  const linkedGroupRef = useRef<ColumnGroup | undefined>(undefined)
+  const focusSeqRef = useRef(0)
 
+  // The column's fold state follows the width until the reader decides: the
+  // drawer starts unfolded from 1000 px, the phone on "Ansehen". Set once the
+  // width is known and again whenever the presentation changes.
   useEffect(() => {
     panelModeRef.current = panelMode
+    const open = panelMode === 'drawer' && window.innerWidth >= DRAWER_OPEN_MIN_WIDTH
+    useWorkspaceUiStore.getState().setColumnOpen(panelMode === 'docked' ? true : open)
   }, [panelMode])
-
-  const commitEditor = useCallback((next: EditorState | null) => {
-    editorRef.current = next
-    setEditor(next)
-  }, [])
 
   const writeHash = useCallback((hash: string) => {
     if (modeRef.current === 'compare') return
@@ -260,14 +233,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     replaceHash(hash)
   }, [])
 
-  /** `#section`, or `#section:panel` while a panel is open. */
+  /** `#section`, or `#section:group` while the URL names a group. */
   const sectionHash = useCallback(
-    (section: WorkspaceSectionId, panel: AssumptionPanel | undefined) =>
-      formatWorkspaceHash({ compare: false, section, panel }),
+    (section: WorkspaceSectionId) =>
+      formatWorkspaceHash({ compare: false, section, group: linkedGroupRef.current }),
     []
   )
 
-  /** `undefined` → the focused element (unless it is inside the panel); `null` → none. */
+  /** `undefined` → the focused element (unless it is inside the column); `null` → none. */
   const resolveInvoker = useCallback((invoker: HTMLElement | null | undefined) => {
     if (invoker !== undefined) return invoker
     const active = document.activeElement
@@ -276,36 +249,42 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return active
   }, [])
 
-  /**
-   * Docked, opening or closing the panel narrows or widens the page column:
-   * hold `el` (the card or ledger line the reader clicked) where it is. Only
-   * when it is in view — an anchor the reader cannot see would fight the
-   * focus return that scrolls it into view.
-   */
-  const anchorOn = useCallback((el: HTMLElement | null) => {
-    releaseAnchorRef.current?.()
-    releaseAnchorRef.current = null
-    if (panelModeRef.current !== 'docked' || !el?.isConnected) return
-    const rect = el.getBoundingClientRect()
-    if (rect.bottom <= 0 || rect.top >= window.innerHeight || rect.height === 0) return
-    // The reader acted on something in view: an index jump still settling
-    // (its lock outlives a scroll that did not move) gives way.
-    endProgrammaticScroll()
-    const column = pageRef.current?.querySelector('.ws-main')
-    releaseAnchorRef.current = holdInPlace(el, column ? [column, el] : [el])
+  const setColumnOpen = useCallback((open: boolean, opts: { focus?: boolean } = {}) => {
+    const ui = useWorkspaceUiStore.getState()
+    if (panelModeRef.current === 'docked') return
+    const changed = ui.columnOpen !== open
+    ui.setColumnOpen(open)
+    if (!opts.focus || !changed) return
+    afterPaint(() => {
+      if (open) {
+        document.getElementById('edit-panel-title')?.focus({ preventScroll: true })
+        return
+      }
+      // Back to what opened the column, else the fold control, else the head.
+      const candidates = [
+        invokerRef.current,
+        document.querySelector<HTMLElement>('[data-column-toggle]'),
+        document.getElementById('result-title'),
+      ]
+      invokerRef.current = null
+      candidates
+        .find((node) => node?.isConnected && node.getClientRects().length > 0)
+        ?.focus({ preventScroll: true })
+    })
   }, [])
-
-  useEffect(() => () => releaseAnchorRef.current?.(), [])
 
   const scrollToSection = useCallback(
     (id: WorkspaceSectionId, opts: ScrollToSectionOptions = {}) => {
+      // On the phone the canvas is behind "Stellen": a section jump goes back.
+      if (panelModeRef.current === 'sheet' && !opts.keepColumn) {
+        useWorkspaceUiStore.getState().setColumnOpen(false)
+      }
       const section = document.getElementById(id)
       if (!section) return
       beginProgrammaticScroll()
       useWorkspaceUiStore.getState().setActiveSection(id)
-      writeHash(sectionHash(id, editorRef.current?.panel))
-      // The first section is the top of the page: go all the way up, so the
-      // phone's plan row (which scrolls away) comes back with it.
+      writeHash(sectionHash(id))
+      // The head is the top of the page: go all the way up.
       if (id === WORKSPACE_SECTIONS[0]) {
         window.scrollTo({ top: 0, behavior: scrollBehavior(opts.behavior) })
       } else {
@@ -318,68 +297,61 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     [writeHash, sectionHash]
   )
 
-  /** `anchor: false` when the close is part of a jump elsewhere. */
-  const dismissEditor = useCallback(
-    (anchor: boolean) => {
-      if (!editorRef.current) return
-      const panel = editorRef.current.panel
-      if (anchor) {
-        anchorOn(
-          invokerRef.current?.isConnected
-            ? invokerRef.current
-            : document.querySelector<HTMLElement>(`[data-edit-panel="${panel}"]`)
-        )
+  /** Brings a group into view in the column; `link` puts it into the URL. */
+  const showGroup = useCallback(
+    (
+      group: ColumnGroup,
+      opts: { fieldId?: string; focus: boolean; link: boolean; unfold: boolean }
+    ) => {
+      const ui = useWorkspaceUiStore.getState()
+      ui.setGroupOpen(group, true)
+      if (opts.unfold && panelModeRef.current !== 'docked') ui.setColumnOpen(true)
+      if (opts.link) {
+        linkedGroupRef.current = group
+        writeHash(sectionHash(ui.activeSection))
       }
-      commitEditor(null)
-      // Back to the section of the card that opened the panel (see openEditor).
-      const from = anchor ? sectionOfElement(invokerRef.current) : null
-      writeHash(sectionHash(from ?? useWorkspaceUiStore.getState().activeSection, undefined))
+      focusSeqRef.current += 1
+      setFocusRequest({ group, fieldId: opts.fieldId, focus: opts.focus, seq: focusSeqRef.current })
     },
-    [anchorOn, commitEditor, writeHash, sectionHash]
-  )
-
-  const closeEditor = useCallback(() => dismissEditor(true), [dismissEditor])
-
-  const jumpToWithdrawal = useCallback(
-    (fieldId?: string) => {
-      afterPaint(() => {
-        scrollToSection('withdrawal')
-        const section = document.getElementById('withdrawal')
-        const field =
-          (fieldId ? document.getElementById(fieldId) : null) ??
-          section?.querySelector<HTMLElement>(
-            '[data-testid="withdrawal-strategy-picker"] [aria-pressed="true"]'
-          ) ??
-          document.getElementById('withdrawal-title')
-        field?.focus({ preventScroll: true })
-      })
-    },
-    [scrollToSection]
+    [writeHash, sectionHash]
   )
 
   const openEditor = useCallback(
     (target: EditTarget, invoker?: HTMLElement | null) => {
-      if ('section' in target) {
-        if (editorRef.current) {
-          suppressReturnFocusRef.current = true
-          commitEditor(null)
-        }
-        jumpToWithdrawal(target.fieldId)
-        return
-      }
+      const group: ColumnGroup = 'section' in target ? 'rule' : target.panel
       const who = resolveInvoker(invoker)
-      if (!editorRef.current) anchorOn(who)
-      invokerRef.current = who
-      commitEditor({ panel: target.panel, fieldId: target.fieldId })
-      setFocusRequest((count) => count + 1)
-      // The section the click came from, when it came from one: the scroll
-      // spy can still name the section above while the card sits low on the
-      // screen (scroll padding keeps it clear of the bar), and the hash must
-      // bring the reader back to the card they used.
-      const section = sectionOfElement(who) ?? useWorkspaceUiStore.getState().activeSection
-      writeHash(sectionHash(section, target.panel))
+      if (who) invokerRef.current = who
+      showGroup(group, { fieldId: target.fieldId, focus: true, link: true, unfold: true })
     },
-    [anchorOn, commitEditor, jumpToWithdrawal, resolveInvoker, sectionHash, writeHash]
+    [resolveInvoker, showGroup]
+  )
+
+  const closeEditor = useCallback(() => {
+    if (panelModeRef.current !== 'docked') {
+      setColumnOpen(false, { focus: true })
+      return
+    }
+    // A permanent pane has nothing to fold: focus goes back to what led here.
+    const invoker = invokerRef.current
+    invokerRef.current = null
+    if (invoker?.isConnected && invoker.getClientRects().length > 0) invoker.focus()
+  }, [setColumnOpen])
+
+  /** Focus left the column on its own: there is no way back to remember. */
+  const forgetInvoker = useCallback(() => {
+    invokerRef.current = null
+  }, [])
+
+  const toggleGroup = useCallback(
+    (group: ColumnGroup) => {
+      const ui = useWorkspaceUiStore.getState()
+      const open = !ui.openGroups.includes(group)
+      ui.setGroupOpen(group, open)
+      if (open) linkedGroupRef.current = group
+      else if (linkedGroupRef.current === group) linkedGroupRef.current = undefined
+      writeHash(sectionHash(ui.activeSection))
+    },
+    [writeHash, sectionHash]
   )
 
   // ---- Compare mode ------------------------------------------------------
@@ -396,6 +368,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setMode('plan')
     lastHashRef.current = window.location.hash
     afterPaint(() => {
+      if (opts.column) {
+        beginProgrammaticScroll()
+        window.scrollTo({ top: 0, behavior: 'instant' })
+        setColumnOpen(true)
+        afterPaint(() =>
+          document.getElementById('edit-panel-title')?.focus({ preventScroll: true })
+        )
+        return
+      }
       if (opts.section) {
         scrollToSection(opts.section, { focus: opts.focus ?? true, behavior: 'instant' })
         return
@@ -406,7 +387,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const target = invoker?.isConnected ? invoker : document.getElementById('result-title')
       target?.focus({ preventScroll: true })
     })
-  }, [scrollToSection])
+  }, [scrollToSection, setColumnOpen])
 
   /**
    * `source`: `ui` pushes `#compare`; `landing` (the page opened on
@@ -417,11 +398,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     (invoker?: HTMLElement | null, source: 'ui' | 'landing' | 'history' = 'ui') => {
       if (modeRef.current === 'compare') return
       const push = source === 'ui'
-      releaseAnchorRef.current?.()
-      if (editorRef.current) {
-        suppressReturnFocusRef.current = true
-        commitEditor(null)
-      }
+      // The comparison takes the whole page: the phone leaves "Stellen".
+      if (panelModeRef.current === 'sheet') useWorkspaceUiStore.getState().setColumnOpen(false)
       compareRef.current = {
         scrollY: window.scrollY,
         invoker: resolveInvoker(invoker),
@@ -442,7 +420,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         (title) => title.focus({ preventScroll: true })
       )
     },
-    [commitEditor, resolveInvoker]
+    [resolveInvoker]
   )
 
   const exitCompare = useCallback(
@@ -470,37 +448,46 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   useStickyOffset(pageRef)
 
-  const overlayOpen = editor !== null && panelMode !== 'docked'
   useScrollSpy(
-    mode === 'plan' && !overlayOpen,
-    useCallback(
-      (id: WorkspaceSectionId) => writeHash(sectionHash(id, editorRef.current?.panel)),
-      [writeHash, sectionHash]
-    )
+    mode === 'plan',
+    useCallback((id: WorkspaceSectionId) => writeHash(sectionHash(id)), [writeHash, sectionHash])
   )
 
   const hashApi = useMemo<WorkspaceHashApi>(
     () => ({
       lastHashRef,
       isComparing: () => modeRef.current === 'compare',
-      isEditorOpen: () => editorRef.current !== null,
       scrollToSection,
-      openEditor,
-      // The URL moved on: the reader is going elsewhere, so no focus return
-      // (it would scroll the page back to the card mid-jump).
-      // No scroll anchor either: the landing jump owns the position.
-      closeEditor: () => {
-        if (editorRef.current) suppressReturnFocusRef.current = true
-        dismissEditor(false)
+      applyGroup: (named, implied) => {
+        // The URL is already what was parsed: remember the group it names
+        // (or that it names none) without writing it back.
+        linkedGroupRef.current = named
+        if (named) {
+          showGroup(named, { focus: true, link: false, unfold: true })
+          return
+        }
+        // A bare section is about the canvas: the phone shows "Ansehen".
+        if (panelModeRef.current === 'sheet') useWorkspaceUiStore.getState().setColumnOpen(false)
+        if (implied) showGroup(implied, { focus: false, link: false, unfold: false })
+      },
+      focusColumn: () => {
+        const ui = useWorkspaceUiStore.getState()
+        if (panelModeRef.current !== 'docked') ui.setColumnOpen(true)
+        afterPaint(() => {
+          const panel = document.getElementById('edit-panel')
+          const body = panel?.querySelector<HTMLElement>('.ws-panel-body')
+          if (body) body.scrollTop = 0
+          document.getElementById('edit-panel-title')?.focus({ preventScroll: true })
+        })
       },
       enterCompare: (source) => enterCompare(null, source),
       finishExitCompare,
     }),
-    [scrollToSection, openEditor, dismissEditor, enterCompare, finishExitCompare]
+    [scrollToSection, showGroup, enterCompare, finishExitCompare]
   )
   useWorkspaceHash(hashApi)
 
-  // Compare on phones: the wrapped header slides up behind the result bar
+  // Compare on phones: the wrapped header slides up behind the pinned chrome
   // until only its exit row is left pinned. `--ws-compare-pin` is how far —
   // the offset of "Vergleich beenden" in the header, less a little air.
   useEffect(() => {
@@ -516,9 +503,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         : 0
       page.style.setProperty('--ws-compare-pin', `${Math.max(0, Math.round(pin))}px`)
     }
-    // Focus on a plan chip hidden behind the bar (Tab, Shift+Tab): scroll
-    // back until the header sits whole under the bar. Scrolling, not
-    // re-pinning the header, so the exit button never moves under a pointer.
+    // Focus on a plan chip hidden behind the chrome (Tab, Shift+Tab): scroll
+    // back until the header sits whole under it. Scrolling, not re-pinning
+    // the header, so the exit button never moves under a pointer.
     const reveal = (event: FocusEvent) => {
       const target = event.target
       if (!(target instanceof HTMLElement) || target.closest('[data-testid="compare-exit"]')) return
@@ -550,12 +537,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   }, [mode])
 
-  // Warm the code-split panel contents while the reader looks at results.
+  // Warm the code-split group bodies while the reader looks at results.
   useEffect(() => {
     const warm = () =>
       void import('./edit/panelContent')
         .then((m) => m.preloadPanelContent())
-        // Only a warm-up: opening a panel loads (and retries) for real.
+        // Only a warm-up: opening a group loads (and retries) for real.
         .catch(() => {})
     if (typeof window.requestIdleCallback === 'function') {
       const handle = window.requestIdleCallback(warm, { timeout: 4000 })
@@ -576,31 +563,30 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     () => ({
       mode,
       panelMode,
-      editor,
       openEditor,
       closeEditor,
+      toggleGroup,
+      setColumnOpen,
       scrollToSection,
       enterCompare: (invoker?: HTMLElement | null) => enterCompare(invoker),
       exitCompare,
-      pageInert: overlayOpen,
-      barInert: editor !== null && panelMode === 'sheet',
     }),
     [
       mode,
       panelMode,
-      editor,
       openEditor,
       closeEditor,
+      toggleGroup,
+      setColumnOpen,
       scrollToSection,
       enterCompare,
       exitCompare,
-      overlayOpen,
     ]
   )
 
   const internals = useMemo<WorkspaceInternals>(
-    () => ({ pageRef, invokerRef, focusRequest, suppressReturnFocusRef }),
-    [focusRequest]
+    () => ({ pageRef, focusRequest, forgetInvoker }),
+    [focusRequest, forgetInvoker]
   )
 
   return (

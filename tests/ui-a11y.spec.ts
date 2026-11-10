@@ -1,5 +1,5 @@
 import { devices } from '@playwright/test'
-import { expect, gotoWorkspace, test, waitForResults } from './helpers/workspace'
+import { expect, gotoWorkspace, groupHeader, test, waitForResults } from './helpers/workspace'
 
 /**
  * Help tips on touch, the € display radio group and the cash-flow form's
@@ -19,9 +19,11 @@ test.describe('help tips on a touch screen (iPad)', () => {
   }) => {
     await page.goto('/de/simulation#assumptions:market')
     await waitForResults(page)
+    // An iPad in portrait: the column is a drawer, open from this width.
     const panel = page.getByTestId('edit-panel')
-    await expect(panel).toHaveAttribute('data-panel', 'market')
-    const trigger = panel.locator('[data-slot="info-tip"]').first()
+    await expect(panel).toHaveAttribute('data-mode', 'drawer')
+    await expect(groupHeader(page, 'market')).toHaveAttribute('aria-expanded', 'true')
+    const trigger = page.locator('#plan-editor-market [data-slot="info-tip"]').first()
     await expect(trigger).toBeVisible()
     await trigger.scrollIntoViewIfNeeded()
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
@@ -52,12 +54,14 @@ test.describe('help tips on a touch screen (iPad)', () => {
     await expect(tip).toHaveCount(0)
     await expect(panel).toBeVisible()
 
-    // Escape closes the tip first, not the panel.
+    // Escape closes the tip first, not the drawer.
     await trigger.tap()
     await expect(tip).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(tip).toHaveCount(0)
     await expect(panel).toBeVisible()
+    await expect(page.getByTestId('edit-panel-toggle')).toHaveAttribute('aria-expanded', 'true')
+    await expect(trigger).toBeVisible()
   })
 })
 
@@ -65,9 +69,9 @@ test('help tips open on hover and keyboard focus with a mouse and keyboard', asy
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/de/simulation#assumptions:market')
   await waitForResults(page)
-  const panel = page.getByTestId('edit-panel')
-  const trigger = panel.locator('[data-slot="info-tip"]').first()
+  const trigger = page.locator('#plan-editor-market [data-slot="info-tip"]').first()
   const tip = page.locator('[data-slot="info-tip-content"]')
+  await trigger.scrollIntoViewIfNeeded()
   await trigger.hover()
   await expect(tip).toBeVisible()
   await page.mouse.move(0, 0)
@@ -119,9 +123,14 @@ test.describe('cash-flow form keeps invalid input', () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/de/simulation#assumptions:flows')
     await waitForResults(page)
+    // "+ Posten" leads the group and opens the form right there, on its name.
+    const add = page.getByTestId('cashflow-add-open')
+    await expect(add).toHaveText('Posten')
+    await add.click()
+    await expect(add).toHaveAttribute('aria-expanded', 'true')
     const name = page.locator('#cashflow-name-new')
     const amount = page.locator('#cashflow-amount-new')
-    await expect(name).toBeVisible()
+    await expect(name).toBeFocused()
 
     // Amount but no name.
     await amount.fill('250')
@@ -156,9 +165,15 @@ test.describe('cash-flow form keeps invalid input', () => {
     await page.locator('#cashflow-date-year-new').selectOption(year)
     await expect(page.locator('#cashflow-date-new')).not.toHaveAttribute('aria-invalid', 'true')
 
-    // Fixed: added, form reset.
+    // Fixed: added. The form folds away and the new row takes focus in view.
     await page.getByTestId('cashflow-add').click()
+    await expect(page.getByTestId('cashflow-composer')).toHaveCount(0)
+    await expect(add).toHaveAttribute('aria-expanded', 'false')
+    const row = page.locator('tr[data-testid^="cashflow-row-"]', { hasText: 'Hörgeräte' })
+    await expect(row).toBeInViewport()
+    await expect(row.getByRole('switch')).toBeFocused()
+    // Opened again, the form starts empty.
+    await add.click()
     await expect(name).toHaveValue('')
-    await expect(page.getByTestId('cashflow-list')).toContainText('Hörgeräte')
   })
 })

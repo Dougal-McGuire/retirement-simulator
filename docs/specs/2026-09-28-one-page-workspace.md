@@ -4,6 +4,7 @@
 - **Date:** 2026-09-28 · **Base:** `claude/gauntlet-loop-skill-install-rs9trx` @ `67bd8a0`
 - **Scope:** `/[locale]/simulation` only. The engine, store model (`simulationStore` working copy), persistence, PDF pipeline, landing page and setup wizard (`/setup`) do not change. No new npm dependencies.
 - **Language:** the German UI uses informal "du". Every new string ships in `en.json` and `de.json`.
+- **Superseded in part (2026-11-10):** the rail, the Annahmen section and its cards, the edit panel (one panel at a time, previous / next / done) and the quick levers were replaced by the result canvas beside one control column: see `2026-11-10-result-in-view.md`. Still in force from this spec: one scrolling page, the sections' lazy mounting, render isolation (§7), compare as a page mode and the hash as the only UI state in the URL.
 
 Today the workspace has four sidebar tabs (Überblick, Mein Plan, Zahlungsströme, Varianten), a plan-menu popover and a Menu dialog. The core problem is that cause and effect are separated: while you edit in "Mein Plan", the success rate is nowhere on screen. This spec replaces the tabs with one scrolling page. A sticky result bar sits on top, the page is indexed by five sections, the assumptions open in an edit panel that leaves the results visible, and plan comparison becomes a mode of the same page.
 

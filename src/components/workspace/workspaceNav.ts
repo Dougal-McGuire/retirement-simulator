@@ -1,4 +1,4 @@
-import { isAssumptionPanel, type AssumptionPanel } from '@/components/plans/planSections'
+import { isColumnGroup, type ColumnGroup } from '@/components/plans/planSections'
 
 /**
  * Navigation grammar of the one-page workspace. Pure helpers (no React), so
@@ -6,14 +6,25 @@ import { isAssumptionPanel, type AssumptionPanel } from '@/components/plans/plan
  * be unit-tested without a browser.
  */
 
-export const WORKSPACE_SECTIONS = [
+/**
+ * The sections of the result canvas, top to bottom: the head (`result`), then
+ * Geldfluss, Entnahme (the outcome) and Wirkung (`levers`).
+ */
+export const WORKSPACE_SECTIONS = ['result', 'cashflow', 'withdrawal', 'levers'] as const
+export type WorkspaceSectionId = (typeof WORKSPACE_SECTIONS)[number]
+
+/**
+ * What a hash can name: a canvas section, or `assumptions` — the control
+ * column, which holds what the Annahmen section used to show.
+ */
+export const WORKSPACE_TARGETS = [
   'result',
   'assumptions',
   'cashflow',
   'withdrawal',
   'levers',
 ] as const
-export type WorkspaceSectionId = (typeof WORKSPACE_SECTIONS)[number]
+export type WorkspaceTargetId = (typeof WORKSPACE_TARGETS)[number]
 
 /** German spellings accepted on input only; the page always writes the English ids. */
 export const HASH_ALIASES = {
@@ -22,21 +33,34 @@ export const HASH_ALIASES = {
   geldfluss: 'cashflow',
   entnahme: 'withdrawal',
   stellschrauben: 'levers',
+  wirkung: 'levers',
   vergleich: 'compare',
+} as const
+
+/** German spellings of a column group, accepted on input only. */
+export const GROUP_ALIASES = {
+  zeit: 'person',
+  regel: 'rule',
+  markt: 'market',
 } as const
 
 export type WorkspaceHash =
   | { compare: true }
-  | { compare: false; section: WorkspaceSectionId; panel?: AssumptionPanel }
+  | { compare: false; section: WorkspaceTargetId; group?: ColumnGroup }
 
 export function isWorkspaceSection(value: unknown): value is WorkspaceSectionId {
   return typeof value === 'string' && (WORKSPACE_SECTIONS as readonly string[]).includes(value)
 }
 
+export function isWorkspaceTarget(value: unknown): value is WorkspaceTargetId {
+  return typeof value === 'string' && (WORKSPACE_TARGETS as readonly string[]).includes(value)
+}
+
 /**
- * Reads `#section`, `#section:panel` or `#compare` (German aliases accepted).
- * Returns `null` for anything that is not ours — `#main-content` (skip link),
- * `#navigation`, an empty hash — so callers leave the page alone.
+ * Reads `#section`, `#section:group` or `#compare` (German aliases accepted).
+ * The group is one of the column's five: `person | savings | flows | rule |
+ * market`. Returns `null` for anything that is not ours — `#main-content`
+ * (skip link), `#edit-panel`, an empty hash — so callers leave the page alone.
  */
 export function parseWorkspaceHash(hash: string): WorkspaceHash | null {
   let raw = hash.startsWith('#') ? hash.slice(1) : hash
@@ -47,17 +71,27 @@ export function parseWorkspaceHash(hash: string): WorkspaceHash | null {
   }
   raw = raw.trim().toLowerCase()
   if (!raw) return null
-  const [head, panel] = raw.split(':', 2)
+  const [head, tail] = raw.split(':', 2)
   const section = (HASH_ALIASES as Record<string, string>)[head] ?? head
   if (section === 'compare') return { compare: true }
-  if (!isWorkspaceSection(section)) return null
-  return isAssumptionPanel(panel) ? { compare: false, section, panel } : { compare: false, section }
+  if (!isWorkspaceTarget(section)) return null
+  const group = (GROUP_ALIASES as Record<string, string>)[tail] ?? tail
+  return isColumnGroup(group) ? { compare: false, section, group } : { compare: false, section }
 }
 
-/** `#result`, `#cashflow:market`, `#compare`. */
+/** `#result`, `#cashflow:market`, `#withdrawal:rule`, `#compare`. */
 export function formatWorkspaceHash(state: WorkspaceHash): string {
   if (state.compare) return '#compare'
-  return state.panel ? `#${state.section}:${state.panel}` : `#${state.section}`
+  return state.group ? `#${state.section}:${state.group}` : `#${state.section}`
+}
+
+/**
+ * The column group a bare hash opens: `#withdrawal` shows the Entnahme
+ * outcome and opens its rule next to it. Every other section leaves the
+ * column as it is.
+ */
+export function groupForTarget(section: WorkspaceTargetId): ColumnGroup | undefined {
+  return section === 'withdrawal' ? 'rule' : undefined
 }
 
 /**

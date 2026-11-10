@@ -131,6 +131,9 @@
   --viz-seq-3: #afc5da;
   --viz-seq-4: #7296b8;
   --viz-seq-5: #315f88;
+  /* The saved plan on the chart ("gespeichert"): neutral, dashed, ≥ 3:1 on
+     --ui-surface and on the bands (contrast.test.ts). */
+  --viz-ghost: #6d747c;
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
   --fs-xs: var(--ui-font-small);
@@ -326,6 +329,7 @@
     --viz-seq-3: #3a6892;
     --viz-seq-4: #5b8fc0;
     --viz-seq-5: #8cbde8;
+    --viz-ghost: #8b97a5;
     /* Elevation and overlays: deeper shadows, a darker scrim, a faint sheen. */
     --shadow-bar: 0 1px 0 var(--ui-border), 0 8px 24px -16px rgb(0 0 0 / 0.7);
     --shadow-sheet: -16px 0 48px -24px rgb(0 0 0 / 0.75);
@@ -440,6 +444,7 @@
   --viz-seq-3: #3a6892;
   --viz-seq-4: #5b8fc0;
   --viz-seq-5: #8cbde8;
+  --viz-ghost: #8b97a5;
   /* Elevation and overlays: deeper shadows, a darker scrim, a faint sheen. */
   --shadow-bar: 0 1px 0 var(--ui-border), 0 8px 24px -16px rgb(0 0 0 / 0.7);
   --shadow-sheet: -16px 0 48px -24px rgb(0 0 0 / 0.75);

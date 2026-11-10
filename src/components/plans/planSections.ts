@@ -1,55 +1,49 @@
 /**
- * The four assumption panels of the workspace, in walking order.
+ * The five groups of the workspace's control column.
  *
- * One list drives everything that has to agree: the Annahmen cards, the edit
- * panel's previous/next footer, the panel a deep link opens, and the DOM ids
- * tests and deep links rely on.
+ * One list drives everything that has to agree: the column's group headers,
+ * the group a deep link opens, and the DOM ids tests and deep links rely on.
+ */
+
+/**
+ * The four groups that hold plan assumptions — what an edit affordance on
+ * the canvas can name (`openEditor({ panel })`).
  */
 export type AssumptionPanel = 'person' | 'savings' | 'flows' | 'market'
 
-export const ASSUMPTION_PANELS = [
-  { id: 'person', bodyId: 'plan-editor-personal', messageKey: 'personal' },
-  { id: 'savings', bodyId: 'plan-editor-income', messageKey: 'income' },
-  { id: 'flows', bodyId: 'plan-editor-expenses', messageKey: 'cashFlows' },
-  { id: 'market', bodyId: 'plan-editor-market', messageKey: 'market' },
-] as const // messageKey → planEditor.groups.<key>.{title,description}
+/**
+ * A group of the control column: the four assumption panels plus `rule`, the
+ * withdrawal rule and its settings (the "cause" half of Entnahme).
+ */
+export type ColumnGroup = AssumptionPanel | 'rule'
 
-export type AssumptionPanelDef = (typeof ASSUMPTION_PANELS)[number]
-export type AssumptionPanelMessageKey = AssumptionPanelDef['messageKey']
+/**
+ * The column's groups, top to bottom. `bodyId` is the stable id of the body
+ * the group renders (`plan-editor-*` for the four panels); `titleKey` is the
+ * message under `workspace.column.groups`.
+ */
+export const COLUMN_GROUPS = [
+  { id: 'person', bodyId: 'plan-editor-personal', titleKey: 'person' },
+  { id: 'savings', bodyId: 'plan-editor-income', titleKey: 'savings' },
+  { id: 'flows', bodyId: 'plan-editor-expenses', titleKey: 'flows' },
+  { id: 'rule', bodyId: 'plan-editor-withdrawal', titleKey: 'rule' },
+  { id: 'market', bodyId: 'plan-editor-market', titleKey: 'market' },
+] as const satisfies readonly { id: ColumnGroup; bodyId: string; titleKey: string }[]
 
-export const ASSUMPTION_PANEL_IDS: readonly AssumptionPanel[] = ASSUMPTION_PANELS.map(
-  (panel) => panel.id
-)
+export const COLUMN_GROUP_IDS: readonly ColumnGroup[] = COLUMN_GROUPS.map((group) => group.id)
 
-export function isAssumptionPanel(value: unknown): value is AssumptionPanel {
-  return typeof value === 'string' && (ASSUMPTION_PANEL_IDS as readonly string[]).includes(value)
-}
+/** Open when nothing else says otherwise (no deep link, first visit). */
+export const DEFAULT_OPEN_GROUPS: readonly ColumnGroup[] = ['person', 'flows']
 
-/** The definition (body id, message key) of one panel. */
-export function assumptionPanel(panel: AssumptionPanel): AssumptionPanelDef {
-  return ASSUMPTION_PANELS.find((entry) => entry.id === panel) ?? ASSUMPTION_PANELS[0]
-}
-
-/** The panels before and after `panel`, for the footer that walks them. No wrap-around. */
-export function adjacentPanels(panel: AssumptionPanel): {
-  previous?: AssumptionPanel
-  next?: AssumptionPanel
-} {
-  const index = ASSUMPTION_PANEL_IDS.indexOf(panel)
-  return {
-    previous: index > 0 ? ASSUMPTION_PANEL_IDS[index - 1] : undefined,
-    next:
-      index >= 0 && index < ASSUMPTION_PANEL_IDS.length - 1
-        ? ASSUMPTION_PANEL_IDS[index + 1]
-        : undefined,
-  }
+export function isColumnGroup(value: unknown): value is ColumnGroup {
+  return typeof value === 'string' && (COLUMN_GROUP_IDS as readonly string[]).includes(value)
 }
 
 /**
- * Which panel a field lives in, by its real DOM id. Panels mount one at a
- * time, so a deep link ("edit retirement age") has to open the right panel
- * before it can focus the field. `withdrawal` fields live in the Entnahme
- * section, which is edited inline rather than in a panel.
+ * Which panel a field lives in, by its real DOM id. A closed group does not
+ * mount its body, so a deep link ("edit retirement age") has to open the
+ * right group before it can focus the field. `withdrawal` fields live in the
+ * column's `rule` group.
  */
 const FIELD_PANELS: Record<string, AssumptionPanel> = {
   'editor-currentAge': 'person',

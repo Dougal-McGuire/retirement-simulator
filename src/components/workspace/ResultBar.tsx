@@ -1,8 +1,8 @@
 'use client'
 
-import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { useFormatter, useLocale, useTranslations } from 'next-intl'
-import { Check, CircleAlert, CopyPlus, LoaderCircle, RotateCw, Save, Undo2 } from 'lucide-react'
+import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
+import { Check, ChevronDown, CopyPlus, Download, Save, Undo2 } from 'lucide-react'
 import { MAX_PLANS, type Plan } from '@/types'
 import {
   useActivePlan,
@@ -14,23 +14,21 @@ import {
   useSimulationStore,
   useUpdateParams,
 } from '@/lib/stores/simulationStore'
-import { useDisplayReal } from '@/lib/stores/displayStore'
 import { useComparisonStore, useSetComparisonSelection } from '@/lib/stores/comparisonStore'
 import { planDisplayName } from '@/lib/plans/planName'
+import { GenerateReportButton } from '@/components/GenerateReportButton'
 import { DashboardTools } from '@/components/simulation-compact/DashboardTools'
-import { buildCompactKpis } from '@/components/simulation-compact/metrics'
 import { SectionBoundary } from '@/components/errors/SectionBoundary'
 import { lazyComponent } from '@/components/lazy/lazyComponent'
 import { showActionToast } from '@/components/ui/action-toast'
 import { toast } from '@/components/ui/toast'
-import { AnimatedNumber } from './AnimatedNumber'
+import { EuroDisplay } from './EuroDisplay'
 import { PlanMenu } from './PlanMenu'
-import { Skeleton } from './Skeleton'
-import { selectResultsStale, useRunStatus, type RunStatus } from './useRunStatus'
-import { useSavedSuccessDelta } from './useSavedSuccessDelta'
+import { Popover } from './Popover'
+import { useDraftChangeCount } from './useDraftChanges'
+import { selectResultsStale, useRunStatus } from './useRunStatus'
 import { useUsableStoreResults } from './useUsableResults'
 import { useWorkspace } from './WorkspaceProvider'
-import { useMoney } from '@/lib/hooks/useMoney'
 
 // Client-only and retryable (see `lazyComponent`): a dialog whose chunk does
 // not arrive shows a small floating message with "Try again" instead of
@@ -45,11 +43,13 @@ const SaveDraftAsPlanDialog = lazyComponent(() =>
 /**
  * The bar's clusters are memoized and read their own narrow slices of the
  * store, so a keystroke, the run starting and the run landing each re-render
- * only the cluster that shows the change (§7: edit → bar ≤ 250 ms). The bar
- * root itself holds only what its attributes need.
+ * only the cluster that shows the change. The bar root itself holds only
+ * what its attributes need. The result's figures are not here any more:
+ * they live in the head and the dock.
  */
 const MemoPlanMenu = memo(PlanMenu)
 const MemoDashboardTools = memo(DashboardTools)
+const MemoEuroDisplay = memo(EuroDisplay)
 
 /** The most recently updated plan other than the active one. */
 function latestOther(plans: Plan[], activeId: string): Plan | null {
@@ -61,144 +61,19 @@ function latestOther(plans: Plan[], activeId: string): Plan | null {
     )
 }
 
-// ---- KPIs -------------------------------------------------------------------
+// ---- Draft cluster: marker, Discard (with undo), Save ▾ ---------------------
 
-/**
- * Success rate (with the saved-plan delta) and median end assets. The only
- * cluster that re-renders when a run lands; it reads the store's results
- * directly (never a deferred copy), so it is the first thing to update.
- */
-const BarKpis = memo(function BarKpis() {
+/** "● 2 Änderungen": how much the draft holds. Re-renders only when the count moves. */
+const DraftMarker = memo(function DraftMarker() {
   const t = useTranslations('workspace')
-  const format = useFormatter()
-  const locale = useLocale()
-  const results = useUsableStoreResults()
-  const displayReal = useDisplayReal()
-  const delta = useSavedSuccessDelta()
-
-  const kpis = useMemo(
-    () => (results ? buildCompactKpis(results.params, results, { displayReal }) : null),
-    [results, displayReal]
-  )
-  const formatRate = useCallback(
-    (value: number) =>
-      format.number(value / 100, {
-        style: 'percent',
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-      }),
-    [format]
-  )
-  const formatEnd = useMoney().compact
-  const rate = results ? Math.round(results.successRate * 10) / 10 : null
-  const rateValue = rate === null ? undefined : String(rate)
-  const end = kpis ? Math.round(kpis.medianEndWealth) : null
-  const endValue = end === null ? undefined : String(end)
-
+  const count = Math.max(1, useDraftChangeCount())
   return (
-    <dl className="ws-bar-dl">
-      <div className="ws-bar-kpi" data-kpi="success">
-        <dt>
-          <span className="ws-bar-label-long">{t('bar.success')}</span>
-          <span className="ws-bar-label-short">{t('bar.successShort')}</span>
-        </dt>
-        <dd className="ws-bar-value" data-testid="success-pill" data-value={rateValue}>
-          {rate === null ? (
-            <Skeleton width={72} height={20} />
-          ) : (
-            <AnimatedNumber value={rate} format={formatRate} />
-          )}
-        </dd>
-        {delta.text && (
-          <dd
-            className={`ws-bar-delta ds-delta ds-delta--${delta.tone}`}
-            data-testid="success-delta"
-            data-value={delta.delta ?? undefined}
-            data-pending={delta.pending ? 'true' : undefined}
-          >
-            <span className="ws-bar-delta-full" aria-hidden="true">
-              {delta.text}
-            </span>
-            <span className="ws-bar-delta-short" aria-hidden="true">
-              {delta.short}
-            </span>
-            <span className="sr-only">{t('bar.deltaAria', { delta: delta.text })}</span>
-          </dd>
-        )}
-      </div>
-      <div className="ws-bar-kpi" data-kpi="end">
-        <dt>
-          <span className="ws-bar-label-long">{t('bar.endAssets')}</span>
-          <span className="ws-bar-label-short">{t('bar.endAssetsShort')}</span>
-        </dt>
-        <dd className="ws-bar-value" data-testid="end-assets" data-value={endValue}>
-          {end === null ? (
-            <Skeleton width={72} height={20} />
-          ) : (
-            <AnimatedNumber value={end} format={formatEnd} />
-          )}
-        </dd>
-      </div>
-    </dl>
+    <span className="ws-bar-marker" data-state="dirty" data-testid="bar-dirty">
+      <span className="workspace-dirty-dot" aria-hidden="true" />
+      {t('changes.count', { count })}
+    </span>
   )
 })
-
-// ---- Run status and Recalculate --------------------------------------------
-
-const statusIcon = {
-  running: LoaderCircle,
-  updated: Check,
-  stale: CircleAlert,
-  empty: CircleAlert,
-} as const
-
-const BarRun = memo(function BarRun({
-  status,
-  needsRun,
-}: {
-  status: RunStatus
-  needsRun: boolean
-}) {
-  const t = useTranslations('workspace')
-  const loading = useSimulationLoading()
-  const run = useSimulationStore((state) => state.runSimulation)
-  const StatusIcon = statusIcon[status]
-  // Not a live region: announcing every auto-run ("Berechne …", "Aktualisiert")
-  // talked over typing. The page's `ResultAnnouncer` speaks settled results.
-  return (
-    <div className="ws-bar-run">
-      <span
-        className="workspace-run-state ws-bar-status"
-        data-state={status}
-        data-testid="run-status"
-        title={t(`status.${status}`)}
-      >
-        <StatusIcon size={16} aria-hidden="true" />
-        <span className="sr-only">{t(`status.${status}`)}</span>
-      </span>
-      {/* Auto-run keeps results current and the engine is seeded, so this
-          is a quiet icon that only asks for attention (and shows its
-          label) when results are actually out of date. */}
-      <button
-        type="button"
-        className={`workspace-button ws-bar-run-button ${needsRun ? 'workspace-button-primary' : 'workspace-button-quiet'}`}
-        data-testid="run-button"
-        data-needs-run={needsRun ? 'true' : undefined}
-        disabled={loading}
-        title={t('calculateHint')}
-        aria-label={t('calculate')}
-        onClick={() => run()}
-      >
-        <RotateCw size={16} aria-hidden="true" />
-        <span className="ws-run-label" aria-hidden="true">
-          {t('calculate')}
-        </span>
-      </button>
-    </div>
-  )
-})
-
-// ---- Draft cluster: marker, Discard (with undo), Save -----------------------
 
 const BarDraft = memo(function BarDraft({
   dirty,
@@ -207,8 +82,8 @@ const BarDraft = memo(function BarDraft({
 }: {
   dirty: boolean
   activeName: string
-  /** "Als neuen Plan speichern …": receives the button for focus return. */
-  onSaveAsNew: (trigger: HTMLButtonElement | null) => void
+  /** "Als Variante speichern …": receives the button focus returns to. */
+  onSaveAsNew: (trigger: HTMLElement | null) => void
 }) {
   const t = useTranslations('workspace')
   const tp = useTranslations('plans')
@@ -217,17 +92,16 @@ const BarDraft = memo(function BarDraft({
   const save = useSavePlanDraft()
   const revert = useRevertPlanDraft()
   const updateParams = useUpdateParams()
-  // At the plan limit there is no room for a variant: the button stays in its
-  // place (so the bar does not jump) but says why it does nothing, like the
-  // plan menu's item.
+  // At the plan limit there is no room for a variant: the item stays in its
+  // place but says why it does nothing, like the plan menu's item.
   const atPlanLimit = useSimulationStore((state) => state.plans.length >= MAX_PLANS)
   const limitHint = tp('switcher.limit', { max: MAX_PLANS })
   const limitHintId = useId()
 
   // ---- Focus after Save / Discard ------------------------------------------
-  // Both buttons unmount once the plan is clean, which dropped keyboard focus
+  // The buttons unmount once the plan is clean, which dropped keyboard focus
   // to <body>. When the action came from inside this cluster, focus moves to
-  // the "Gespeichert" marker that takes their place (and is announced).
+  // the "Gespeichert" marker that takes their place.
   const clusterRef = useRef<HTMLDivElement>(null)
   const savedRef = useRef<HTMLSpanElement>(null)
   const refocusRef = useRef(false)
@@ -237,8 +111,8 @@ const BarDraft = memo(function BarDraft({
   useEffect(() => {
     if (dirty || !refocusRef.current) return
     refocusRef.current = false
-    // Below 1280 px the marker is hidden: the plan menu trigger (which names
-    // the plan just saved) is the nearest stop instead.
+    // Where the marker is not shown (phones), the plan menu trigger (which
+    // names the plan just saved) is the nearest stop instead.
     const marker = savedRef.current
     const target =
       marker && marker.getClientRects().length > 0
@@ -247,7 +121,7 @@ const BarDraft = memo(function BarDraft({
     target?.focus({ preventScroll: true })
   }, [dirty])
 
-  // ---- Discard with undo (moved verbatim from WorkspaceHeader) ------------
+  // ---- Discard with undo ---------------------------------------------------
 
   // The "discarded" toast belongs to the plan it names: once another plan is
   // active its Undo could no longer apply, so the toast goes with the switch.
@@ -284,15 +158,16 @@ const BarDraft = memo(function BarDraft({
     discardToastRef.current = { id, planId }
   }
 
+  const saveNow = () => {
+    noteFocus()
+    save()
+  }
+
   return (
-    <div className="ws-bar-draft" ref={clusterRef}>
+    <div className="ws-bar-draft" ref={clusterRef} data-bottom-chrome>
       {dirty ? (
         <>
-          <span className="ws-bar-marker" data-state="dirty">
-            <span className="workspace-dirty-dot" aria-hidden="true" />
-            <span className="ws-bar-marker-long">{t('unsaved')}</span>
-            <span className="ws-bar-marker-short">{t('unsavedShort')}</span>
-          </span>
+          <DraftMarker />
           <button
             type="button"
             className="workspace-button workspace-button-quiet ws-bar-discard"
@@ -306,43 +181,81 @@ const BarDraft = memo(function BarDraft({
                 button keeps its accessible name (aria-label) and title. */}
             <span className="ws-discard-label">{t('discard')}</span>
           </button>
-          <button
-            type="button"
-            className="workspace-button workspace-button-primary ws-bar-save"
-            data-testid="command-save"
-            aria-label={tp('dirty.ariaSave', { name: activeName })}
-            onClick={() => {
-              noteFocus()
-              save()
-            }}
-          >
-            <Save size={16} aria-hidden="true" />
-            {tc('saveButton')}
-          </button>
-          {/* Keep the changes as a variant instead: an icon beside Save where
-              the bar has room (≥1600); below that it is the first item of
-              the plan menu. */}
-          <button
-            type="button"
-            className="workspace-button workspace-button-quiet ws-bar-save-as"
-            data-testid="command-save-as-new"
-            aria-label={t('bar.saveAsNew')}
-            aria-haspopup={atPlanLimit ? undefined : 'dialog'}
-            aria-disabled={atPlanLimit || undefined}
-            aria-describedby={atPlanLimit ? limitHintId : undefined}
-            title={atPlanLimit ? `${t('bar.saveAsNew')} – ${limitHint}` : t('bar.saveAsNew')}
-            onClick={(event) => {
-              if (atPlanLimit) return
-              onSaveAsNew(event.currentTarget)
-            }}
-          >
-            <CopyPlus size={16} aria-hidden="true" />
-            {atPlanLimit && (
-              <span id={limitHintId} className="sr-only">
-                {limitHint}
-              </span>
-            )}
-          </button>
+          {/* "Speichern ▾": the button saves; the caret beside it offers the
+              same and "Als Variante speichern …" (the plan stays as saved,
+              the changes become a plan of their own). */}
+          <div className="ws-bar-save-group">
+            <button
+              type="button"
+              className="workspace-button workspace-button-primary ws-bar-save"
+              data-testid="command-save"
+              aria-label={tp('dirty.ariaSave', { name: activeName })}
+              onClick={saveNow}
+            >
+              <Save size={16} aria-hidden="true" />
+              {tc('saveButton')}
+            </button>
+            <Popover
+              kind="menu"
+              label={t('bar.saveMenu')}
+              testId="command-save-menu"
+              className="ws-bar-save-menu"
+              trigger={(props) => (
+                <button
+                  {...props}
+                  className="workspace-button workspace-button-primary ws-bar-save-more"
+                  data-testid="command-save-more"
+                  aria-label={t('bar.saveMore')}
+                  title={t('bar.saveMore')}
+                >
+                  <ChevronDown size={16} aria-hidden="true" />
+                </button>
+              )}
+            >
+              {(close) => (
+                <>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="ws-menu-item"
+                    data-testid="command-save-plain"
+                    onClick={() => {
+                      close()
+                      saveNow()
+                    }}
+                  >
+                    <Save size={16} aria-hidden="true" />
+                    {tc('saveButton')}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="ws-menu-item"
+                    data-testid="command-save-as-new"
+                    aria-haspopup={atPlanLimit ? undefined : 'dialog'}
+                    aria-disabled={atPlanLimit || undefined}
+                    aria-describedby={atPlanLimit ? limitHintId : undefined}
+                    onClick={() => {
+                      if (atPlanLimit) return
+                      close()
+                      // `close` put focus on the caret: the dialog returns it there.
+                      onSaveAsNew(document.activeElement as HTMLElement | null)
+                    }}
+                  >
+                    <CopyPlus size={16} aria-hidden="true" />
+                    <span>
+                      {t('bar.saveAsNew')}
+                      {atPlanLimit && (
+                        <span id={limitHintId} className="ws-menu-item-hint">
+                          {limitHint}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                </>
+              )}
+            </Popover>
+          </div>
         </>
       ) : (
         <span
@@ -360,26 +273,43 @@ const BarDraft = memo(function BarDraft({
   )
 })
 
-// ---- Menu -----------------------------------------------------------------
+// ---- Tools: € switch, PDF, Menü ---------------------------------------------
 
-/** The report reads current results only; stale ones are withheld (as before). */
-const BarMenu = memo(function BarMenu() {
+/**
+ * The PDF export, one click from anywhere: progress shows inside the button
+ * (and in a toast). The report reads current results only; stale ones are
+ * withheld.
+ */
+const BarReport = memo(function BarReport() {
+  const t = useTranslations('report')
+  const tw = useTranslations('workspace.bar')
   const results = useUsableStoreResults()
   const stale = useSimulationStore(selectResultsStale)
   const loading = useSimulationLoading()
   return (
-    <div className="ws-bar-menu">
-      <MemoDashboardTools results={stale ? null : results} isLoading={loading} />
+    <div className="ws-bar-report" data-testid="bar-report">
+      <GenerateReportButton
+        results={stale ? null : results}
+        disabled={loading}
+        size="sm"
+        variant="outline"
+        buttonClassName="ws-bar-report-button"
+      >
+        <Download size={16} aria-hidden="true" />
+        <span aria-hidden="true">{tw('pdf')}</span>
+        <span className="sr-only">{t('actions.generate')}</span>
+      </GenerateReportButton>
     </div>
   )
 })
 
 /**
- * The sticky result bar: cause and effect on one strip. The success rate and
- * median end assets stay on screen (and update live) while any panel is
- * open; the draft cluster owns the one Save / Discard; the plan menu and the
- * Menu sit at the end. Replaces the old `WorkspaceHeader` — the discard/undo
- * toast logic is moved verbatim.
+ * The bar: what plan this is and whether it is saved, on the left; how the
+ * page shows money and the two page-level tools, on the right. 48 px, one
+ * row. Left to right: plan menu · draft state, "Verwerfen", "Speichern ▾" ·
+ * space · "Nominal │ Heutige €" · PDF · Menü. On phones it keeps to the plan
+ * menu, the € switch (short labels) and Menü; the draft row sits above the
+ * mode bar, and the PDF is the Menü's first item.
  */
 export function ResultBar() {
   const t = useTranslations('workspace')
@@ -388,7 +318,7 @@ export function ResultBar() {
   const dirty = usePlanIsDirty()
   const setComparisonSelection = useSetComparisonSelection()
   const { status, needsRun } = useRunStatus()
-  const { enterCompare, barInert } = useWorkspace()
+  const { enterCompare } = useWorkspace()
 
   const activeName = activePlan ? planDisplayName(activePlan, tp) : ''
 
@@ -435,7 +365,7 @@ export function ResultBar() {
   const [saveAsOpen, setSaveAsOpen] = useState(false)
   const [saveAsMounted, setSaveAsMounted] = useState(false)
   const saveAsInvokerRef = useRef<HTMLElement | null>(null)
-  const saveAsNew = useCallback((trigger: HTMLButtonElement | null) => {
+  const saveAsNew = useCallback((trigger: HTMLElement | null) => {
     saveAsInvokerRef.current = trigger
     setSaveAsMounted(true)
     setSaveAsOpen(true)
@@ -483,20 +413,20 @@ export function ResultBar() {
       data-running={status === 'running' ? 'true' : undefined}
       data-needs-run={needsRun ? 'true' : undefined}
       aria-label={t('bar.label')}
-      inert={barInert}
     >
       <div className="ws-bar-plan">
         <MemoPlanMenu onManage={manage} onCompare={compare} onSaveAsNew={saveAsNew} />
       </div>
 
-      <div className="ws-bar-kpis" data-testid="result-bar-kpis">
-        <BarKpis />
-        <BarRun status={status} needsRun={needsRun} />
-      </div>
-
       <BarDraft dirty={dirty} activeName={activeName} onSaveAsNew={saveAsNew} />
 
-      <BarMenu />
+      <div className="ws-bar-tools">
+        <div className="ws-bar-euro">
+          <MemoEuroDisplay />
+        </div>
+        <BarReport />
+        <MemoDashboardTools />
+      </div>
 
       {managerMounted && (
         <SectionBoundary

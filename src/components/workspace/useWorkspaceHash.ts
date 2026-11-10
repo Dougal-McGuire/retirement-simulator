@@ -1,19 +1,29 @@
 'use client'
 
 import { useEffect, useRef, type RefObject } from 'react'
+import type { ColumnGroup } from '@/components/plans/planSections'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
-import type { EditTarget, ScrollToSectionOptions } from './WorkspaceProvider'
-import { parseWorkspaceHash, type WorkspaceSectionId } from './workspaceNav'
+import type { ScrollToSectionOptions } from './WorkspaceProvider'
+import {
+  groupForTarget,
+  parseWorkspaceHash,
+  type WorkspaceHash,
+  type WorkspaceSectionId,
+} from './workspaceNav'
 
 export interface WorkspaceHashApi {
   /** The hash the page itself last wrote; events for it are ours and ignored. */
   lastHashRef: RefObject<string>
   isComparing: () => boolean
-  isEditorOpen: () => boolean
   scrollToSection: (id: WorkspaceSectionId, opts?: ScrollToSectionOptions) => void
-  openEditor: (target: EditTarget, invoker?: HTMLElement | null) => void
-  /** Closes the panel without returning focus (the URL took the reader elsewhere). */
-  closeEditor: () => void
+  /**
+   * The column part of a hash: `named` is the group after the colon (opened,
+   * shown and focused; it stays in the URL), `implied` the one a bare section
+   * opens beside it (`#withdrawal` → the rule), without moving focus.
+   */
+  applyGroup: (named: ColumnGroup | undefined, implied: ColumnGroup | undefined) => void
+  /** `#assumptions`: unfolds the column and focuses it. */
+  focusColumn: () => void
   /**
    * Enters compare without pushing (the URL already says `#compare`):
    * `landing` on load, `history` when Back/Forward or an edited URL reached a
@@ -59,12 +69,15 @@ function holdSectionInView(scroll: () => void): () => void {
   return release
 }
 
+type SectionHash = Extract<WorkspaceHash, { compare: false }>
+
 /**
  * The URL side of the workspace.
  *
  * - On load (after hydration and once the store has read localStorage) a
- *   section hash scrolls there instantly and a `:panel` suffix opens that
- *   panel; `#compare` enters compare mode. Anything else is left alone.
+ *   section hash scrolls the canvas there instantly; `#assumptions` focuses
+ *   the control column; a `:group` suffix opens that group in the column and
+ *   shows it; `#compare` enters compare mode. Anything else is left alone.
  * - Back/Forward and hand-edited hashes (`popstate`, `hashchange`) move
  *   between compare and the sections. The two events usually arrive in a
  *   pair; the second is recognised by its unchanged hash and ignored.
@@ -77,6 +90,25 @@ export function useWorkspaceHash(api: WorkspaceHashApi): void {
 
   useEffect(() => {
     let cancelled = false
+    let releaseHold: (() => void) | undefined
+
+    /** The canvas part: scroll to the section and keep it there while the page settles. */
+    const landOn = (section: WorkspaceSectionId, behavior?: ScrollBehavior) => {
+      if (cancelled) return
+      // `keepColumn`: `applyGroup` decides the phone's mode, once.
+      apiRef.current.scrollToSection(section, { behavior, keepColumn: true })
+      releaseHold = holdSectionInView(() =>
+        apiRef.current.scrollToSection(section, { behavior: 'instant', keepColumn: true })
+      )
+    }
+
+    /** Canvas first, then the column: on the phone a named group ends on "Stellen". */
+    const apply = (parsed: SectionHash, behavior?: ScrollBehavior) => {
+      if (parsed.section !== 'assumptions') landOn(parsed.section, behavior)
+      apiRef.current.applyGroup(parsed.group, groupForTarget(parsed.section))
+      if (parsed.section === 'assumptions' && !parsed.group) apiRef.current.focusColumn()
+    }
+
     const applyInitial = () => {
       if (cancelled) return
       const { lastHashRef } = apiRef.current
@@ -88,36 +120,19 @@ export function useWorkspaceHash(api: WorkspaceHashApi): void {
         apiRef.current.enterCompare('landing')
         return
       }
-      // Two frames: the panel mode is known and the sections are laid out.
+      // Two frames: the column's presentation is known and the sections are laid out.
       window.requestAnimationFrame(() =>
         window.requestAnimationFrame(() => {
-          if (cancelled) return
-          apiRef.current.scrollToSection(parsed.section, { behavior: 'instant' })
-          releaseHold = holdSectionInView(() =>
-            apiRef.current.scrollToSection(parsed.section, { behavior: 'instant' })
-          )
-          if (parsed.panel) apiRef.current.openEditor({ panel: parsed.panel }, null)
+          if (!cancelled) apply(parsed, 'instant')
         })
       )
     }
-    let releaseHold: (() => void) | undefined
     // No `persist` API without web storage: the store is in memory and ready.
     const persist = useSimulationStore.persist
     const unsubscribe =
       (persist?.hasHydrated() ?? true)
         ? (applyInitial(), undefined)
         : persist.onFinishHydration(applyInitial)
-
-    // Same as a landing: the target is measured before the sections the
-    // scroll passes have mounted (on phones they grow as it goes by), so keep
-    // re-aiming until the page settles.
-    const landOn = (section: WorkspaceSectionId) => {
-      if (cancelled) return
-      apiRef.current.scrollToSection(section)
-      releaseHold = holdSectionInView(() =>
-        apiRef.current.scrollToSection(section, { behavior: 'instant' })
-      )
-    }
 
     const onNavigate = () => {
       const current = apiRef.current
@@ -138,16 +153,7 @@ export function useWorkspaceHash(api: WorkspaceHashApi): void {
         current.enterCompare('history')
         return
       }
-      if (!parsed.panel && current.isEditorOpen()) {
-        // Closing a docked panel re-flows the page: jump once it has.
-        current.closeEditor()
-        window.requestAnimationFrame(() =>
-          window.requestAnimationFrame(() => landOn(parsed.section))
-        )
-        return
-      }
-      landOn(parsed.section)
-      if (parsed.panel) current.openEditor({ panel: parsed.panel }, null)
+      apply(parsed)
     }
     window.addEventListener('popstate', onNavigate)
     window.addEventListener('hashchange', onNavigate)

@@ -4,7 +4,14 @@ import { useState } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
 import { useRunStatus } from './useRunStatus'
-import { roundDelta, savedDeltaTone, savedSuccessDelta, type SavedDeltaTone } from './savedDelta'
+import {
+  isQuietDelta,
+  roundDelta,
+  savedDeltaTone,
+  savedSuccessDelta,
+  type SavedDeltaTone,
+} from './savedDelta'
+import { useSavedPlanResults } from './useSavedPlanResults'
 
 export { roundDelta, savedDeltaTone, savedSuccessDelta, type SavedDeltaTone } from './savedDelta'
 
@@ -21,9 +28,14 @@ export interface SavedSuccessDelta {
 }
 
 /**
- * Shared by the result bar and the phone sheet's mini result. While a run is
- * in flight the previous delta is kept (dimmed) instead of flickering to the
- * stale results' number.
+ * The success rate against the saved plan, shared by the head and the dock.
+ * While a run is in flight the previous delta is kept (dimmed) instead of
+ * flickering to the stale results' number. A change of less than half a
+ * point reads "±0" in neutral colour (see `QUIET_DELTA_POINTS`).
+ *
+ * The saved plan's rate is the store's (`planSuccessRates`); where the store
+ * has none — a reload with a draft, rates cleared after a calculation change
+ * — the in-memory result behind the ghost stands in.
  */
 export function useSavedSuccessDelta(): SavedSuccessDelta {
   const t = useTranslations('planDashboard.scenarios')
@@ -31,7 +43,9 @@ export function useSavedSuccessDelta(): SavedSuccessDelta {
   // Scalars only: the rate map and the results object change on every clean
   // run, the numbers read here far less often.
   const isDirty = useSimulationStore((state) => state.isDirty)
-  const savedRate = useSimulationStore((state) => state.planSuccessRates[state.activePlanId])
+  const storedRate = useSimulationStore((state) => state.planSuccessRates[state.activePlanId])
+  const ghostRate = useSavedPlanResults()?.successRate
+  const savedRate = storedRate ?? ghostRate
   const rate = useSimulationStore((state) => state.results?.successRate)
   const { status } = useRunStatus()
   const running = status === 'running'
@@ -53,7 +67,7 @@ export function useSavedSuccessDelta(): SavedSuccessDelta {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   })
-  const value = delta === 0 ? '±0' : `${delta > 0 ? '+' : '−'}${magnitude}`
+  const value = isQuietDelta(delta) ? '±0' : `${delta > 0 ? '+' : '−'}${magnitude}`
   return {
     delta,
     tone: savedDeltaTone(delta),

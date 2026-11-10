@@ -1,4 +1,11 @@
-import { expect, gotoWorkspace, openPanel, openSection, test } from './helpers/workspace'
+import {
+  expect,
+  gotoWorkspace,
+  groupHeader,
+  openPanel,
+  openSection,
+  test,
+} from './helpers/workspace'
 
 test.describe('i18n routing', () => {
   test('redirects root to default locale landing page', async ({ page }) => {
@@ -11,14 +18,21 @@ test.describe('i18n routing', () => {
 
   test('renders German translations on simulation page', async ({ page }) => {
     await gotoWorkspace(page, '/de/simulation')
-    // The workspace in German: the run button, the section index and a lever.
+    // The workspace in German: the run button, the anchors, the column's
+    // groups and a section.
     await expect(page.getByTestId('run-button')).toHaveAccessibleName('Neu berechnen')
-    await expect(page.getByTestId('section-index')).toContainText('Ergebnis')
+    await expect(page.getByTestId('section-index')).toHaveText(/Geldfluss.*Entnahme.*Wirkung/)
     await expect(page.getByRole('navigation', { name: 'Abschnitte' })).toBeVisible()
+    await expect(page.getByRole('complementary', { name: 'Annahmen' })).toBeVisible()
+    await expect(groupHeader(page, 'person')).toContainText('Zeit')
+    await expect(groupHeader(page, 'savings')).toContainText('Vermögen & Sparen')
+    await expect(groupHeader(page, 'flows')).toContainText('Einnahmen & Ausgaben')
+    await expect(groupHeader(page, 'rule')).toContainText('Entnahme')
+    await expect(groupHeader(page, 'market')).toContainText('Markt & Steuern')
+    await openPanel(page, 'savings')
+    await expect(page.locator('#plan-editor-income')).toContainText('Jährliche Sparrate')
     await openSection(page, 'levers')
-    await expect(
-      page.getByTestId('quick-levers').getByRole('slider', { name: 'Jährliche Sparrate' })
-    ).toBeVisible()
+    await expect(page.locator('#levers-title')).toHaveText('Wirkung')
   })
 
   test('localises the seeded cash-flow names in German', async ({ page }) => {
@@ -51,9 +65,10 @@ test.describe('i18n routing', () => {
     await page.getByTestId('command-save').click()
     await expect(page.getByTestId('command-save')).toHaveCount(0)
 
-    // The open panel is part of the URL: the German page reopens it.
+    // The group is part of the URL: the German page lands on it.
     await gotoWorkspace(page, '/de/simulation#assumptions:flows')
-    await expect(page.getByTestId('edit-panel')).toHaveAttribute('data-panel', 'flows')
+    await expect(groupHeader(page, 'flows')).toHaveAttribute('aria-expanded', 'true')
+    await expect(groupHeader(page, 'flows')).toBeFocused()
     // The user's own text wins over the seeded translation.
     await expect(page.getByTestId('cashflow-list')).toContainText('Wocheneinkauf')
     await expect(page.getByTestId('cashflow-list')).not.toContainText('Lebensmittel')

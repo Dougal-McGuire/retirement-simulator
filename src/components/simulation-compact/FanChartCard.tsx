@@ -1,44 +1,94 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useFormatter, useLocale, useTranslations } from 'next-intl'
+import { useFormatter, useTranslations } from 'next-intl'
+import { Ellipsis } from 'lucide-react'
 import type { SimulationResults } from '@/types'
-import { buildFanGeometry, FAN_H, FAN_W } from './fanGeometry'
+import { Popover } from '@/components/workspace/Popover'
 import { useMoney } from '@/lib/hooks/useMoney'
+import {
+  buildFanGeometry,
+  FAN_H,
+  FAN_W,
+  GHOST_OUTLINE_OPACITY,
+  seriesPeak,
+  sliceByAge,
+} from './fanGeometry'
 
 interface FanChartCardProps {
   results: SimulationResults
-  /** Which pre-computed series to draw; the switch lives in the command bar. */
+  /** Which pre-computed series to draw; the switch lives in the bar. */
   displayReal: boolean
-  /** Chart height in px; 1b uses 250, the compare view 266. */
+  /** Plot height in px. Without it the plot takes `--ws-fan-plot-h` from CSS. */
   height?: number
+  /**
+   * The saved plan's result while the plan has unsaved changes: drawn under
+   * the draft as a dashed median and a thin outline of its outer band.
+   */
+  ghost?: SimulationResults | null
+  /**
+   * Keep the value axis where it is (the plan is dirty): the scale covers
+   * the draft and the ghost and only ever grows, so an edit moves the fan,
+   * not the axis. It re-fits when this turns false (save, discard).
+   */
+  holdScale?: boolean
 }
 
 type ScaleMode = 'focus' | 'full'
 
 /**
- * Compact Monte-Carlo fan with the analytical affordances of the pre-redesign
- * chart: an X-range zoom, reset, focus/full Y scaling, precise hover/touch
- * inspection and a data table. Keeping those controls inside the compact chart
- * prevents future visual redesigns from silently dropping analysis features.
+ * The peak a held scale has seen. While `hold` is true the returned value
+ * never shrinks; it grows (with some headroom, so the next small step fits
+ * too) when the chart needs more, and starts over when `key` changes — a
+ * different zoom, scale mode or € unit is a different axis.
  */
-export function FanChartCard({ results, displayReal, height = 250 }: FanChartCardProps) {
+export function useHeldPeak(needed: number, hold: boolean, key: string): number {
+  const [held, setHeld] = useState<{ key: string; peak: number } | null>(null)
+  let next = held
+  if (!hold) next = null
+  else if (!held || held.key !== key) next = { key, peak: needed }
+  else if (needed > held.peak) next = { key, peak: needed * 1.12 }
+  // Derived state updated during render ("storing information from previous
+  // renders"): the scale must be right in the frame that draws the new fan.
+  if (next !== held) setHeld(next)
+  return next ? next.peak : needed
+}
+
+const percentilesOf = (results: SimulationResults, displayReal: boolean) =>
+  (displayReal ? results.assetPercentilesReal : undefined) ?? results.assetPercentiles
+
+/**
+ * The asset fan of the head: the band of 8 in 10 paths, the band of 6 in 10
+ * and the median. While the plan is dirty the saved plan stays on the chart
+ * as a ghost (dashed median, outline of its outer band), on a value axis that
+ * holds still, so every edit shows the old and the new future. Markers name
+ * the retirement start and the pension start on the age axis.
+ *
+ * Zoom, the value-axis scale and the table of the same numbers sit behind
+ * one "⋯" menu; hover or touch inspects a year.
+ */
+export function FanChartCard({
+  results,
+  displayReal,
+  height,
+  ghost = null,
+  holdScale = false,
+}: FanChartCardProps) {
   const t = useTranslations('simulationCompact.chart')
   const tAssets = useTranslations('assetsChart')
   const tSimulation = useTranslations('simulationChart')
   const format = useFormatter()
-  const locale = useLocale()
+  const money = useMoney()
 
-  const percentiles =
-    (displayReal ? results.assetPercentilesReal : undefined) ?? results.assetPercentiles
-  const samples =
-    (displayReal ? results.sampleAssetPathsReal : undefined) ?? results.sampleAssetPaths ?? []
+  const percentiles = percentilesOf(results, displayReal)
+  const ghostPercentiles = ghost ? percentilesOf(ghost, displayReal) : null
 
   const maxIndex = Math.max(0, results.ages.length - 1)
   const [startIndex, setStartIndex] = useState(0)
   const [endIndex, setEndIndex] = useState(maxIndex)
   const [scaleMode, setScaleMode] = useState<ScaleMode>('focus')
   const [inspectIndex, setInspectIndex] = useState<number | null>(null)
+  const [tableOpen, setTableOpen] = useState(false)
 
   useEffect(() => {
     setStartIndex(0)
@@ -48,38 +98,47 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
 
   const start = Math.max(0, Math.min(startIndex, maxIndex))
   const end = Math.max(start, Math.min(endIndex, maxIndex))
-  const slice = (series: number[]) => series.slice(start, end + 1)
-  const visibleAges = results.ages.slice(start, end + 1)
-  const visiblePercentiles = {
-    p10: slice(percentiles.p10),
-    p20: slice(percentiles.p20),
-    p50: slice(percentiles.p50),
-    p80: slice(percentiles.p80),
-    p90: slice(percentiles.p90),
-  }
-  const visibleSamples = samples.map(slice)
+  const visibleAges = useMemo(() => results.ages.slice(start, end + 1), [results.ages, start, end])
+  const visible = useMemo(() => {
+    const slice = (series: number[]) => series.slice(start, end + 1)
+    return {
+      p10: slice(percentiles.p10),
+      p20: slice(percentiles.p20),
+      p50: slice(percentiles.p50),
+      p80: slice(percentiles.p80),
+      p90: slice(percentiles.p90),
+    }
+  }, [percentiles, start, end])
 
-  const geometry = useMemo(() => {
-    const scaleSeries =
-      scaleMode === 'focus'
-        ? [visiblePercentiles.p80, visiblePercentiles.p50]
-        : [visiblePercentiles.p90, ...visibleSamples]
-    return buildFanGeometry(visibleAges, scaleSeries)
-  }, [
-    visibleAges,
-    visiblePercentiles.p50,
-    visiblePercentiles.p80,
-    visiblePercentiles.p90,
-    visibleSamples,
-    scaleMode,
-  ])
-
-  const { retirementAge, legalRetirementAge } = results.params
   const firstAge = visibleAges[0] ?? 0
   const lastAge = visibleAges[visibleAges.length - 1] ?? firstAge
-  const markerAges = [retirementAge, legalRetirementAge].filter(
-    (age) => age > firstAge && age < lastAge
+
+  // What the value axis has to cover: the draft's upper band (or its 9-in-10
+  // edge on the full scale) and the ghost's, cut to the ages on screen.
+  const needed = useMemo(() => {
+    const series: number[][] =
+      scaleMode === 'focus' ? [visible.p80, visible.p50] : [visible.p90, visible.p50]
+    if (ghost && ghostPercentiles) {
+      const cut = (values: number[]) => sliceByAge(ghost.ages, values, firstAge, lastAge)
+      series.push(cut(ghostPercentiles.p50))
+      series.push(cut(scaleMode === 'focus' ? ghostPercentiles.p80 : ghostPercentiles.p90))
+    }
+    return seriesPeak(series)
+  }, [visible, scaleMode, ghost, ghostPercentiles, firstAge, lastAge])
+  const peak = useHeldPeak(
+    needed,
+    holdScale,
+    `${start}:${end}:${scaleMode}:${displayReal ? 'real' : 'nominal'}`
   )
+  const geometry = useMemo(
+    () => buildFanGeometry(visibleAges, [], { minPeak: peak }),
+    [visibleAges, peak]
+  )
+
+  const { retirementAge, legalRetirementAge } = results.params
+  const inRange = (age: number) => age > firstAge && age < lastAge
+  const savedRetirementAge =
+    ghost && ghost.params.retirementAge !== retirementAge ? ghost.params.retirementAge : null
   const isZoomed = start > 0 || end < maxIndex
 
   const resetZoom = () => {
@@ -95,49 +154,139 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
     setInspectIndex(Math.round(ratio * (visibleAges.length - 1)))
   }
 
+  /** The saved plan's median at an age of this chart, when it has that age. */
+  const ghostMedianAt = (age: number): number | null => {
+    if (!ghost || !ghostPercentiles) return null
+    const index = ghost.ages.indexOf(age)
+    return index === -1 ? null : (ghostPercentiles.p50[index] ?? null)
+  }
+
   const inspected =
     inspectIndex == null
       ? null
       : {
           age: visibleAges[inspectIndex],
-          p10: visiblePercentiles.p10[inspectIndex],
-          p20: visiblePercentiles.p20[inspectIndex],
-          p50: visiblePercentiles.p50[inspectIndex],
-          p80: visiblePercentiles.p80[inspectIndex],
-          p90: visiblePercentiles.p90[inspectIndex],
+          p10: visible.p10[inspectIndex],
+          p20: visible.p20[inspectIndex],
+          p50: visible.p50[inspectIndex],
+          p80: visible.p80[inspectIndex],
+          p90: visible.p90[inspectIndex],
+          saved: ghostMedianAt(visibleAges[inspectIndex]),
         }
-
-  const money = useMoney()
-  const formatCurrency = money.full
-
   const inspectX = inspectIndex == null ? 0 : geometry.x(inspectIndex) / FAN_W
 
   return (
-    <div className="ds-card ws-fan" style={{ padding: '16px 16px 12px' }} data-testid="fan-chart">
-      <div className="ws-chart-toolbar">
-        <div role="group" aria-label={tAssets('scale.label')} className="ws-segmented">
-          {(['focus', 'full'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              aria-pressed={scaleMode === mode}
-              onClick={() => setScaleMode(mode)}
-            >
-              {tAssets(`scale.${mode}`)}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="ws-chart-button" onClick={resetZoom} disabled={!isZoomed}>
-          {tAssets('reset')}
-        </button>
-        <span className="ws-chart-meta">
-          {format.number(firstAge)}–{format.number(lastAge)}
+    <div className="ws-fan" data-testid="fan-chart" data-ghost={ghost ? 'true' : undefined}>
+      <div className="ws-fan-head">
+        <h3 id="result-assets-title" className="ws-fan-title">
+          {t('title')}
+        </h3>
+        <ul className="ws-fan-legend" data-testid="fan-legend">
+          <li>
+            <span className="ws-fan-key" data-key="now" aria-hidden="true" />
+            {ghost ? t('now') : t('median')}
+          </li>
+          {ghost && (
+            <li data-testid="fan-legend-saved">
+              <span className="ws-fan-key" data-key="saved" aria-hidden="true" />
+              {t('saved')}
+            </li>
+          )}
+          <li>
+            <span className="ws-fan-key" data-key="outer" aria-hidden="true" />
+            {t('bandOuter')}
+          </li>
+          <li className="ws-fan-legend-inner">
+            <span className="ws-fan-key" data-key="inner" aria-hidden="true" />
+            {t('bandInner')}
+          </li>
+        </ul>
+        {/* Which euros the axis shows; follows the bar's switch. */}
+        <span className="ws-fan-unit" data-testid="fan-unit">
+          {displayReal ? t('real') : t('nominal')}
         </span>
+        <Popover
+          label={t('options')}
+          className="ws-fan-options"
+          testId="fan-options"
+          trigger={(props) => (
+            <button
+              {...props}
+              className="ws-icon-button"
+              data-testid="fan-options-trigger"
+              aria-label={t('options')}
+              title={t('options')}
+            >
+              <Ellipsis size={18} aria-hidden="true" />
+            </button>
+          )}
+        >
+          {() => (
+            <div className="ws-fan-menu">
+              <div role="group" aria-label={tAssets('scale.label')} className="ws-segmented">
+                {(['focus', 'full'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={scaleMode === mode}
+                    onClick={() => setScaleMode(mode)}
+                  >
+                    {tAssets(`scale.${mode}`)}
+                  </button>
+                ))}
+              </div>
+              {maxIndex > 0 && (
+                <div className="ws-chart-brush">
+                  <span className="ws-fan-menu-label">
+                    {t('range', { from: format.number(firstAge), to: format.number(lastAge) })}
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={maxIndex}
+                    value={start}
+                    aria-label={tAssets('aria.brushStart', { startAge: firstAge, endAge: lastAge })}
+                    onChange={(event) =>
+                      setStartIndex(Math.min(Number(event.target.value), end - 1))
+                    }
+                  />
+                  <input
+                    type="range"
+                    min={0}
+                    max={maxIndex}
+                    value={end}
+                    aria-label={tAssets('aria.brushEnd', { startAge: firstAge, endAge: lastAge })}
+                    onChange={(event) =>
+                      setEndIndex(Math.max(Number(event.target.value), start + 1))
+                    }
+                  />
+                </div>
+              )}
+              <button
+                type="button"
+                className="ws-chart-button"
+                onClick={resetZoom}
+                disabled={!isZoomed}
+              >
+                {tAssets('reset')}
+              </button>
+              <button
+                type="button"
+                className="ws-chart-button"
+                aria-pressed={tableOpen}
+                data-testid="fan-table-toggle"
+                onClick={() => setTableOpen((open) => !open)}
+              >
+                {tSimulation('assetTable.toggle')}
+              </button>
+            </div>
+          )}
+        </Popover>
       </div>
 
       <div
         className="ws-chart-plot"
-        style={{ height }}
+        style={height ? { height } : undefined}
         onPointerMove={(event) => handlePointer(event.clientX, event.currentTarget)}
         onPointerDown={(event) => handlePointer(event.clientX, event.currentTarget)}
         onPointerLeave={() => setInspectIndex(null)}
@@ -155,43 +304,73 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
               vectorEffect="non-scaling-stroke"
             />
           ))}
-          {markerAges.map((age) => (
+          <path d={geometry.band(visible.p10, visible.p90)} fill="var(--viz-seq-1)" />
+          <path d={geometry.band(visible.p20, visible.p80)} fill="var(--viz-seq-2)" />
+          {inRange(legalRetirementAge) && (
             <line
-              key={age}
-              x1={geometry.ageX(age)}
-              x2={geometry.ageX(age)}
+              x1={geometry.ageX(legalRetirementAge)}
+              x2={geometry.ageX(legalRetirementAge)}
               y1={0}
               y2={FAN_H}
-              stroke="var(--gray-300)"
+              stroke="var(--line-strong)"
               strokeWidth={1}
-              strokeDasharray="3 3"
               vectorEffect="non-scaling-stroke"
             />
-          ))}
-          <path
-            d={geometry.band(visiblePercentiles.p10, visiblePercentiles.p90)}
-            fill="var(--viz-seq-1)"
-          />
-          <path
-            d={geometry.band(visiblePercentiles.p20, visiblePercentiles.p80)}
-            fill="var(--viz-seq-2)"
-          />
-          {visibleSamples.map((sample, index) => (
-            <path
-              key={index}
-              d={geometry.line(sample)}
-              fill="none"
-              stroke="var(--gray-500)"
-              strokeWidth={0.8}
-              opacity={0.3}
+          )}
+          {savedRetirementAge !== null && inRange(savedRetirementAge) && (
+            <line
+              x1={geometry.ageX(savedRetirementAge)}
+              x2={geometry.ageX(savedRetirementAge)}
+              y1={0}
+              y2={FAN_H}
+              stroke="var(--viz-ghost)"
+              strokeWidth={1}
+              strokeDasharray="3 4"
               vectorEffect="non-scaling-stroke"
             />
-          ))}
+          )}
+          {inRange(retirementAge) && (
+            <line
+              x1={geometry.ageX(retirementAge)}
+              x2={geometry.ageX(retirementAge)}
+              y1={0}
+              y2={FAN_H}
+              stroke="var(--viz-seq-5)"
+              strokeWidth={1.5}
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+          {ghost && ghostPercentiles && (
+            <g data-testid="fan-ghost">
+              {(['p10', 'p90'] as const).map((key) => (
+                <path
+                  key={key}
+                  d={geometry.lineByAge(ghost.ages, ghostPercentiles[key])}
+                  fill="none"
+                  stroke="var(--viz-ghost)"
+                  strokeWidth={1}
+                  strokeDasharray="2 4"
+                  opacity={GHOST_OUTLINE_OPACITY}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+              <path
+                data-testid="fan-ghost-median"
+                d={geometry.lineByAge(ghost.ages, ghostPercentiles.p50)}
+                fill="none"
+                stroke="var(--viz-ghost)"
+                strokeWidth={2}
+                strokeDasharray="7 5"
+                vectorEffect="non-scaling-stroke"
+              />
+            </g>
+          )}
           <path
-            d={geometry.line(visiblePercentiles.p50)}
+            d={geometry.line(visible.p50)}
             fill="none"
             stroke="var(--viz-seq-5)"
-            strokeWidth={2}
+            strokeWidth={2.5}
+            strokeLinejoin="round"
             vectorEffect="non-scaling-stroke"
           />
           {inspectIndex != null && (
@@ -212,21 +391,35 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
             {money.axis(grid.value)}
           </span>
         ))}
-        <div className="ws-chart-legend">
-          <span>
-            <span style={{ width: 10, height: 8, background: 'var(--viz-seq-1)' }} />
-            {t('bandOuter')}
+        {/* Markers on the age axis, named at the top of the plot. */}
+        {inRange(retirementAge) && (
+          <span
+            className="ws-fan-marker"
+            data-marker="retirement"
+            style={{ left: geometry.agePct(retirementAge) }}
+          >
+            {t('retirementMarker', { age: retirementAge })}
           </span>
-          <span>
-            <span style={{ width: 10, height: 8, background: 'var(--viz-seq-2)' }} />
-            {t('bandInner')}
+        )}
+        {savedRetirementAge !== null && inRange(savedRetirementAge) && (
+          <span
+            className="ws-fan-marker"
+            data-marker="saved"
+            data-side={savedRetirementAge < retirementAge ? 'before' : 'after'}
+            style={{ left: geometry.agePct(savedRetirementAge) }}
+          >
+            {t('savedMarker', { age: savedRetirementAge })}
           </span>
-          <span>
-            <span style={{ width: 12, height: 2, background: 'var(--viz-seq-5)' }} />
-            {t('median')}
+        )}
+        {inRange(legalRetirementAge) && legalRetirementAge !== retirementAge && (
+          <span
+            className="ws-fan-marker"
+            data-marker="pension"
+            style={{ left: geometry.agePct(legalRetirementAge) }}
+          >
+            {t('pensionMarker', { age: legalRetirementAge })}
           </span>
-          <span className="ws-chart-legend-unit">{displayReal ? t('real') : t('nominal')}</span>
-        </div>
+        )}
         {inspected && (
           <div
             className="ws-chart-tooltip"
@@ -240,9 +433,15 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
             {(['p90', 'p80', 'p50', 'p20', 'p10'] as const).map((key) => (
               <div key={key}>
                 <span>{key === 'p50' ? tAssets('tooltip.median') : tAssets(`tooltip.${key}`)}</span>
-                <strong>{formatCurrency(inspected[key])}</strong>
+                <strong>{money.full(inspected[key])}</strong>
               </div>
             ))}
+            {inspected.saved !== null && (
+              <div className="ws-chart-tooltip-saved">
+                <span>{t('savedMedian')}</span>
+                <strong>{money.full(inspected.saved)}</strong>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -255,62 +454,42 @@ export function FanChartCard({ results, displayReal, height = 250 }: FanChartCar
         ))}
       </div>
 
-      {maxIndex > 0 && (
-        <div className="ws-chart-brush">
-          <input
-            type="range"
-            min={0}
-            max={maxIndex}
-            value={start}
-            aria-label={tAssets('aria.brushStart', { startAge: firstAge, endAge: lastAge })}
-            onChange={(event) => setStartIndex(Math.min(Number(event.target.value), end - 1))}
-          />
-          <input
-            type="range"
-            min={0}
-            max={maxIndex}
-            value={end}
-            aria-label={tAssets('aria.brushEnd', { startAge: firstAge, endAge: lastAge })}
-            onChange={(event) => setEndIndex(Math.max(Number(event.target.value), start + 1))}
-          />
-        </div>
-      )}
-
-      <details className="ws-chart-details">
-        <summary>{tSimulation('assetTable.toggle')}</summary>
-        <div className="ws-chart-table">
-          <table>
-            <caption className="sr-only">{tSimulation('assetTable.caption')}</caption>
-            <thead>
-              <tr>
-                {['age', 'p10', 'p20', 'p50', 'p80', 'p90'].map((key) => (
-                  <th key={key} className={key === 'age' ? undefined : 'ds-num'}>
-                    {key === 'age'
-                      ? tSimulation('assetTable.headers.age')
-                      : key === 'p50'
-                        ? tSimulation('assetTable.headers.p50')
-                        : key.toUpperCase()}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {visibleAges.map((age, index) => (
+      {/* Always in the document (the chart's text equivalent); shown from the menu. */}
+      <div className="ws-chart-table" data-testid="fan-table" hidden={!tableOpen}>
+        <table>
+          <caption className="sr-only">{tSimulation('assetTable.caption')}</caption>
+          <thead>
+            <tr>
+              {['age', 'p10', 'p20', 'p50', 'p80', 'p90'].map((key) => (
+                <th key={key} className={key === 'age' ? undefined : 'ds-num'}>
+                  {key === 'age'
+                    ? tSimulation('assetTable.headers.age')
+                    : key === 'p50'
+                      ? tSimulation('assetTable.headers.p50')
+                      : key.toUpperCase()}
+                </th>
+              ))}
+              {ghost && <th className="ds-num">{t('savedMedian')}</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleAges.map((age, index) => {
+              const saved = ghostMedianAt(age)
+              return (
                 <tr key={age}>
                   <td>{format.number(age)}</td>
-                  <td className="ds-num">{formatCurrency(visiblePercentiles.p10[index])}</td>
-                  <td className="ds-num">{formatCurrency(visiblePercentiles.p20[index])}</td>
-                  <td className="ds-num" style={{ fontWeight: 600, color: 'var(--ui-text)' }}>
-                    {formatCurrency(visiblePercentiles.p50[index])}
-                  </td>
-                  <td className="ds-num">{formatCurrency(visiblePercentiles.p80[index])}</td>
-                  <td className="ds-num">{formatCurrency(visiblePercentiles.p90[index])}</td>
+                  <td className="ds-num">{money.full(visible.p10[index])}</td>
+                  <td className="ds-num">{money.full(visible.p20[index])}</td>
+                  <td className="ds-num ws-chart-table-strong">{money.full(visible.p50[index])}</td>
+                  <td className="ds-num">{money.full(visible.p80[index])}</td>
+                  <td className="ds-num">{money.full(visible.p90[index])}</td>
+                  {ghost && <td className="ds-num">{saved === null ? '—' : money.full(saved)}</td>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

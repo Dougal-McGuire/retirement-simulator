@@ -4,7 +4,6 @@ import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from 're
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { ChevronRight, PencilLine, PowerOff } from 'lucide-react'
 import type { AnnualCashFlow, CashFlow, SimulationParams, SimulationResults } from '@/types'
-import { assumptionPanel } from '@/components/plans/planSections'
 import type { EditTarget } from '@/components/workspace/WorkspaceProvider'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import { flowWindowLabel, monthFormatter } from '@/lib/plans/flowWindow'
@@ -45,7 +44,7 @@ interface CashflowCardProps {
   params: SimulationParams
   results: SimulationResults | null
   /**
-   * Opens the edit panel (or the Entnahme section) where a number is set.
+   * Opens the group of the control column where a number is set.
    * When given, diagram nodes and table labels become shortcuts into the
    * plan; the clicked element is passed along so focus can return to it.
    */
@@ -81,8 +80,7 @@ export function CashflowCard({ results, onEdit }: CashflowCardProps) {
   const t = useTranslations('cashflowResults')
   const ts = useTranslations('cashflowSankey')
   const tFlows = useTranslations('setup.cashFlows')
-  const tGroups = useTranslations('planEditor.groups')
-  const tWorkspace = useTranslations('workspace.sections')
+  const tColumn = useTranslations('workspace.column.groups')
   const format = useFormatter()
   const locale = useLocale()
   const displayReal = useDisplayReal()
@@ -135,12 +133,10 @@ export function CashflowCard({ results, onEdit }: CashflowCardProps) {
   const editLabel = useCallback(
     (target: EditTarget) =>
       ts('ledger.edit', {
-        section:
-          'panel' in target
-            ? tGroups(`${assumptionPanel(target.panel).messageKey}.title`)
-            : tWorkspace(`${target.section}.title`),
+        // Named as the control column names its groups; the Entnahme rule is one.
+        section: tColumn('panel' in target ? target.panel : 'rule'),
       }),
-    [ts, tGroups, tWorkspace]
+    [ts, tColumn]
   )
 
   const expandable = useMemo(() => model?.expandable ?? [], [model])

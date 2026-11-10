@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import {
   expect,
   gotoWorkspace,
+  groupHeader,
   openSection,
   test,
   waitForLeversMeasured,
@@ -9,10 +10,10 @@ import {
 
 /**
  * Render isolation (spec §7): an edit must not re-render the page shell, and
- * when a run lands the result bar commits on its own — the charts, the Sankey,
- * the withdrawal planner and the lever list follow in a later (deferred,
- * interruptible) commit. That split is what keeps edit → result bar inside
- * the 250 ms budget; a regression shows up here as a structural fact (which
+ * when a run lands the result's figures (the head's numbers and the dock)
+ * commit on their own — the charts, the Sankey, the withdrawal outcome and
+ * the lever list follow in a later (deferred, interruptible) commit. That
+ * split is what keeps edit → figures inside the 250 ms budget; a regression shows up here as a structural fact (which
  * components rendered in which commit), never as a timing, so it cannot
  * flake on a slow runner.
  *
@@ -132,20 +133,22 @@ async function recordCommits(page: Page) {
 const readCommits = (page: Page) =>
   page.evaluate(() => (window as unknown as { __commits: Commit[] }).__commits.splice(0))
 
-/** Rendered on a landing run, but only after the result bar has committed. */
+/**
+ * Rendered on a landing run, but only after the result's figures (the head's
+ * numbers and the dock) have committed.
+ */
 const DEFERRED = [
-  'ResultBody',
+  'HeadChart',
   'FanChartCard',
-  'AssumptionsSection',
   'CashflowCard',
-  'WithdrawalPlanner',
+  'WithdrawalOutcome',
   'SpendingCorridorChart',
   'RecommendationList',
   'LeverImpactView',
   'PersonalGroup',
 ]
 
-test('an edit re-renders the result bar first and never the page shell', async ({ page }) => {
+test('an edit re-renders the result figures first and never the page shell', async ({ page }) => {
   test.setTimeout(90000)
   await page.setViewportSize({ width: 1440, height: 900 })
   await recordCommits(page)
@@ -158,16 +161,25 @@ test('an edit re-renders the result bar first and never the page shell', async (
   )
 
   // Everything lazy mounted: scroll through to the measured lever list, then
-  // edit from the docked Person panel with the list still in view.
+  // edit from the column's group "Time" (open by default) with the list still
+  // in view. This far down the dock is pinned: its figures are the result in
+  // view, and they carry the canonical test ids.
   await openSection(page, 'levers')
   await waitForLeversMeasured(page)
-  await page.getByTestId('edit-person').dispatchEvent('click')
   const panel = page.getByTestId('edit-panel')
-  await expect(panel).toHaveAttribute('data-panel', 'person')
+  await expect(groupHeader(page, 'person')).toHaveAttribute('aria-expanded', 'true')
   await page.locator('#levers').evaluate((levers) => levers.scrollIntoView())
+  await expect(page.getByTestId('result-dock')).toHaveAttribute('data-pinned', 'true')
   const slider = panel.locator('#editor-retirementAge [role="slider"]')
   await slider.focus()
+  // A first step makes the plan dirty: the ghost, the chips and the held
+  // scale arrive with it (the chart re-renders for those at once). What is
+  // measured is the step after — an ordinary edit of a plan being worked on.
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByTestId('result-bar')).toHaveAttribute('data-dirty', 'true')
+  await expect(page.getByTestId('success-delta')).toBeVisible()
   await expect(page.getByTestId('run-status')).toHaveAttribute('data-state', 'updated')
+  await page.waitForTimeout(500)
   await readCommits(page)
 
   const before = await page.getByTestId('end-assets').getAttribute('data-value')
@@ -183,9 +195,9 @@ test('an edit re-renders the result bar first and never the page shell', async (
     .poll(
       async () => {
         commits.push(...(await readCommits(page)))
-        return commits.some((commit) => commit.rendered.includes('ResultBody'))
+        return commits.some((commit) => commit.rendered.includes('HeadChart'))
       },
-      { timeout: 20000, message: 'Ergebnis never re-rendered for the new result' }
+      { timeout: 20000, message: 'the head chart never re-rendered for the new result' }
     )
     .toBe(true)
   await page.waitForTimeout(500)
@@ -195,18 +207,22 @@ test('an edit re-renders the result bar first and never the page shell', async (
   const shell = commits.filter((commit) => commit.rendered.includes('WorkspacePage'))
   expect(shell, 'WorkspacePage re-rendered').toHaveLength(0)
 
-  // The commit that put the new result into the bar …
+  // The commit that put the new result into the figures in view …
   const barIndex = commits.findIndex((commit) => commit.bar.split('|')[1] !== before)
-  expect(barIndex, 'the bar never changed').toBeGreaterThanOrEqual(0)
+  expect(barIndex, 'the result figures never changed').toBeGreaterThanOrEqual(0)
   const barCommit = commits[barIndex]
-  expect(barCommit.rendered).toContain('BarKpis')
+  // … updated both forms of the result area at once (the dock in view, the
+  // head's numbers above it) …
+  expect(barCommit.rendered).toContain('DockFigures')
+  expect(barCommit.rendered).toContain('HeadNumbers')
   // … and none of the heavy sections rendered in it.
   expect(barCommit.rendered.filter((name) => DEFERRED.includes(name))).toEqual([])
 
-  // The sections still follow the result — after the bar, not before it.
-  const resultBody = commits.flatMap((commit, index) =>
-    commit.rendered.includes('ResultBody') ? [index] : []
+  // The chart and the sections still follow the result — after the figures,
+  // not before them.
+  const headChart = commits.flatMap((commit, index) =>
+    commit.rendered.includes('HeadChart') ? [index] : []
   )
-  expect(resultBody.length, 'Ergebnis never re-rendered for the new result').toBeGreaterThan(0)
-  expect(Math.min(...resultBody)).toBeGreaterThan(barIndex)
+  expect(headChart.length, 'the head chart never re-rendered').toBeGreaterThan(0)
+  expect(Math.min(...headChart)).toBeGreaterThan(barIndex)
 })

@@ -5,7 +5,9 @@ import { AuthMenu } from '@/components/auth/AuthMenu'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
 import { AppearanceSwitch } from '@/components/navigation/AppearanceSwitch'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
-import { EuroDisplay } from '@/components/workspace/EuroDisplay'
+import { selectResultsStale } from '@/components/workspace/useRunStatus'
+import { useUsableStoreResults } from '@/components/workspace/useUsableResults'
+import { useSimulationLoading, useSimulationStore } from '@/lib/stores/simulationStore'
 import {
   Dialog,
   DialogContent,
@@ -14,28 +16,42 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import type { SimulationResults } from '@/types'
 
 /** First control that can actually do something — never the disabled sign-in. */
 export const FOCUSABLE =
   'button:not([disabled]):not([aria-disabled="true"]), a[href], [role="combobox"]:not([disabled])'
 
 /**
- * The workspace "Menu": report, language, account and appearance, plus the
- * nominal / today's-€ switch wherever the rail does not show it (below
- * 1024px, and beside the compact rail while a docked panel is open). Plan
- * management lives in the plan menu's "Manage plans …" dialog, the guided
- * setup in the Annahmen section.
+ * The report export as the Menü carries it on phones, where the bar has no
+ * room for its own PDF button. Mounted only while the dialog is open, so the
+ * bar does not subscribe to results twice.
  */
-export function DashboardTools({
-  results,
-  isLoading,
-}: {
-  results: SimulationResults | null
-  isLoading: boolean
-}) {
+function MenuReport() {
+  const results = useUsableStoreResults()
+  const stale = useSimulationStore(selectResultsStale)
+  const loading = useSimulationLoading()
+  return (
+    <div className="workspace-menu-report">
+      <GenerateReportButton
+        results={stale ? null : results}
+        disabled={loading}
+        size="sm"
+        variant="outline"
+      />
+    </div>
+  )
+}
+
+/**
+ * The workspace "Menü": language, account and appearance. The nominal /
+ * today's-€ switch and the PDF export have their own places in the bar; on
+ * phones, where the bar keeps to the plan menu, the € switch and this
+ * button, the PDF export is the first item here. Plan management lives in
+ * the plan menu's "Manage plans …" dialog, the guided setup at the foot of
+ * the control column.
+ */
+export function DashboardTools() {
   const t = useTranslations('simulationCompact.tools')
-  const td = useTranslations('simulation.display')
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -51,10 +67,12 @@ export function DashboardTools({
         className="max-h-[85vh] overflow-y-auto sm:max-w-2xl"
         // Radix focuses the first tabbable element, which used to be the
         // disabled sign-in control (and opened its tooltip). Pick explicitly:
-        // Generate Report comes first and receives focus.
+        // the first control that works receives focus.
         onOpenAutoFocus={(event) => {
           const root = event.currentTarget as HTMLElement
-          const target = root.querySelector<HTMLElement>(`[data-tools-body] :is(${FOCUSABLE})`)
+          const target = Array.from(
+            root.querySelectorAll<HTMLElement>(`[data-tools-body] :is(${FOCUSABLE})`)
+          ).find((node) => node.getClientRects().length > 0)
           if (!target) return
           event.preventDefault()
           target.focus()
@@ -65,23 +83,12 @@ export function DashboardTools({
           <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-wrap items-center gap-3" data-tools-body>
-          <GenerateReportButton
-            results={results}
-            disabled={isLoading}
-            size="sm"
-            variant="outline"
-          />
+          <MenuReport />
           <LocaleSwitcher />
           <AuthMenu />
         </div>
         {/* Colour scheme (System / Light / Dark); self-contained, see AppearanceSwitch. */}
         <AppearanceSwitch showLabel className="self-start" />
-        {/* The nominal / today's-€ switch shows here whenever the rail's is off
-            screen: below 1024px and beside the compact rail (ws-page.css). */}
-        <div className="workspace-menu-display hidden">
-          <span>{td('label')}</span>
-          <EuroDisplay testId="menu-display-toggle" />
-        </div>
       </DialogContent>
     </Dialog>
   )

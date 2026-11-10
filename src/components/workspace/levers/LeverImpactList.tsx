@@ -43,27 +43,22 @@ const SCENARIO_IDS = Object.keys(SCENARIO_APPLY_KEYS) as ScenarioId[]
 type Tone = 'ok' | 'danger' | 'neutral'
 const toneOf = (rounded: number): Tone => (rounded > 0 ? 'ok' : rounded < 0 ? 'danger' : 'neutral')
 
-interface LeverImpactListProps {
-  /** A quick slider is held: measurement waits for the release. */
-  holding: boolean
-}
-
 /**
  * "Was am meisten bewirkt": the three stress levers, each measured against the
- * result bar's own figure, biggest effect first. Every row can be applied to
- * the draft ("Übernehmen", with undo) or saved as a new plan.
+ * head's own figure, biggest effect first. Every row can be applied to the
+ * draft ("Übernehmen", with undo) or saved as a new plan.
  *
  * Measurements come from `useLeverMeasurements`, which only uses the worker
  * when this list is near the screen and the reader is not changing anything.
  * Until a change has been re-measured, the old rows stay visible but dimmed
  * and inert — their actions would describe an older draft.
  */
-export const LeverImpactList = memo(function LeverImpactList({ holding }: LeverImpactListProps) {
+export const LeverImpactList = memo(function LeverImpactList() {
   const rootRef = useRef<HTMLElement>(null)
   const near = useNearViewport(rootRef, '100px 0px', { once: false })
-  const { measurement, fresh, measuring } = useLeverMeasurements({ near, holding })
+  const { measurement, fresh, measuring } = useLeverMeasurements({ near })
   // The gate inside `useLeverMeasurements` follows the run state, which flips
-  // in the result bar's urgent render. Only this shell re-renders then; the
+  // in the head's urgent render. Only this shell re-renders then; the
   // rows below change when the measurement does.
   return (
     <LeverImpactView

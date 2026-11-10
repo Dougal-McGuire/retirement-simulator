@@ -6,6 +6,7 @@ import {
   expect,
   gotoWorkspace,
   isInViewport,
+  leverSlider,
   openPanel,
   openSection,
   readStoredParams,
@@ -17,32 +18,45 @@ import {
 } from './helpers/workspace'
 
 /**
- * The one-page workspace's result, levers and compare flows, plus the
- * assumption-editor flows that survive unchanged inside the edit panel
- * (spec §9.1, dashboard.spec). Default viewport: 1280×720 — rail and docked
- * panel.
+ * The one-page workspace's result, Wirkung and compare flows, plus the
+ * assumption flows inside the control column's groups. Default viewport:
+ * 1280×720 — canvas and docked column.
+ *
+ * Migrated to the two-pane workspace (docs/specs/2026-11-10-result-in-view.md).
+ * Deleted: "toggles the more-sliders row" (the quick levers and their
+ * "more sliders" row are gone; those inputs live once, in the column's
+ * groups). Rewritten: the quick-lever tests now drive the column's Ruhestart
+ * slider; the rail tests drive the anchors under the head; the report tests
+ * use the bar's PDF button instead of the Menu.
  */
 
-const QUICK_LEVERS = ['Retirement age', 'Annual savings', 'Monthly spending', 'Expected return']
+/** "+ Posten" at the top of the group "Income & spending": opens the form there. */
+async function openComposer(page: Page) {
+  const composer = page.getByTestId('cashflow-composer')
+  if (!(await composer.isVisible())) await page.getByTestId('cashflow-add-open').click()
+  await expect(composer).toBeVisible()
+  await expect(page.locator('#cashflow-name-new')).toBeFocused()
+}
 
 test.describe('one-page workspace', () => {
-  test('shows the result first and keeps the quick levers further down', async ({ page }) => {
+  test('shows the result first; Wirkung reads measured levers, then recommendations', async ({
+    page,
+  }) => {
     await gotoWorkspace(page)
-    await expect(page.getByTestId('verdict')).toContainText('of simulated paths')
-    await expect(page.getByTestId('fan-chart')).toBeVisible()
-    expect(await isInViewport(page.getByTestId('quick-levers'))).toBe(false)
+    await expect(page.getByTestId('verdict')).toContainText(
+      /Your money lasts in \d+ of 100 paths to age 90\./
+    )
+    await expect(page.getByTestId('fan-chart')).toBeInViewport()
+    // No second set of sliders anywhere on the canvas.
+    await expect(page.getByTestId('quick-levers')).toHaveCount(0)
+    await expect(page.locator('main [role="slider"]')).toHaveCount(0)
+    expect(await isInViewport(page.getByTestId('lever-list'))).toBe(false)
 
     await openSection(page, 'levers')
-    const quick = page.getByTestId('quick-levers')
-    for (const name of QUICK_LEVERS) {
-      await expect(quick.getByRole('slider', { name, exact: true })).toBeVisible()
-    }
-
-    // Stellschrauben reads top to bottom: try quickly → what moves the needle
-    // → recommendations.
+    // Top to bottom: what moves the needle → uncertain items → recommendations.
     const levers = page.locator('#levers')
     let previous = -Infinity
-    for (const block of ['quick-levers', 'lever-list', 'recommendations']) {
+    for (const block of ['lever-list', 'uncertain-flows', 'recommendations']) {
       const box = await levers.getByTestId(block).boundingBox()
       expect(box, `${block} rendered`).not.toBeNull()
       expect(box!.y, `${block} below the previous block`).toBeGreaterThan(previous)
@@ -50,66 +64,55 @@ test.describe('one-page workspace', () => {
     }
   })
 
-  test('section index scrolls and marks the current section', async ({ page }) => {
+  test('the anchors scroll and mark the current section', async ({ page }) => {
     await gotoWorkspace(page)
-    await expect(page.getByTestId('section-link-result')).toHaveAttribute(
-      'aria-current',
-      'location'
-    )
+    // At the top no anchor is current: the head is the page.
+    await expect(page.locator('[aria-current="location"]')).toHaveCount(0)
 
-    for (const id of [...SECTIONS.slice(1), 'result' as const]) {
+    for (const id of SECTIONS.slice(1)) {
       const link = page.getByTestId(`section-link-${id}`)
       await link.click()
       const heading = sectionHeading(page, id)
       await expect(heading).toBeFocused()
       await expect(link).toHaveAttribute('aria-current', 'location')
-      await expect(page).toHaveURL(new RegExp(`#${id}$`))
+      await expect(page).toHaveURL(new RegExp(`#${id}(:\\w+)?$`))
       await waitForScrollSettled(page)
       // Still current once the smooth scroll has landed and scroll-spy resumed.
       await expect(heading).toBeInViewport()
       await expect(link).toHaveAttribute('aria-current', 'location')
       await expect(page.locator('[aria-current="location"]')).toHaveCount(1)
     }
+
+    // Back up: the dock's mini chart leads to the head.
+    await page.getByTestId('dock-chart').click()
+    await waitForScrollSettled(page)
+    expect(await page.evaluate(() => window.scrollY)).toBe(0)
+    await expect(page.locator('[aria-current="location"]')).toHaveCount(0)
   })
 
   test('scrubbing the age slider recomputes live into the working copy', async ({ page }) => {
     await gotoWorkspace(page)
-    await openSection(page, 'levers')
+    const before = await page.getByTestId('success-pill').getAttribute('data-value')
+    await openPanel(page, 'person')
 
-    const quick = page.getByTestId('quick-levers')
-    const slider = quick.getByRole('slider', { name: 'Retirement age', exact: true })
+    const slider = leverSlider(page)
     await slider.focus()
     await slider.press('ArrowRight')
     await slider.press('ArrowRight')
 
-    // The lever's readout follows immediately…
+    // The slider's readout and the group's header follow immediately…
     await expect(slider).toHaveAttribute('aria-valuenow', '62')
-    await expect(quick).toContainText('62')
+    await expect(page.getByTestId('assumption-card-person')).toContainText('62')
+
+    // …the result beside it follows, with the saved plan as a ghost…
+    await expect
+      .poll(() => page.getByTestId('success-pill').getAttribute('data-value'))
+      .not.toBe(before)
+    await expect(page.getByTestId('fan-chart')).toBeInViewport()
+    await expect(page.getByTestId('fan-ghost')).toHaveCount(1)
 
     // …and the debounced auto-run persists the edit into the working copy.
     await expect.poll(async () => (await readStoredParams(page))?.retirementAge).toBe(62)
-  })
-
-  test('toggles the more-sliders row', async ({ page }) => {
-    await gotoWorkspace(page)
-    await openSection(page, 'levers')
-
-    const toggle = page.getByTestId('more-sliders-toggle')
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    await expect(page.getByTestId('advanced-params')).toHaveCount(0)
-    await toggle.click()
-
-    const advanced = page.getByTestId('advanced-params')
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    await expect(advanced).toBeVisible()
-    await expect(advanced.getByRole('slider', { name: 'Return volatility' })).toBeVisible()
-    await expect(advanced.getByRole('checkbox')).toBeVisible()
-    // "Runs" is a precision setting: it stays in the Market & taxes panel only.
-    await expect(advanced.getByRole('slider', { name: 'Simulation runs' })).toHaveCount(0)
-
-    await toggle.click()
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    await expect(page.getByTestId('advanced-params')).toHaveCount(0)
   })
 
   test('measures lever effects and applies one as an undoable draft', async ({ page }) => {
@@ -141,16 +144,16 @@ test.describe('one-page workspace', () => {
     expect(after?.cashFlows).toEqual(before?.cashFlows)
   })
 
-  test('switches every figure between nominal and real from the rail', async ({ page }) => {
+  test('switches every figure between nominal and real from the bar', async ({ page }) => {
     await gotoWorkspace(page)
 
     const chart = page.getByTestId('fan-chart')
     await expect(chart).toBeVisible({ timeout: 30000 })
 
-    // At ≥1024 the one display switch sits in the rail footer.
-    const toggle = page.getByTestId('display-toggle')
+    // The one display switch sits in the bar, at every width.
+    await expect(page.getByTestId('display-toggle')).toHaveCount(1)
+    const toggle = page.getByTestId('result-bar').getByTestId('display-toggle')
     await expect(toggle).toBeVisible()
-    expect((await toggle.boundingBox())!.x).toBeLessThan(184)
     const real = toggle.getByRole('radio', { name: "Today's €" })
     const nominal = toggle.getByRole('radio', { name: 'Nominal' })
     await expect(nominal).toHaveAttribute('aria-checked', 'true')
@@ -159,10 +162,10 @@ test.describe('one-page workspace', () => {
     await expect(real).toHaveAttribute('aria-checked', 'true')
     await expect(nominal).toHaveAttribute('aria-checked', 'false')
     // The chart legend follows the central setting.
-    await expect(chart).toContainText('Real')
+    await expect(chart).toContainText("Today's €")
 
     await nominal.click()
-    await expect(chart).toContainText('Nominal')
+    await expect(chart).toContainText('Nominal €')
   })
 
   test('the bridge recommendation quotes its amount in the switch’s unit', async ({ page }) => {
@@ -199,7 +202,8 @@ test.describe('one-page workspace', () => {
 
   test.describe('PDF report', () => {
     /**
-     * Opens the Menu, clicks "Generate Report" and waits for `settled`.
+     * Clicks the bar's PDF button ("Generate Report") and waits for
+     * `settled`, which gets the button's cluster (button and error note).
      * Returns its value and every request the browser made meanwhile (page
      * and workers).
      */
@@ -210,15 +214,13 @@ test.describe('one-page workspace', () => {
       const requests: Request[] = []
       const record = (request: Request) => requests.push(request)
       page.context().on('request', record)
-      await page.getByTestId('dashboard-tools').click()
-      const menu = page.getByRole('dialog', { name: 'Report and settings' })
+      const menu = page.getByTestId('bar-report')
       const button = menu.getByTestId('generate-report')
-      await expect(button).toHaveText('Generate Report')
+      await expect(button).toHaveAccessibleName('Generate Report')
       await button.click()
       const value = await settled(menu)
       await expect(button).toHaveAttribute('aria-busy', 'false')
       page.context().off('request', record)
-      if (await menu.isVisible()) await page.keyboard.press('Escape')
       return { value, requests }
     }
 
@@ -239,9 +241,14 @@ test.describe('one-page workspace', () => {
       const generate = async () => {
         const downloadPromise = page.waitForEvent('download', { timeout: 90000 })
         const { value, requests } = await generateReport(page, async (menu) => {
-          // The button says what it is doing while the file is built.
-          await expect(menu.getByTestId('generate-report')).toHaveAttribute('aria-busy', 'true')
-          await expect(menu.getByTestId('generate-report')).toHaveText('Creating report…')
+          // The button says what it is doing while the file is built — and
+          // keeps its place in the bar (the spinner stands for the words).
+          const button = menu.getByTestId('generate-report')
+          const idle = (await button.boundingBox())!
+          await expect(button).toHaveAttribute('aria-busy', 'true')
+          await expect(button).toHaveText('Creating report…')
+          const busy = (await button.boundingBox())!
+          expect(Math.abs(busy.width - idle.width)).toBeLessThanOrEqual(1)
           return savedReport(await downloadPromise)
         })
         return { ...value, requests }
@@ -458,9 +465,7 @@ test.describe('market model and glide path', () => {
     // results themselves are not stored anywhere a test could read them).
     const spread = () =>
       page.evaluate(() => {
-        const row = document.querySelector(
-          '[data-testid="fan-chart"] details table tbody tr:last-child'
-        )
+        const row = document.querySelector('[data-testid="fan-table"] table tbody tr:last-child')
         if (!row || row.children.length < 6) return null
         const euros = (cell: Element) => Number((cell.textContent ?? '').replace(/[^\d-]/g, ''))
         return euros(row.children[5]) - euros(row.children[1])
@@ -481,10 +486,14 @@ test.describe('unified cash flows', () => {
     await openPanel(page, 'flows')
 
     const card = page.locator('#plan-editor-expenses')
+    // The timeline is one tap away, under the list.
+    const timeline = card.locator('details', { has: page.getByTestId('cashflow-timeline') })
+    await timeline.locator('summary').click()
     await expect(card.getByTestId('cashflow-timeline')).toBeVisible()
 
     // A rental income that runs from 62 to 70 — the thing the old expenses-only
     // editor could not express at all.
+    await openComposer(page)
     await card.getByTestId('cashflow-kind-income').click()
     await card.locator('#cashflow-name-new').fill('Rental income')
     await card.locator('#cashflow-amount-new').fill('900')
@@ -495,8 +504,14 @@ test.describe('unified cash flows', () => {
     await expect(card.getByRole('cell', { name: /Income Rental income/i })).toBeVisible()
     // Uppercased by CSS, so match case-insensitively.
     await expect(card.getByRole('cell', { name: /age 62.70/i })).toBeVisible()
+    // The form folds away and the new row answers: in view, its switch focused.
+    await expect(page.getByTestId('cashflow-composer')).toHaveCount(0)
+    const added = card.locator('tr[data-testid^="cashflow-row-"]', { hasText: 'Rental income' })
+    await expect(added).toBeInViewport()
+    await expect(added.getByRole('switch')).toBeFocused()
 
     // ...and a single roof repair at 64.
+    await openComposer(page)
     await card.getByTestId('cashflow-kind-expense').click()
     await card.locator('#cashflow-name-new').fill('Roof renovation')
     await card.locator('#cashflow-amount-new').fill('30000')
@@ -567,12 +582,14 @@ test.describe('cash-flow ergonomics', () => {
     await expect(list.getByTestId('cashflow-group-expense')).toContainText('Expenses · 8')
     await expect(list).toContainText('From age 67')
 
+    await openComposer(page)
     await card.getByTestId('cashflow-kind-pension').click()
     // A pension cannot be a one-off payment, so that option is gone.
     await card.locator('#cashflow-frequency-new').click()
     await expect(page.getByRole('option', { name: 'One-off' })).toHaveCount(0)
     await page.keyboard.press('Escape')
-    // Escape closed only the select, not the panel.
+    // Escape closed only the select: the form is still there.
+    await expect(page.getByTestId('cashflow-composer')).toBeVisible()
     await expect(page.getByTestId('edit-panel')).toBeVisible()
 
     await card.locator('#cashflow-name-new').fill('Company pension')
@@ -593,6 +610,7 @@ test.describe('cash-flow ergonomics', () => {
     await openPanel(page, 'flows')
 
     const card = page.locator('#plan-editor-expenses')
+    await openComposer(page)
     await card.getByTestId('cashflow-kind-income').click()
     await card.locator('#cashflow-name-new').fill('Kapitaloption')
     await card.locator('#cashflow-amount-new').fill('300000')
@@ -623,6 +641,8 @@ test.describe('cash-flow ergonomics', () => {
     const list = page.getByTestId('cashflow-list')
     const rowsBefore = await list.locator('tbody tr').count()
 
+    // The templates sit with the form "+ Posten" opens.
+    await openComposer(page)
     await list.getByRole('button', { name: /Care costs/ }).click()
 
     // The new row opens straight into its form with the age window focused —
@@ -656,11 +676,14 @@ test.describe('scenario levers', () => {
     const toast = page.getByTestId('plan-created-toast')
     await expect(toast).toBeVisible()
 
-    // Bottom-right of the viewport, out of the reading column.
+    // At the bottom of the canvas, beside the control column — never on top of
+    // the inputs.
     const box = (await toast.boundingBox())!
     const viewport = page.viewportSize()!
+    const column = (await page.getByTestId('edit-panel').boundingBox())!
     expect(box.y).toBeGreaterThan(viewport.height / 2)
-    expect(box.x + box.width).toBeGreaterThan(viewport.width * 0.6)
+    expect(box.x + box.width).toBeLessThanOrEqual(column.x)
+    expect(box.x + box.width).toBeGreaterThan(column.x / 2)
 
     // And it is inside a `position: fixed` container, so scrolling cannot move
     // it into the content.
@@ -688,4 +711,4 @@ test.describe('scenario levers', () => {
 // Varianten tab's measured recommendation chips ("Retire 62", the glide-path
 // chip — now "Übernehmen" on each lever row and the one glide-path
 // recommendation), the editor's own "Revert" (now the result bar's Discard)
-// and the tab bar itself (now the section index, tested above).
+// and the tab bar itself (now the anchors under the head, tested above).

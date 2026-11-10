@@ -1,49 +1,87 @@
-import type { Page } from '@playwright/test'
 import {
-  duplicateFromResult,
+  closePanel,
+  duplicateActivePlan,
   enterCompare,
   expect,
   expectNoHorizontalOverflow,
   gotoWorkspace,
+  groupHeader,
   isPainted,
   openPanel,
   openPlanMenu,
   openSection,
+  PANELS,
   readPersistedState,
   sectionHeading,
   SECTIONS,
   settledTop,
+  showColumn,
   successRate,
   test,
   waitForResults,
   waitForScrollSettled,
-  type PanelId,
 } from './helpers/workspace'
 
 /**
- * The one-page workspace (spec docs/specs/2026-09-28-one-page-workspace.md,
- * §9.3). Phase 1 wrote tests 1–9; lane D extended them with the remaining
- * contract behaviour (deep-link sources, compare exits, Escape layering,
- * cards, reset, page-level save, scroll anchoring). Numbers tween, so values
- * are read from `data-value` and polled rather than matched as text.
+ * The one-page workspace as a frame: bar, result canvas, dock and control
+ * column (docs/specs/2026-11-10-result-in-view.md). This file covers the
+ * frame's mechanics — how the column presents per width, the hash, compare
+ * as a page mode, focus and landmarks. That the result stays in view while
+ * editing is `result-in-view.spec.ts`. Numbers tween, so values are read from
+ * `data-value` and polled rather than matched as text.
+ *
+ * Migrated from the edit-panel version of this spec. Tests of things that no
+ * longer exist were deleted rather than bent: the scrim, the panel's
+ * previous / next / Done walk and its phone mini result, the rail folding to
+ * icons, Escape closing a docked panel, the overlay's Tab cycle through an
+ * inert page, and the scroll anchoring that kept a card in place while the
+ * page column re-flowed (the column is permanent now: nothing re-flows).
  */
 
-test('1 · docked panel: title focus, Tab to a field, Escape returns focus; the page stays live', async ({
+/** The bottom edge of the pinned chrome at the top: the dock when it is pinned, else the bar. */
+async function pinnedBottom(page: import('@playwright/test').Page): Promise<number> {
+  const dock = page.getByTestId('result-dock')
+  const pinned = (await dock.getAttribute('data-pinned')) === 'true'
+  const box = (await (pinned ? dock : page.getByTestId('result-bar')).boundingBox())!
+  return box.y + box.height
+}
+
+test('1 · the column is a permanent pane at 1366: groups toggle, the hash names the group, the canvas stays live', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1366, height: 900 })
   await page.goto('/de/simulation')
   await waitForResults(page)
 
-  const edit = page.getByTestId('edit-savings')
-  await edit.click()
-  const panel = page.getByTestId('edit-panel')
-  await expect(panel).toHaveAttribute('data-mode', 'docked')
-  await expect(page.getByTestId('edit-panel-title')).toBeFocused()
-  await expect(page.getByTestId('edit-panel-title')).toHaveText('Vermögen & Sparen')
-  await expect(page).toHaveURL(/#assumptions:savings$/)
-  await expect(edit).toHaveAttribute('aria-expanded', 'true')
+  const column = page.getByTestId('edit-panel')
+  await expect(column).toBeVisible()
+  await expect(column).toHaveAttribute('data-mode', 'docked')
+  // Beside the canvas, under the bar, 480 px wide (R1).
+  const box = (await column.boundingBox())!
+  const bar = (await page.getByTestId('result-bar').boundingBox())!
+  expect(box.width).toBe(480)
+  expect(box.x + box.width).toBe(1366)
+  expect(box.y).toBe(bar.y + bar.height)
+  const canvas = (await page.locator('.ws-main').boundingBox())!
+  expect(canvas.x + canvas.width).toBeLessThanOrEqual(box.x + 1)
 
+  // "Zeit" and "Einnahmen & Ausgaben" are open; the others show their key figure.
+  await expect(groupHeader(page, 'person')).toHaveAttribute('aria-expanded', 'true')
+  await expect(groupHeader(page, 'flows')).toHaveAttribute('aria-expanded', 'true')
+  const savings = groupHeader(page, 'savings')
+  await expect(savings).toHaveAttribute('aria-expanded', 'false')
+  await expect(savings).toContainText('Vermögen & Sparen')
+  await expect(page.locator('#plan-editor-income')).toHaveCount(0)
+
+  await savings.click()
+  await expect(savings).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.locator('#plan-editor-income')).toBeVisible()
+  await expect(page).toHaveURL(/#result:savings$/)
+  // Several groups stay open side by side.
+  await expect(groupHeader(page, 'person')).toHaveAttribute('aria-expanded', 'true')
+
+  // Tab walks from the header into the group's fields.
+  await savings.focus()
   const field = page.locator('#editor-currentAssets')
   for (let i = 0; i < 8; i++) {
     if (await field.evaluate((el) => el === document.activeElement)) break
@@ -51,101 +89,139 @@ test('1 · docked panel: title focus, Tab to a field, Escape returns focus; the 
   }
   await expect(field).toBeFocused()
 
-  // Clicking the page does not dismiss a docked panel.
-  await page.getByRole('heading', { level: 2, name: 'Annahmen' }).click()
-  await expect(panel).toBeVisible()
+  // The canvas is never inert: its controls work with the column in use.
+  await expect(page.locator('.ws-main')).not.toHaveAttribute('inert', /.*/)
+  await page.getByTestId('section-link-cashflow').click()
+  await expect(sectionHeading(page, 'cashflow')).toBeFocused()
+  await expect(column).toBeVisible()
 
-  // Escape from inside the panel closes it and returns focus to the card.
-  await field.focus()
-  await page.keyboard.press('Escape')
-  await expect(panel).toHaveCount(0)
-  await expect(edit).toBeFocused()
-  await expect(page).toHaveURL(/#assumptions$/)
+  // Closing the group the hash names takes it out of the hash.
+  await savings.click()
+  await expect(savings).toHaveAttribute('aria-expanded', 'false')
+  await expect(page).toHaveURL(/#cashflow$/)
 })
 
-for (const width of [1100, 820]) {
-  test(`2 · overlay panel at ${width}px: under the bar, page inert, bar live, scrim closes`, async ({
+for (const [width, openAtFirst] of [
+  [1100, true],
+  [820, false],
+] as const) {
+  test(`2 · drawer at ${width}px: below the dock, no scrim, canvas and bar live, folds to a rail`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/en/simulation')
     await waitForResults(page)
 
-    const edit = page.getByTestId('edit-savings')
-    await edit.click()
-    const panel = page.getByTestId('edit-panel')
-    await expect(panel).toHaveAttribute('data-mode', 'overlay')
-    const bar = (await page.getByTestId('result-bar').boundingBox())!
-    const box = (await panel.boundingBox())!
-    expect(box.y).toBeGreaterThanOrEqual(bar.y + bar.height - 1)
-    await expect(page.locator('.ws-main')).toHaveAttribute('inert', '')
+    const column = page.getByTestId('edit-panel')
+    const toggle = page.getByTestId('edit-panel-toggle')
+    await expect(column).toHaveAttribute('data-mode', 'drawer')
+    // Unfolded by default from 1000 px, a rail below.
+    await expect(toggle).toHaveAttribute('aria-expanded', String(openAtFirst))
+    await showColumn(page)
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+    // It starts under the dock and never covers it; nothing dims the page.
+    const dock = (await page.getByTestId('result-dock').boundingBox())!
+    const box = (await column.boundingBox())!
+    expect(box.y).toBeGreaterThanOrEqual(dock.y + dock.height - 1)
+    expect(box.width).toBe(Math.min(440, width - 64))
+    expect(box.x + box.width).toBe(width)
+    await expect(page.getByTestId('edit-panel-scrim')).toHaveCount(0)
+    await expect(page.locator('.ws-main')).not.toHaveAttribute('inert', /.*/)
     await expect(page.getByTestId('result-bar')).not.toHaveAttribute('inert', /.*/)
 
-    // Edit in the panel; the bar goes dirty and Save works with the panel open.
+    // Edit in the drawer; the bar goes dirty and Save works with it open.
+    await openPanel(page, 'savings')
     const savings = page.locator('#editor-annualSavings')
     await savings.fill('20000')
     await savings.blur()
     await expect(page.getByTestId('command-save')).toBeVisible()
     await page.getByTestId('command-save').click()
     await expect(page.getByTestId('command-save')).toHaveCount(0)
-    await expect(panel).toBeVisible()
+    await expect(column).toBeVisible()
 
-    await page.getByTestId('edit-panel-scrim').click({ position: { x: 10, y: 200 } })
-    await expect(panel).toHaveCount(0)
-    await expect(page.locator('.ws-main')).not.toHaveAttribute('inert', /.*/)
-    await expect(edit).toBeFocused()
+    // Folded: a 48 px rail with the one control that brings it back. The
+    // canvas keeps its width either way — the open drawer lies over it.
+    const canvasOpen = (await page.locator('.ws-main').boundingBox())!.width
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.locator('#edit-panel-body')).toBeHidden()
+    expect((await column.boundingBox())!.width).toBe(48)
+    expect((await page.locator('.ws-main').boundingBox())!.width).toBe(canvasOpen)
+    await expect(toggle).toBeVisible()
+    await toggle.click()
+    await expect(page.locator('#edit-panel-body')).toBeVisible()
+    await expectNoHorizontalOverflow(page)
   })
 }
 
-test('3 · phone bottom sheet covers the index and carries the live result', async ({ page }) => {
+test('3 · phone: "Stellen" shows the column between the pinned dock and the mode bar; the dock carries the live result', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/de/simulation')
   await waitForResults(page)
 
-  await page.getByTestId('edit-person').click()
-  const panel = page.getByTestId('edit-panel')
-  await expect(panel).toHaveAttribute('data-mode', 'sheet')
-  await expect(panel).toHaveAttribute('aria-modal', 'true')
-  const sheet = (await panel.boundingBox())!
-  const index = (await page.getByTestId('section-index').boundingBox())!
-  expect(sheet.y).toBeLessThanOrEqual(index.y)
-  expect(sheet.y + sheet.height).toBeGreaterThanOrEqual(index.y + index.height - 1)
-  await expect(page.getByTestId('result-bar')).toHaveAttribute('inert', '')
+  const column = page.getByTestId('edit-panel')
+  await expect(column).toBeHidden()
+  await expect(page.getByTestId('mode-view')).toHaveAttribute('aria-pressed', 'true')
 
-  const mini = page.getByTestId('edit-panel-mini-result')
-  await expect(mini).toHaveAttribute('data-value', (await successRate(page))!)
+  await page.getByTestId('mode-edit').click()
+  await expect(column).toBeVisible()
+  await expect(column).toHaveAttribute('data-mode', 'sheet')
+  await expect(page.getByTestId('mode-edit')).toHaveAttribute('aria-pressed', 'true')
+  // The canvas is behind the column: out of the tab order while it is.
+  await expect(page.locator('.ws-main')).toHaveAttribute('inert', '')
+
+  const dock = (await page.getByTestId('result-dock').boundingBox())!
+  const modes = (await page.getByTestId('mode-bar').boundingBox())!
+  const sheet = (await column.boundingBox())!
+  expect(sheet.y).toBeGreaterThanOrEqual(dock.y + dock.height - 1)
+  expect(sheet.y + sheet.height).toBeLessThanOrEqual(modes.y + 1)
+  expect(sheet.width).toBe(390)
+  await expect(page.getByTestId('result-bar')).not.toHaveAttribute('inert', /.*/)
+
+  // The dock above the column is the result: it moves with the edit.
+  const before = await successRate(page)
+  await expect(page.getByTestId('success-pill')).toBeInViewport({ ratio: 1 })
   await page.locator('#editor-retirementAge [role="slider"]').focus()
   await page.keyboard.press('ArrowRight')
-  await expect(page.getByTestId('success-delta')).toBeAttached()
-  await expect
-    .poll(async () => (await mini.getAttribute('data-value')) === (await successRate(page)))
-    .toBe(true)
+  await expect(page.getByTestId('success-delta')).toBeVisible()
+  await expect.poll(() => successRate(page), { timeout: 15000 }).not.toBe(before)
+  expect(await isPainted(page.getByTestId('success-pill'))).toBe(true)
 
-  await page.getByTestId('edit-panel-done').click()
-  await expect(panel).toHaveCount(0)
-  await expect(page.getByTestId('edit-person')).toBeFocused()
+  // The draft row sits above the mode bar, in both modes.
+  const save = page.getByTestId('command-save')
+  await expect(save).toBeInViewport({ ratio: 1 })
+  expect((await save.boundingBox())!.y + (await save.boundingBox())!.height).toBeLessThanOrEqual(
+    modes.y + 1
+  )
+
+  await page.getByTestId('mode-view').click()
+  await expect(column).toBeHidden()
+  await expect(page.locator('.ws-main')).not.toHaveAttribute('inert', /.*/)
+  await expect(save).toBeInViewport({ ratio: 1 })
+  await expectNoHorizontalOverflow(page)
 })
 
-test('4 · the result bar and the fan chart update live while a panel is open', async ({ page }) => {
+test('4 · the head and its chart update live while a value is changed in the column', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1366, height: 900 })
   await page.goto('/en/simulation')
   await waitForResults(page)
   const before = await successRate(page)
 
-  // Life stage "Retirement" deep-links to the retirement-age slider.
-  await page.getByTestId('life-stage-retirement').click()
-  const panel = page.getByTestId('edit-panel')
-  await expect(panel).toHaveAttribute('data-panel', 'person')
   const thumb = page.locator('#editor-retirementAge [role="slider"]')
-  await expect(thumb).toBeFocused()
+  await thumb.focus()
   await page.keyboard.press('ArrowRight')
   await page.keyboard.press('ArrowRight')
 
   await expect.poll(() => successRate(page), { timeout: 15000 }).not.toBe(before)
   await expect(page.getByTestId('success-delta')).toBeVisible()
   await expect(page.getByTestId('fan-chart')).toBeInViewport()
-  await expect(panel).toBeVisible()
-  await expect(page.getByTestId('result-bar')).toContainText('Unsaved')
+  await expect(page.getByTestId('result-bar')).toContainText('1 change')
+  await expect(page.getByTestId('verdict')).toContainText('of 100 paths')
 })
 
 test('5 · scroll-spy marks the section being read and replaces (never pushes) the hash', async ({
@@ -171,7 +247,7 @@ test('5 · scroll-spy marks the section being read and replaces (never pushes) t
   await expect(page).toHaveURL(/\/en$/)
 })
 
-test('6 · hash deep links land under the bar, open panels, accept aliases, ignore others', async ({
+test('6 · hash deep links land under the pinned chrome, open groups, accept aliases, ignore others', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 720 })
@@ -180,26 +256,30 @@ test('6 · hash deep links land under the bar, open panels, accept aliases, igno
   const heading = page.locator('#levers-title')
   await expect(heading).toBeInViewport()
   await waitForScrollSettled(page)
-  const bar = (await page.getByTestId('result-bar').boundingBox())!
-  expect((await heading.boundingBox())!.y).toBeGreaterThanOrEqual(bar.y + bar.height)
+  // Below the bar and the dock, which is pinned this far down the canvas.
+  await expect(page.getByTestId('result-dock')).toHaveAttribute('data-pinned', 'true')
+  expect((await heading.boundingBox())!.y).toBeGreaterThanOrEqual(await pinnedBottom(page))
   await expect(page.getByTestId('section-link-levers')).toHaveAttribute('aria-current', 'location')
 
-  await page.goto('/de/simulation#assumptions:flows')
+  await page.goto('/de/simulation#assumptions:market')
   await waitForResults(page)
-  await expect(page.getByTestId('edit-panel')).toHaveAttribute('data-panel', 'flows')
-  await expect(page.locator('#plan-editor-expenses')).toBeVisible()
+  await expect(groupHeader(page, 'market')).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.locator('#plan-editor-market')).toBeVisible()
+  await expect(groupHeader(page, 'market')).toBeFocused()
 
   await page.goto('/de/simulation#ergebnis')
   await waitForResults(page)
-  await expect(page.getByTestId('section-link-result')).toHaveAttribute('aria-current', 'location')
-  await expect(page.locator('#result-title')).toBeInViewport()
+  await expect(page.getByTestId('fan-chart')).toBeInViewport()
+  expect(await page.evaluate(() => window.scrollY)).toBe(0)
 
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/de/simulation#main-content')
   await waitForResults(page)
   expect(errors).toEqual([])
-  await expect(page.getByTestId('edit-panel')).toHaveCount(0)
+  // A foreign hash changes nothing: the column and its open groups stay.
+  await expect(page.getByTestId('edit-panel')).toBeVisible()
+  await expect(groupHeader(page, 'market')).toHaveAttribute('aria-expanded', 'true')
   await expect(page.getByTestId('compare-view')).toHaveCount(0)
   expect(await page.evaluate(() => window.scrollY)).toBeLessThan(80)
 
@@ -210,14 +290,11 @@ test('6 · hash deep links land under the bar, open panels, accept aliases, igno
   await page.goto('/de/simulation')
   await waitForResults(page)
   await page.goto('/de/simulation#levers')
-  const gapBelowBar = async () => {
-    const box = (await page.getByTestId('result-bar').boundingBox())!
-    return (await heading.boundingBox())!.y - (box.y + box.height)
-  }
-  await expect.poll(gapBelowBar, { timeout: 10000 }).toBeLessThan(64)
+  const gapBelowDock = async () => (await heading.boundingBox())!.y - (await pinnedBottom(page))
+  await expect.poll(gapBelowDock, { timeout: 10000 }).toBeLessThan(64)
   await waitForScrollSettled(page)
-  expect(await gapBelowBar()).toBeGreaterThanOrEqual(0)
-  expect(await gapBelowBar()).toBeLessThan(64)
+  expect(await gapBelowDock()).toBeGreaterThanOrEqual(0)
+  expect(await gapBelowDock()).toBeLessThan(64)
 })
 
 test('compare re-entered with Forward: "Exit compare" steps back, so Back then leaves the page', async ({
@@ -261,7 +338,7 @@ test('compare opened from a #compare link exits in place: Back still leaves the 
   await expect(page).toHaveURL(/\/en$/)
 })
 
-test('7 · compare is a page mode: #compare, Back restores the page, exit returns focus', async ({
+test('7 · compare is a page mode: #compare, the column gives way, Back restores the page, exit returns focus', async ({
   page,
 }) => {
   test.setTimeout(90000)
@@ -269,8 +346,7 @@ test('7 · compare is a page mode: #compare, Back restores the page, exit return
   await page.goto('/en/simulation')
   await waitForResults(page)
 
-  await page.getByTestId('section-link-assumptions').click()
-  await waitForScrollSettled(page)
+  await openSection(page, 'cashflow')
   const scrollY = await page.evaluate(() => window.scrollY)
   expect(scrollY).toBeGreaterThan(200)
 
@@ -281,11 +357,15 @@ test('7 · compare is a page mode: #compare, Back restores the page, exit return
   await expect(page.getByTestId('compare-view')).toBeVisible()
   await expect(page.locator('.ws-sections')).toBeHidden()
   await expect(page.locator('#compare-title')).toBeFocused()
-  await expect(page.locator('[aria-current="location"]')).toHaveCount(0)
+  // The comparison takes the page: no column, and the dock keeps the result.
+  await expect(page.getByTestId('edit-panel')).toBeHidden()
+  await expect(page.getByTestId('result-dock')).toHaveAttribute('data-pinned', 'true')
+  await expect(page.getByTestId('success-pill')).toBeVisible()
 
   await page.goBack()
   await expect(page.getByTestId('compare-view')).toHaveCount(0)
   await expect(page.locator('.ws-sections')).toBeVisible()
+  await expect(page.getByTestId('edit-panel')).toBeVisible()
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(scrollY - 50)
   expect(Math.abs((await page.evaluate(() => window.scrollY)) - scrollY)).toBeLessThanOrEqual(50)
   await expect(page).not.toHaveURL(/#compare/)
@@ -300,13 +380,13 @@ test('7 · compare is a page mode: #compare, Back restores the page, exit return
 })
 
 for (const width of [320, 390]) {
-  test(`compare on a ${width}px phone: "Exit compare" stays pinned under the bar`, async ({
+  test(`compare on a ${width}px phone: "Exit compare" stays pinned under the dock`, async ({
     page,
   }) => {
     test.setTimeout(90000)
     await page.setViewportSize({ width, height: 700 })
     await gotoWorkspace(page)
-    await duplicateFromResult(page)
+    await duplicateActivePlan(page)
     const compare = await enterCompare(page)
     // The chart and the table below it arrive with the comparison runs.
     await expect(compare.getByRole('table')).toBeVisible({ timeout: 45000 })
@@ -324,16 +404,16 @@ for (const width of [320, 390]) {
       .toBeGreaterThan(600)
     await waitForScrollSettled(page)
     await expect(exit).toBeInViewport({ ratio: 1 })
-    // Under the result bar, above the bottom index, and not covered by either.
-    const bar = (await page.getByTestId('result-bar').boundingBox())!
-    const index = (await page.getByTestId('section-index').boundingBox())!
+    // Under the dock, above the mode bar, and not covered by either.
+    const top = await pinnedBottom(page)
+    const modes = (await page.getByTestId('mode-bar').boundingBox())!
     const box = (await exit.boundingBox())!
-    expect(box.y).toBeGreaterThanOrEqual(bar.y + bar.height - 1)
-    expect(box.y + box.height).toBeLessThanOrEqual(index.y)
+    expect(box.y).toBeGreaterThanOrEqual(top - 1)
+    expect(box.y + box.height).toBeLessThanOrEqual(modes.y)
     expect(await isPainted(exit)).toBe(true)
     // Compact: the pinned strip is not the whole wrapped header.
     const header = (await page.locator('.compare-header').boundingBox())!
-    expect(header.y + header.height - (bar.y + bar.height)).toBeLessThan(80)
+    expect(header.y + header.height - top).toBeLessThan(80)
     await expectNoHorizontalOverflow(page)
 
     // A keyboard focus in the rows that slid away brings them back.
@@ -350,56 +430,58 @@ for (const width of [320, 390]) {
 }
 
 for (const width of [390, 1280]) {
-  test(`"Result" in the index goes back to the very top at ${width}px`, async ({ page }) => {
+  test(`the dock's mini chart goes back to the head at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })
     await gotoWorkspace(page, '/de/simulation')
     await openSection(page, 'cashflow')
-    if (width <= 760) await expect(page.getByTestId('plan-menu-trigger')).not.toBeInViewport()
+    await expect(page.getByTestId('result-dock')).toHaveAttribute('data-pinned', 'true')
+    await expect(page.getByTestId('fan-chart')).not.toBeInViewport({ ratio: 0.5 })
 
-    // The heading takes focus as for any section, but the page goes all the
-    // way up — on a phone that brings the plan picker back.
-    await openSection(page, 'result')
-    expect(await page.evaluate(() => window.scrollY)).toBe(0)
-    await expect(page.getByTestId('plan-menu-trigger')).toBeInViewport({ ratio: 1 })
+    await page.getByTestId('dock-chart').click()
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+    await expect(page.getByTestId('fan-chart')).toBeInViewport({ ratio: 0.9 })
+    await expect(sectionHeading(page, 'result')).toBeFocused()
     await expect(page).toHaveURL(/#result$/)
-    // Scroll-spy agrees once it resumes.
-    await page.evaluate(() => window.dispatchEvent(new Event('scroll')))
-    await expect(page.getByTestId('section-link-result')).toHaveAttribute(
-      'aria-current',
-      'location'
-    )
+    // From 1180 px the head is the result surface again and the dock steps back.
+    if (width >= 1180) {
+      await expect(page.getByTestId('result-dock')).toHaveAttribute('data-pinned', 'false')
+      await expect(page.getByTestId('result-dock')).toBeHidden()
+    }
   })
 }
 
-test('8 · charts below the fold mount lazily', async ({ page }) => {
+test('8 · sections below the fold mount lazily', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 })
   await page.goto('/en/simulation')
   await waitForResults(page)
-  await expect(page.getByTestId('cashflow-sankey')).toHaveCount(0)
-  await expect(page.locator('#cashflow [data-lazy-state]').first()).toHaveAttribute(
+  await expect(page.getByTestId('lever-list')).toHaveCount(0)
+  await expect(page.locator('#levers [data-lazy-state]').first()).toHaveAttribute(
     'data-lazy-state',
     'pending'
   )
-  await page.locator('#cashflow').evaluate((el) => el.scrollIntoView())
-  await expect(page.getByTestId('cashflow-sankey')).toBeVisible()
-  await expect(page.locator('#cashflow [data-lazy-state]').first()).toHaveAttribute(
+  await page.locator('#levers').evaluate((el) => el.scrollIntoView())
+  await expect(page.getByTestId('lever-list')).toBeVisible()
+  await expect(page.locator('#levers [data-lazy-state]').first()).toHaveAttribute(
     'data-lazy-state',
     'mounted'
   )
 })
 
-test('9 · reduced motion: no panel transition, index jumps instantly', async ({ page }) => {
+test('9 · reduced motion: no column or dock transition, anchors jump instantly', async ({
+  page,
+}) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.setViewportSize({ width: 1366, height: 900 })
   await page.goto('/en/simulation')
   await waitForResults(page)
 
-  await page.getByTestId('edit-market').click()
-  const panel = page.getByTestId('edit-panel')
-  await expect(panel).toBeVisible()
-  expect(await panel.evaluate((el) => getComputedStyle(el).transitionDuration)).toBe('0s')
-  expect(await panel.evaluate((el) => getComputedStyle(el).animationName)).toBe('none')
-  await page.getByTestId('edit-panel-close').click()
+  await openPanel(page, 'market')
+  const column = page.getByTestId('edit-panel')
+  expect(await column.evaluate((el) => getComputedStyle(el).transitionDuration)).toBe('0s')
+  const body = page.locator('#edit-market-body')
+  expect(await body.evaluate((el) => getComputedStyle(el).animationName)).toBe('none')
+  const dock = page.getByTestId('result-dock')
+  expect(await dock.evaluate((el) => getComputedStyle(el).transitionDuration)).toMatch(/^0s/)
 
   const landed = await page.evaluate(
     () =>
@@ -412,59 +494,75 @@ test('9 · reduced motion: no panel transition, index jumps instantly', async ({
       })
   )
   const bar = (await page.getByTestId('result-bar').boundingBox())!
-  expect(landed).toBeLessThan(bar.y + bar.height + 40)
-  expect(landed).toBeGreaterThanOrEqual(bar.y + bar.height)
+  const stickyTop = bar.y + bar.height + 96
+  expect(landed).toBeLessThan(stickyTop + 40)
+  expect(landed).toBeGreaterThanOrEqual(stickyTop)
 })
 
-test('exactly one section index is visible, where each width expects it', async ({ page }) => {
+test('one set of anchors under the head, the mode bar only on phones, the € switch in the bar at every width', async ({
+  page,
+}) => {
   await page.goto('/de/simulation')
   await waitForResults(page)
-  for (const [width, position] of [
-    [1440, 'relative'],
-    [1280, 'relative'],
-    [1024, 'relative'],
-    [1023, 'sticky'],
-    [820, 'sticky'],
-    [761, 'sticky'],
-    [760, 'fixed'],
-    [390, 'fixed'],
-    [320, 'fixed'],
-  ] as const) {
+  for (const width of [1920, 1440, 1280, 1180, 1179, 1024, 820, 761, 760, 390, 320]) {
     await page.setViewportSize({ width, height: 900 })
-    const index = page.getByTestId('section-index')
-    await expect(index).toHaveCount(1)
-    await expect(index).toBeVisible()
+    const anchors = page.getByTestId('section-index')
+    await expect(anchors).toHaveCount(1)
     await expect(page.getByRole('navigation', { name: 'Abschnitte' })).toHaveCount(1)
-    await expect(index).toHaveCSS('position', position)
-    const box = (await index.boundingBox())!
-    // ≥1024 the index sits in the rail (in flow, positioned only for its marker).
-    if (position === 'relative') expect(box.x).toBeLessThan(184)
-    if (position === 'fixed') expect(box.y + box.height).toBeCloseTo(900, 0)
-    for (const link of await index.getByRole('link').all()) {
+    await expect(anchors.getByRole('link')).toHaveText(['Geldfluss', 'Entnahme', 'Wirkung'])
+    for (const link of await anchors.getByRole('link').all()) {
       const fits = await link.evaluate((el) => el.scrollWidth <= el.clientWidth)
       expect(fits, `section link fits at ${width}px`).toBe(true)
     }
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
-      width
+
+    const modes = page.getByTestId('mode-bar')
+    if (width <= 760) {
+      await expect(modes).toBeVisible()
+      await expect(modes).toHaveCSS('position', 'fixed')
+      const box = (await modes.boundingBox())!
+      expect(box.y + box.height).toBeCloseTo(900, 0)
+    } else {
+      await expect(modes).toBeHidden()
+    }
+
+    // How the column presents follows the width (R1).
+    await expect(page.locator('.ws-page')).toHaveAttribute(
+      'data-panel-mode',
+      width >= 1180 ? 'docked' : width > 760 ? 'drawer' : 'sheet'
     )
-    // The € switch: rail at ≥1024, otherwise only in the Menu.
-    await expect(page.getByTestId('display-toggle')).toBeVisible({ visible: width >= 1024 })
+    // One place for the € switch, always: the bar.
+    const toggle = page.getByTestId('display-toggle')
+    await expect(toggle).toHaveCount(1)
+    await expect(toggle).toBeVisible()
+    expect(await toggle.evaluate((el) => Boolean(el.closest('[data-testid="result-bar"]')))).toBe(
+      true
+    )
+    await expectNoHorizontalOverflow(page)
   }
 })
 
-test('Menu holds report and settings; plans are managed from the plan menu', async ({ page }) => {
+test('Menu holds the settings; the PDF and the € switch are in the bar; plans are managed from the plan menu', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 820, height: 900 })
   await page.goto('/en/simulation')
   await waitForResults(page)
 
+  // The export is one click from the bar, not a trip through the Menu.
+  const report = page.getByTestId('bar-report').getByRole('button', { name: 'Generate Report' })
+  await expect(report).toBeVisible()
+  await expect(report).toBeEnabled()
+
   await page.getByTestId('dashboard-tools').click()
-  const menu = page.getByRole('dialog', { name: 'Report and settings' })
-  await expect(menu.getByRole('button', { name: 'Generate Report' })).toBeFocused()
+  const menu = page.getByRole('dialog', { name: 'Settings' })
+  await expect(menu).toBeVisible()
+  await expect(menu.getByRole('button', { name: 'Generate Report' })).toBeHidden()
   await expect(menu.getByTestId('plan-switcher')).toHaveCount(0)
   await expect(menu.getByTestId('setup-link')).toHaveCount(0)
-  await expect(menu.getByTestId('menu-display-toggle')).toBeVisible()
+  await expect(menu.getByTestId('menu-display-toggle')).toHaveCount(0)
   await page.keyboard.press('Escape')
-  await expect(page.locator('#assumptions').getByTestId('setup-link')).toHaveAttribute(
+  // The guided setup is at the foot of the control column.
+  await expect(page.getByTestId('edit-panel').getByTestId('setup-link')).toHaveAttribute(
     'href',
     '/en/setup'
   )
@@ -486,211 +584,168 @@ test('Menu holds report and settings; plans are managed from the plan menu', asy
   await expect(trigger).toBeFocused()
 })
 
-test('ledger labels open the matching panel and field, or the Entnahme section', async ({
+test('phones carry the PDF export in the Menu, where the bar has no room for it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await gotoWorkspace(page)
+  await expect(page.getByTestId('bar-report')).toBeHidden()
+  await page.getByTestId('dashboard-tools').click()
+  const menu = page.getByRole('dialog', { name: 'Settings' })
+  await expect(menu.getByRole('button', { name: 'Generate Report' })).toBeFocused()
+})
+
+test('ledger labels open the matching group and field in the column; the canvas stays where it is', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1366, height: 900 })
   await page.goto('/en/simulation#cashflow')
   await waitForResults(page)
 
-  await page.getByRole('button', { name: /^Capital gains tax – edit in/ }).click()
-  await expect(page.getByTestId('edit-panel-title')).toHaveText('Market & taxes')
-  await expect(page.locator('#editor-capitalGainsTax')).toBeFocused()
-  await page.getByTestId('edit-panel-close').click()
+  const tax = page.getByRole('button', { name: /^Capital gains tax – edit in/ })
+  // A reader scrolls with the wheel, which ends the landing's hold on
+  // `#cashflow` (it re-aims while sections mount, for up to five seconds);
+  // a scripted scroll alone would be undone by it on a slow machine.
+  await page.mouse.move(400, 500)
+  await page.mouse.wheel(0, 40)
+  await tax.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
+  await expect(tax).toBeInViewport({ ratio: 1 })
+  for (const round of [1, 2]) {
+    const before = await settledTop(page, tax)
+    await tax.click()
+    await expect(groupHeader(page, 'market')).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.locator('#editor-capitalGainsTax')).toBeFocused()
+    await expect(page.locator('#editor-capitalGainsTax')).toBeInViewport({ ratio: 1 })
+    // Only the column scrolled: the line that was clicked has not moved.
+    expect(Math.abs((await settledTop(page, tax)) - before), `round ${round}`).toBeLessThanOrEqual(
+      2
+    )
+    await closePanel(page, 'market')
+  }
 
-  await page.getByRole('button', { name: /^Portfolio sale \(gross\) – edit in/ }).click()
-  await expect(page.getByTestId('edit-panel')).toHaveCount(0)
-  await expect(page.locator('#withdrawal-title')).toBeInViewport()
-  await expect(
-    page.locator('[data-testid="withdrawal-strategy-picker"] [aria-pressed="true"]')
-  ).toBeFocused()
+  // The portfolio draw is set by the Entnahme rule: its group opens.
+  await page.getByRole('button', { name: /^Portfolio sale \(gross\) – edit in “Withdrawal”/ }).click()
+  await expect(groupHeader(page, 'rule')).toHaveAttribute('aria-expanded', 'true')
+  await expect(groupHeader(page, 'rule')).toBeFocused()
+  await expect(page.getByTestId('withdrawal-strategy-picker')).toBeVisible()
+  await expect(page).toHaveURL(/#cashflow:rule$/)
 })
 
-test('edit panel walks the four panels and Ctrl/Cmd+S saves from inside it', async ({ page }) => {
+test('several groups stay open at once and Ctrl/Cmd+S saves from inside the column', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/en/simulation')
   await waitForResults(page)
 
-  await page.getByTestId('edit-person').click()
-  for (const panel of ['savings', 'flows', 'market']) {
-    await page.getByTestId('edit-panel-next').click()
-    await expect(page.getByTestId('edit-panel')).toHaveAttribute('data-panel', panel)
-    await expect(page.getByTestId('edit-panel-title')).toBeFocused()
+  for (const panel of PANELS) await openPanel(page, panel)
+  for (const panel of PANELS) {
+    await expect(groupHeader(page, panel)).toHaveAttribute('aria-expanded', 'true')
   }
-  await expect(page.getByTestId('edit-panel-next')).toHaveCount(0)
-  await expect(page.locator('#plan-editor-personal')).toHaveCount(0)
-  await page.getByTestId('edit-panel-previous').click()
-  await expect(page.getByTestId('edit-panel')).toHaveAttribute('data-panel', 'flows')
+  // Every input exists exactly once.
+  await expect(page.locator('#editor-retirementAge')).toHaveCount(1)
+  await expect(page.locator('#planner-dsWithdrawalRate')).toHaveCount(1)
+  await expect(page.getByTestId('withdrawal-strategy-picker')).toHaveCount(1)
 
-  await page.getByTestId('edit-panel-next').click()
   const runs = page.locator('#editor-simulationRuns')
   await runs.fill('600')
   await runs.blur()
   await expect(page.getByTestId('command-save')).toBeVisible()
+  // The group that holds the change is marked.
+  await expect(page.getByTestId('edit-market-changed')).toBeVisible()
+  await expect(page.getByTestId('edit-person-changed')).toHaveCount(0)
   await page.locator('#editor-simulationRuns').focus()
   await page.keyboard.press('ControlOrMeta+s')
   await expect(page.getByTestId('command-save')).toHaveCount(0)
-  await expect(page.getByTestId('edit-panel')).toBeVisible()
+  await expect(page.getByTestId('edit-market-changed')).toHaveCount(0)
+  await expect(groupHeader(page, 'market')).toHaveAttribute('aria-expanded', 'true')
 })
 
-test('compare: the section index and "Edit assumptions" leave compare for a section', async ({
+test('compare: "Edit assumptions" leaves the comparison for the control column', async ({
   page,
 }) => {
   test.setTimeout(90000)
   await page.setViewportSize({ width: 1280, height: 900 })
   await gotoWorkspace(page)
-  await duplicateFromResult(page)
+  await duplicateActivePlan(page)
 
-  // Every index item still works in compare mode: leave, then go there.
-  await enterCompare(page)
-  await page.getByTestId('section-link-cashflow').click()
-  await expect(page.getByTestId('compare-view')).toHaveCount(0)
-  await expect(page.locator('.ws-sections')).toBeVisible()
-  await expect(sectionHeading(page, 'cashflow')).toBeFocused()
-  await waitForScrollSettled(page)
-  await expect(sectionHeading(page, 'cashflow')).toBeInViewport()
-  await expect(page.getByTestId('section-link-cashflow')).toHaveAttribute(
-    'aria-current',
-    'location'
-  )
-  await expect(page).toHaveURL(/#cashflow$/)
-
-  // "Edit assumptions" leaves compare for the Annahmen section (no panel).
   const compare = await enterCompare(page)
   await expect(compare.getByRole('table')).toBeVisible({ timeout: 45000 })
   await compare.getByRole('button', { name: /Edit assumptions/ }).click()
   await expect(page.getByTestId('compare-view')).toHaveCount(0)
-  await expect(sectionHeading(page, 'assumptions')).toBeFocused()
-  await waitForScrollSettled(page)
-  await expect(sectionHeading(page, 'assumptions')).toBeInViewport()
-  await expect(page.getByTestId('edit-panel')).toHaveCount(0)
+  await expect(page.locator('.ws-sections')).toBeVisible()
+  await expect(page.getByTestId('edit-panel')).toBeVisible()
+  await expect(page.getByTestId('edit-panel-title')).toBeFocused()
   await expect(page).not.toHaveURL(/#compare/)
 })
 
-test('Escape belongs to the layer that has focus, not to the docked panel', async ({ page }) => {
-  await page.setViewportSize({ width: 1366, height: 900 })
-  await gotoWorkspace(page)
-  const panel = await openPanel(page, 'savings')
-
-  // The plan menu over a docked panel: Escape closes the menu only.
-  const menu = await openPlanMenu(page)
-  await page.keyboard.press('Escape')
-  await expect(menu).toHaveCount(0)
-  await expect(page.getByTestId('plan-menu-trigger')).toBeFocused()
-  await expect(panel).toBeVisible()
-
-  // Focus outside the panel: Escape leaves it open.
-  await page.keyboard.press('Escape')
-  await expect(panel).toBeVisible()
-
-  // The Menu dialog over a docked panel: Escape closes the Menu only.
-  await page.getByTestId('dashboard-tools').click()
-  const tools = page.getByRole('dialog', { name: 'Report and settings' })
-  await expect(tools).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(tools).toHaveCount(0)
-  await expect(panel).toBeVisible()
-
-  // From inside the panel, Escape closes it.
-  await page.locator('#editor-currentAssets').focus()
-  await page.keyboard.press('Escape')
-  await expect(panel).toHaveCount(0)
-  await expect(page.getByTestId('edit-savings')).toBeFocused()
-})
-
-test('an open panel keeps the heading order and adds no second banner', async ({ page }) => {
+test('the column keeps the heading order and adds no second banner', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await gotoWorkspace(page)
-  for (const id of ['person', 'savings', 'flows', 'market'] as const) {
-    const panel = await openPanel(page, id)
-    // The panel title is an h2; everything under it is h3.
-    await expect(panel.getByRole('heading', { level: 2 })).toHaveCount(1)
-    await expect(panel.locator('h1, h4, h5, h6')).toHaveCount(0)
-    // Docked beside the page: the result bar stays the only banner.
-    await expect(page.getByRole('banner')).toHaveCount(1)
-    await page.getByTestId('edit-panel-close').click()
-    await expect(panel).toHaveCount(0)
-  }
-  await openPanel(page, 'market')
-  await expect(page.getByTestId('edit-panel').getByRole('heading', { level: 3 })).not.toHaveCount(0)
+  const column = page.getByTestId('edit-panel')
+  for (const id of PANELS) await openPanel(page, id)
+  // One h2 names the column, each group is an h3, and nothing skips a level.
+  await expect(column.getByRole('heading', { level: 2 })).toHaveCount(1)
+  await expect(column.locator('h3.ws-group-heading')).toHaveCount(5)
+  await expect(column.locator('h1, h5, h6')).toHaveCount(0)
+  // A pane beside the canvas: the bar stays the only banner, the canvas the only main.
+  await expect(page.getByRole('banner')).toHaveCount(1)
+  await expect(page.getByRole('main')).toHaveCount(1)
+  await expect(page.getByRole('complementary', { name: 'Assumptions' })).toHaveCount(1)
 })
 
-test('deep links: life stages, the withdrawal fact and the savings pointer', async ({ page }) => {
+test('deep links: the withdrawal fact, the savings pointer and the market pointer', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1366, height: 900 })
   await gotoWorkspace(page)
-  const panel = page.getByTestId('edit-panel')
-  const title = page.getByTestId('edit-panel-title')
 
-  // Life stages open the field that sets them.
-  await page.getByTestId('life-stage-today').click()
-  await expect(panel).toHaveAttribute('data-panel', 'person')
-  await expect(page.locator('#editor-currentAge')).toBeFocused()
-  await page.getByTestId('life-stage-horizon').click()
-  await expect(page.locator('#editor-endAge')).toBeFocused()
-  await page.getByTestId('life-stage-pension').click()
-  await expect(panel).toHaveAttribute('data-panel', 'flows')
-  await expect(title).toBeFocused()
-
-  // Savings panel → "Go to Income & spending" switches the panel in place.
-  await page.getByTestId('edit-panel-previous').click()
-  await expect(panel).toHaveAttribute('data-panel', 'savings')
-  await panel.getByRole('button', { name: /Go to Income & spending/ }).click()
-  await expect(panel).toHaveAttribute('data-panel', 'flows')
+  // Savings group → "Go to Income & spending" shows that group.
+  await closePanel(page, 'flows')
+  const column = await openPanel(page, 'savings')
+  await column.getByRole('button', { name: /Go to Income & spending/ }).click()
+  await expect(groupHeader(page, 'flows')).toHaveAttribute('aria-expanded', 'true')
   await expect(page.locator('#plan-editor-expenses')).toBeVisible()
+  await expect(groupHeader(page, 'flows')).toBeFocused()
 
-  // The Ergebnis fact "monthly portfolio draw" links to Entnahme too.
-  await openSection(page, 'result')
+  // Market group → the withdrawal rule's own group, not a section far away.
+  await openPanel(page, 'market')
+  await column.getByRole('button', { name: /Go to the withdrawal rule/ }).click()
+  await expect(groupHeader(page, 'rule')).toHaveAttribute('aria-expanded', 'true')
+  await expect(groupHeader(page, 'rule')).toBeFocused()
+  await expect(page.getByTestId('withdrawal-strategy-picker')).toBeVisible()
+
+  // The head's fact "first withdrawal" leads to the Entnahme outcome.
   await page.getByTestId('kpi-strip').getByRole('button').click()
   await expect(sectionHeading(page, 'withdrawal')).toBeFocused()
   await waitForScrollSettled(page)
   await expect(sectionHeading(page, 'withdrawal')).toBeInViewport()
 })
 
-test("the Market panel's withdrawal pointer closes the panel and lands on the rule", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1366, height: 900 })
-  await gotoWorkspace(page)
-  // Reached by walking the panels, the way a reader goes through them.
-  await page.getByTestId('life-stage-pension').click()
-  const panel = page.getByTestId('edit-panel')
-  await expect(panel).toHaveAttribute('data-panel', 'flows')
-  await page.getByTestId('edit-panel-next').click()
-  await expect(panel).toHaveAttribute('data-panel', 'market')
-
-  await panel.getByRole('button', { name: /Go to Withdrawal/ }).click()
-  await expect(panel).toHaveCount(0)
-  await waitForScrollSettled(page)
-  await expect(sectionHeading(page, 'withdrawal')).toBeInViewport()
-  // Focus goes to the current rule (§3.3), not back to the Market card.
-  const strategy = page.locator('[data-testid="withdrawal-strategy-picker"] [aria-pressed="true"]')
-  await expect(strategy).toBeFocused()
-  await expect(page.getByTestId('edit-market')).not.toBeFocused()
-})
-
-test('assumption cards show plan inputs, carry the panel state and ignore the € display', async ({
+test('group headers show the plan inputs, carry the open state and ignore the € display', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1366, height: 900 })
   await gotoWorkspace(page)
 
-  const person = page.getByTestId('assumption-card-person')
-  await expect(person).toContainText('Planned retirement')
-  await expect(person).toContainText('At age 60')
-  await expect(person).toContainText('Today 55 · planned to 90')
-  await expect(person).toContainText('State pension from 67')
+  await expect(page.getByTestId('assumption-card-person')).toHaveText('55 · 60 · 90')
   const savings = page.getByTestId('assumption-card-savings')
-  await expect(savings).toContainText('€630,000')
-  await expect(page.getByTestId('assumption-card-flows')).toContainText('per month')
-  await expect(page.getByTestId('assumption-card-market')).toContainText('return')
-  await expect(page.locator('#assumptions')).toContainText("Starting values in today's euros")
+  await expect(savings).toHaveText('€630,000 · €48,000/yr')
+  await expect(page.getByTestId('assumption-card-flows')).toHaveText('€5,242/mo')
+  await expect(page.getByTestId('assumption-card-rule')).toHaveText('Dynamic · 4%')
+  await expect(page.getByTestId('assumption-card-market')).toHaveText('7% return · 2.5% inflation')
+  await expect(page.getByTestId('edit-panel')).toContainText("Starting values in today's euros")
 
-  for (const id of ['person', 'savings', 'flows', 'market']) {
-    const edit = page.getByTestId(`edit-${id}`)
-    await expect(edit).toHaveAttribute('aria-controls', 'edit-panel')
-    await expect(edit).toHaveAttribute('aria-expanded', 'false')
+  for (const id of PANELS) {
+    const header = groupHeader(page, id)
+    await expect(header).toHaveAttribute('aria-controls', `edit-${id}-body`)
+    await expect(page.locator(`#edit-${id}-body`)).toHaveCount(1)
+    await expect(header).toHaveAttribute(
+      'aria-expanded',
+      id === 'person' || id === 'flows' ? 'true' : 'false'
+    )
   }
-  await expect(page.getByTestId('edit-person')).toHaveAccessibleName('Edit Personal & timeline')
+  await expect(groupHeader(page, 'person')).toHaveAccessibleName('Time 55 · 60 · 90')
 
   // Plan inputs are today's euros: the display switch leaves them alone.
   const toggle = page.getByTestId('display-toggle')
@@ -699,176 +754,14 @@ test('assumption cards show plan inputs, carry the panel state and ignore the �
     'aria-checked',
     'true'
   )
-  await expect(savings).toContainText('€630,000')
+  await expect(savings).toHaveText('€630,000 · €48,000/yr')
 
-  // One card is expanded at a time, following the open panel.
-  await openPanel(page, 'savings')
-  await expect(page.getByTestId('edit-savings')).toHaveAttribute('aria-expanded', 'true')
-  await page.getByTestId('edit-panel-next').click()
-  await expect(page.getByTestId('edit-flows')).toHaveAttribute('aria-expanded', 'true')
-  await expect(page.getByTestId('edit-savings')).toHaveAttribute('aria-expanded', 'false')
+  // A header follows its value as it is edited.
+  await page.locator('#editor-retirementAge [role="slider"]').focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByTestId('assumption-card-person')).toHaveText('55 · 61 · 90')
+  await expect(page.getByTestId('edit-person-changed')).toBeVisible()
 })
-
-for (const width of [1280, 1440]) {
-  test(`docked panel at ${width}px: every open and close keeps the clicked card where it was`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width, height: 800 })
-    await gotoWorkspace(page)
-    await openSection(page, 'assumptions')
-    const panel = page.getByTestId('edit-panel')
-
-    // Open → close → a different card → close → the same card again: the
-    // page column narrows and widens each time, and the card must not move
-    // (Radix mounts the panel a commit later on every open after the first).
-    const steps: [PanelId, 'close' | 'Escape'][] = [
-      ['person', 'close'],
-      ['market', 'Escape'],
-      ['market', 'close'],
-      ['person', 'Escape'],
-    ]
-    for (const [id, how] of steps) {
-      const edit = page.getByTestId(`edit-${id}`)
-      const before = await settledTop(page, edit)
-      await edit.click()
-      await expect(panel).toHaveAttribute('data-mode', 'docked')
-      await expect(page.getByTestId('edit-panel-title')).toBeFocused()
-      const opened = await settledTop(page, edit)
-      expect(Math.abs(opened - before), `${id}: open`).toBeLessThanOrEqual(2)
-
-      if (how === 'close') await page.getByTestId('edit-panel-close').click()
-      else await page.keyboard.press('Escape')
-      await expect(panel).toHaveCount(0)
-      await expect(edit).toBeFocused()
-      const closed = await settledTop(page, edit)
-      expect(Math.abs(closed - before), `${id}: ${how}`).toBeLessThanOrEqual(2)
-    }
-  })
-}
-
-test('docked panel folds the rail to icons and hands the € switch to the Menu', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1366, height: 900 })
-  await gotoWorkspace(page)
-  const index = page.getByTestId('section-index')
-  const fullWidth = (await index.boundingBox())!.width
-  const display = page.getByTestId('display-toggle')
-  await expect(display).toBeVisible()
-
-  // Open: icons only — the names stay the links' accessible names — and the
-  // panel gets the room (≈520px at 1366, not the old 400).
-  const panel = await openPanel(page, 'flows')
-  await expect.poll(async () => (await index.boundingBox())!.width).toBeLessThan(64)
-  await expect(index.getByRole('link', { name: 'Money flow' })).toBeVisible()
-  expect((await panel.boundingBox())!.width).toBeGreaterThan(500)
-  await expect(display).toBeHidden()
-  await page.getByTestId('dashboard-tools').click()
-  const menu = page.getByRole('dialog', { name: 'Report and settings' })
-  await expect(menu.getByTestId('menu-display-toggle')).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(menu).toHaveCount(0)
-  await expect(panel).toBeVisible()
-
-  // Close: the full rail and its switch come back.
-  await page.getByTestId('edit-panel-close').click()
-  await expect(panel).toHaveCount(0)
-  await expect(display).toBeVisible()
-  expect((await index.boundingBox())!.width).toBeCloseTo(fullWidth, 0)
-
-  // Wide enough for rail, page column and panel side by side: the rail stays.
-  await page.setViewportSize({ width: 1920, height: 1000 })
-  await openPanel(page, 'flows')
-  await expect(display).toBeVisible()
-  expect((await index.boundingBox())!.width).toBeCloseTo(fullWidth, 0)
-})
-
-test('docked panel: a ledger ✎ link keeps its line in place, opened twice', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await gotoWorkspace(page)
-  await openSection(page, 'cashflow')
-  const link = page.getByRole('button', { name: /^Capital gains tax – edit in/ })
-  await link.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
-  const panel = page.getByTestId('edit-panel')
-
-  for (const round of [1, 2]) {
-    const before = await settledTop(page, link)
-    await link.click()
-    await expect(panel).toHaveAttribute('data-mode', 'docked')
-    await expect(page.locator('#editor-capitalGainsTax')).toBeFocused()
-    const opened = await settledTop(page, link)
-    expect(Math.abs(opened - before), `open #${round}`).toBeLessThanOrEqual(2)
-
-    await page.keyboard.press('Escape')
-    await expect(panel).toHaveCount(0)
-    await expect(link).toBeFocused()
-    const closed = await settledTop(page, link)
-    expect(Math.abs(closed - before), `close #${round}`).toBeLessThanOrEqual(2)
-  }
-})
-
-/** Which live part of the page holds focus: the bar, the panel, a toast — or the page. */
-async function focusZone(page: Page): Promise<string> {
-  return page.evaluate(() => {
-    const el = document.activeElement
-    if (!el || el === document.body) return 'body'
-    if (el.closest('[data-testid="result-bar"]')) return 'bar'
-    if (el.closest('#edit-panel')) return 'panel'
-    if (el.closest('[data-rht-toaster]')) return 'toast'
-    return `page:${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}`
-  })
-}
-
-for (const width of [1024, 800]) {
-  test(`overlay panel at ${width}px: Tab runs between the panel and the live bar, never into the page`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width, height: 768 })
-    await gotoWorkspace(page)
-    const panel = await openPanel(page, 'savings')
-    await expect(panel).toHaveAttribute('data-mode', 'overlay')
-    const savings = page.locator('#editor-annualSavings')
-    await savings.fill('20000')
-    await savings.blur()
-    const save = page.getByTestId('command-save')
-    await expect(save).toBeVisible()
-
-    // Past the panel's last control ("Done") Tab enters the bar instead of
-    // looping back to ✕, and walks on to Save.
-    await page.getByTestId('edit-panel-done').focus()
-    await page.keyboard.press('Tab')
-    expect(await focusZone(page)).toBe('bar')
-    for (let i = 0; i < 10 && !(await save.evaluate((el) => el === document.activeElement)); i++) {
-      await page.keyboard.press('Tab')
-      expect(await focusZone(page)).toBe('bar')
-    }
-    await expect(save).toBeFocused()
-    await page.keyboard.press('Enter')
-    await expect(save).toHaveCount(0)
-    expect((await readPersistedState(page))?.storedPlan?.annualSavings).toBe(20000)
-    await expect(panel).toBeVisible()
-
-    // From the bar's last control (Menu) Tab goes back into the panel; from
-    // the panel's first control Shift+Tab goes to the bar's last.
-    const menu = page.getByTestId('dashboard-tools')
-    await menu.focus()
-    await page.keyboard.press('Tab')
-    await expect(page.getByTestId('edit-panel-close')).toBeFocused()
-    await page.keyboard.press('Shift+Tab')
-    await expect(menu).toBeFocused()
-
-    // Both directions cycle through the bar and the panel only: the inert
-    // page behind the scrim is never reached.
-    for (const key of ['Tab', 'Shift+Tab']) {
-      const zones = new Set<string>()
-      for (let i = 0; i < 40; i++) {
-        await page.keyboard.press(key)
-        zones.add(await focusZone(page))
-      }
-      expect([...zones].sort(), key).toEqual(['bar', 'panel'])
-    }
-  })
-}
 
 test('reset to defaults is a draft with an undo', async ({ page }) => {
   await gotoWorkspace(page)
@@ -879,8 +772,8 @@ test('reset to defaults is a draft with an undo', async ({ page }) => {
   await assets.blur()
   await page.getByTestId('command-save').click()
   await expect(page.getByTestId('command-save')).toHaveCount(0)
-  await page.getByTestId('edit-panel-done').click()
 
+  // At the foot of the column.
   await page.getByTestId('plan-editor-reset').click()
   const dialog = page.getByTestId('plan-reset-dialog')
   await expect(dialog).toBeVisible()
@@ -910,9 +803,9 @@ test('Ctrl/Cmd+S saves a draft from anywhere on the page and says so', async ({ 
   const savings = page.locator('#editor-annualSavings')
   await savings.fill('20000')
   await savings.blur()
-  await page.getByTestId('edit-panel-done').click()
-  await expect(page.getByTestId('edit-panel')).toHaveCount(0)
   await expect(page.getByTestId('command-save')).toBeVisible()
+  // From the canvas, not from a field.
+  await page.getByTestId('section-link-cashflow').focus()
 
   await page.keyboard.press('ControlOrMeta+s')
   await expect(page.getByTestId('command-save')).toHaveCount(0)
@@ -920,7 +813,37 @@ test('Ctrl/Cmd+S saves a draft from anywhere on the page and says so', async ({ 
   expect((await readPersistedState(page))?.storedPlan?.annualSavings).toBe(20000)
 })
 
-test('the result bar lifts off the page once it scrolls', async ({ page }) => {
+test('"Speichern ▾": the button saves, the caret offers the same and the variant', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1366, height: 900 })
+  await gotoWorkspace(page)
+  await page.locator('#editor-retirementAge [role="slider"]').focus()
+  await page.keyboard.press('ArrowRight')
+  const more = page.getByTestId('command-save-more')
+  await expect(more).toBeVisible()
+
+  // A menu button: arrow keys walk the two items, Escape returns to the caret.
+  await more.click()
+  const menu = page.getByTestId('command-save-menu')
+  await expect(menu).toBeVisible()
+  await expect(menu.getByRole('menuitem')).toHaveText(['Save', 'Save as a variant …'])
+  await expect(page.getByTestId('command-save-plain')).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(page.getByTestId('command-save-as-new')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(menu).toHaveCount(0)
+  await expect(more).toBeFocused()
+
+  // "Save" in the menu does what the button does.
+  await more.click()
+  await page.getByTestId('command-save-plain').click()
+  await expect(page.getByTestId('command-save')).toHaveCount(0)
+  await expect(page.getByTestId('bar-saved')).toBeFocused()
+  expect((await readPersistedState(page))?.storedPlan?.retirementAge).toBe(61)
+})
+
+test('the bar lifts off the page once it scrolls', async ({ page }) => {
   await gotoWorkspace(page)
   const bar = page.getByTestId('result-bar')
   await expect(bar).not.toHaveAttribute('data-scrolled', /.*/)
@@ -930,8 +853,20 @@ test('the result bar lifts off the page once it scrolls', async ({ page }) => {
   await expect(bar).not.toHaveAttribute('data-scrolled', /.*/)
 })
 
-test('ids stay unique once every section has mounted', async ({ page }) => {
+test('F6 moves between the canvas and the control column', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 })
   await gotoWorkspace(page)
+  await page.getByTestId('section-link-cashflow').focus()
+  await page.keyboard.press('F6')
+  await expect(page.getByTestId('edit-panel-title')).toBeFocused()
+  await page.keyboard.press('F6')
+  await expect(sectionHeading(page, 'result')).toBeFocused()
+})
+
+test('ids stay unique once every section and every group has mounted', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 })
+  await gotoWorkspace(page)
+  for (const panel of PANELS) await openPanel(page, panel)
   // Visit each section so every lazily mounted chart and list is in the DOM.
   for (const id of SECTIONS.slice(1)) {
     await openSection(page, id)

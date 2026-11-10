@@ -1,0 +1,1934 @@
+/*
+ * The frame of the one-page workspace: built so that the result is always in
+ * view while everything is edited (docs/specs/2026-11-10-result-in-view.md).
+ *
+ *   bar (48)      plan · draft state · save      € switch · PDF · Menü
+ *   canvas        head (figures, fan chart with the saved plan as a ghost,
+ *                 changes) · Geldfluss · Entnahme · Wirkung
+ *   dock (96)     the head's collapsed form, pinned under the bar
+ *   column        every input once, in five groups
+ *
+ * Breakpoints (R1):
+ *   ≥1680      canvas ≤1240 · column 560, permanent
+ *   1440–1679  column 520
+ *   1180–1439  column 480; dock appears when the head's chart has left
+ *   761–1179   dock always pinned · column is a drawer (440) over the right
+ *              side, below the dock, no scrim; folds to a 48 px rail
+ *   ≤760       bar 44 · dock 88 in two rows · two modes, "Ansehen │ Stellen",
+ *              switched by a bottom bar; the draft row sits above it
+ *
+ * Type in here is 12, 14, 16, 20 or 32 px, in two weights (400, 600).
+ * Structure is hairlines; the chart and what floats are the only cards.
+ */
+
+.ws-page {
+  --ws-bar-h: 48px;
+  --ws-dock-h: 96px;
+  --ws-column-w: 480px;
+  --ws-rail-w: 48px;
+  --ws-canvas-pad: var(--ui-space-6);
+  --ws-column-pad: 20px;
+  --ws-fan-plot-h: 280px;
+  --ws-section-gap: var(--ui-space-12);
+  /* Measured by useStickyOffset; these are the values before it has run. */
+  --ws-bar-bottom: var(--ws-bar-h);
+  --ws-sticky-top: calc(var(--ws-bar-h) + var(--ws-dock-h));
+  --ws-bottom-inset: 0px;
+  /* 44 px touch targets in the bar, the column and the chips. */
+  --ui-control-height: 44px;
+  /* Aliases kept for the section lanes; new rules read the tokens directly. */
+  --ws-motion-fast: var(--motion-fast);
+  --ws-motion-base: var(--motion-base);
+  --ws-motion-slow: var(--motion-slow);
+  --ws-motion-ease: var(--motion-ease);
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  grid-template-columns: minmax(0, 1fr) var(--ws-column-w);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'bar bar'
+    'main column';
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  font-size: var(--ui-font-body);
+  line-height: 1.5;
+}
+@media (min-width: 1440px) {
+  .ws-page {
+    --ws-column-w: 520px;
+    --ws-canvas-pad: var(--ui-space-8);
+    --ws-column-pad: var(--ui-space-6);
+    --ws-fan-plot-h: 300px;
+  }
+}
+@media (min-width: 1680px) {
+  .ws-page {
+    --ws-column-w: 560px;
+    --ws-fan-plot-h: clamp(280px, 34vh, 380px);
+  }
+}
+/* Compare mode: the column gives way; CompareView takes the page. */
+.ws-page[data-mode='compare'] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'bar'
+    'main';
+}
+.ws-page[data-mode='compare'] .ws-panel {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Bar                                                                 */
+/* ------------------------------------------------------------------ */
+
+.ws-bar {
+  grid-area: bar;
+  position: sticky;
+  top: 0;
+  /* Above the dock and the drawer, so its menus open over them. */
+  z-index: 43;
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-3);
+  min-width: 0;
+  height: var(--ws-bar-h);
+  padding: 0 var(--ui-space-4);
+  background: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-border);
+}
+.ws-bar-plan {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+/* The plan's name takes the room it needs and is the first to give it up:
+   the draft cluster and the tools never shrink for it. */
+.ws-bar .workspace-plan-trigger {
+  width: auto;
+  min-width: 120px;
+  max-width: 100%;
+  font-weight: 600;
+}
+.ws-bar-draft {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+.ws-bar-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ui-space-2);
+  margin-left: auto;
+}
+
+/* Controls in the bar are 44 px to the finger and 36 px to the eye: the
+   box is drawn inside transparent block borders (background clipped to the
+   padding box, the outline an inset shadow). */
+.ws-bar
+  :is(
+    .workspace-button,
+    .workspace-plan-trigger,
+    [data-testid='dashboard-tools'],
+    .ws-bar-report-button
+  ) {
+  min-height: 44px;
+  height: 44px;
+  padding-block: 0;
+  font-size: var(--ui-font-body);
+  white-space: nowrap;
+  border: solid transparent;
+  border-width: 4px 0;
+  border-radius: var(--ui-radius) / calc(var(--ui-radius) + 4px);
+  background-clip: padding-box;
+  box-shadow: inset 0 0 0 1px var(--ui-border);
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+.ws-bar :is([data-testid='dashboard-tools'], .ws-bar-report-button) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-inline: var(--ui-space-3);
+  font-weight: 400;
+  color: var(--ui-text);
+  background-color: var(--ui-surface);
+}
+.ws-bar :is([data-testid='dashboard-tools'], .ws-bar-report-button):hover:not(:disabled) {
+  background-color: var(--ui-subtle);
+}
+.ws-bar .ws-bar-report-button svg {
+  margin: 0;
+}
+/* Progress shows inside the button: the spinner takes the icon's place and
+   the button keeps its width (the sentence goes to assistive tech and the
+   toast). */
+.ws-bar .ws-bar-report-button {
+  justify-content: center;
+  min-width: 4.75rem;
+}
+.ws-bar .ws-bar-report-button[aria-busy='true'] > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.ws-bar .workspace-button-primary {
+  box-shadow: inset 0 0 0 1px var(--action);
+}
+.ws-bar .workspace-button-primary:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--action-hover);
+}
+.ws-bar .workspace-button-quiet {
+  box-shadow: none;
+}
+/* The report button's error note floats under the bar instead of growing it. */
+.ws-bar-report {
+  position: relative;
+  flex: none;
+}
+.ws-bar-report > div {
+  gap: 0;
+}
+.ws-bar-report > div > div {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1;
+  width: max-content;
+  max-width: min(20rem, 80vw);
+  padding: var(--ui-space-2) var(--ui-space-3);
+  font-size: var(--ui-font-small);
+  text-align: left;
+  background: var(--surface-raised);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--shadow-lg);
+}
+/* The € switch: one outlined group, 36 px to the eye, 44 px to the finger. */
+.ws-bar .workspace-euro {
+  position: relative;
+  overflow: visible;
+  background: none;
+  border: 0;
+}
+.ws-bar .workspace-euro::before {
+  content: '';
+  position: absolute;
+  inset: 4px 0;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  pointer-events: none;
+}
+.ws-bar .workspace-euro button {
+  position: relative;
+  min-height: 44px;
+  padding: 0 var(--ui-space-3);
+  font-size: var(--ui-font-body);
+  border: solid transparent;
+  border-width: 5px 1px;
+  background-clip: padding-box;
+}
+.ws-bar .workspace-euro button + button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -1px;
+  width: 1px;
+  background: var(--ui-border);
+}
+.workspace-euro-short {
+  display: none;
+}
+
+/* Draft cluster. The marker says how much is unsaved; it never moves the
+   tools at the other end of the bar. */
+.ws-bar-draft > * {
+  animation: ws-fade-in var(--motion-base) var(--motion-ease);
+}
+.ws-bar-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  font-size: var(--ui-font-body);
+  color: var(--ui-text);
+  white-space: nowrap;
+}
+.ws-bar-discard {
+  justify-content: center;
+  min-width: 44px;
+  padding-inline: var(--ui-space-2);
+}
+.ws-discard-label {
+  white-space: nowrap;
+}
+.ws-bar-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+  white-space: nowrap;
+}
+.ws-bar-saved svg {
+  color: var(--ok);
+}
+/* Focus lands here after Save / Discard (keyboard), so it shows a ring. */
+.ws-bar-saved:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+  border-radius: var(--ui-radius);
+}
+/* "Speichern ▾": the button saves, the caret beside it opens the menu. */
+.ws-bar-save-group {
+  display: flex;
+  align-items: center;
+}
+.ws-bar .ws-bar-save {
+  padding-inline: var(--ui-space-4) var(--ui-space-3);
+  font-weight: 600;
+  border-radius: var(--ui-radius) 0 0 var(--ui-radius) / calc(var(--ui-radius) + 4px) 0 0
+    calc(var(--ui-radius) + 4px);
+}
+.ws-bar .ws-bar-save-more {
+  width: 44px;
+  padding-inline: 0;
+  border-radius: 0 var(--ui-radius) var(--ui-radius) 0 / 0 calc(var(--ui-radius) + 4px)
+    calc(var(--ui-radius) + 4px) 0;
+  box-shadow:
+    inset 0 0 0 1px var(--action),
+    inset 1px 0 0 0 color-mix(in srgb, var(--on-action) 35%, var(--action));
+}
+
+/* ------------------------------------------------------------------ */
+/* Popovers (chart options, "Speichern ▾", the dock's changes)          */
+/* ------------------------------------------------------------------ */
+
+.ws-popover {
+  position: relative;
+  display: inline-flex;
+}
+.ws-popover-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 46;
+  min-width: 220px;
+  max-width: min(360px, calc(100vw - 2 * var(--ui-space-4)));
+  padding: var(--ui-space-1);
+  font-size: var(--ui-font-body);
+  color: var(--ui-text);
+  background: var(--surface-raised);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--shadow-lg);
+  animation: ws-fade-in var(--motion-fast) var(--motion-ease);
+}
+.ws-popover-panel[data-align='end'] {
+  right: 0;
+}
+.ws-popover-panel[data-align='start'] {
+  left: 0;
+}
+.ws-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--ui-space-2) var(--ui-space-3);
+  font: inherit;
+  text-align: left;
+  color: var(--ui-text);
+  background: transparent;
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.ws-menu-item svg {
+  flex: none;
+  color: var(--ui-muted);
+}
+.ws-menu-item:hover:not([aria-disabled='true']),
+.ws-menu-item:focus-visible {
+  background: var(--ui-subtle);
+}
+.ws-menu-item:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
+}
+.ws-menu-item[aria-disabled='true'] {
+  color: var(--ui-muted);
+  cursor: default;
+}
+.ws-menu-item-hint {
+  display: block;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.ws-icon-button {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: var(--ui-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease);
+}
+.ws-icon-button:hover,
+.ws-icon-button[aria-expanded='true'] {
+  color: var(--ui-text);
+  background: var(--ui-subtle);
+}
+
+/* ------------------------------------------------------------------ */
+/* Canvas                                                              */
+/* ------------------------------------------------------------------ */
+
+.ws-main {
+  grid-area: main;
+  justify-self: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 1240px;
+  padding: 20px var(--ws-canvas-pad) var(--ui-space-12);
+  scroll-margin-top: var(--ws-sticky-top);
+}
+/* Compare: the dock is pinned over the top of the canvas; make room for it. */
+@media (min-width: 1180px) {
+  .ws-page[data-mode='compare'] .ws-main {
+    padding-top: calc(var(--ws-dock-h) + var(--ui-space-6));
+  }
+}
+
+/* ---- Result head ---------------------------------------------------- */
+
+.ws-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* The anchors close the head; the first section follows them closely. */
+  margin-bottom: calc(var(--ui-space-4) - var(--ws-section-gap));
+}
+.ws-head-rate {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-3);
+  min-height: 44px;
+}
+.ws-head-figures {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ui-space-3);
+}
+.ws-figure {
+  font-weight: 600;
+  color: var(--ui-text);
+  white-space: nowrap;
+  transition: opacity var(--motion-base) var(--motion-ease);
+}
+.ws-figure .ws-skeleton {
+  display: inline-block;
+  vertical-align: -3px;
+}
+/* The one large numeral on the page. */
+.ws-head .ws-figure-rate {
+  min-inline-size: 5.4ch;
+  font-size: var(--ui-font-display);
+  line-height: 40px;
+  letter-spacing: -0.01em;
+}
+:is(.ws-head-rate, .ws-head-facts, .ws-dock-rate, .ws-dock-end)[data-running] .ws-figure {
+  opacity: 0.55;
+}
+/* Delta slots keep their width, so nothing shifts when a delta appears. */
+.ws-figure-slot {
+  display: inline-flex;
+  align-items: center;
+}
+/* Room for "−12,5 Pkt." and "−1,20 Mio €". */
+.ws-figure-slot[data-slot='rate-delta'] {
+  min-inline-size: 88px;
+}
+.ws-figure-slot[data-slot='end-delta'] {
+  min-inline-size: 84px;
+}
+.ws-figure-delta {
+  padding: 2px 8px;
+  font-size: var(--ui-font-body);
+  font-weight: 600;
+  line-height: 20px;
+  animation: ws-fade-in var(--motion-fast) var(--motion-ease);
+  transition: opacity var(--motion-fast) var(--motion-ease);
+}
+.ws-figure-delta[data-pending] {
+  opacity: 0.55;
+}
+.ws-figure-money-delta {
+  font-size: var(--ui-font-body);
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-muted);
+  animation: ws-fade-in var(--motion-fast) var(--motion-ease);
+}
+.ws-figure-money-delta[data-tone='ok'] {
+  color: var(--ok);
+}
+.ws-figure-money-delta[data-tone='danger'] {
+  color: var(--danger);
+}
+.ws-head-sentence {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--ui-font-lead);
+  line-height: 1.4;
+  color: var(--ui-text);
+  text-wrap: pretty;
+}
+.ws-head-run {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+.ws-figure-run {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+}
+.ws-figure-status {
+  margin: 0;
+}
+.ws-figure-status-label {
+  font-size: var(--ui-font-small);
+}
+.ws-figure-run-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: var(--ui-space-2);
+}
+.ws-run-label {
+  display: none;
+}
+/* Out-of-date results: Recalculate turns primary and says so in words. */
+.ws-figure-run-button[data-needs-run] .ws-run-label {
+  display: inline;
+}
+.ws-figure-run-button[data-needs-run] {
+  padding-inline: var(--ui-space-3);
+}
+.ws-figure-run[data-needs-run] .ws-figure-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.ws-figure-run-button:disabled {
+  opacity: 0.55;
+}
+.ws-head-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 20px;
+  min-height: 24px;
+  margin: 0;
+  font-size: var(--ui-font-body);
+  line-height: 24px;
+  color: var(--ui-muted);
+}
+.ws-head-facts > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.ws-head-facts :is(dt, dd) {
+  margin: 0;
+  white-space: nowrap;
+}
+.ws-head-fact {
+  font-size: var(--ui-font-lead);
+  font-weight: 600;
+  color: var(--ui-text);
+}
+/* Each value keeps room for its longest plausible reading ("12,34 Mio €",
+   "12.345 €/Mon."), so the line breaks by the canvas's width — not by this
+   run's digits, which would move everything under it from edit to edit. */
+.ws-head-facts [data-fact='lasts'] .ws-head-fact {
+  min-inline-size: 2.2em;
+}
+.ws-head-fact .ws-figure-end {
+  display: inline-block;
+  min-inline-size: 5.8em;
+}
+.ws-head-facts [data-fact='draw'] .ws-head-fact {
+  min-inline-size: 7.5em;
+}
+.ws-head-facts [data-fact='bad'] dd {
+  min-inline-size: 5.2em;
+}
+.ws-head-fact .ws-link-button {
+  position: relative;
+  font-weight: 600;
+}
+/* The first withdrawal leads to Entnahme: a line of text to the eye, 44 px
+   to the finger. */
+.ws-head-fact .ws-link-button::after {
+  content: '';
+  position: absolute;
+  inset: -10px -4px;
+}
+
+/* ---- Fan chart (the head's picture) ---------------------------------- */
+
+.ws-head-chart {
+  min-width: 0;
+}
+.ws-fan {
+  min-width: 0;
+  padding: 6px var(--ui-space-3) 6px;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+.ws-fan-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-4);
+  min-height: 44px;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.ws-fan .ws-fan-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--ui-font-body);
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--ui-text);
+}
+.ws-fan-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px var(--ui-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ws-fan-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.ws-fan-key {
+  display: inline-block;
+  flex: none;
+}
+.ws-fan-key[data-key='now'] {
+  width: 18px;
+  border-top: 3px solid var(--viz-seq-5);
+}
+.ws-fan-key[data-key='saved'] {
+  width: 18px;
+  border-top: 2px dashed var(--viz-ghost);
+}
+.ws-fan-key[data-key='outer'] {
+  width: 14px;
+  height: 10px;
+  background: var(--viz-seq-1);
+  border: 1px solid var(--viz-seq-2);
+}
+.ws-fan-key[data-key='inner'] {
+  width: 14px;
+  height: 10px;
+  background: var(--viz-seq-2);
+}
+.ws-fan-unit {
+  flex: none;
+  margin-left: calc(-1 * var(--ui-space-1));
+  padding-left: var(--ui-space-3);
+  font-weight: 600;
+  color: var(--ui-text);
+  white-space: nowrap;
+  border-left: 1px solid var(--ui-border);
+}
+.ws-fan-options {
+  flex: none;
+  margin-right: -8px;
+}
+.ws-fan-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-3);
+  width: 260px;
+  max-width: 100%;
+  padding: var(--ui-space-2);
+}
+.ws-fan-menu .ws-segmented button,
+.ws-fan-menu .ws-chart-button {
+  min-height: 44px;
+}
+.ws-fan-menu .ws-segmented {
+  display: flex;
+}
+.ws-fan-menu .ws-segmented button {
+  flex: 1 1 0;
+}
+.ws-fan-menu .ws-chart-brush {
+  margin-top: 0;
+}
+.ws-fan-menu .ws-chart-brush input[type='range'] {
+  height: 32px;
+}
+.ws-fan-menu-label {
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ws-fan .ws-chart-plot {
+  height: var(--ws-fan-plot-h);
+  overflow: hidden;
+}
+.ws-fan-marker {
+  position: absolute;
+  top: 4px;
+  padding: 0 3px;
+  font-size: var(--ui-font-small);
+  line-height: 16px;
+  color: var(--ui-muted);
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--ui-surface) 82%, transparent);
+  border-radius: 2px;
+  transform: translateX(4px);
+  pointer-events: none;
+}
+.ws-fan-marker[data-marker='retirement'] {
+  font-weight: 600;
+  color: var(--ui-accent);
+}
+.ws-fan-marker[data-marker='pension'] {
+  top: 24px;
+}
+.ws-fan-marker[data-marker='saved'][data-side='before'] {
+  transform: translateX(calc(-100% - 4px));
+}
+.ws-fan-marker[data-marker='saved'][data-side='after'] {
+  top: 44px;
+}
+.ws-chart-tooltip-saved {
+  margin-top: 2px;
+  padding-top: 2px;
+  border-top: 1px dashed var(--ui-border);
+}
+.ws-fan .ws-chart-table[hidden] {
+  display: none;
+}
+.ws-fan .ws-chart-table {
+  max-height: 320px;
+  margin-top: var(--ui-space-2);
+  padding-top: var(--ui-space-2);
+  overflow: auto;
+  font-size: var(--ui-font-small);
+  border-top: 1px solid var(--ui-border);
+}
+.ws-chart-table-strong {
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+/* ---- Change row and chips -------------------------------------------- */
+
+/* One line, 44 px, clean or dirty: the row never moves what is under it.
+   Chips that do not fit shorten (ellipsis) instead of wrapping; only "+n",
+   which the reader taps, lets the row grow. */
+.ws-changes {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 2px 10px;
+  min-height: 44px;
+  /* The chips are 28 px in a 44 px row (the ✕ needs the height): pull the
+     row in, so the empty row of a saved plan is not a hole in the head. */
+  margin-block: -6px;
+}
+.ws-changes[data-expanded] {
+  flex-wrap: wrap;
+}
+.ws-changes-lead {
+  flex: none;
+  color: var(--ui-muted);
+}
+.ws-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 12px var(--ui-space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ws-changes[data-expanded] .ws-chips {
+  flex-wrap: wrap;
+}
+.ws-chip {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  height: 28px;
+  padding-left: var(--ui-space-3);
+  font-size: var(--ui-font-body);
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  animation: ws-fade-in var(--motion-fast) var(--motion-ease);
+}
+.ws-chip-plain {
+  padding-right: var(--ui-space-3);
+  color: var(--ui-muted);
+}
+.ws-chip-label {
+  min-width: 0;
+  max-width: 34ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* 44 px to the finger; the pill stays 28 px. */
+.ws-chip-x {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -8px -6px -8px -4px;
+  padding: 0;
+  color: var(--ui-muted);
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+.ws-chip-x:hover {
+  color: var(--ui-text);
+}
+.ws-chip-more {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--ui-space-2);
+  font: inherit;
+  font-weight: 600;
+  color: var(--ui-accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-chips-list {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-2);
+}
+.ws-chips-list .ws-chip {
+  justify-content: space-between;
+}
+.ws-chips-list .ws-chip-label {
+  max-width: none;
+}
+
+/* ---- Anchors under the head ------------------------------------------ */
+
+.ws-anchors ol {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-border);
+}
+.ws-anchors a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--ui-font-body);
+  color: var(--ui-muted);
+  text-decoration: none;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+.ws-anchors a:hover {
+  color: var(--ui-accent);
+}
+.ws-anchors a[aria-current='location'] {
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+/* ---- Sections under the head ------------------------------------------ */
+
+/* The head ends in the anchors' hairlines; the first section needs none. */
+.ws-head + .ws-section {
+  padding-top: 0;
+  border-top: 0;
+}
+.ws-section-header h2 {
+  font-size: var(--ui-font-kpi);
+}
+.ws-rule-pointer {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 2px var(--ui-space-3);
+  min-height: 44px;
+  padding: 0;
+  font: inherit;
+  font-weight: 400;
+  color: var(--ui-muted);
+  text-align: right;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.ws-rule-pointer-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+  font-weight: 600;
+  color: var(--ui-accent);
+}
+
+/* ------------------------------------------------------------------ */
+/* Dock                                                                */
+/* ------------------------------------------------------------------ */
+
+.ws-dock {
+  grid-area: main;
+  align-self: start;
+  position: sticky;
+  top: var(--ws-bar-bottom);
+  z-index: 30;
+  /* What fits is decided by the dock's own width (the canvas beside the
+     column, or the whole page under the drawer), not the viewport's. */
+  container: ws-dock / inline-size;
+  min-width: 0;
+  height: var(--ws-dock-h);
+  background: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-border);
+  box-shadow: var(--shadow-bar);
+  transition:
+    opacity var(--motion-base) var(--motion-ease),
+    transform var(--motion-base) var(--motion-ease),
+    visibility 0s;
+}
+/* From 1180 px the dock steps in when the head's chart has left the screen. */
+@media (min-width: 1180px) {
+  .ws-dock[data-pinned='false'] {
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition:
+      opacity var(--motion-base) var(--motion-ease),
+      transform var(--motion-base) var(--motion-ease),
+      visibility 0s var(--motion-base);
+  }
+}
+.ws-dock-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-4);
+  max-width: 1240px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 var(--ws-canvas-pad);
+}
+.ws-dock-inner > * {
+  flex: none;
+}
+.ws-dock-rate,
+.ws-dock-end {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+.ws-dock .ws-figure-rate {
+  min-inline-size: 5.4ch;
+  font-size: var(--ui-font-kpi);
+  line-height: 28px;
+  letter-spacing: -0.01em;
+}
+.ws-dock .ws-figure-end {
+  min-inline-size: 5.5ch;
+  font-size: var(--ui-font-lead);
+}
+.ws-dock-end,
+.ws-dock-lasts {
+  padding-left: var(--ui-space-4);
+  border-left: 1px solid var(--ui-border);
+}
+.ws-dock-label,
+.ws-dock-lasts {
+  color: var(--ui-muted);
+  white-space: nowrap;
+}
+.ws-dock-lasts {
+  align-self: center;
+  line-height: 28px;
+  font-variant-numeric: tabular-nums;
+}
+.ws-dock .ws-dock-chart {
+  flex: 1 1 96px;
+  min-width: 72px;
+  max-width: 240px;
+  height: 64px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+}
+.ws-dock-chart:hover {
+  background: var(--ui-subtle);
+}
+.ws-mini-fan {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* Reserved: the slot is as wide clean as dirty, so the mini chart beside it
+   never changes size when "n Änderungen ▾" arrives. */
+.ws-dock .ws-dock-changes-slot {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  width: 9.5rem;
+  margin-left: auto;
+}
+.ws-dock-changes {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 var(--ui-space-2);
+  font: inherit;
+  color: var(--ui-text);
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+}
+.ws-dock-changes::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warn);
+}
+.ws-dock-changes:hover,
+.ws-dock-changes[aria-expanded='true'] {
+  background: var(--ui-subtle);
+}
+.ws-dock-changes-short {
+  display: none;
+}
+.ws-change-menu .ws-popover-panel {
+  width: max-content;
+  min-width: 260px;
+}
+.ws-dock-run {
+  order: 9;
+}
+/* A narrower dock (beside the column from 1180 px, under the drawer below)
+   sheds in steps: first the long change label, then "bis …" and the quiet
+   Recalculate (which comes back, in the mini chart's place, when results are
+   out of date). The figures and their deltas always stay. */
+@media (min-width: 761px) {
+  @container ws-dock (max-width: 899px) {
+    .ws-dock .ws-dock-changes-slot {
+      width: 5.75rem;
+    }
+    .ws-dock-changes-long {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .ws-dock-changes-short {
+      display: inline;
+    }
+  }
+  @container ws-dock (max-width: 839px) {
+    .ws-dock-inner {
+      gap: var(--ui-space-3);
+    }
+    .ws-dock-lasts {
+      display: none;
+    }
+    .ws-dock .ws-figure-run:not([data-needs-run]) .ws-figure-run-button {
+      display: none;
+    }
+    .ws-dock:has(.ws-figure-run[data-needs-run]) .ws-dock-chart {
+      display: none;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Control column                                                      */
+/* ------------------------------------------------------------------ */
+
+.ws-panel {
+  grid-area: column;
+  position: sticky;
+  top: var(--ws-bar-bottom);
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: calc(100dvh - var(--ws-bar-bottom));
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border-left: 1px solid var(--ui-border);
+}
+/* Docked and on phones the column needs no bar of its own: the title stays
+   for screen readers and as the focus target of `#assumptions`. */
+.ws-panel-top {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.ws-panel-top h2 {
+  margin: 0;
+  font-size: var(--ui-font-lead);
+  font-weight: 600;
+}
+.ws-panel-top h2:focus {
+  outline: none;
+}
+.ws-panel-toggle {
+  display: none;
+}
+.ws-panel-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* A control scrolled into view (Tab) clears the group header stuck above it. */
+.ws-panel-body * {
+  scroll-margin-top: 64px;
+  scroll-margin-bottom: 8px;
+}
+.ws-group {
+  border-bottom: 1px solid var(--ui-border);
+}
+.ws-group-heading {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: 0;
+  background: var(--ui-surface);
+}
+.ws-panel-body .ws-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 56px;
+  padding: 0 var(--ws-column-pad);
+  font: inherit;
+  text-align: left;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 0;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--motion-ease);
+}
+.ws-panel-body .ws-group-header:hover {
+  background: var(--ui-subtle);
+}
+.ws-group-header:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
+}
+.ws-group[data-open] .ws-group-heading {
+  border-bottom: 1px solid var(--ui-border);
+}
+.ws-group-chevron {
+  flex: none;
+  color: var(--ui-muted);
+  transform: rotate(-90deg);
+  transition: transform var(--motion-base) var(--motion-ease);
+}
+.ws-group[data-open] .ws-group-chevron {
+  transform: none;
+}
+.ws-group-title {
+  flex: none;
+  font-size: var(--ui-font-lead);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ws-group-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warn);
+}
+.ws-group-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--ui-font-body);
+  color: var(--ui-muted);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-group-body {
+  padding: var(--ui-space-4) var(--ws-column-pad) var(--ui-space-6);
+  animation: ws-fade-in var(--motion-base) var(--motion-ease);
+}
+.ws-group-body[hidden] {
+  display: none;
+}
+.ws-panel-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-4);
+}
+.ws-column-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-4) var(--ws-column-pad) var(--ui-space-6);
+}
+.ws-column-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--ui-space-4);
+}
+.ws-column-footer .ws-text-link {
+  min-height: 44px;
+}
+
+/* Touch targets inside the groups: switches, sliders and row actions. */
+.ws-panel-body [role='switch'] {
+  min-width: 44px;
+  min-height: 44px;
+}
+.ws-panel-body span[data-orientation='horizontal']:has([role='slider']) {
+  min-height: 44px;
+}
+.ws-panel-body [role='slider'] {
+  width: 24px;
+  height: 24px;
+}
+/* A row's edit and delete: only those two (the row's inline form has
+   buttons of its own shape). */
+.ws-panel-body [data-testid='cashflow-list'] [data-row-action] {
+  width: 44px;
+  height: 44px;
+}
+.ws-panel-body :is(.ws-switch, .ws-choice, .ws-withdrawal-option) {
+  min-height: 44px;
+}
+/* The flow form (new or edited): kind, "Erweiterte Optionen". */
+.ws-panel-body [data-testid='cashflow-list'] form button:is([aria-pressed], [aria-expanded]) {
+  min-height: 44px;
+}
+.ws-panel-body [data-testid='cashflow-list'] form button[aria-expanded]:not([role='combobox']) {
+  display: inline-flex;
+  align-items: center;
+}
+/* The ⓘ beside a label: 14 px to the eye, 44 px to the finger — a little
+   less downwards, where the field it explains begins. */
+.ws-panel-body [data-slot='info-tip'] {
+  position: relative;
+}
+.ws-panel-body [data-slot='info-tip']::after {
+  content: '';
+  position: absolute;
+  inset: -20px -15px -10px;
+}
+/* Slider bounds ("56 … 70") at the small text size, like every other note. */
+.ws-panel-body div:has(> span[data-orientation='horizontal']) > div {
+  font-size: var(--ui-font-small);
+}
+.ws-panel-body .ws-withdrawal-h3 {
+  font-size: var(--ui-font-lead);
+}
+
+/* Einnahmen & Ausgaben: "+ Posten" leads the group; its form opens here. */
+.ws-flows-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+}
+.ws-flows-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 var(--ui-space-4) 0 var(--ui-space-3);
+  font: inherit;
+  font-weight: 600;
+  color: var(--ui-accent);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--motion-ease);
+}
+.ws-flows-add:hover,
+.ws-flows-add[aria-expanded='true'] {
+  background: var(--ui-tint-accent);
+}
+.ws-flows-count {
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+  text-align: right;
+}
+.ws-flows-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-4);
+  padding: var(--ui-space-4) 0;
+  border-top: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-border);
+  animation: ws-fade-in var(--motion-base) var(--motion-ease);
+}
+
+/* Entnahme in the column: the rule and its settings, stacked. */
+.ws-panel-body .ws-withdrawal-cause {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-6);
+}
+
+/* ------------------------------------------------------------------ */
+/* Phone mode bar (hidden above 760 px)                                */
+/* ------------------------------------------------------------------ */
+
+.ws-modes {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* 761–1179: dock always pinned, column is a drawer                    */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 1179px) {
+  .ws-page {
+    --ws-fan-plot-h: 300px;
+    grid-template-columns: minmax(0, 1fr) var(--ws-rail-w);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'bar bar'
+      'dock dock'
+      'main .';
+  }
+  .ws-page[data-mode='compare'] {
+    grid-template-areas:
+      'bar'
+      'dock'
+      'main';
+  }
+  .ws-dock {
+    grid-area: dock;
+  }
+  /* The dock above carries the numeral, its delta and the run status. */
+  .ws-head-figures,
+  .ws-head-run {
+    display: none;
+  }
+  /* The full chart is the first block of the canvas; the sentence and the
+     facts follow it. */
+  .ws-head-chart {
+    order: -1;
+  }
+  .ws-head-rate {
+    min-height: 0;
+  }
+  .ws-dock-inner {
+    gap: var(--ui-space-3);
+  }
+
+  .ws-panel {
+    grid-area: auto;
+    position: fixed;
+    /* `align-self: start` (the docked pane) would make a fixed box as tall
+       as its content instead of stretching between `top` and `bottom`. */
+    align-self: auto;
+    top: var(--ws-sticky-top);
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    width: min(440px, 100vw - 64px);
+    height: auto;
+    box-shadow: var(--shadow-sheet);
+    transition: box-shadow var(--motion-base) var(--motion-ease);
+  }
+  .ws-panel-top {
+    position: static;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    width: auto;
+    height: 48px;
+    padding: 0 2px 0 var(--ws-column-pad);
+    overflow: visible;
+    clip-path: none;
+    border-bottom: 1px solid var(--ui-border);
+  }
+  .ws-panel-toggle {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ui-space-2);
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    font: inherit;
+    font-weight: 600;
+    color: var(--ui-accent);
+    background: transparent;
+    border: 0;
+    border-radius: var(--ui-radius);
+    cursor: pointer;
+  }
+  .ws-panel-toggle:hover {
+    background: var(--ui-subtle);
+  }
+  .ws-panel-toggle-label {
+    display: none;
+  }
+}
+
+/* The folded drawer: a 48 px rail whose one control unfolds it again. The
+   canvas never changes width — the open drawer lies over it. */
+@media (min-width: 761px) and (max-width: 1179px) {
+  .ws-panel[data-open='false'] {
+    width: var(--ws-rail-w);
+    box-shadow: none;
+  }
+  .ws-panel[data-open='false'] .ws-panel-body {
+    display: none;
+  }
+  .ws-panel[data-open='false'] .ws-panel-top {
+    flex-direction: column;
+    height: auto;
+    padding: 2px;
+    border-bottom: 0;
+  }
+  .ws-panel[data-open='false'] .ws-panel-top h2 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .ws-panel[data-open='false'] .ws-panel-toggle {
+    flex-direction: column;
+    height: auto;
+    padding: var(--ui-space-3) 0;
+  }
+  .ws-panel[data-open='false'] .ws-panel-toggle-label {
+    display: block;
+    writing-mode: vertical-rl;
+    font-size: var(--ui-font-body);
+  }
+}
+/* Before the page has looked at the width (first paint): folded below 1000. */
+@media (min-width: 761px) and (max-width: 999px) {
+  .ws-panel:not([data-open]) {
+    width: var(--ws-rail-w);
+    box-shadow: none;
+  }
+  .ws-panel:not([data-open]) .ws-panel-body {
+    display: none;
+  }
+  .ws-panel:not([data-open]) .ws-panel-top {
+    flex-direction: column;
+    height: auto;
+    padding: 2px;
+    border-bottom: 0;
+  }
+  .ws-panel:not([data-open]) .ws-panel-top h2 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .ws-panel:not([data-open]) .ws-panel-toggle {
+    flex-direction: column;
+    height: auto;
+    padding: var(--ui-space-3) 0;
+  }
+  .ws-panel:not([data-open]) .ws-panel-toggle-label {
+    display: block;
+    writing-mode: vertical-rl;
+    font-size: var(--ui-font-body);
+  }
+}
+
+/* Where the bar gets tight, Discard is its undo icon and the PDF its arrow
+   (the words stay in aria-label / the visually hidden label). */
+@media (min-width: 761px) and (max-width: 999px) {
+  .ws-discard-label,
+  .ws-bar-report-button > span[aria-hidden='true'] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .ws-bar .ws-bar-report-button {
+    min-width: 44px;
+  }
+  .ws-bar .workspace-plan-trigger {
+    max-width: 22vw;
+  }
+  .ws-bar-save svg {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* ≤760: two modes, "Ansehen │ Stellen"                                */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 760px) {
+  .ws-page {
+    --ws-bar-h: 44px;
+    --ws-dock-h: 88px;
+    --ws-canvas-pad: var(--ui-space-4);
+    --ws-column-pad: var(--ui-space-4);
+    --ws-fan-plot-h: 260px;
+    --ws-section-gap: var(--ui-space-8);
+    --ws-modes-h: calc(56px + env(safe-area-inset-bottom));
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'bar'
+      'dock'
+      'main';
+  }
+  .ws-bar {
+    gap: var(--ui-space-2);
+    padding: 0 var(--ui-space-3);
+    top: env(safe-area-inset-top, 0px);
+  }
+  .ws-bar-plan {
+    flex: 1 1 auto;
+  }
+  .ws-bar .workspace-plan-trigger {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+  .ws-bar-tools {
+    margin-left: 0;
+  }
+  /* The PDF export is the Menü's first item on phones. */
+  .ws-bar-report {
+    display: none;
+  }
+  /* The draft row sits above the mode bar: pinned in both modes, and it
+     takes no room from the page when the plan turns dirty. */
+  .ws-bar-draft {
+    display: none;
+  }
+  .ws-bar[data-dirty] .ws-bar-draft {
+    position: fixed;
+    right: 0;
+    bottom: var(--ws-modes-h);
+    left: 0;
+    z-index: 41;
+    display: flex;
+    justify-content: flex-end;
+    height: 52px;
+    padding: 0 var(--ui-space-3);
+    background: var(--ui-surface);
+    border-top: 1px solid var(--ui-border);
+  }
+  .ws-bar-marker {
+    margin-right: auto;
+  }
+
+  .ws-main {
+    padding: var(--ui-space-4) var(--ws-canvas-pad)
+      calc(var(--ui-space-6) + var(--ws-bottom-inset, var(--ws-modes-h)));
+  }
+  .ws-head-sentence {
+    font-size: var(--ui-font-body);
+  }
+  .ws-head-facts {
+    gap: 2px var(--ui-space-4);
+  }
+  .ws-fan {
+    padding-inline: var(--ui-space-2);
+  }
+  .ws-fan-head {
+    flex-wrap: wrap;
+    gap: 0 var(--ui-space-3);
+  }
+  /* Title, unit and ⋯ on the first line; the legend under them. It keeps
+     room for two lines, so the chart does not move when "gespeichert" joins
+     it with the first edit. */
+  .ws-fan-unit {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+  .ws-fan-legend {
+    order: 3;
+    flex: 1 1 100%;
+    align-content: flex-start;
+    justify-content: flex-start;
+    gap: 2px var(--ui-space-3);
+    min-height: 44px;
+  }
+  .ws-fan-legend .ws-fan-legend-inner {
+    display: none;
+  }
+  .ws-anchors ol {
+    gap: var(--ui-space-4);
+  }
+  .ws-section-header {
+    grid-template-columns: minmax(0, 1fr);
+    margin-bottom: var(--ui-space-4);
+  }
+  .ws-section-actions {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+    margin-top: var(--ui-space-2);
+  }
+  .ws-rule-pointer {
+    justify-content: flex-start;
+    text-align: left;
+  }
+  .ws-sankey {
+    padding: var(--ui-space-4);
+  }
+
+  /* Dock: two rows — rate, delta and the mini chart; then end assets, how
+     long the money lasts and the changes. */
+  .ws-dock-inner {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-rows: 44px 36px;
+    grid-template-areas:
+      'rate chart chart'
+      'end lasts changes';
+    align-content: center;
+    align-items: center;
+    gap: 0 var(--ui-space-3);
+    padding: 4px var(--ui-space-3);
+  }
+  .ws-dock-rate {
+    grid-area: rate;
+  }
+  .ws-dock .ws-dock-chart {
+    grid-area: chart;
+    justify-self: end;
+    width: 100%;
+    max-width: 180px;
+    height: 44px;
+  }
+  .ws-dock-end {
+    grid-area: end;
+    padding-left: 0;
+    border-left: 0;
+  }
+  .ws-dock-lasts {
+    grid-area: lasts;
+    padding-left: var(--ui-space-3);
+  }
+  .ws-dock .ws-dock-changes-slot {
+    grid-area: changes;
+    justify-self: end;
+    width: auto;
+    margin-left: 0;
+  }
+  /* 36 px in the dock's second row; 44 px to the finger. */
+  .ws-dock-changes {
+    min-height: 36px;
+    padding: 0 var(--ui-space-1);
+  }
+  .ws-dock-changes::after {
+    content: '';
+    position: absolute;
+    inset: -4px 0;
+  }
+  .ws-dock-changes-long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .ws-dock-changes-short {
+    display: inline;
+  }
+  /* Both delta slots keep their room here too: the first column (rate above,
+     end assets below) is as wide clean as dirty, so the mini chart beside it
+     does not change size with the first edit. */
+  .ws-dock .ws-figure-slot[data-slot='rate-delta'] {
+    min-inline-size: 80px;
+  }
+  .ws-dock .ws-figure-slot[data-slot='end-delta'] {
+    min-inline-size: 62px;
+  }
+  .ws-dock .ws-figure-end {
+    min-inline-size: 0;
+  }
+  .ws-dock-end {
+    gap: 6px;
+  }
+  /* Run status: dimmed figures show a run in flight; out-of-date results
+     bring up Recalculate in the chart's place. */
+  .ws-dock-run {
+    display: none;
+  }
+  .ws-dock:has(.ws-figure-run[data-needs-run]) .ws-dock-run {
+    display: flex;
+    grid-area: chart;
+    justify-self: end;
+  }
+  .ws-dock:has(.ws-figure-run[data-needs-run]) .ws-dock-chart {
+    display: none;
+  }
+
+  /* "Stellen": the column in the canvas's place, between the dock and the
+     bottom chrome. Hidden until the mode is chosen. */
+  .ws-panel {
+    display: none;
+    top: var(--ws-sticky-top);
+    right: 0;
+    bottom: var(--ws-bottom-inset, var(--ws-modes-h));
+    left: 0;
+    z-index: 35;
+    width: auto;
+    border-left: 0;
+    box-shadow: none;
+  }
+  .ws-panel[data-open='true'] {
+    display: flex;
+  }
+  .ws-panel-top {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    border: 0;
+  }
+  .ws-panel-toggle {
+    display: none;
+  }
+
+  .ws-modes {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 42;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    height: var(--ws-modes-h);
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    background: var(--ui-surface);
+    border-top: 1px solid var(--ui-border);
+  }
+  .ws-modes button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 56px;
+    font: inherit;
+    font-size: var(--ui-font-small);
+    color: var(--ui-muted);
+    background: none;
+    border: 0;
+    border-top: 2px solid transparent;
+    cursor: pointer;
+  }
+  .ws-modes button[aria-pressed='true'] {
+    font-weight: 600;
+    color: var(--ui-accent);
+    border-top-color: var(--ui-accent);
+  }
+  .ws-modes button:focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: -2px;
+  }
+}
+@media (max-width: 419px) {
+  .workspace-euro-full {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .workspace-euro-short {
+    display: inline;
+  }
+  .ws-bar .workspace-euro button {
+    padding: 0 var(--ui-space-2);
+  }
+  .ws-bar [data-testid='dashboard-tools'] {
+    padding-inline: var(--ui-space-2);
+  }
+  .ws-bar-draft .workspace-button svg {
+    display: none;
+  }
+  .ws-bar-draft [data-testid='command-save-more'] svg {
+    display: inline;
+  }
+  .ws-dock-inner {
+    gap: 0 var(--ui-space-2);
+  }
+  .ws-dock-label {
+    display: none;
+  }
+}
+/* The narrowest phones: "bis …" gives its room to the list of changes. */
+@media (max-width: 359px) {
+  .ws-dock-lasts {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Menü: the PDF export only where the bar has none (phones)            */
+/* ------------------------------------------------------------------ */
+
+.workspace-menu-report {
+  display: none;
+}
+@media (max-width: 760px) {
+  .workspace-menu-report {
+    display: block;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Toasts stay clear of the column and of the phone's bottom chrome     */
+/* ------------------------------------------------------------------ */
+
+@media (min-width: 1180px) {
+  body:has(.ws-page[data-mode='plan']) {
+    --toast-right: calc(480px + 1rem);
+  }
+}
+@media (min-width: 1440px) {
+  body:has(.ws-page[data-mode='plan']) {
+    --toast-right: calc(520px + 1rem);
+  }
+}
+@media (min-width: 1680px) {
+  body:has(.ws-page[data-mode='plan']) {
+    --toast-right: calc(560px + 1rem);
+  }
+}
+@media (min-width: 761px) and (max-width: 1179px) {
+  body:has(.ws-page[data-mode='plan']) {
+    --toast-right: calc(48px + 1rem);
+  }
+  body:has(.ws-page[data-mode='plan'][data-column='open']) {
+    --toast-right: calc(min(440px, 100vw - 64px) + 1rem);
+  }
+}
+@media (max-width: 760px) {
+  body:has(.ws-page) {
+    --toast-bottom: calc(66px + env(safe-area-inset-bottom));
+  }
+  body:has(.ws-bar[data-dirty]) {
+    --toast-bottom: calc(118px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Reduced motion: no transforms, no tweens, no sheen, instant swaps.   */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-figure-delta,
+  .ws-figure-money-delta,
+  .ws-bar-draft > *,
+  .ws-chip,
+  .ws-popover-panel,
+  .ws-group-body,
+  .ws-skeleton::after {
+    animation: none !important;
+  }
+  .ws-page *,
+  .ws-panel,
+  .ws-panel * {
+    transition-duration: 0s !important;
+  }
+  .ws-dock[data-pinned='false'] {
+    transform: none;
+  }
+  .ws-panel [data-flash] {
+    animation: none;
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 4px;
+  }
+}

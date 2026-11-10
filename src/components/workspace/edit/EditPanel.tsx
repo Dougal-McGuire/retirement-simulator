@@ -1,188 +1,167 @@
 'use client'
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type RefObject,
-} from 'react'
-import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { useFormatter, useTranslations } from 'next-intl'
-import { ChevronLeft, ChevronRight, LoaderCircle, X } from 'lucide-react'
-import { adjacentPanels, assumptionPanel } from '@/components/plans/planSections'
-import { useUsableResults } from '@/components/workspace/useUsableResults'
-import { AnimatedNumber } from '../AnimatedNumber'
-import { useRunStatus } from '../useRunStatus'
-import { useSavedSuccessDelta } from '../useSavedSuccessDelta'
-import { useWorkspaceUiStore } from '../useWorkspaceUiStore'
-import { useWorkspace, useWorkspaceInternals, type EditorState } from '../WorkspaceProvider'
+import { memo, useEffect, useMemo, useRef } from 'react'
+import { useTranslations } from 'next-intl'
+import { ArrowRight, ChevronDown, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { COLUMN_GROUPS, type ColumnGroup } from '@/components/plans/planSections'
 import { SectionBoundary } from '@/components/errors/SectionBoundary'
+import { changedGroups } from '@/lib/simulation/draftChanges'
+import { Link } from '@/navigation'
+import { useDraftChanges } from '../useDraftChanges'
+import { useColumnOpen, useOpenGroups } from '../useWorkspaceUiStore'
+import { useWorkspace, useWorkspaceInternals } from '../WorkspaceProvider'
 import { focusField } from './focusField'
 import { PANEL_CONTENT } from './panelContent'
+import { ResetToDefaults } from './ResetToDefaults'
+import { useGroupSummaries } from './useGroupSummaries'
 
-const TABBABLE =
-  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]'
-
-/** The elements of `root` that Tab stops at, in DOM order. */
-function tabbables(root: Element | null): HTMLElement[] {
-  if (!root) return []
-  return Array.from(root.querySelectorAll<HTMLElement>(TABBABLE)).filter(
-    (el) =>
-      el.tabIndex >= 0 &&
-      el.getClientRects().length > 0 &&
-      !el.closest('[inert]') &&
-      window.getComputedStyle(el).visibility !== 'hidden'
-  )
+interface GroupProps {
+  group: ColumnGroup
+  title: string
+  summary: string
+  open: boolean
+  changed: boolean
+  changedLabel: string
+  onToggle: (group: ColumnGroup) => void
 }
 
 /**
- * Overlay mode (761–1279): the page behind the panel is inert, the result bar
- * is not (Save, Discard, plan menu and Menu stay usable). Tab therefore runs
- * one cycle through what is live — bar → panel → any toast → bar — instead of
- * Radix's loop inside the panel, which left the bar out of keyboard reach.
- * Only the moves across a zone edge are steered; inside a zone the browser's
- * own order holds (roving radio groups, sliders and all).
+ * One group of the column: a 56 px header that is a button (chevron, title,
+ * a dot while the group holds unsaved changes, the group's key figure) and,
+ * while open, the body with the group's inputs. The header sticks to the top
+ * of the column while its group scrolls. A closed group does not mount its
+ * body; the (empty) region stays, so `aria-controls` always resolves.
  */
-function useOverlayTabCycle(active: boolean, panelRef: RefObject<HTMLElement | null>) {
-  useEffect(() => {
-    if (!active) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey) return
-      const focused = document.activeElement
-      if (!(focused instanceof HTMLElement)) return
-      const zones = [
-        document.querySelector('[data-testid="result-bar"]'),
-        panelRef.current,
-        document.querySelector('[data-rht-toaster]'),
-      ]
-        .map((zone) => tabbables(zone))
-        .filter((list) => list.length > 0)
-      const at = zones.findIndex((list) => list.includes(focused))
-      if (at === -1) return
-      const zone = zones[at]
-      const edge = event.shiftKey ? zone[0] : zone[zone.length - 1]
-      if (focused !== edge) return
-      const next = zones[(at + (event.shiftKey ? zones.length - 1 : 1)) % zones.length]
-      const target = event.shiftKey ? next[next.length - 1] : next[0]
-      event.preventDefault()
-      // Radix would loop focus back inside the panel.
-      event.stopPropagation()
-      target.focus()
-    }
-    // Capture on the document: ahead of Radix's own Tab handling.
-    document.addEventListener('keydown', onKeyDown, true)
-    return () => document.removeEventListener('keydown', onKeyDown, true)
-  }, [active, panelRef])
-}
-
-function useRateText() {
-  const format = useFormatter()
-  const results = useUsableResults()
-  const formatRate = (value: number) =>
-    format.number(value / 100, {
-      style: 'percent',
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    })
-  const rate = results ? Math.round(results.successRate * 10) / 10 : null
-  return {
-    text: rate === null ? '—' : formatRate(rate),
-    value: rate === null ? undefined : String(rate),
-    rate,
-    formatRate,
-  }
-}
-
-/** Phones: the bar is behind the sheet, so the sheet carries the live result. */
-function MiniResult() {
-  const t = useTranslations('workspace.bar')
-  const rate = useRateText()
-  const delta = useSavedSuccessDelta()
-  const { status } = useRunStatus()
+const ColumnGroupSection = memo(function ColumnGroupSection({
+  group,
+  title,
+  summary,
+  open,
+  changed,
+  changedLabel,
+  onToggle,
+}: GroupProps) {
+  const Content = PANEL_CONTENT[group]
+  const headerId = `edit-${group}-header`
+  const bodyId = `edit-${group}-body`
   return (
-    <div
-      className="ws-panel-mini"
-      data-testid="edit-panel-mini-result"
-      data-value={rate.value}
-      data-running={status === 'running' ? 'true' : undefined}
-    >
-      <span className="ws-panel-mini-label">{t('successShort')}</span>
-      <span className="ws-panel-mini-rate">
-        <AnimatedNumber value={rate.rate} format={rate.formatRate} />
-      </span>
-      {delta.text && (
-        <span
-          className={`ds-delta ds-delta--${delta.tone}`}
-          data-pending={delta.pending ? 'true' : undefined}
+    <section className="ws-group" data-group={group} data-open={open ? 'true' : undefined}>
+      <h3 className="ws-group-heading">
+        <button
+          type="button"
+          id={headerId}
+          className="ws-group-header"
+          data-testid={`edit-${group}`}
+          data-edit-panel={group}
+          aria-expanded={open}
+          aria-controls={bodyId}
+          onClick={() => onToggle(group)}
         >
-          {delta.text}
-        </span>
-      )}
-      {status === 'running' && <LoaderCircle className="ws-spin" size={16} aria-hidden="true" />}
-    </div>
+          <ChevronDown className="ws-group-chevron" size={16} aria-hidden="true" />
+          <span className="ws-group-title">{title}</span>
+          {changed && (
+            <span className="ws-group-dot" data-testid={`edit-${group}-changed`}>
+              <span className="sr-only">{changedLabel}</span>
+            </span>
+          )}
+          <span className="ws-group-summary" data-testid={`assumption-card-${group}`}>
+            {summary}
+          </span>
+        </button>
+      </h3>
+      <div
+        id={bodyId}
+        className="ws-group-body"
+        role="region"
+        aria-labelledby={headerId}
+        hidden={!open}
+      >
+        {/* A body that fails (or whose chunk does not arrive) keeps the
+            column and the other groups usable. */}
+        {open && (
+          <SectionBoundary name={`panel-${group}`}>
+            <Content />
+          </SectionBoundary>
+        )}
+      </div>
+    </section>
+  )
+})
+
+/** The five groups; re-renders with every edit (summaries, dots), the frame around it does not. */
+function ColumnGroups() {
+  const t = useTranslations('workspace.column')
+  const { toggleGroup } = useWorkspace()
+  const openGroups = useOpenGroups()
+  const summaries = useGroupSummaries()
+  const changes = useDraftChanges()
+  const changed = useMemo(() => changedGroups(changes), [changes])
+  return (
+    <>
+      {COLUMN_GROUPS.map(({ id, titleKey }) => (
+        <ColumnGroupSection
+          key={id}
+          group={id}
+          title={t(`groups.${titleKey}`)}
+          summary={summaries[id]}
+          open={openGroups.includes(id)}
+          changed={changed.has(id)}
+          changedLabel={t('changed')}
+          onToggle={toggleGroup}
+        />
+      ))}
+    </>
   )
 }
 
 /**
- * The assumption editor as a non-modal Radix dialog that leaves the results
- * visible: docked beside the page (≥1280), an overlay sheet under the result
- * bar (761–1279, page inert, bar live) or a bottom sheet on phones (with a
- * mini result). One panel at a time; previous/next walk the four panels.
- * Closing neither saves nor discards — the result bar does that.
+ * The control column: every input of the plan exactly once, in five groups,
+ * beside the result it changes. A permanent pane from 1180 px (sticky under
+ * the bar, its own scroll); a drawer over the right side of the canvas at
+ * 761–1179 (below the dock, no scrim, folds to a 48 px rail); the page's
+ * second mode "Stellen" on phones. It never covers the dock.
+ *
+ * Several groups can be open; a deep link or an edit affordance elsewhere
+ * (`openEditor`) opens the group it names, scrolls the column to the field
+ * and flashes it. Nothing here saves or discards — the bar does that.
  */
 export function EditPanel() {
-  const t = useTranslations('workspace.editPanel')
-  const tGroups = useTranslations('planEditor.groups')
-  const tSections = useTranslations('planEditor.sections')
-  const { editor, panelMode, openEditor, closeEditor } = useWorkspace()
-  const { invokerRef, focusRequest, suppressReturnFocusRef } = useWorkspaceInternals()
-  const contentRef = useRef<HTMLDivElement>(null)
+  const t = useTranslations('workspace.column')
+  const tw = useTranslations('workspace')
+  const { panelMode, setColumnOpen, closeEditor } = useWorkspace()
+  const { focusRequest, forgetInvoker } = useWorkspaceInternals()
+  const columnOpen = useColumnOpen()
   const bodyRef = useRef<HTMLDivElement>(null)
-  const titleRef = useRef<HTMLHeadingElement>(null)
 
-  const open = editor !== null
-  // The last panel keeps rendering while the close animation runs.
-  const [shown, setShown] = useState<EditorState | null>(editor)
-  if (editor && editor !== shown) setShown(editor)
-  const openRef = useRef(open)
-  const editorRef = useRef(editor)
+  // Every request to show a group: its field (scrolled to a third of the
+  // column and flashed) or, with none, its header at the top of the column.
+  // Two frames first, so the group has mounted; a code-split body is waited
+  // for. Only the column scrolls — never the window.
   useEffect(() => {
-    openRef.current = open
-    editorRef.current = editor
-  }, [open, editor])
-
-  // Focus on every open request (and on a mode change, which remounts the
-  // content): the requested field, else the title. Two frames first, so the
-  // content has mounted and laid out; code-split bodies are waited for.
-  const modeRef = useRef(panelMode)
-  useEffect(() => {
-    const modeChanged = modeRef.current !== panelMode
-    modeRef.current = panelMode
-    const current = editorRef.current
-    if (!current) return
-    const fieldId = modeChanged ? undefined : current.fieldId
+    if (!focusRequest) return
+    const { group, fieldId, focus } = focusRequest
     let cancelled = false
     let frame = 0
-    const focusTitle = () => titleRef.current?.focus({ preventScroll: true })
     const started = performance.now()
     const attempt = () => {
       if (cancelled) return
       const body = bodyRef.current
       if (!body) return
-      if (!fieldId) {
-        body.scrollTop = 0
-        // Short viewports scroll the whole panel (ws-page.css).
-        if (contentRef.current) contentRef.current.scrollTop = 0
-        focusTitle()
-        return
+      const section = body.querySelector<HTMLElement>(`[data-group="${group}"]`)
+      if (fieldId) {
+        if (focusField(fieldId, body)) return
+        const region = section?.querySelector('.ws-group-body')
+        const loading = !region?.firstElementChild || region.querySelector('[data-panel-loading]')
+        if (loading && performance.now() - started < 3000) {
+          frame = window.requestAnimationFrame(attempt)
+          return
+        }
       }
-      if (focusField(fieldId, body)) return
-      if (body.querySelector('[data-panel-loading]') && performance.now() - started < 3000) {
-        frame = window.requestAnimationFrame(attempt)
-        return
+      if (!section) return
+      body.scrollTop += section.getBoundingClientRect().top - body.getBoundingClientRect().top
+      if (focus) {
+        section.querySelector<HTMLElement>('.ws-group-header')?.focus({ preventScroll: true })
       }
-      focusTitle()
     }
     frame = window.requestAnimationFrame(() => {
       frame = window.requestAnimationFrame(attempt)
@@ -191,169 +170,83 @@ export function EditPanel() {
       cancelled = true
       window.cancelAnimationFrame(frame)
     }
-  }, [focusRequest, panelMode])
+  }, [focusRequest])
 
-  const onCloseAutoFocus = (event: Event) => {
-    event.preventDefault()
-    // A mode change remounts the content while the panel stays open.
-    if (openRef.current) return
-    if (suppressReturnFocusRef.current) {
-      suppressReturnFocusRef.current = false
-      return
-    }
-    const invoker = invokerRef.current
-    const target =
-      invoker?.isConnected && !invoker.closest('[inert]')
-        ? invoker
-        : shown
-          ? document.querySelector<HTMLElement>(`[data-edit-panel="${shown.panel}"]`)
-          : null
-    // Never let the focus return scroll the page while a jump is under way.
-    target?.focus({ preventScroll: useWorkspaceUiStore.getState().programmaticScroll })
-  }
-
-  // Escape closes only from inside the panel (or with nothing focused), so it
-  // never fights the plan menu or a focused chart.
-  const onEscapeKeyDown = (event: KeyboardEvent) => {
-    const active = document.activeElement
-    const inside =
-      !active || active === document.body || Boolean(contentRef.current?.contains(active))
-    if (!inside) event.preventDefault()
-  }
-
-  useOverlayTabCycle(open && panelMode === 'overlay', contentRef)
-
-  // Docked, the page stays usable: Tab past the last control leaves the panel
-  // instead of looping back to its first (Radix loops focus by default).
-  // Overlay mode steers Tab through the live bar instead (above); the phone
-  // sheet keeps the loop, since everything behind it is inert.
-  const onKeyDownCapture = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (panelMode !== 'docked' || event.key !== 'Tab') return
-    if (event.altKey || event.ctrlKey || event.metaKey) return
-    const list = tabbables(contentRef.current)
-    const edge = event.shiftKey ? list[0] : list[list.length - 1]
-    if (edge && document.activeElement === edge) event.stopPropagation()
-  }
-
-  if (!shown) return null
-  const def = assumptionPanel(shown.panel)
-  const title = tGroups(`${def.messageKey}.title`)
-  const { previous, next } = adjacentPanels(shown.panel)
-  const Content = PANEL_CONTENT[shown.panel]
-  const panelTitle = (panel: typeof previous) =>
-    panel ? tGroups(`${assumptionPanel(panel).messageKey}.title`) : ''
+  // `null`: the width has not been looked at yet and CSS decides.
+  const folded = panelMode !== 'docked' && columnOpen === false
+  const ToggleIcon = folded ? ChevronsLeft : ChevronsRight
 
   return (
-    <DialogPrimitive.Root
-      open={open}
-      modal={false}
-      onOpenChange={(next) => {
-        if (!next) closeEditor()
+    <aside
+      id="edit-panel"
+      data-testid="edit-panel"
+      data-mode={panelMode}
+      // Until the width has been looked at (server HTML, first paint) there
+      // is no attribute and CSS decides: a pane from 1180 px, an open drawer
+      // from 1000, a rail below, nothing on phones. Saying "open" here would
+      // flash the column over a phone's canvas before hydration.
+      data-open={
+        columnOpen === null
+          ? undefined
+          : panelMode === 'docked' || columnOpen
+            ? 'true'
+            : 'false'
+      }
+      className="ws-panel"
+      aria-labelledby="edit-panel-title"
+      // Help tips opened in the column stay inside it (see `InfoTip`).
+      data-tip-boundary
+      // Escape: back to what led into the column (a ✎ label, a diagram item,
+      // a pointer in a section). A popover or tip that used the key first has
+      // already claimed it.
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || event.defaultPrevented) return
+        closeEditor()
+      }}
+      // Focus that leaves on its own (Tab, a click on the canvas) ends that
+      // way back; a later Escape must not jump to a stale place.
+      onBlur={(event) => {
+        const next = event.relatedTarget
+        if (next instanceof Node && !event.currentTarget.contains(next)) forgetInvoker()
       }}
     >
-      {panelMode !== 'docked' && open && (
-        <div
-          className="ws-panel-scrim"
-          data-testid="edit-panel-scrim"
-          data-mode={panelMode}
-          aria-hidden="true"
-          onClick={closeEditor}
-        />
-      )}
-      <DialogPrimitive.Content
-        key={panelMode}
-        ref={contentRef}
-        id="edit-panel"
-        data-testid="edit-panel"
-        data-mode={panelMode}
-        data-panel={shown.panel}
-        className="ws-panel"
-        aria-modal={panelMode === 'sheet' ? true : undefined}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onCloseAutoFocus={onCloseAutoFocus}
-        onEscapeKeyDown={onEscapeKeyDown}
-        onInteractOutside={(event) => event.preventDefault()}
-        onFocusOutside={(event) => event.preventDefault()}
-        onKeyDownCapture={onKeyDownCapture}
-      >
-        {/* A div, not <header>: beside the result bar's <header> it would be
-            a second banner landmark. */}
-        <div className="ws-panel-header">
-          <div className="ws-panel-heading">
-            <DialogPrimitive.Title asChild>
-              <h2 ref={titleRef} tabIndex={-1} data-testid="edit-panel-title">
-                {title}
-              </h2>
-            </DialogPrimitive.Title>
-            <DialogPrimitive.Close asChild>
-              <button
-                type="button"
-                className="ws-panel-close"
-                data-testid="edit-panel-close"
-                aria-label={t('close')}
-                title={t('close')}
-              >
-                <X size={18} aria-hidden="true" />
-              </button>
-            </DialogPrimitive.Close>
+      <div className="ws-panel-top">
+        <h2 id="edit-panel-title" data-testid="edit-panel-title" tabIndex={-1}>
+          {t('title')}
+        </h2>
+        {/* The drawer's one fold control: the same button, in the same
+            corner under the dock, whether the drawer is open or a rail. */}
+        <button
+          type="button"
+          className="ws-panel-toggle"
+          data-testid="edit-panel-toggle"
+          data-column-toggle
+          aria-expanded={!folded}
+          aria-controls="edit-panel-body"
+          aria-label={folded ? t('unfold') : t('fold')}
+          title={folded ? t('unfold') : t('fold')}
+          onClick={() => setColumnOpen(folded)}
+        >
+          <ToggleIcon size={18} aria-hidden="true" />
+          <span className="ws-panel-toggle-label" aria-hidden="true">
+            {t('title')}
+          </span>
+        </button>
+      </div>
+
+      <div ref={bodyRef} id="edit-panel-body" className="ws-panel-body @container">
+        <ColumnGroups />
+        <footer className="ws-column-footer">
+          <p className="ws-footnote">{tw('cards.startingValues')}</p>
+          <div className="ws-column-footer-actions">
+            <Link href="/setup" className="ws-text-link" data-testid="setup-link">
+              {tw('guidedSetup')}
+              <ArrowRight size={14} aria-hidden="true" />
+            </Link>
+            <ResetToDefaults />
           </div>
-          <DialogPrimitive.Description className="ws-panel-description">
-            {tGroups(`${def.messageKey}.description`)}
-          </DialogPrimitive.Description>
-          {panelMode === 'sheet' && <MiniResult />}
-        </div>
-
-        <div ref={bodyRef} className="ws-panel-body @container">
-          {/* A body that fails (or whose chunk does not arrive) keeps the
-              panel, its walk and Fertig usable. Keyed by panel: walking on
-              starts the next body fresh. */}
-          <SectionBoundary key={shown.panel} name={`panel-${shown.panel}`}>
-            <Content />
-          </SectionBoundary>
-        </div>
-
-        <footer className="ws-panel-footer">
-          {/* The chevrons say "back" and "next"; the words stay in the
-              accessible name ("Zurück: …" / "Weiter: …"), so the row fits
-              one line beside Fertig. */}
-          <nav className="ws-panel-walk" aria-label={t('navLabel')}>
-            {previous && (
-              <button
-                type="button"
-                className="workspace-button workspace-button-quiet"
-                data-testid="edit-panel-previous"
-                aria-label={tSections('previous', { title: panelTitle(previous) })}
-                title={tSections('previous', { title: panelTitle(previous) })}
-                onClick={() => openEditor({ panel: previous }, null)}
-              >
-                <ChevronLeft size={16} aria-hidden="true" />
-                <span>{panelTitle(previous)}</span>
-              </button>
-            )}
-            {next && (
-              <button
-                type="button"
-                className="workspace-button workspace-button-quiet"
-                data-testid="edit-panel-next"
-                aria-label={tSections('next', { title: panelTitle(next) })}
-                title={tSections('next', { title: panelTitle(next) })}
-                onClick={() => openEditor({ panel: next }, null)}
-              >
-                <span>{panelTitle(next)}</span>
-                <ChevronRight size={16} aria-hidden="true" />
-              </button>
-            )}
-          </nav>
-          <button
-            type="button"
-            className="workspace-button workspace-button-primary"
-            data-testid="edit-panel-done"
-            onClick={closeEditor}
-          >
-            {t('done')}
-          </button>
         </footer>
-      </DialogPrimitive.Content>
-    </DialogPrimitive.Root>
+      </div>
+    </aside>
   )
 }

@@ -1,8 +1,10 @@
 import type { Page } from '@playwright/test'
 import {
+  closePanel,
   expect,
   expectNoHorizontalOverflow,
   gotoWorkspace,
+  groupHeader,
   openPanel,
   openSection,
   test,
@@ -12,7 +14,8 @@ import {
  * Geldfluss drill-down (docs/specs/2026-09-28-cashflow-drilldown.md): a
  * category of the Sankey opens, in place, into the plan flows it is made of;
  * the table under it is grouped the same way and shares the open state; an
- * item leads to that flow in the flows panel.
+ * item leads to that flow's row in the control column's group "Einnahmen &
+ * Ausgaben" (the column is always there from 1180 px, so nothing "closes").
  */
 
 const node = (page: Page, id: string) => page.locator(`#cashflow [data-node="${id}"]`)
@@ -134,24 +137,25 @@ test('an item leads to its flow; rows and nodes light each other up', async ({ p
   await node(page, 'capitalGainsTax').hover()
   await expect(page.locator('tr[data-row="capitalGainsTax"]')).toHaveAttribute('data-active', 'true')
 
-  // A diagram item opens the flows panel on that flow's row.
+  // A diagram item opens the group "Einnahmen & Ausgaben" on that flow's row;
+  // the diagram stays where it is beside it.
   await node(page, 'baselineSpending:food').click()
-  const panel = page.getByTestId('edit-panel')
-  await expect(panel).toHaveAttribute('data-panel', 'flows')
+  await expect(groupHeader(page, 'flows')).toHaveAttribute('aria-expanded', 'true')
   const row = page.locator('#plan-editor-expenses [data-testid="cashflow-row-food"]')
   await expect(row.locator(':focus')).toHaveCount(1)
   await expect(row).toBeInViewport()
+  await expect(node(page, 'baselineSpending:food')).toBeInViewport()
+  // Escape: focus returns to the node it came from; the column stays.
   await page.keyboard.press('Escape')
-  await expect(panel).toHaveCount(0)
-  // Focus returns to the node it came from.
   await expect(node(page, 'baselineSpending:food')).toBeFocused()
+  await expect(page.getByTestId('edit-panel')).toBeVisible()
 
-  // So does its table row.
+  // Its table row leads to the same place.
   await page
     .getByTestId('cashflow-table')
     .getByRole('button', { name: /^Lebensmittel – im Plan bearbeiten$/ })
     .click()
-  await expect(panel).toHaveAttribute('data-panel', 'flows')
+  await expect(row.locator(':focus')).toHaveCount(1)
 })
 
 test('switched-off flows are left out and named under the diagram', async ({ page }) => {
@@ -159,17 +163,20 @@ test('switched-off flows are left out and named under the diagram', async ({ pag
   await gotoWorkspace(page, '/de/simulation')
   // Switch "Urlaub" off in the flow list.
   await openPanel(page, 'flows')
-  await page.locator('#plan-editor-expenses [data-testid="cashflow-switch-vacations"]').click()
-  await page.getByTestId('edit-panel-done').click()
-  await expect(page.getByTestId('edit-panel')).toHaveCount(0)
+  const toggle = page.locator('#plan-editor-expenses [data-testid="cashflow-switch-vacations"]')
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  await closePanel(page, 'flows')
   await openSection(page, 'cashflow')
   const line = page.getByTestId('cashflow-disabled-flows')
   await expect(line).toHaveText('1 Posten ausgeschaltet – nicht berechnet')
   await page.getByTestId('cashflow-toggle-baselineSpending').click()
   await expect(tableItems(page, 'baselineSpending')).toHaveCount(7)
   await expect(page.getByTestId('cashflow-table')).not.toContainText('Urlaub')
+  // The line leads back to the list, opening its group again.
   await line.getByRole('link').click()
-  await expect(page.getByTestId('edit-panel')).toHaveAttribute('data-panel', 'flows')
+  await expect(groupHeader(page, 'flows')).toHaveAttribute('aria-expanded', 'true')
+  await expect(toggle).toBeVisible()
 })
 
 test('phones open the stacked rows the same way', async ({ page }) => {
@@ -185,8 +192,14 @@ test('phones open the stacked rows the same way', async ({ page }) => {
   await expect(caption).toBeFocused()
   await expect(out.locator('[data-node^="baselineSpending:"]')).toHaveCount(6)
   await expectNoHorizontalOverflow(page)
+  // An item switches the phone to "Stellen", on that flow's row.
   await out.getByRole('button', { name: /^Krankenversicherung/ }).click()
-  await expect(page.getByTestId('edit-panel')).toHaveAttribute('data-panel', 'flows')
+  await expect(page.getByTestId('mode-edit')).toHaveAttribute('aria-pressed', 'true')
+  await expect(groupHeader(page, 'flows')).toHaveAttribute('aria-expanded', 'true')
+  const flow = page.locator('#plan-editor-expenses [data-testid="cashflow-row-health"]')
+  await expect(flow.locator(':focus')).toHaveCount(1)
+  // The result stays in view above it.
+  await expect(page.getByTestId('result-dock')).toBeInViewport()
 })
 
 test('the table fits a phone: the share folds under the amount', async ({ page }) => {

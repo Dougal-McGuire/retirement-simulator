@@ -1,9 +1,17 @@
-import { expect, gotoWorkspace, openPanel, test } from './helpers/workspace'
+import {
+  closePanel,
+  expect,
+  gotoWorkspace,
+  groupHeader,
+  openPanel,
+  test,
+  waitForResults,
+} from './helpers/workspace'
 
 /**
  * The structural fixes from the UX audit: inline validation instead of silent
- * clamping, an assumption editor you can walk (now the edit panel), and a live
- * readout in the wizard.
+ * clamping, every assumption in one place (now the control column's groups),
+ * and a live readout in the wizard.
  */
 
 test.describe('inline validation instead of silent clamping', () => {
@@ -78,49 +86,92 @@ test.describe('inline validation instead of silent clamping', () => {
   })
 })
 
-test.describe('edit panel', () => {
-  test('shows one panel at a time, walks them, and restores the open one from the hash', async ({
+// The panel walk (one panel at a time, "Next"/"Previous", Escape back to the
+// Annahmen card) went with the edit panel: the control column shows five
+// groups, several open at once, so there is nothing to walk and no card to
+// return to. What replaces it is tested here.
+test.describe('control column', () => {
+  test('holds five groups, several open at once, and restores the linked one from the hash', async ({
     page,
   }) => {
     await gotoWorkspace(page)
-    const panel = await openPanel(page, 'person')
+    // "Time" and "Income & spending" are open to begin with.
+    for (const [panel, open] of [
+      ['person', 'true'],
+      ['savings', 'false'],
+      ['flows', 'true'],
+      ['rule', 'false'],
+      ['market', 'false'],
+    ] as const) {
+      await expect(groupHeader(page, panel)).toHaveAttribute('aria-expanded', open)
+    }
     await expect(page.locator('#plan-editor-personal')).toBeVisible()
-    // The Entnahme rule is edited in its own section, never in the panel.
-    await expect(panel.getByTestId('withdrawal-planner')).toHaveCount(0)
-
-    // The footer walks forward through the four panels…
-    for (const next of ['savings', 'flows', 'market']) {
-      await page.getByTestId('edit-panel-next').click()
-      await expect(panel).toHaveAttribute('data-panel', next)
-    }
-    await expect(page.locator('#plan-editor-market')).toBeVisible()
-    for (const other of ['personal', 'income', 'expenses']) {
-      await expect(page.locator(`#plan-editor-${other}`)).toHaveCount(0)
-    }
-    await expect(page.getByTestId('edit-panel-next')).toHaveCount(0)
-
-    // …and backwards.
-    await page.getByTestId('edit-panel-previous').click()
-    await expect(panel).toHaveAttribute('data-panel', 'flows')
     await expect(page.locator('#plan-editor-expenses')).toBeVisible()
-    await expect(page.locator('#plan-editor-market')).toHaveCount(0)
+    // A closed group does not mount its body.
+    await expect(page.locator('#plan-editor-income')).toHaveCount(0)
 
-    // The open panel lives in the URL, so a reload restores it.
+    // Opening one leaves the others as they are.
+    const column = await openPanel(page, 'market')
+    await expect(page.locator('#plan-editor-personal')).toBeVisible()
+    await expect(page.locator('#plan-editor-expenses')).toBeVisible()
+    // The Entnahme rule is a group of the column; its outcome stays a section.
+    await openPanel(page, 'rule')
+    await expect(column.getByTestId('withdrawal-strategy-picker')).toBeVisible()
+    await expect(column.getByTestId('withdrawal-planner')).toHaveCount(0)
+    await expect(page.locator('#withdrawal').getByTestId('withdrawal-strategy-picker')).toHaveCount(
+      0
+    )
+
+    await closePanel(page, 'person')
+    await expect(page.locator('#plan-editor-personal')).toHaveCount(0)
+
+    // The group opened last lives in the URL, so a reload opens it again (the
+    // others return to their defaults).
+    await expect(page).toHaveURL(/#result:rule$/)
+    await page.reload()
+    await waitForResults(page)
+    await expect(groupHeader(page, 'rule')).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.locator('#plan-editor-withdrawal')).toBeVisible()
+    await expect(groupHeader(page, 'person')).toHaveAttribute('aria-expanded', 'true')
+    await expect(groupHeader(page, 'market')).toHaveAttribute('aria-expanded', 'false')
+
+    // A deep link names a group: it opens, takes focus and stays in the URL.
     await gotoWorkspace(page, '/en/simulation#assumptions:market')
-    await expect(page.getByTestId('edit-panel')).toHaveAttribute('data-panel', 'market')
+    await expect(groupHeader(page, 'market')).toHaveAttribute('aria-expanded', 'true')
     await expect(page.locator('#plan-editor-market')).toBeVisible()
-    await expect(page.getByTestId('edit-market')).toHaveAttribute('aria-expanded', 'true')
+    await expect(groupHeader(page, 'market')).toBeFocused()
+    // Closing it takes it out of the URL.
+    await closePanel(page, 'market')
+    await expect(page).not.toHaveURL(/:market$/)
+  })
 
-    // Escape closes it and puts focus on the card that edits it.
-    await expect(page.getByTestId('edit-panel-title')).toBeFocused()
+  test('Escape folds the drawer and gives focus back to what opened it', async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 800 })
+    await gotoWorkspace(page)
+    // Below 1000 px the drawer starts folded: the canvas has the width.
+    const toggle = page.getByTestId('edit-panel-toggle')
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    // A pointer on the canvas opens the group it names …
+    const pointer = page.getByTestId('withdrawal-rule-link')
+    await pointer.scrollIntoViewIfNeeded()
+    await pointer.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await expect(groupHeader(page, 'rule')).toHaveAttribute('aria-expanded', 'true')
+    await expect(groupHeader(page, 'rule')).toBeFocused()
+    // … under the dock, which stays in view.
+    const dock = (await page.getByTestId('result-dock').boundingBox())!
+    const column = (await page.getByTestId('edit-panel').boundingBox())!
+    expect(column.y).toBeGreaterThanOrEqual(dock.y + dock.height - 1)
+
+    // … and Escape goes back to it.
     await page.keyboard.press('Escape')
-    await expect(page.getByTestId('edit-panel')).toHaveCount(0)
-    await expect(page.getByTestId('edit-market')).toBeFocused()
-    await expect(page).toHaveURL(/#assumptions$/)
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(pointer).toBeFocused()
   })
 
   // The persisted "open plan section" (displayStore.planSection) was dropped
-  // (spec §1.4 #34): the URL hash restores an open panel instead, as above.
+  // (spec §1.4 #34): the URL hash restores the linked group instead, as above.
 })
 
 test.describe('wizard live preview', () => {

@@ -78,8 +78,6 @@ async function editAndSave(page: Page, value: string) {
   const savings = page.locator('#editor-annualSavings')
   await savings.fill(value)
   await savings.blur()
-  await page.getByTestId('edit-panel-done').click()
-  await expect(page.getByTestId('edit-panel')).toHaveCount(0)
   await page.getByTestId('command-save').click()
   await expect(page.getByTestId('command-save')).toHaveCount(0)
 }

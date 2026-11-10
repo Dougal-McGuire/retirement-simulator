@@ -1,13 +1,12 @@
 /*
- * Entnahme (#withdrawal), lane A. Everything is scoped under .ws-withdrawal
- * (the body of the section, data-testid="withdrawal-planner") and styled with
- * interface.css tokens only. Tokens that arrive with the visual-polish lane
- * (--ui-font-lead, --ui-font-kpi) are read with fallbacks; motion comes from
+ * Entnahme, in its two places: the outcome on the canvas (#withdrawal,
+ * .ws-withdrawal, data-testid="withdrawal-planner": readouts, corridor, the
+ * four-rule comparison) and the rule in the control column
+ * (.ws-withdrawal-cause in the group "Entnahme": choose, tune, "how your
+ * rule behaves"). Styled with interface.css tokens only; motion comes from
  * the --ws-motion-* aliases on .ws-page.
  *
- * Layout: the section's own width decides, not the viewport. From 880px of
- * container width the rule (choose, tune) sits left of its effect (readouts,
- * corridor), 5fr : 7fr; the four-rule comparison always spans the full width.
+ * Layout: each part's own width decides, not the viewport.
  */
 
 .ws-withdrawal {
@@ -27,18 +26,6 @@
   }
 }
 
-.ws-withdrawal-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--ui-space-8);
-}
-@container ws-withdrawal (min-width: 880px) {
-  .ws-withdrawal-grid {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    column-gap: var(--ui-space-10, 40px);
-    align-items: start;
-  }
-}
 .ws-withdrawal-cause,
 .ws-withdrawal-outcome {
   display: flex;

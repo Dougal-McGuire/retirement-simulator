@@ -1,35 +1,45 @@
+import de from '@/i18n/messages/de.json'
+import en from '@/i18n/messages/en.json'
 import {
-  ASSUMPTION_PANELS,
-  adjacentPanels,
-  assumptionPanel,
-  isAssumptionPanel,
+  COLUMN_GROUPS,
+  DEFAULT_OPEN_GROUPS,
+  isColumnGroup,
   panelForField,
 } from '@/components/plans/planSections'
 
-describe('assumption panels', () => {
-  it('lists the four panels in walking order with their stable body ids', () => {
-    expect(ASSUMPTION_PANELS.map((panel) => [panel.id, panel.bodyId])).toEqual([
+describe('column groups', () => {
+  it('lists the five groups top to bottom, the panels keeping their body ids', () => {
+    expect(COLUMN_GROUPS.map((group) => [group.id, group.bodyId])).toEqual([
       ['person', 'plan-editor-personal'],
       ['savings', 'plan-editor-income'],
       ['flows', 'plan-editor-expenses'],
+      ['rule', 'plan-editor-withdrawal'],
       ['market', 'plan-editor-market'],
     ])
-    expect(assumptionPanel('flows').messageKey).toBe('cashFlows')
   })
 
-  it('recognises panel ids and nothing else', () => {
-    for (const id of ['person', 'savings', 'flows', 'market'])
-      expect(isAssumptionPanel(id)).toBe(true)
-    for (const junk of ['withdrawal', 'personal', '', null, undefined, 3]) {
-      expect(isAssumptionPanel(junk)).toBe(false)
+  it('has a title and a header summary for every group in both languages', () => {
+    for (const messages of [de, en]) {
+      const column = messages.workspace.column
+      for (const group of COLUMN_GROUPS) {
+        expect((column.groups as Record<string, string>)[group.titleKey]).toEqual(
+          expect.any(String)
+        )
+        expect((column.summary as Record<string, unknown>)[group.id]).toEqual(expect.any(String))
+      }
     }
   })
 
-  it('walks the panels in order with no wrap-around', () => {
-    expect(adjacentPanels('person')).toEqual({ previous: undefined, next: 'savings' })
-    expect(adjacentPanels('savings')).toEqual({ previous: 'person', next: 'flows' })
-    expect(adjacentPanels('flows')).toEqual({ previous: 'savings', next: 'market' })
-    expect(adjacentPanels('market')).toEqual({ previous: 'flows', next: undefined })
+  it('opens Zeit and Einnahmen & Ausgaben by default', () => {
+    expect(DEFAULT_OPEN_GROUPS).toEqual(['person', 'flows'])
+  })
+
+  it('recognises group ids and nothing else', () => {
+    for (const id of ['person', 'savings', 'flows', 'rule', 'market'])
+      expect(isColumnGroup(id)).toBe(true)
+    for (const junk of ['withdrawal', 'personal', '', null, undefined, 3]) {
+      expect(isColumnGroup(junk)).toBe(false)
+    }
   })
 })
 
