@@ -61,7 +61,7 @@
     "@react-pdf/types": "^2.9.2",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/jest": "^30.0.0",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.72.2",
