@@ -16,7 +16,6 @@ import { LazyMount } from '@/components/workspace/LazyMount'
 import { Skeleton } from '@/components/workspace/Skeleton'
 import { useNearViewport } from '@/components/workspace/useNearViewport'
 import { useRunStatus } from '@/components/workspace/useRunStatus'
-import { useWorkspace } from '@/components/workspace/WorkspaceProvider'
 import {
   bestStrategyValues,
   buildSpendingCorridor,
@@ -73,7 +72,7 @@ const STRATEGY_COMPARE_RUNS = 1200
 
 /**
  * The comparison shares the one simulation worker with the result bar. After
- * anything closed the gate (an edit, a run, an open panel), the next strategy
+ * anything closed the gate (an edit, a run), the next strategy
  * run waits until the plan has been quiet this long — the same settle the
  * lever measurements use.
  */
@@ -100,12 +99,11 @@ interface StatItem {
 const COMPARE_NEAR_MARGIN = '200px 0px'
 
 /**
- * Entnahme: how the plan turns a portfolio into an income.
- *
- * Cause next to effect: pick a rule and tune it on one side; the readouts and
- * the spending corridor answer on the other, live. Underneath, the same plan
- * runs under all four rules over the same market paths, so the
- * stability ↔ survival trade-off is a table rather than a hunch.
+ * Entnahme is split along its seam. The cause — which rule, and how it is
+ * tuned — is a group of the control column (`WithdrawalRuleGroup`), next to
+ * every other input. The effect — the readouts, the spending corridor and the
+ * comparison of all four rules over the same market paths — stays on the
+ * result canvas (`WithdrawalOutcome`), where it answers live.
  *
  * The corridor is the section's only spending chart. It carries what the old
  * "spending strategy in detail" chart added (the mean withdrawal rate in its
@@ -115,20 +113,10 @@ const COMPARE_NEAR_MARGIN = '200px 0px'
  * Every edit goes through `updateParams`, i.e. into the plan's working copy.
  * Nothing here writes to a stored plan.
  */
-export function WithdrawalPlanner() {
-  const t = useTranslations('withdrawalPlanner')
-  const tControls = useTranslations('parameterControls')
-  const tSpending = useTranslations('spendingChart')
-  const tSetup = useTranslations('setup')
+
+/** `formatPercent` / `formatRatio` as both halves print them. */
+function useWithdrawalFormat() {
   const format = useFormatter()
-
-  const params = useSimulationParams()
-  const results = useUsableResults()
-  const updateParams = useUpdateParams()
-  const displayReal = useDisplayReal()
-  const { formatCurrency, formatCurrencyShort } = useChartFormatters()
-  const rootRef = useRef<HTMLDivElement>(null)
-
   const formatPercent = useCallback(
     (value: number, maximumFractionDigits = 1) =>
       format.number(value, { style: 'percent', minimumFractionDigits: 0, maximumFractionDigits }),
@@ -139,9 +127,183 @@ export function WithdrawalPlanner() {
       `${format.number(value, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}×`,
     [format]
   )
+  return { format, formatPercent, formatRatio }
+}
+
+/**
+ * Column group `rule` ("Entnahme"): choose the rule and tune it. The outcome
+ * is on the canvas, in view beside it.
+ */
+export function WithdrawalRuleGroup() {
+  const t = useTranslations('withdrawalPlanner')
+  const tControls = useTranslations('parameterControls')
+  const tSpending = useTranslations('spendingChart')
+  const tSetup = useTranslations('setup')
+  const params = useSimulationParams()
+  const updateParams = useUpdateParams()
+  const { format, formatPercent } = useWithdrawalFormat()
+
+  const strategy = params.withdrawalStrategy
+  const showRateSlider = strategy !== 'fixedReal'
+  const showGuardrails = strategy === 'vanguardDynamic'
+  const showRealFloor = strategy === 'percentOfPortfolio'
+
+  // "How your rule behaves" follows the settings live, not the last run.
+  const ruleEffect = tSpending(`explanation.strategies.${strategy}`, {
+    withdrawalRate: formatPercent(params.dsWithdrawalRate, 2),
+    ceiling: formatPercent(params.dsCeilingRate, 1),
+    floor: formatPercent(params.dsFloorRate, 1),
+  })
+
+  return (
+    <section
+      id="plan-editor-withdrawal"
+      data-testid="plan-editor-withdrawal"
+      className="ws-withdrawal-cause"
+    >
+      <div className="ws-withdrawal-step">
+        <h4 id="withdrawal-choose-title" className="ws-withdrawal-h3">
+          {t('steps.choose')}
+        </h4>
+        <div
+          className="ws-withdrawal-options"
+          role="group"
+          aria-labelledby="withdrawal-choose-title"
+          data-testid="withdrawal-strategy-picker"
+        >
+          {WITHDRAWAL_STRATEGIES.map((option) => (
+            <button
+              key={option}
+              type="button"
+              id={`withdrawal-strategy-${option}`}
+              className="ws-withdrawal-option"
+              aria-pressed={strategy === option}
+              data-testid={`withdrawal-strategy-${option}`}
+              onClick={() => updateParams({ withdrawalStrategy: option })}
+            >
+              <span className="ws-withdrawal-option-mark" aria-hidden="true" />
+              <span className="ws-withdrawal-option-text">
+                <span className="ws-withdrawal-option-label">
+                  {tControls(`fields.withdrawalStrategy.options.${option}.label`)}
+                </span>
+                <span className="ws-withdrawal-option-description">
+                  {tControls(`fields.withdrawalStrategy.options.${option}.description`)}
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="ws-withdrawal-step">
+        <div className="ws-withdrawal-heading">
+          <h4 className="ws-withdrawal-h3">{t('steps.tune')}</h4>
+          <InfoTip
+            label={t('steps.tune')}
+            side="bottom"
+            content={
+              <>
+                {showRateSlider && <p>{tControls('fields.dsWithdrawalRate.tooltip')}</p>}
+                <p className={showRateSlider ? 'mt-2' : undefined}>{t('tradeoff')}</p>
+              </>
+            }
+          />
+        </div>
+
+        {showRateSlider ? (
+          <div className="ws-withdrawal-settings">
+            <RuleSlider
+              id="planner-dsWithdrawalRate"
+              label={tControls('fields.dsWithdrawalRate.label')}
+              value={params.dsWithdrawalRate * 100}
+              onValueChange={(value) => updateParams({ dsWithdrawalRate: value / 100 })}
+              min={2}
+              max={8}
+              step={0.25}
+              valueLabel={formatPercent(params.dsWithdrawalRate, 2)}
+              minLabel={formatPercent(0.02, 0)}
+              maxLabel={formatPercent(0.08, 0)}
+            />
+            {showGuardrails && (
+              <>
+                <RuleSlider
+                  id="planner-dsCeilingRate"
+                  label={tControls('fields.dsCeilingRate.label')}
+                  value={params.dsCeilingRate * 100}
+                  onValueChange={(value) => updateParams({ dsCeilingRate: value / 100 })}
+                  min={0}
+                  max={15}
+                  step={0.5}
+                  valueLabel={formatPercent(params.dsCeilingRate, 1)}
+                  minLabel={formatPercent(0, 0)}
+                  maxLabel={formatPercent(0.15, 0)}
+                />
+                <RuleSlider
+                  id="planner-dsFloorRate"
+                  label={tControls('fields.dsFloorRate.label')}
+                  value={params.dsFloorRate * 100}
+                  onValueChange={(value) => updateParams({ dsFloorRate: value / 100 })}
+                  min={-15}
+                  max={0}
+                  step={0.5}
+                  valueLabel={formatPercent(params.dsFloorRate, 1)}
+                  minLabel={formatPercent(-0.15, 0)}
+                  maxLabel={formatPercent(0, 0)}
+                />
+              </>
+            )}
+            {showRealFloor && (
+              <LabeledNumberInput
+                id="planner-spendingFloorReal"
+                label={tControls('fields.spendingFloorReal.label')}
+                value={params.spendingFloorReal}
+                onChange={(value) => updateParams({ spendingFloorReal: value })}
+                helpText={tControls('fields.spendingFloorReal.tooltip')}
+                helpPlacement="tooltip"
+                className="w-full"
+                unit={tSetup('units.currency')}
+                groupThousands
+                min={0}
+                max={500000}
+                rangeMessage={tSetup('validation.range', {
+                  min: format.number(0),
+                  max: format.number(500000),
+                })}
+                invalidMessage={tSetup('validation.notANumber')}
+              />
+            )}
+          </div>
+        ) : (
+          <p className="ws-withdrawal-muted">{t('noParams')}</p>
+        )}
+
+        <div className="ws-withdrawal-effect" data-testid="withdrawal-rule-effect">
+          <h4>{t('steps.effect')}</h4>
+          <p>{ruleEffect}</p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Entnahme on the canvas (`#withdrawal`): what the rule does — four readouts,
+ * the spending corridor, and the same plan under all four rules.
+ */
+export function WithdrawalOutcome() {
+  const t = useTranslations('withdrawalPlanner')
+  const tControls = useTranslations('parameterControls')
+  const tSpending = useTranslations('spendingChart')
+
+  const params = useSimulationParams()
+  const results = useUsableResults()
+  const updateParams = useUpdateParams()
+  const displayReal = useDisplayReal()
+  const { formatCurrency, formatCurrencyShort } = useChartFormatters()
+  const rootRef = useRef<HTMLDivElement>(null)
+  const { formatPercent, formatRatio } = useWithdrawalFormat()
 
   const referenceAge = corridorReferenceAge(params)
-  const strategy = params.withdrawalStrategy
 
   // The corridor always follows the *results'* own parameter set: drawing the
   // floor of the strategy the user just picked over a band produced by the
@@ -217,17 +379,6 @@ export function WithdrawalPlanner() {
     [tControls]
   )
 
-  const showRateSlider = strategy !== 'fixedReal'
-  const showGuardrails = strategy === 'vanguardDynamic'
-  const showRealFloor = strategy === 'percentOfPortfolio'
-
-  // "How your rule behaves" follows the settings live, not the last run.
-  const ruleEffect = tSpending(`explanation.strategies.${strategy}`, {
-    withdrawalRate: formatPercent(params.dsWithdrawalRate, 2),
-    ceiling: formatPercent(params.dsCeilingRate, 1),
-    floor: formatPercent(params.dsFloorRate, 1),
-  })
-
   // Stable, so the memoized chart does not redraw on every planner render.
   const corridorHeading = useMemo(
     () => (
@@ -252,186 +403,63 @@ export function WithdrawalPlanner() {
 
   return (
     <div ref={rootRef} className="ws-withdrawal" data-testid="withdrawal-planner">
-      <div className="ws-withdrawal-grid">
-        <div className="ws-withdrawal-cause">
-          <div className="ws-withdrawal-step">
-            <h3 id="withdrawal-choose-title" className="ws-withdrawal-h3">
-              {t('steps.choose')}
-            </h3>
-            <div
-              className="ws-withdrawal-options"
-              role="group"
-              aria-labelledby="withdrawal-choose-title"
-              data-testid="withdrawal-strategy-picker"
-            >
-              {WITHDRAWAL_STRATEGIES.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  className="ws-withdrawal-option"
-                  aria-pressed={strategy === option}
-                  data-testid={`withdrawal-strategy-${option}`}
-                  onClick={() => updateParams({ withdrawalStrategy: option })}
-                >
-                  <span className="ws-withdrawal-option-mark" aria-hidden="true" />
-                  <span className="ws-withdrawal-option-text">
-                    <span className="ws-withdrawal-option-label">{strategyLabel(option)}</span>
-                    <span className="ws-withdrawal-option-description">
-                      {tControls(`fields.withdrawalStrategy.options.${option}.description`)}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="ws-withdrawal-step">
-            <div className="ws-withdrawal-heading">
-              <h3 className="ws-withdrawal-h3">{t('steps.tune')}</h3>
-              <InfoTip
-                label={t('steps.tune')}
-                side="bottom"
-                content={
-                  <>
-                    {showRateSlider && <p>{tControls('fields.dsWithdrawalRate.tooltip')}</p>}
-                    <p className={showRateSlider ? 'mt-2' : undefined}>{t('tradeoff')}</p>
-                  </>
-                }
-              />
-            </div>
-
-            {showRateSlider ? (
-              <div className="ws-withdrawal-settings">
-                <RuleSlider
-                  id="planner-dsWithdrawalRate"
-                  label={tControls('fields.dsWithdrawalRate.label')}
-                  value={params.dsWithdrawalRate * 100}
-                  onValueChange={(value) => updateParams({ dsWithdrawalRate: value / 100 })}
-                  min={2}
-                  max={8}
-                  step={0.25}
-                  valueLabel={formatPercent(params.dsWithdrawalRate, 2)}
-                  minLabel={formatPercent(0.02, 0)}
-                  maxLabel={formatPercent(0.08, 0)}
+      <div className="ws-withdrawal-outcome">
+        <dl className="ws-withdrawal-stats" data-testid="withdrawal-planner-stats">
+          {stats.map((item) => (
+            <div key={item.key} data-testid={`withdrawal-stat-${item.key}`}>
+              <dt>
+                {item.label}
+                {item.tip && <InfoTip content={item.tip} label={item.label} side="bottom" />}
+              </dt>
+              <dd className="ws-withdrawal-stat-value">
+                <AnimatedNumber
+                  value={item.value}
+                  format={item.format}
+                  placeholder={item.placeholder}
                 />
-                {showGuardrails && (
-                  <>
-                    <RuleSlider
-                      id="planner-dsCeilingRate"
-                      label={tControls('fields.dsCeilingRate.label')}
-                      value={params.dsCeilingRate * 100}
-                      onValueChange={(value) => updateParams({ dsCeilingRate: value / 100 })}
-                      min={0}
-                      max={15}
-                      step={0.5}
-                      valueLabel={formatPercent(params.dsCeilingRate, 1)}
-                      minLabel={formatPercent(0, 0)}
-                      maxLabel={formatPercent(0.15, 0)}
-                    />
-                    <RuleSlider
-                      id="planner-dsFloorRate"
-                      label={tControls('fields.dsFloorRate.label')}
-                      value={params.dsFloorRate * 100}
-                      onValueChange={(value) => updateParams({ dsFloorRate: value / 100 })}
-                      min={-15}
-                      max={0}
-                      step={0.5}
-                      valueLabel={formatPercent(params.dsFloorRate, 1)}
-                      minLabel={formatPercent(-0.15, 0)}
-                      maxLabel={formatPercent(0, 0)}
-                    />
-                  </>
-                )}
-                {showRealFloor && (
-                  <LabeledNumberInput
-                    id="planner-spendingFloorReal"
-                    label={tControls('fields.spendingFloorReal.label')}
-                    value={params.spendingFloorReal}
-                    onChange={(value) => updateParams({ spendingFloorReal: value })}
-                    helpText={tControls('fields.spendingFloorReal.tooltip')}
-                    helpPlacement="tooltip"
-                    className="w-full"
-                    unit={tSetup('units.currency')}
-                    groupThousands
-                    min={0}
-                    max={500000}
-                    rangeMessage={tSetup('validation.range', {
-                      min: format.number(0),
-                      max: format.number(500000),
-                    })}
-                    invalidMessage={tSetup('validation.notANumber')}
-                  />
-                )}
-              </div>
-            ) : (
-              <p className="ws-withdrawal-muted">{t('noParams')}</p>
-            )}
-
-            <div className="ws-withdrawal-effect" data-testid="withdrawal-rule-effect">
-              <h4>{t('steps.effect')}</h4>
-              <p>{ruleEffect}</p>
+              </dd>
+              <dd className="ws-withdrawal-stat-hint">{item.hint}</dd>
             </div>
-          </div>
-        </div>
+          ))}
+        </dl>
 
-        <div className="ws-withdrawal-outcome">
-          <dl className="ws-withdrawal-stats" data-testid="withdrawal-planner-stats">
-            {stats.map((item) => (
-              <div key={item.key} data-testid={`withdrawal-stat-${item.key}`}>
-                <dt>
-                  {item.label}
-                  {item.tip && <InfoTip content={item.tip} label={item.label} side="bottom" />}
-                </dt>
-                <dd className="ws-withdrawal-stat-value">
-                  <AnimatedNumber
-                    value={item.value}
-                    format={item.format}
-                    placeholder={item.placeholder}
-                  />
-                </dd>
-                <dd className="ws-withdrawal-stat-hint">{item.hint}</dd>
+        <section className="ws-withdrawal-card" aria-labelledby="withdrawal-corridor-title">
+          <LazyMount
+            minHeight="var(--ws-withdrawal-chart-reserve)"
+            fallback={
+              <div className="ws-withdrawal-chart">
+                {corridorHeading}
+                <Skeleton
+                  variant="chart"
+                  height="calc(var(--ws-withdrawal-chart-h) + 64px)"
+                  className="ws-withdrawal-chart-placeholder"
+                />
               </div>
-            ))}
-          </dl>
-
-          <section className="ws-withdrawal-card" aria-labelledby="withdrawal-corridor-title">
-            <LazyMount
-              minHeight="var(--ws-withdrawal-chart-reserve)"
-              fallback={
-                <div className="ws-withdrawal-chart">
-                  {corridorHeading}
-                  <Skeleton
-                    variant="chart"
-                    height="calc(var(--ws-withdrawal-chart-h) + 64px)"
-                    className="ws-withdrawal-chart-placeholder"
-                  />
+            }
+          >
+            {corridor ? (
+              <SectionBoundary name="chart-corridor">
+                <SpendingCorridorChart
+                  title={corridorHeading}
+                  points={corridor.points}
+                  retirementAge={retirementAge}
+                  legalRetirementAge={results?.params.legalRetirementAge ?? 0}
+                  hasFloor={corridor.paths.hasFloor}
+                  hasCeiling={corridor.paths.hasCeiling}
+                  formatCurrency={formatCurrency}
+                  formatCurrencyShort={formatCurrencyShort}
+                />
+              </SectionBoundary>
+            ) : (
+              <div className="ws-withdrawal-chart">
+                {corridorHeading}
+                <div className="ws-skeleton ws-withdrawal-chart-placeholder">
+                  <span>{t('corridor.empty')}</span>
                 </div>
-              }
-            >
-              {corridor ? (
-                <SectionBoundary name="chart-corridor">
-                  <SpendingCorridorChart
-                    title={corridorHeading}
-                    points={corridor.points}
-                    retirementAge={retirementAge}
-                    legalRetirementAge={results?.params.legalRetirementAge ?? 0}
-                    hasFloor={corridor.paths.hasFloor}
-                    hasCeiling={corridor.paths.hasCeiling}
-                    formatCurrency={formatCurrency}
-                    formatCurrencyShort={formatCurrencyShort}
-                  />
-                </SectionBoundary>
-              ) : (
-                <div className="ws-withdrawal-chart">
-                  {corridorHeading}
-                  <div className="ws-skeleton ws-withdrawal-chart-placeholder">
-                    <span>{t('corridor.empty')}</span>
-                  </div>
-                </div>
-              )}
-            </LazyMount>
-          </section>
-        </div>
+              </div>
+            )}
+          </LazyMount>
+        </section>
       </div>
 
       <StrategyCompare
@@ -525,8 +553,8 @@ interface StrategyCompareProps {
 /**
  * "Compare all four rules": the same plan under every strategy, over the same
  * market paths. On demand only, and polite about the shared worker: each of
- * the four runs waits until the section is near the viewport, no edit panel is
- * open and the plan's own result is current and settled, so the result bar is
+ * the four runs waits until the section is near the viewport, nothing is running
+ * and the plan's own result is current and settled, so the result head is
  * never queued behind a comparison. A plan edited mid-way restarts the
  * comparison on the new plan instead of finishing one that would be stale.
  */
@@ -544,7 +572,6 @@ function StrategyCompare({
   const t = useTranslations('withdrawalPlanner')
   const format = useFormatter()
   const results = useUsableResults()
-  const { editor } = useWorkspace()
   const { busy } = useRunStatus()
   const near = useNearViewport(areaRef, COMPARE_NEAR_MARGIN, { once: false })
 
@@ -557,7 +584,7 @@ function StrategyCompare({
   const runIdRef = useRef(0)
 
   const current = results !== null && areSimulationParamsEqual(params, results.params)
-  const gateOpen = near && editor === null && !busy && current
+  const gateOpen = near && !busy && current
 
   // The async loop reads the latest plan and gate through refs.
   const paramsRef = useRef(params)

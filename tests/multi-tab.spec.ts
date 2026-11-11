@@ -149,6 +149,6 @@ test.describe('two tabs of one browser', () => {
     await expect(tabA.getByTestId('plan-menu-trigger')).toContainText('Renamed in tab B')
     await expect(tabA.getByTestId('result-bar')).toHaveAttribute('data-dirty', 'true')
     await openSection(tabA, 'levers')
-    await expect(leverSlider(tabA, 'Retirement age')).toHaveAttribute('aria-valuenow', edited!)
+    await expect(leverSlider(tabA)).toHaveAttribute('aria-valuenow', edited!)
   })
 })

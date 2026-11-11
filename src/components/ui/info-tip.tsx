@@ -51,13 +51,14 @@ interface Placement {
 }
 
 /**
- * The area a tip must stay inside: the viewport, narrowed to the dialog the
- * trigger sits in (the docked edit panel, the phone sheet) so a tip never
- * spills over the page behind it.
+ * The area a tip must stay inside: the viewport, narrowed to the dialog or
+ * pane the trigger sits in (a dialog, the workspace's control column —
+ * anything marked `data-tip-boundary`) so a tip never spills over what is
+ * beside it: the result stays in view while an input is explained.
  */
 function boundaryOf(trigger: HTMLElement): DOMRect {
   const viewport = new DOMRect(0, 0, window.innerWidth, window.innerHeight)
-  const dialog = trigger.closest<HTMLElement>('[role="dialog"]')
+  const dialog = trigger.closest<HTMLElement>('[role="dialog"], [data-tip-boundary]')
   if (!dialog) return viewport
   const box = dialog.getBoundingClientRect()
   const left = Math.max(viewport.left, box.left)

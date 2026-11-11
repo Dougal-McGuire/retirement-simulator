@@ -13,7 +13,6 @@ import {
 
 const open: LeverGateInputs = {
   near: true,
-  editorOpen: false,
   comparing: false,
   busy: false,
   current: true,
@@ -41,17 +40,18 @@ const results = (successRate: number, p10End: number): SimulationResults => ({
 })
 
 describe('lever measurement gating', () => {
-  it('measures only when the list is near, nothing is open or running, and results are current', () => {
+  // The control column is always on screen, so "no panel open" is no longer
+  // part of the gate: idleness is.
+  it('measures when the list is near, nothing is running or held, and results are current', () => {
     expect(shouldMeasureLevers(open)).toBe(true)
   })
 
   it.each([
     ['the list is off screen', { near: false }],
-    ['an assumption panel is open', { editorOpen: true }],
     ['compare mode hides the sections', { comparing: true }],
     ['a run is loading or queued', { busy: true }],
     ['the results describe another draft', { current: false }],
-    ['a quick slider is held', { holding: true }],
+    ['a control of the column is held', { holding: true }],
   ] as const)('waits while %s', (_reason, override) => {
     expect(shouldMeasureLevers({ ...open, ...override })).toBe(false)
   })

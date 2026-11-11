@@ -1,4 +1,11 @@
-import { buildFanGeometry, FAN_H, FAN_W, sparklinePath } from '../fanGeometry'
+import {
+  buildFanGeometry,
+  FAN_H,
+  FAN_W,
+  seriesPeak,
+  sliceByAge,
+  sparklinePath,
+} from '../fanGeometry'
 import {
   formatAxisEuro,
   formatEuroDelta,
@@ -57,6 +64,50 @@ describe('buildFanGeometry', () => {
   it('ticks the age axis every five years', () => {
     const geometry = buildFanGeometry(ages, [flat])
     expect(geometry.axisTicks.map((tick) => tick.age)).toEqual([55, 60, 65, 70, 75, 80, 85, 90])
+  })
+
+  describe('the saved plan under a draft (ghost)', () => {
+    it('a held peak raises the scale and never lowers it', () => {
+      const own = buildFanGeometry(ages, [flat])
+      // The ghost (or an earlier draft) reached higher: the axis covers it.
+      const held = buildFanGeometry(ages, [flat], { minPeak: 2_000_000 })
+      expect(held.ymax).toBeCloseTo(2_000_000 * 1.06)
+      expect(held.y(500_000)).toBeGreaterThan(own.y(500_000))
+      // A held peak below what the chart needs changes nothing.
+      expect(buildFanGeometry(ages, [flat], { minPeak: 100 }).ymax).toBe(own.ymax)
+      // With no series of its own the geometry is built from the peak alone.
+      expect(buildFanGeometry(ages, [], { minPeak: 500_000 }).ymax).toBe(own.ymax)
+    })
+
+    it('seriesPeak takes the largest finite value of any series', () => {
+      expect(seriesPeak([flat, rising])).toBe(rising[rising.length - 1])
+      expect(seriesPeak([[1, Number.NaN, 3], [Number.POSITIVE_INFINITY, 2]])).toBe(3)
+      expect(seriesPeak([])).toBe(0)
+      expect(seriesPeak([[-5, -1]])).toBe(0)
+    })
+
+    it('draws a series from another age grid where its ages fall on this axis', () => {
+      const geometry = buildFanGeometry(ages, [rising])
+      // The saved plan started three years earlier and ends five years sooner.
+      const savedAges = Array.from({ length: 34 }, (_, i) => 52 + i)
+      const savedSeries = savedAges.map(() => 500_000)
+      const path = geometry.lineByAge(savedAges, savedSeries)
+      const points = path.slice(1).split(' L')
+      // Ages 55–85 are on this chart: 31 points, from the left edge to age 85.
+      expect(points).toHaveLength(31)
+      expect(points[0].split(',')[0]).toBe('0.0')
+      expect(Number(points[30].split(',')[0])).toBeCloseTo(geometry.ageX(85), 1)
+      // The same grid gives the same line as `line`.
+      expect(geometry.lineByAge(ages, rising)).toBe(geometry.line(rising))
+      // Nothing (or a single point) in range draws nothing.
+      expect(geometry.lineByAge([10, 20, 30], [1, 2, 3])).toBe('')
+      expect(geometry.lineByAge([40, 55], [1, 2])).toBe('')
+    })
+
+    it('sliceByAge cuts a series to the ages on screen', () => {
+      expect(sliceByAge([50, 55, 60, 65, 70], [1, 2, 3, 4, 5], 55, 65)).toEqual([2, 3, 4])
+      expect(sliceByAge([50, 55], [1, 2], 60, 70)).toEqual([])
+    })
   })
 })
 

@@ -605,31 +605,30 @@
     "display": {
       "label": "Display currency amounts",
       "nominal": "Nominal",
-      "real": "Today's €"
+      "real": "Today's €",
+      "nominalShort": "Nom.",
+      "realShort": "Today"
     }
   },
   "simulationCompact": {
     "commandBar": {
-      "ageAria": "Retirement age",
-      "saveAria": "Annual savings",
-      "spendAria": "Monthly spending",
-      "spendValue": "{amount} per month",
-      "roiAria": "Expected return",
       "saveButton": "Save"
     },
-    "advanced": {
-      "volatilityAria": "Return volatility",
-      "inflationAria": "Average inflation",
-      "pensionAria": "Monthly statutory pension",
-      "endAgeAria": "Plan end age",
-      "glidePath": "Glide path {start} → {end}"
-    },
     "chart": {
-      "bandOuter": "P10–90",
-      "bandInner": "P20–80",
-      "median": "Median",
-      "nominal": "Nominal",
-      "real": "Real"
+      "bandOuter": "8 of 10 paths",
+      "bandInner": "6 of 10",
+      "median": "middle path",
+      "nominal": "Nominal €",
+      "real": "Today's €",
+      "title": "Assets",
+      "now": "now",
+      "saved": "saved",
+      "options": "Chart options",
+      "range": "Ages {from}–{to}",
+      "retirementMarker": "Retirement {age}",
+      "savedMarker": "was {age}",
+      "pensionMarker": "Pension from {age}",
+      "savedMedian": "saved, middle path"
     },
     "compare": {
       "title": "Compare plans",
@@ -681,8 +680,8 @@
     "retry": "Try again",
     "tools": {
       "button": "Menu",
-      "title": "Report and settings",
-      "description": "Export a report and change language, account or appearance."
+      "title": "Settings",
+      "description": "Change language, account or appearance."
     }
   },
   "parameterControls": {
@@ -1145,11 +1144,11 @@
     "reset": "Reset Zoom",
     "tooltip": {
       "label": "Age {age}",
-      "p90": "90th percentile",
-      "p80": "80th percentile",
-      "median": "Median",
-      "p20": "20th percentile",
-      "p10": "10th percentile"
+      "p90": "Upper edge · 8 of 10",
+      "p80": "Upper edge · 6 of 10",
+      "median": "Middle path",
+      "p20": "Lower edge · 6 of 10",
+      "p10": "Lower edge · 8 of 10"
     },
     "scale": {
       "label": "Value axis scale",
@@ -2176,27 +2175,11 @@
   },
   "planEditor": {
     "groups": {
-      "personal": {
-        "title": "Personal & timeline",
-        "description": "The ages that frame saving and drawdown."
-      },
-      "income": {
-        "title": "Assets & savings",
-        "description": "What you have today and put aside until retirement."
-      },
-      "market": {
-        "title": "Market & taxes",
-        "description": "Return assumptions and German taxes."
-      },
       "cashFlows": {
-        "title": "Income & spending",
-        "description": "Everything this plan pays out or takes in, and for how long.",
         "incomePointer": "{count, plural, =0 {One-off income – edited under “Income & spending”} =1 {# one-off income, edited under “Income & spending”} other {# one-off incomes, edited under “Income & spending”}}"
       },
       "withdrawal": {
-        "title": "Withdrawal",
-        "description": "How the portfolio becomes an income.",
-        "pointer": "Withdrawal rule: {strategy} — set in the “Withdrawal” section"
+        "pointer": "Withdrawal rule: {strategy} — set in the group “Withdrawal”"
       }
     },
     "summary": {
@@ -2223,9 +2206,7 @@
       "undone": "Reset undone"
     },
     "sections": {
-      "staleStats": "A value below is out of range — these figures still describe the last accepted entry.",
-      "previous": "Back: {title}",
-      "next": "Next: {title}"
+      "staleStats": "A value below is out of range — these figures still describe the last accepted entry."
     }
   },
   "withdrawalPlanner": {
@@ -2421,38 +2402,10 @@
     "brand": "Retirement planner",
     "navigation": "Sections",
     "saved": "Plan saved",
-    "unsaved": "Unsaved changes",
     "calculate": "Recalculate",
     "computing": "Calculating …",
-    "lastsTo": "Median assets last until age",
-    "badPaths": "Weaker 10%: until age {age}",
-    "firstDraw": "Monthly portfolio draw at retirement",
-    "grossMean": "Mean gross withdrawal, including capital gains tax",
-    "endAssets": "Assets at the end · median",
-    "lowAssets": "Weaker 10%: {amount}",
-    "assetTitle": "Asset projection",
-    "assetDescription": "The line shows the median; the band shows the range of simulated outcomes. Inspect individual years in the chart.",
-    "retirement": "Retirement",
-    "ageValue": "At age {age}",
-    "startingAssets": "Assets today",
-    "savingsHint": "{amount} saved per year",
-    "plannedBudget": "Planned monthly budget",
     "edit": "Edit",
-    "footer": "All results depend on your assumptions. Taxes and capital markets are simplified models.",
-    "today": "Today",
-    "firstPension": "First planned pension",
-    "noPension": "None entered",
-    "horizon": "Planning horizon",
-    "whatIf": {
-      "note": "Changes here are drafts – they only apply to your plan once you save.",
-      "pending": "Save or discard them in the result bar at the top."
-    },
-    "compareEntry": {
-      "title": "Compare with another plan",
-      "detail": "{active} side by side with {other}",
-      "duplicateTitle": "Create a variant to compare",
-      "duplicateDetail": "Copies your current plan so you can test a change next to the original."
-    },
+    "footer": "All results depend on your assumptions. Taxes and capital markets are simplified models. A model, not a guarantee.",
     "discard": "Discard",
     "discardedToast": "Discarded unsaved changes to “{name}”",
     "calculateHint": "Results update automatically. Recalculate only if they are out of date.",
@@ -2474,7 +2427,6 @@
       "compare": "Compare plans",
       "saveAsNew": "Save changes as new plan …"
     },
-    "unsavedShort": "Unsaved",
     "pageTitle": "{plan} – Retirement planner",
     "sections": {
       "result": {
@@ -2495,98 +2447,51 @@
       "withdrawal": {
         "title": "Withdrawal",
         "short": "Drawdown",
-        "description": "How your portfolio becomes an income – and what it does in weak years."
+        "description": "What your withdrawal rule makes of the portfolio – in weak years too."
       },
       "levers": {
-        "title": "Levers",
-        "short": "Levers",
-        "description": "Try changes and see what moves the needle most."
+        "title": "Impact",
+        "short": "Impact",
+        "description": "What moves your result most – measured on your plan."
       }
     },
     "bar": {
       "label": "Your plan's result",
-      "success": "Success rate",
-      "successShort": "Success",
-      "endAssets": "End assets · median",
-      "endAssetsShort": "End · median",
       "deltaAria": "Change against the saved plan: {delta}",
-      "saveAsNew": "Save as new plan …"
+      "saveAsNew": "Save as a variant …",
+      "saveMenu": "Save",
+      "saveMore": "More ways to save",
+      "pdf": "PDF"
     },
     "verdict": {
-      "lead": "of simulated paths fund your budget and legacy goal through age {end}."
-    },
-    "runContext": {
-      "monteCarlo": "Monte Carlo simulation, {runs} runs",
-      "historical": "Historical returns, {runs} start years",
-      "disclaimer": "A model, not a guarantee."
-    },
-    "lifeStages": {
-      "label": "Life stages",
-      "editAria": "{label}: {value} – edit"
+      "sentence": "Your money lasts in {count} of 100 paths to age {end}.",
+      "sentenceLegacy": "In {count} of 100 paths your money lasts to age {end} and your legacy goal is left over."
     },
     "cards": {
-      "person": {
-        "label": "Planned retirement",
-        "value": "At age {age}",
-        "detail": "Today {current} · planned to {end}",
-        "pension": "State pension from {age}"
-      },
-      "savings": {
-        "growth": "{rate} per year · savings rate {share}"
-      },
-      "flows": {
-        "value": "{amount} per month",
-        "counts": "{pensions, plural, =0 {no pension} one {# pension} other {# pensions}} · {expenses} expense items · {incomes} incomes",
-        "pensions": "Pensions at {age}: {amount} gross/month",
-        "statutoryOff": "Statutory pension switched off",
-        "pensionsOff": "{count, plural, one {Pension switched off} other {All # pensions switched off}}",
-        "switchedOff": "{count} switched off"
-      },
-      "market": {
-        "label": "Expected return",
-        "labelHistorical": "Market model",
-        "value": "{rate} a year",
-        "valueHistorical": "Historical returns",
-        "detail": "Inflation {inflation} · volatility ± {volatility}",
-        "detailHistorical": "{from}–{to} · {count} start years",
-        "glideOn": "Glide path {start} → {end}",
-        "glideOff": "Glide path off",
-        "tax": "Tax drag ≈ {rate}"
-      },
       "startingValues": "Starting values in today's euros"
     },
     "guidedSetup": "Guided setup",
-    "guidedSetupHint": "Prefer step by step?",
     "editPanel": {
-      "close": "Close editor",
-      "done": "Done",
-      "navLabel": "Walk through assumptions",
-      "editAria": "Edit {title}",
       "liveResult": "Success rate now {rate}",
       "liveDelta": "{delta} against the saved plan",
       "toFlows": "Go to Income & spending",
-      "toWithdrawal": "Go to Withdrawal"
+      "toWithdrawal": "Go to the withdrawal rule"
     },
     "planManager": {
       "title": "Manage plans",
       "description": "Switch, create, rename, duplicate or delete plans."
     },
     "levers": {
-      "quickTitle": "Try quickly",
-      "more": "More sliders",
-      "editMarket": "Edit all market assumptions",
       "impactTitle": "What moves the needle",
       "apply": "Apply",
       "applyAria": "Apply “{name}” to your draft",
       "appliedToast": "Applied “{name}” – not saved yet.",
-      "reset": "Reset {label}",
       "baseline": "Baseline {rate} — the figure shown in Result, measured over {runs} runs. Every effect below is the change against it.",
       "baselineHistorical": "Baseline {rate} — the figure shown in Result, measured over {runs} historical start years. Every effect below is the change against it.",
       "measuring": "Measuring …",
       "waiting": "Re-measured once your inputs settle.",
       "leadsTo": "resulting in",
       "saveAsPlan": "Save as plan",
-      "pensionOff": "Statutory pension switched off",
       "worstDecileUnit": "worst decile",
       "flows": {
         "title": "Uncertain items",
@@ -2606,6 +2511,117 @@
     "meta": {
       "title": "Your retirement plan — Retirement Simulator",
       "description": "Result, assumptions, money flow, withdrawal and levers of your retirement plan on one page – recalculated live."
+    },
+    "head": {
+      "lastsTo": "Lasts to",
+      "atEnd": "At the end",
+      "firstDraw": "First withdrawal",
+      "firstDrawHint": "Average portfolio withdrawal in the first year of retirement, gross. Goes to the Withdrawal section.",
+      "badCase": "in a bad run"
+    },
+    "dock": {
+      "label": "Result in view",
+      "rate": "Success rate",
+      "end": "End",
+      "lastsTo": "to {age}",
+      "toHead": "Go to the chart"
+    },
+    "modes": {
+      "label": "Switch view",
+      "view": "View",
+      "edit": "Adjust"
+    },
+    "withdrawal": {
+      "rule": "Rule: {strategy}",
+      "change": "Change the rule"
+    },
+    "units": {
+      "monthly": "{amount}/mo",
+      "annual": "{amount}/yr",
+      "once": "{amount} once"
+    },
+    "column": {
+      "title": "Assumptions",
+      "fold": "Fold the assumptions away",
+      "unfold": "Show the assumptions",
+      "changed": "has unsaved changes",
+      "groups": {
+        "person": "Time",
+        "savings": "Assets & savings",
+        "flows": "Income & spending",
+        "rule": "Withdrawal",
+        "market": "Market & taxes"
+      },
+      "summary": {
+        "person": "{current} · {retirement} · {end}",
+        "savings": "{assets} · {savings}/yr",
+        "flows": "{amount}/mo",
+        "flowsOff": "{summary} · {count} off",
+        "rule": "{strategy} · {rate}",
+        "strategy": {
+          "fixedReal": "Fixed purchasing power",
+          "vanguardDynamic": "Dynamic",
+          "guytonKlinger": "Guyton-Klinger",
+          "percentOfPortfolio": "Percent of portfolio"
+        },
+        "market": "{rate} return · {inflation} inflation",
+        "marketHistorical": "Historical {from}–{to}"
+      },
+      "flows": {
+        "add": "Item",
+        "count": "{count, plural, =0 {No items yet} one {# item} other {# items}}",
+        "allOn": "all on",
+        "off": "{count} off"
+      }
+    },
+    "changes": {
+      "lead": "Changed:",
+      "field": "{label} {from} → {to}",
+      "flowOff": "{name} off",
+      "flowOn": "{name} on",
+      "flowAdded": "{name} new",
+      "flowRemoved": "{name} removed",
+      "flowAmount": "{name} {from} → {to}",
+      "flowChanged": "{name} changed",
+      "revert": "Take back this change: {change}",
+      "more": "+{count}",
+      "less": "Show fewer",
+      "other": "Other changes",
+      "count": "{count, plural, one {# change} other {# changes}}",
+      "countShort": "{count} chg.",
+      "listLabel": "Unsaved changes",
+      "fields": {
+        "currentAge": "Today",
+        "retirementAge": "Retirement start",
+        "legalRetirementAge": "Pension from",
+        "endAge": "Plan to",
+        "currentAssets": "Assets",
+        "annualSavings": "Saving per year",
+        "annualSavingsGrowthRate": "Savings growth",
+        "withdrawalStrategy": "Withdrawal rule",
+        "dsWithdrawalRate": "Withdrawal rate",
+        "dsCeilingRate": "Ceiling",
+        "dsFloorRate": "Floor",
+        "spendingFloorReal": "Spending floor",
+        "marketModel": "Market model",
+        "averageROI": "Return",
+        "roiVolatility": "Return volatility",
+        "averageInflation": "Inflation",
+        "inflationVolatility": "Inflation volatility",
+        "glidePathEnabled": "Glide path",
+        "equityAllocationStart": "Equity share today",
+        "equityAllocationEnd": "Equity share in retirement",
+        "bondReturn": "Bond return",
+        "bondVolatility": "Bond volatility",
+        "simulationRuns": "Runs",
+        "capitalGainsTax": "Capital gains tax",
+        "taxAllowanceAnnual": "Tax-free allowance",
+        "householdType": "Tax assessment",
+        "equityFundExemption": "Partial exemption",
+        "pensionTaxablePortion": "Taxable share of pension",
+        "pensionTaxRate": "Tax rate on pension",
+        "legacyTargetReal": "Legacy goal"
+      }
     }
   }
 }

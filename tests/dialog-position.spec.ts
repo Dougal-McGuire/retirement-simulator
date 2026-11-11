@@ -10,7 +10,7 @@ for (const viewport of [
     await stubSignedIn(page)
     await gotoWorkspace(page, '/de/simulation')
     await page.getByTestId('dashboard-tools').click()
-    const dialog = page.getByRole('dialog', { name: 'Bericht und Einstellungen' })
+    const dialog = page.getByRole('dialog', { name: 'Einstellungen' })
     await expect(dialog).toBeVisible()
     await expect(dialog).toHaveCSS('position', 'fixed')
     const box = await dialog.boundingBox()

@@ -86,7 +86,7 @@ async function openAccountWorkspace(page: Page) {
 
 async function accountShown(page: Page): Promise<boolean> {
   await page.getByTestId('dashboard-tools').click()
-  const menu = page.getByRole('dialog', { name: 'Report and settings' })
+  const menu = page.getByRole('dialog', { name: 'Settings' })
   await expect(menu).toBeVisible()
   const shown = (await menu.getByTestId('auth-account').count()) > 0
   await page.keyboard.press('Escape')
@@ -140,7 +140,7 @@ test.describe('a session that seems to disappear', () => {
       session.mode = 'signed-in'
       await expect.poll(() => accountShown(page), { timeout: 15000 }).toBe(true)
       await expect(page.getByTestId('plan-menu-trigger')).toContainText('Account plan')
-      await expect(leverSlider(page, 'Retirement age')).toHaveAttribute('aria-valuenow', edited!)
+      await expect(leverSlider(page)).toHaveAttribute('aria-valuenow', edited!)
       await expect(page.getByTestId('result-bar')).toHaveAttribute('data-dirty', 'true')
     })
   }

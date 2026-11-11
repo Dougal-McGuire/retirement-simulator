@@ -9,6 +9,14 @@
 export const FAN_W = 1000
 export const FAN_H = 300
 
+/**
+ * How strongly the saved plan's band outline is drawn (`--viz-ghost` at this
+ * opacity): quieter than its dashed median, and still 3:1 against the chart's
+ * surface and the draft's outer band in both colour schemes
+ * (`src/lib/__tests__/contrast.test.ts`).
+ */
+export const GHOST_OUTLINE_OPACITY = 0.85
+
 export interface FanGridLine {
   /** viewBox y of the horizontal rule. */
   y: number
@@ -36,8 +44,35 @@ export interface FanGeometry {
   ageX: (age: number) => number
   line: (series: number[]) => string
   band: (lower: number[], upper: number[]) => string
+  /**
+   * A series on its own age grid (the saved plan under a draft that moved
+   * the current age or the horizon), drawn where its ages fall on this
+   * chart's axis and cut to the visible range. Empty when nothing overlaps.
+   */
+  lineByAge: (seriesAges: number[], series: number[]) => string
   gridLines: FanGridLine[]
   axisTicks: FanAxisTick[]
+}
+
+/** The largest finite value in any of the series (0 for none). */
+export function seriesPeak(allSeries: readonly (readonly number[])[]): number {
+  let peak = 0
+  for (const series of allSeries) {
+    for (const value of series) {
+      if (Number.isFinite(value) && value > peak) peak = value
+    }
+  }
+  return peak
+}
+
+/** A series on its own age grid, cut to `[firstAge, lastAge]`. */
+export function sliceByAge(
+  seriesAges: readonly number[],
+  series: readonly number[],
+  firstAge: number,
+  lastAge: number
+): number[] {
+  return series.filter((_, index) => seriesAges[index] >= firstAge && seriesAges[index] <= lastAge)
 }
 
 /** A grid step that yields 2–6 rules: 1-2-5 ladder starting at 100 k€. */
@@ -52,18 +87,21 @@ function pickGridStep(ymax: number): number {
   return ladder[ladder.length - 1]
 }
 
-export function buildFanGeometry(ages: number[], allSeries: number[][]): FanGeometry {
+/**
+ * `minPeak` raises the scale to at least that value: the peak a held scale
+ * has seen, so the axis stands still while a draft moves under it.
+ */
+export function buildFanGeometry(
+  ages: number[],
+  allSeries: number[][],
+  options: { minPeak?: number } = {}
+): FanGeometry {
   const n = Math.max(2, ages.length)
   const firstAge = ages[0] ?? 0
   const lastAge = ages[ages.length - 1] ?? firstAge + 1
   const span = Math.max(1, lastAge - firstAge)
 
-  let peak = 0
-  for (const series of allSeries) {
-    for (const value of series) {
-      if (Number.isFinite(value) && value > peak) peak = value
-    }
-  }
+  const peak = Math.max(seriesPeak(allSeries), options.minPeak ?? 0)
   // 6% headroom, mirroring the mockup, and a floor so an empty result set
   // still yields a drawable scale.
   const ymax = Math.max(1, peak) * 1.06
@@ -88,6 +126,16 @@ export function buildFanGeometry(ages: number[], allSeries: number[][]): FanGeom
       .join(' L') +
     ' Z'
 
+  const lineByAge = (seriesAges: number[], series: number[]) => {
+    const points: string[] = []
+    series.forEach((value, index) => {
+      const age = seriesAges[index]
+      if (age === undefined || age < firstAge || age > lastAge) return
+      points.push(`${ageX(age).toFixed(1)},${y(value).toFixed(1)}`)
+    })
+    return points.length > 1 ? 'M' + points.join(' L') : ''
+  }
+
   const step = pickGridStep(ymax)
   const gridLines: FanGridLine[] = []
   for (let value = step; value < ymax; value += step) {
@@ -100,7 +148,7 @@ export function buildFanGeometry(ages: number[], allSeries: number[][]): FanGeom
     axisTicks.push({ leftPct: agePct(age), age })
   }
 
-  return { ymax, x, y, agePct, ageX, line, band, gridLines, axisTicks }
+  return { ymax, x, y, agePct, ageX, line, band, lineByAge, gridLines, axisTicks }
 }
 
 /**

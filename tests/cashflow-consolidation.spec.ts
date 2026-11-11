@@ -2,38 +2,47 @@ import {
   expect,
   expectNoHorizontalOverflow,
   gotoWorkspace,
-  leverSlider,
   openPanel,
   openSection,
   sectionHeading,
   test,
 } from './helpers/workspace'
 
-test('the index is keyboard-reachable and the panel has one set of controls', async ({ page }) => {
+/**
+ * Migrated to the two-pane workspace (docs/specs/2026-11-10-result-in-view.md).
+ * Deleted with the quick levers: "spending can increase again after the quick
+ * slider reaches zero" — the slider that scaled every expense is gone (each
+ * amount is set in its own row), and with it the code the test guarded.
+ */
+
+test('the anchors are keyboard-reachable and the column has one set of controls', async ({
+  page,
+}) => {
   await gotoWorkspace(page, '/de/simulation')
-  const first = page.getByTestId('section-link-result')
-  await expect(first).toHaveAttribute('aria-current', 'location')
 
-  // Plain links: Tab walks them in order, Enter jumps and focuses the heading.
-  await first.focus()
+  // Plain links under the head: Tab walks them in order, Enter jumps and
+  // focuses the heading.
+  const cashflow = page.getByTestId('section-link-cashflow')
+  await cashflow.focus()
   await page.keyboard.press('Tab')
-  const assumptions = page.getByTestId('section-link-assumptions')
-  await expect(assumptions).toBeFocused()
+  const withdrawal = page.getByTestId('section-link-withdrawal')
+  await expect(withdrawal).toBeFocused()
   await page.keyboard.press('Enter')
-  const heading = sectionHeading(page, 'assumptions')
+  const heading = sectionHeading(page, 'withdrawal')
   await expect(heading).toBeFocused()
-  await expect(heading).toHaveText('Annahmen')
-  await expect(assumptions).toHaveAttribute('aria-current', 'location')
+  await expect(heading).toHaveText('Entnahme')
+  await expect(withdrawal).toHaveAttribute('aria-current', 'location')
 
-  // The person card opens its panel: one editor, no section switcher, no
-  // second copy of the levers, the KPIs or a Save button inside it.
-  const panel = await openPanel(page, 'person')
-  await expect(page.getByRole('dialog', { name: 'Person & Zeitachse' })).toBeVisible()
-  await expect(page.getByTestId('plan-section-nav')).toHaveCount(0)
-  await expect(panel.getByTestId('quick-levers')).toHaveCount(0)
-  await expect(panel.getByTestId('kpi-strip')).toHaveCount(0)
-  await expect(panel.getByTestId('command-save')).toHaveCount(0)
-  await expect(panel.getByRole('button', { name: 'Speichern', exact: true })).toHaveCount(0)
+  // The column holds each input once: no section switcher, no copy of the
+  // result's figures and no Save button inside it.
+  const column = await openPanel(page, 'person')
+  await expect(page.getByRole('complementary', { name: 'Annahmen' })).toBeVisible()
+  await expect(column.getByTestId('plan-section-nav')).toHaveCount(0)
+  await expect(column.getByTestId('quick-levers')).toHaveCount(0)
+  await expect(column.getByTestId('kpi-strip')).toHaveCount(0)
+  await expect(column.getByTestId('command-save')).toHaveCount(0)
+  await expect(column.getByRole('button', { name: 'Speichern', exact: true })).toHaveCount(0)
+  await expect(page.locator('[id="editor-retirementAge"]')).toHaveCount(1)
 })
 
 test('shows actual tax deductions and changes the selected year', async ({ page }, testInfo) => {
@@ -51,54 +60,48 @@ test('shows actual tax deductions and changes the selected year', async ({ page 
   await page.screenshot({ path: testInfo.outputPath('cashflows-desktop.png'), fullPage: true })
 })
 
-test('the menu holds report, language, account and appearance; setup moved to Annahmen', async ({
+test('the menu holds language, account and appearance; the report sits in the bar, setup in the column', async ({
   page,
 }) => {
   await gotoWorkspace(page)
+  // One click from anywhere: the PDF export is a button of the bar.
+  await expect(
+    page.getByTestId('bar-report').getByRole('button', { name: 'Generate Report' })
+  ).toBeVisible()
+
   await page.getByTestId('dashboard-tools').click()
-  const menu = page.getByRole('dialog', { name: 'Report and settings' })
-  await expect(menu.getByRole('button', { name: 'Generate Report' })).toBeVisible()
+  const menu = page.getByRole('dialog', { name: 'Settings' })
   await expect(menu.getByRole('combobox', { name: 'Language' })).toBeVisible()
   await expect(menu.getByRole('button', { name: 'Sign in with Google' })).toBeVisible()
   await expect(menu.getByTestId('appearance-switch')).toBeVisible()
-  // Plans are managed from the plan menu; the guided setup sits in Annahmen.
+  // Not a second copy of the report button where the bar shows it.
+  await expect(menu.getByRole('button', { name: 'Generate Report' })).toBeHidden()
+  // Plans are managed from the plan menu; the guided setup sits at the foot
+  // of the column.
   await expect(menu.getByTestId('plan-switcher')).toHaveCount(0)
   await expect(menu.getByTestId('setup-link')).toHaveCount(0)
   await page.keyboard.press('Escape')
   await expect(menu).toHaveCount(0)
 
-  await expect(page.locator('#assumptions').getByTestId('setup-link')).toHaveAttribute(
+  await expect(page.getByTestId('edit-panel').getByTestId('setup-link')).toHaveAttribute(
     'href',
     '/en/setup'
   )
 })
 
-test('spending can increase again after the quick slider reaches zero', async ({ page }) => {
-  await gotoWorkspace(page)
-  await openSection(page, 'levers')
-  const slider = leverSlider(page, 'Monthly spending')
-  await expect(slider).toBeVisible()
-  await slider.focus()
-  await slider.press('Home')
-  await expect(slider).toHaveAttribute('aria-valuenow', '0')
-  await slider.press('ArrowRight')
-  await expect(slider).not.toHaveAttribute('aria-valuenow', '0')
-})
-
 test('historical mode disables the assumptions it ignores', async ({ page }) => {
   await gotoWorkspace(page)
-  // Model controls are in the Market & taxes panel.
+  // Model controls are in the group "Market & taxes".
   await openPanel(page, 'market')
   await page.getByTestId('market-model-historical').click()
-  await page.keyboard.press('Escape')
-  await expect(page.getByTestId('edit-panel')).toHaveCount(0)
-
-  await openSection(page, 'levers')
-  await expect(leverSlider(page, 'Expected return')).toHaveAttribute('data-disabled', '')
-  await page.getByTestId('more-sliders-toggle').click()
-  await expect(
-    page.getByTestId('advanced-params').getByRole('slider', { name: 'Return volatility' })
-  ).toHaveAttribute('data-disabled', '')
+  await expect(page.getByTestId('market-model-historical-notice')).toBeVisible()
+  // Radix marks a disabled thumb with data-disabled and takes it out of the
+  // tab order.
+  for (const field of ['editor-averageROI', 'editor-roiVolatility', 'editor-averageInflation']) {
+    await expect(page.locator(`#${field} [role="slider"]`)).toHaveAttribute('data-disabled', '')
+  }
+  // The group's header says which model the plan runs on.
+  await expect(page.getByTestId('assumption-card-market')).toContainText(/^Historical \d{4}–\d{4}$/)
 })
 
 test('mobile cash flows and summary fit the viewport', async ({ page }, testInfo) => {
@@ -107,7 +110,7 @@ test('mobile cash flows and summary fit the viewport', async ({ page }, testInfo
   await expect(page.getByTestId('dashboard-tools')).toBeInViewport()
   await openSection(page, 'cashflow')
   await expect(page.getByTestId('cashflow-ledger')).toBeVisible()
-  // The Menu stays reachable in the pinned KPI row after scrolling.
+  // The Menu stays reachable in the pinned bar after scrolling.
   await expect(page.getByTestId('dashboard-tools')).toBeInViewport()
   await expectNoHorizontalOverflow(page)
   await page.screenshot({ path: testInfo.outputPath('cashflows-mobile.png'), fullPage: true })

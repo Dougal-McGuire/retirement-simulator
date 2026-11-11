@@ -4,8 +4,10 @@ import {
   expect,
   expectNoHorizontalOverflow,
   gotoWorkspace,
+  groupHeader,
   openPanel,
   openPlanMenu,
+  openSaveAsVariant,
   openSection,
   readPersistedState,
   successRate,
@@ -17,7 +19,13 @@ import {
  * Flow switches: every income, expense and pension can be switched off. A
  * switched-off flow stays in the plan (list, storage, sync) but counts in no
  * figure; switching is an ordinary draft edit, the draft can become a plan of
- * its own, and Stellschrauben measures what each uncertain item is worth.
+ * its own, and Wirkung measures what each uncertain item is worth.
+ *
+ * Migrated to the two-pane workspace (docs/specs/2026-11-10-result-in-view.md):
+ * the flow list is the column's group "Einnahmen & Ausgaben", which is not
+ * closed to see the result. Deleted with the quick levers: the check that the
+ * pension slider under Stellschrauben is disabled for a switched-off pension
+ * (that slider is gone; the pension is set in its row only).
  */
 
 /** The furnished example plan: part-time income, inheritance, roof, care. */
@@ -37,11 +45,6 @@ async function storedFlow(page: Page, id: string) {
   const state = await readPersistedState(page)
   const flows = (state?.working?.cashFlows ?? []) as Array<{ id: string; enabled?: boolean }>
   return flows.find((flow) => flow.id === id)
-}
-
-async function closePanel(page: Page) {
-  await page.getByTestId('edit-panel-done').click()
-  await expect(page.getByTestId('edit-panel')).toHaveCount(0)
 }
 
 test.describe('flow switches in the flow list', () => {
@@ -72,7 +75,7 @@ test.describe('flow switches in the flow list', () => {
     // An ordinary draft edit: unsaved, delta against the saved plan, recomputed.
     const bar = page.getByTestId('result-bar')
     await expect(bar).toHaveAttribute('data-dirty', 'true')
-    await expect(bar.getByTestId('success-delta')).toBeVisible()
+    await expect(page.getByTestId('success-delta')).toBeVisible()
     await expect.poll(() => successRate(page)).not.toBe(before)
 
     // Muted, tagged, counted apart — and still listed.
@@ -93,8 +96,9 @@ test.describe('flow switches in the flow list', () => {
     const state = await readPersistedState(page)
     expect(state?.working?.oneTimeIncomes).toEqual([])
 
-    await closePanel(page)
-    await expect(page.getByTestId('assumption-card-flows')).toContainText('1 ausgeschaltet')
+    // The group's header says it, open or closed, and marks the group changed.
+    await expect(page.getByTestId('assumption-card-flows')).toContainText('1 aus')
+    await expect(page.getByTestId('edit-flows-changed')).toBeVisible()
 
     // Verwerfen undoes it.
     await page.getByTestId('command-discard').click()
@@ -108,27 +112,17 @@ test.describe('flow switches in the flow list', () => {
     page,
   }) => {
     await openDemoPlan(page)
-    const card = page.getByTestId('assumption-card-flows')
-    await expect(card).toContainText('Renten mit 67: 5.000 € brutto/Monat')
-
     await openPanel(page, 'flows')
+    // The group's figures: every pension paying at the statutory age, gross.
+    const pensions = flowsBody(page)
+    await expect(pensions).toContainText('Renten mit 67')
+    await expect(pensions).toContainText('1 Rente · brutto pro Monat')
+
     await flowSwitch(page, 'pension-statutory').click()
     await expect(flowSwitch(page, 'pension-statutory')).toHaveAttribute('aria-checked', 'false')
-    await closePanel(page)
     // Said as what it is, not as a "0 €" pension that reads like a missing input.
-    await expect(card).toContainText('Gesetzliche Rente ausgeschaltet')
-    await expect(card).not.toContainText('Renten mit 67')
-
-    // The pension slider cannot reach a switched-off pension.
-    await openSection(page, 'levers')
-    await page.getByTestId('more-sliders-toggle').click()
-    const slider = page.locator('#levers').getByRole('slider', {
-      name: 'Monatliche gesetzliche Rente',
-    })
-    await expect(slider).toHaveAttribute('aria-valuetext', 'Gesetzliche Rente ausgeschaltet')
-    // Radix marks a disabled thumb with data-disabled and takes it out of the
-    // tab order.
-    await expect(slider).toHaveAttribute('data-disabled', '')
+    await expect(pensions).toContainText('keine Rente · brutto pro Monat · 1 ausgeschaltet')
+    await expect(page.getByTestId('assumption-card-flows')).toContainText('1 aus')
 
     // Saved and reloaded, the pension is still there, still off, amount kept.
     await page.getByTestId('command-save').click()
@@ -144,11 +138,11 @@ test.describe('flow switches in the flow list', () => {
 
     await openPanel(page, 'flows')
     await flowSwitch(page, 'pension-statutory').click()
-    await closePanel(page)
-    await expect(card).toContainText('Renten mit 67: 5.000 € brutto/Monat')
+    await expect(flowsBody(page)).toContainText('1 Rente · brutto pro Monat')
+    await expect(page.getByTestId('assumption-card-flows')).not.toContainText('1 aus')
   })
 
-  test('works in the phone sheet', async ({ page }) => {
+  test('works on a phone, under "Stellen"', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await openDemoPlan(page)
     await openPanel(page, 'flows')
@@ -180,11 +174,10 @@ test.describe('saving the draft as a new plan', () => {
 
     await openPanel(page, 'flows')
     await flowSwitch(page, 'demo-inheritance').click()
-    await closePanel(page)
     const bar = page.getByTestId('result-bar')
     await expect(bar).toHaveAttribute('data-dirty', 'true')
-    // At this width the bar keeps its controls; the plan menu offers it.
-    await expect(bar.getByTestId('command-save-as-new')).toBeHidden()
+    // The bar keeps it behind "Speichern ▾"; the plan menu offers it too.
+    await expect(bar.getByTestId('command-save-as-new')).toHaveCount(0)
 
     menu = await openPlanMenu(page)
     await menu.getByTestId('plan-menu-saveAsNew').click()
@@ -235,22 +228,24 @@ test.describe('saving the draft as a new plan', () => {
     await expect(switchRow).toContainText('ausgeschaltet')
   })
 
-  test('the bar offers it beside Save where it has room', async ({ page }) => {
+  test('"Speichern ▾" in the bar offers it at every width', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 890 })
     await openDemoPlan(page)
     await openPanel(page, 'flows')
     await flowSwitch(page, 'demo-roof').click()
-    await closePanel(page)
-    const button = page.getByTestId('command-save-as-new')
-    await expect(button).toBeVisible()
-    await expect(button).toHaveAccessibleName('Als neuen Plan speichern …')
-    await button.click()
+    const caret = page.getByTestId('command-save-more')
+    await caret.click()
+    const item = page.getByTestId('command-save-as-new')
+    await expect(item).toBeVisible()
+    await expect(item).toHaveAccessibleName('Als Variante speichern …')
+    await item.click()
     await expect(page.getByTestId('save-draft-dialog')).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(button).toBeFocused()
+    await expect(page.getByTestId('save-draft-dialog')).toHaveCount(0)
+    await expect(caret).toBeFocused()
 
-    // Dirty, the bar still fits every width it was tuned for, and the plan
-    // name is never cut to make room for the extra button.
+    // Dirty, the bar still fits every width it was tuned for, the plan name is
+    // never cut to make room, and the menu is one tap away.
     for (const width of [1024, 1280, 1366, 1440, 1600]) {
       await page.setViewportSize({ width, height: 890 })
       const bar = page.getByTestId('result-bar')
@@ -261,13 +256,14 @@ test.describe('saving the draft as a new plan', () => {
         const clipped = await name.evaluate((element) => element.scrollWidth > element.clientWidth)
         expect(clipped, `plan name whole at ${width}px`).toBe(false)
       }
-      await expect(button).toBeVisible({ visible: width >= 1600 })
+      await expect(caret).toBeVisible()
     }
+    await openSaveAsVariant(page)
   })
 })
 
 test.describe('saving the draft as a new plan at the plan limit', () => {
-  test('the bar button says why it does nothing', async ({ page }) => {
+  test('the bar menu item says why it does nothing', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 890 })
     await openDemoPlan(page)
     // Fill the plan list to its limit (12) with copies of the example.
@@ -286,19 +282,23 @@ test.describe('saving the draft as a new plan at the plan limit', () => {
 
     await openPanel(page, 'flows')
     await flowSwitch(page, 'demo-roof').click()
-    await closePanel(page)
     const bar = page.getByTestId('result-bar')
     await expect(bar).toHaveAttribute('data-dirty', 'true')
 
-    const button = page.getByTestId('command-save-as-new')
-    await expect(button).toBeVisible()
-    await expect(button).toHaveAttribute('aria-disabled', 'true')
-    await expect(button).toHaveAttribute('title', /Planlimit erreicht \(12\)/)
-    await expect(button).toHaveAccessibleDescription(/Planlimit erreicht \(12\)/)
+    await page.getByTestId('command-save-more').click()
+    const item = page.getByTestId('command-save-as-new')
+    await expect(item).toBeVisible()
+    await expect(item).toHaveAttribute('aria-disabled', 'true')
+    // The reason is written in the item, where touch can read it too.
+    await expect(item).toContainText('Planlimit erreicht (12)')
+    await expect(item).toHaveAccessibleDescription(/Planlimit erreicht \(12\)/)
     // aria-disabled keeps it focusable with its hint; a click does nothing.
-    await button.click({ force: true })
+    await page.keyboard.press('ArrowDown')
+    await expect(item).toBeFocused()
+    await item.click({ force: true })
     await expect(page.getByTestId('save-draft-dialog')).toHaveCount(0)
     await expect(bar).toHaveAttribute('data-dirty', 'true')
+    await page.keyboard.press('Escape')
 
     // The plan menu's item agrees.
     const menu = await openPlanMenu(page)
@@ -348,7 +348,7 @@ test.describe('Stellschrauben: uncertain items', () => {
 
     // The name opens the item's row in the flow list, on its switch.
     await inheritance.getByTestId('uncertain-flow-open').click()
-    await expect(page.getByTestId('edit-panel')).toHaveAttribute('data-panel', 'flows')
+    await expect(groupHeader(page, 'flows')).toHaveAttribute('aria-expanded', 'true')
     await expect(flowSwitch(page, 'demo-inheritance')).toBeFocused()
   })
 
@@ -447,7 +447,8 @@ test.describe('Stellschrauben: uncertain items', () => {
     const empty = page.locator('#levers').getByTestId('uncertain-flows-empty')
     await expect(empty).toContainText('Keine einmaligen oder befristeten Posten im Plan.')
     await empty.getByTestId('uncertain-flows-add').click()
-    await expect(page.getByTestId('edit-panel')).toHaveAttribute('data-panel', 'flows')
+    await expect(groupHeader(page, 'flows')).toHaveAttribute('aria-expanded', 'true')
+    await expect(flowsBody(page)).toBeVisible()
   })
 
   test('fits a phone', async ({ page }) => {
@@ -504,7 +505,6 @@ test.describe('accessibility', () => {
         await page.waitForTimeout(300)
         expect(await axeViolations(page, '[data-testid="edit-panel"]')).toEqual([])
 
-        await closePanel(page)
         await openSection(page, 'levers')
         const list = page.locator('#levers').getByTestId('uncertain-flows')
         await list.scrollIntoViewIfNeeded()

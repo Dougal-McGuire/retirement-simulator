@@ -1,6 +1,7 @@
 import {
   expect,
   gotoWorkspace,
+  groupHeader,
   nudgeLever,
   openSection,
   readStoredParams,
@@ -17,52 +18,57 @@ import {
 const STORE_KEY = 'retirement-simulator-store'
 
 test.describe('errors stay where they happen', () => {
-  test('a panel body whose chunk does not arrive fails inline; the bar keeps working', async ({
+  test('a group body whose chunk does not arrive fails inline; the rest keeps working', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
-    // No idle warm-up of the panel bodies, so the flows body is fetched on open.
+    // No idle warm-up of the group bodies, so "Markt & Steuern" (closed to
+    // begin with) is fetched when it is opened.
     await page.addInitScript(() => {
       window.requestIdleCallback = () => 0
     })
     await gotoWorkspace(page, '/de/simulation')
+    await expect(page.locator('#plan-editor-expenses')).toBeVisible()
     // From now on every chunk fails, like a dropped connection or a deploy.
     let blocking = true
     await page.route('**/_next/static/chunks/**', (route) =>
       blocking ? route.abort('failed') : route.continue()
     )
 
-    await page.getByTestId('edit-flows').click()
+    await groupHeader(page, 'market').click()
     const panel = page.getByTestId('edit-panel')
-    await expect(panel).toHaveAttribute('data-panel', 'flows')
+    await expect(groupHeader(page, 'market')).toHaveAttribute('aria-expanded', 'true')
 
-    const message = panel.locator('[data-boundary="panel-flows"]')
-    const loaded = page.locator('#plan-editor-expenses')
+    const message = panel.locator('[data-boundary="panel-market"]')
+    const loaded = page.locator('#plan-editor-market')
     await expect(message).toBeVisible({ timeout: 15000 })
     await expect(message).toHaveAttribute('data-chunk', 'true')
     await expect(page.getByTestId('error-screen')).toHaveCount(0)
 
-    // The rest of the page is alive: bar, panel walk and Fertig.
+    // The rest of the page is alive: the bar, the result, the other groups
+    // and the failed group's own header.
     await expect(page.getByTestId('result-bar')).toBeVisible()
     await expect(page.getByTestId('success-pill')).toHaveAttribute('data-value', /\d/)
-    await expect(page.getByTestId('edit-panel-done')).toBeEnabled()
+    await expect(page.locator('#plan-editor-personal')).toBeVisible()
+    await expect(page.locator('#plan-editor-expenses')).toBeVisible()
+    await expect(groupHeader(page, 'market')).toBeEnabled()
     await expect(page.locator('#result')).toBeAttached()
 
     // Connection back: "Erneut versuchen" loads the body in place where the
     // bundler forgets a failed chunk (webpack); Turbopack keeps the failure
     // for the page's life, so the retry fails again and offers "Neu laden",
-    // which brings the same panel back (the URL hash keeps it open).
+    // which brings the same group back (the URL hash keeps it open).
     blocking = false
     await message.getByTestId('section-error-retry').click()
     const reload = message.getByTestId('section-error-reload')
     await expect(loaded.or(reload)).toBeVisible({ timeout: 15000 })
     if (await reload.isVisible()) {
-      await expect(page).toHaveURL(/#assumptions:flows$/)
+      await expect(page).toHaveURL(/#result:market$/)
       await reload.click()
       await waitForResults(page)
     }
     await expect(loaded).toBeVisible({ timeout: 15000 })
-    await expect(page.locator('[data-boundary="panel-flows"]')).toHaveCount(0)
+    await expect(page.locator('[data-boundary="panel-market"]')).toHaveCount(0)
   })
 
   test('malformed results in an older stored entry are ignored and recomputed', async ({ page }) => {
@@ -136,7 +142,7 @@ test.describe('focus after actions that remove their own button', () => {
       () => document.activeElement?.getAttribute('data-testid') ?? document.activeElement?.tagName
     )
 
-  test('Save and Discard hand focus to the saved marker (≥1280) or the plan menu', async ({
+  test('Save and Discard hand focus to the saved marker, or the plan menu on phones', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
@@ -151,7 +157,16 @@ test.describe('focus after actions that remove their own button', () => {
     await page.keyboard.press('Enter')
     await expect(page.getByTestId('bar-saved')).toBeFocused()
 
+    // The marker has its place in the bar from 761 px.
     await page.setViewportSize({ width: 1024, height: 800 })
+    await nudgeLever(page)
+    await page.getByTestId('command-save').focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('bar-saved')).toBeFocused()
+
+    // On phones the draft row goes away once clean: the plan menu (which
+    // names the plan just saved) is the nearest stop.
+    await page.setViewportSize({ width: 390, height: 844 })
     await nudgeLever(page)
     await page.getByTestId('command-save').focus()
     await page.keyboard.press('Enter')

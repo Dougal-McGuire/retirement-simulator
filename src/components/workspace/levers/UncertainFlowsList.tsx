@@ -23,26 +23,19 @@ import { useMoney } from '@/lib/hooks/useMoney'
 type Tone = 'ok' | 'danger' | 'neutral'
 const toneOf = (rounded: number): Tone => (rounded > 0 ? 'ok' : rounded < 0 ? 'danger' : 'neutral')
 
-interface UncertainFlowsListProps {
-  /** A quick slider is held: measurement waits for the release. */
-  holding: boolean
-}
-
 /**
  * "Unsichere Posten": the plan's one-off, time-limited and extra items, each
  * with its on/off switch and what switching it does to the success rate —
  * "ohne: −12,3 Pkt." for an item that is on, "mit: …" for one that is off.
  *
- * The switch is the same draft edit as in the flow list (the result bar goes
- * to "Ungespeichert", Verwerfen undoes it). Impacts are measured in the
+ * The switch is the same draft edit as in the flow list (the bar goes to
+ * "Ungespeichert", Verwerfen undoes it). Impacts are measured in the
  * background by `useFlowMeasurements`, under the levers' gate.
  */
-export const UncertainFlowsList = memo(function UncertainFlowsList({
-  holding,
-}: UncertainFlowsListProps) {
+export const UncertainFlowsList = memo(function UncertainFlowsList() {
   const rootRef = useRef<HTMLElement>(null)
   const near = useNearViewport(rootRef, '100px 0px', { once: false })
-  const { measurement, fresh, measuring } = useFlowMeasurements({ near, holding })
+  const { measurement, fresh, measuring } = useFlowMeasurements({ near })
   const params = useSimulationParams()
   return (
     <UncertainFlowsView

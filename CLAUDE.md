@@ -67,17 +67,17 @@ This is a Next.js 16.4 retirement planning simulator using React 19, TypeScript,
 
 - `/[locale]/` - Landing page
 - `/[locale]/setup` - Multi-step wizard for parameter input
-- `/[locale]/simulation` - One-page workspace: sticky result bar (plan menu, success rate, save/discard) over five sections, `#result` (Ergebnis), `#assumptions` (Annahmen), `#cashflow` (Geldfluss), `#withdrawal` (Entnahme), `#levers` (Stellschrauben). Assumptions open in an edit panel (`#<section>:<panel>`, e.g. `#assumptions:market`); `#compare` is plan comparison as a page mode
+- `/[locale]/simulation` - One-page workspace built so the result stays in view while everything is edited (`docs/specs/2026-11-10-result-in-view.md`): a 48 px bar (plan menu, draft state, save; € switch, PDF, Menü); the result canvas — the head `#result` (figures, fan chart with the saved plan as a ghost, change chips), `#cashflow` (Geldfluss), `#withdrawal` (Entnahme, the outcome), `#levers` (Wirkung); the dock (the head's collapsed form, pinned under the bar); and the control column with every input once, in five groups (`person`, `savings`, `flows`, `rule`, `market`). The column is a permanent pane from 1180 px, a drawer at 761–1179 and the mode "Stellen" on phones. Hashes are `#<target>[:<group>]`: `#assumptions` focuses the column, `#assumptions:market` opens a group, `#withdrawal` also opens `rule`; `#compare` is plan comparison as a page mode
 - `/api/plans` - Account-scoped plan storage (GET/PUT, needs sign-in and a configured store)
 - `/api/auth/[...nextauth]` - Auth.js handlers
 
 ### Simulation Flow
 
-1. User inputs parameters via the setup wizard, the edit panel (Annahmen cards) or the levers (Stellschrauben)
+1. User inputs parameters via the setup wizard or the workspace's control column (a lever under Wirkung or a change chip's ✕ is the same kind of edit)
 2. `SimulationStore.updateParams()` triggers auto-run (debounced 100ms)
 3. `runMonteCarloSimulation()` runs N simulations (default: 500) with lognormal market returns
 4. Results include percentile data (P10, P20, P50, P80, P90) and success rate
-5. The result bar and sections update live; charts show asset evolution, cash flows and the spending corridor
+5. The head's figures and the dock update first, the charts and sections follow in a deferred render; charts show asset evolution, cash flows and the spending corridor
 6. Auto-run can be suspended (the setup wizard does this while it is open)
 
 ### Simulation Phases
@@ -92,7 +92,8 @@ This is a Next.js 16.4 retirement planning simulator using React 19, TypeScript,
 - **Cloud Sync**: When signed in and configured, `PlanCloudSync` merges local and remote plans (`src/lib/stores/planSync.ts`) plan by plan against the persisted sync base (`syncedPlanStamps`); `deletedPlans` holds deletion tombstones; nothing is pushed before a pull succeeded in the session; a 409 `outdated-client` from the schema guard stops sync for the page life (see "Plan schema guard")
 - **Auto-run**: Parameter changes trigger simulation after 100ms (debounced)
 - **Suspension**: Auto-run can be suspended with `setAutoRunSuspended()` (the setup wizard does)
-- **Workspace UI state**: The open panel and compare mode are `WorkspaceProvider` state mirrored to the URL hash (reload and Back restore them), never persisted; `useWorkspaceUiStore` is a small unpersisted store for scroll state (active section, sticky geometry)
+- **Workspace UI state**: never persisted. Compare mode and the "linked" column group (the one opened last) are mirrored to the URL hash, so reload and Back restore them; `useWorkspaceUiStore` is a small unpersisted store for the rest (open groups, whether the column is unfolded, whether the dock is pinned, active section, sticky geometry), so toggling them does not re-render the page
+- **Saved plan's result (ghost)**: the store keeps only the working copy's result. While the plan is dirty the saved plan's result comes from an in-memory cache keyed by `simulationFingerprint(params)` (`useSavedPlanResults`), filled from every result the store receives and, if missing, by one run on the shared background queue (`backgroundQueue.ts`: levers, uncertain items and this run, one at a time, only while idle). `buildDraftChanges` (`src/lib/simulation/draftChanges.ts`) lists what the draft changes, each entry with the patch that takes it back
 - **Several tabs**: tabs share one localStorage entry. A `storage` listener (`syncFromOtherTabs`) and a look-before-write in `planStorage` merge the other tab's plans per plan (`mergePlanLists`, then `applySyncedPlans`) instead of overwriting them. The entry's session part (`activePlanId`, `params`, `draftParams`) is only written by the tab where it changed, so a background tab never replaces the draft of the tab being edited
 - **Newer build's data**: an entry with a higher store version or plan-schema stamp than this build's is never migrated down or written over; the tab runs from it read-only in memory and raises the reload notice (`requestReload('required')`)
 - **Session**: `SessionProvider` does not refetch on window focus, and `AuthStorageSync` only leaves an account's namespace once `/api/auth/session` itself answered 200 with no session (`src/lib/auth/sessionProbe.ts`); a failed request keeps the workspace and is retried
@@ -118,14 +119,15 @@ This is a Next.js 16.4 retirement planning simulator using React 19, TypeScript,
 
 - **UI Components**: shadcn/ui components in `src/components/ui/`
 - **Workspace** (`src/components/workspace/`): the one-page `/simulation` UI
-  - `WorkspaceProvider` + `useWorkspace()`: page API (sections, edit panel, compare mode); `useWorkspaceHash` (hash ↔ state, German aliases), `useScrollSpy` + `useWorkspaceUiStore` (active section), `useStickyOffset`, `usePanelMode`; pure rules in `workspaceNav.ts`
-  - `ResultBar` (plan menu, KPIs, run status, save/discard, Cmd/Ctrl+S), `SectionIndex` (rail / chip row / bottom bar by width), `PlanMenu`, `PlanManagerDialog`, `EuroDisplay`
-  - `sections/`: `ResultSection`, `AssumptionsSection`, `CashflowSection`, `WithdrawalSection`, `LeversSection` on a shared `WorkspaceSection`
-  - `edit/`: `EditPanel` (Radix dialog, `modal={false}`: docked ≥1280, overlay 761–1279, bottom sheet on phones), code-split panel bodies, `focusField` for deep links
-  - `levers/`: `QuickLevers`, `LeverImpactList`, `UncertainFlowsList` ("Unsichere Posten"), `useLeverMeasurements` / `useFlowMeasurements` (gated background runs sharing one queue)
+  - `WorkspaceProvider` + `useWorkspace()`: page API (`openEditor`, `toggleGroup`, `setColumnOpen`, `scrollToSection`, compare mode); `useWorkspaceHash` (hash ↔ state, German aliases), `useScrollSpy` + `useWorkspaceUiStore`, `useStickyOffset`, `usePanelMode` (`docked` ≥1180 / `drawer` 761–1179 / `sheet` ≤760); pure rules in `workspaceNav.ts`
+  - `ResultBar` (plan menu, draft state, Verwerfen, "Speichern ▾", Cmd/Ctrl+S; € switch, PDF, Menü), `ResultDock` (pinned figures + `MiniFanChart`; one IntersectionObserver on the head's chart), `ResultFigures` (rate, end assets, deltas, run status — the surface in view carries the canonical test ids, the other one `head-`/`dock-`), `ChangeChips` (`ChangeRow` in the head, `ChangeMenu` in the dock), `SectionIndex` (`SectionAnchors` under the head, `ModeBar` "Ansehen │ Stellen" on phones), `Popover`, `PlanMenu`, `PlanManagerDialog`, `EuroDisplay`
+  - `sections/`: `ResultHead`, `CashflowSection`, `WithdrawalSection` (the outcome), `LeversSection` (Wirkung) on a shared `WorkspaceSection`
+  - `edit/`: `EditPanel` — the control column: an `<aside>` with five groups (`COLUMN_GROUPS`), sticky 56 px headers with a key figure (`useGroupSummaries`) and a dot for unsaved changes, several open at once, code-split bodies (`panelContent.tsx`), `focusField` for deep links, Escape back to what led in
+  - `levers/`: `LeverImpactList`, `UncertainFlowsList` ("Unsichere Posten"), `useLeverMeasurements` / `useFlowMeasurements` (background runs gated on idleness, sharing one queue)
+  - `useSavedPlanResults` (the ghost's result), `useDraftChanges` (chips, counts, group dots), `savedDelta.ts`
   - Shared: `LazyMount` (mount near the viewport, `data-lazy-state`), `AnimatedNumber` (tweened numbers; tests read `data-value`), `Skeleton`
-- **Plans**: Plan switcher, switch guard, name/scenario dialogs, withdrawal planner and `planSections.ts` (panel ids, field → panel) in `src/components/plans/`; the edit panel bodies are the groups in `src/components/plans/editor/` (`PersonalGroup`, `SavingsGroup`, `FlowsGroup`, `MarketGroup`, `shared.tsx`)
-- **Compare and fan chart**: `CompareView`, `CompareFanChart`, `FanChartCard` and the Menu dialog (`DashboardTools`) in `src/components/simulation-compact/`
+- **Plans**: Plan switcher, switch guard, name/scenario dialogs and `planSections.ts` (the column's groups and their body ids) in `src/components/plans/`; `WithdrawalPlanner.tsx` holds both halves of Entnahme — `WithdrawalRuleGroup` (the rule, in the column) and `WithdrawalOutcome` (readouts, corridor, four-rule comparison, on the canvas); the other group bodies are in `src/components/plans/editor/` (`PersonalGroup`, `SavingsGroup`, `FlowsGroup`, `MarketGroup`, `shared.tsx`)
+- **Compare and fan chart**: `CompareView`, `CompareFanChart`, `FanChartCard` (ghost, held value axis; geometry in `fanGeometry.ts`), `MiniFanChart` and the Menü dialog (`DashboardTools`) in `src/components/simulation-compact/`
 - **Auth**: Account menu, auth provider, cloud sync in `src/components/auth/`
 - **Form Components**: Setup wizard fields and labeled inputs in `src/components/forms/`
 - **Chart Components**: visualizations in `src/components/charts/`; `CashflowSankey` + `CashflowCard` (the "Aufstellung") share one expanded state and drill into flows via `src/lib/simulation/flowBreakdown.ts`

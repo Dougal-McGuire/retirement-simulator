@@ -1,139 +1,96 @@
 'use client'
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type MouseEvent,
-} from 'react'
+import { memo, type MouseEvent } from 'react'
 import { useTranslations } from 'next-intl'
-import {
-  ChartNoAxesCombined,
-  ClipboardList,
-  HandCoins,
-  SlidersHorizontal,
-  WalletCards,
-} from 'lucide-react'
-import { useActiveSection } from './useWorkspaceUiStore'
+import { ChartNoAxesCombined, SlidersHorizontal } from 'lucide-react'
+import { useActiveSection, useColumnOpen } from './useWorkspaceUiStore'
 import { useWorkspace } from './WorkspaceProvider'
 import { WORKSPACE_SECTIONS, type WorkspaceSectionId } from './workspaceNav'
 
-const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
-
-const ICONS: Record<WorkspaceSectionId, typeof ChartNoAxesCombined> = {
-  result: ChartNoAxesCombined,
-  assumptions: ClipboardList,
-  cashflow: WalletCards,
-  withdrawal: HandCoins,
-  levers: SlidersHorizontal,
-}
+/** The sections below the head; the head itself needs no link to itself. */
+const ANCHORS = WORKSPACE_SECTIONS.filter((id) => id !== 'result')
 
 /**
- * The one section index. CSS decides how it presents: a left rail (≥1024;
- * icons with tooltips while a docked panel is open below 1800px), a sticky
- * chip row under the result bar (761–1023) or a fixed bottom bar (≤760).
- * Plain links — Tab moves between them; a click scrolls the section
- * under the sticky chrome and focuses its heading, while middle-click and
- * "open in new tab" still follow the `href`. In compare mode every item means
- * "leave the comparison and go there".
+ * The three anchors under the head: Geldfluss · Entnahme · Wirkung. They
+ * replace the rail — the page is short enough to need no pinned index, and
+ * the dock's mini chart leads back to the head. Plain links: a click scrolls
+ * the section under the pinned chrome and focuses its heading, while
+ * middle-click and "open in new tab" still follow the `href`.
  */
-export function SectionIndex() {
+export const SectionAnchors = memo(function SectionAnchors() {
   const t = useTranslations('workspace')
   const active = useActiveSection()
-  const { mode, scrollToSection, exitCompare, pageInert } = useWorkspace()
-  const listRef = useRef<HTMLOListElement>(null)
-  const current = mode === 'plan' ? active : null
-
-  // Chip row: keep the current chip in view without scrolling the page.
-  useEffect(() => {
-    const list = listRef.current
-    if (!list || !current || list.scrollWidth <= list.clientWidth) return
-    const link = list.querySelector<HTMLElement>(`[data-section-link="${current}"]`)
-    if (!link) return
-    const left = link.offsetLeft - list.offsetLeft
-    const right = left + link.offsetWidth
-    if (left < list.scrollLeft) list.scrollLeft = left
-    else if (right > list.scrollLeft + list.clientWidth) list.scrollLeft = right - list.clientWidth
-  }, [current])
-
-  // Rail: the accent marker is placed from the current link's measured box,
-  // so it follows the real item height (and any gap) instead of assuming a
-  // fixed row. Re-measured on resize; unmeasured, CSS falls back to the
-  // item index. The first placement does not slide (data-measured).
-  const [marker, setMarker] = useState<{ y: number; h: number } | null>(null)
-  useIsomorphicLayoutEffect(() => {
-    const list = listRef.current
-    if (!list || !current) return
-    const measure = () => {
-      const link = list.querySelector<HTMLElement>(`[data-section-link="${current}"]`)
-      if (!link || link.offsetHeight === 0) return
-      const next = { y: link.offsetTop, h: link.offsetHeight }
-      setMarker((previous) =>
-        previous && previous.y === next.y && previous.h === next.h ? previous : next
-      )
-    }
-    measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [current])
+  const { scrollToSection } = useWorkspace()
 
   const onClick = (event: MouseEvent<HTMLAnchorElement>, id: WorkspaceSectionId) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
       return
     }
     event.preventDefault()
-    if (mode === 'compare') exitCompare({ section: id, focus: true })
-    else scrollToSection(id, { focus: true })
+    scrollToSection(id, { focus: true })
   }
 
-  const activeIndex = current ? WORKSPACE_SECTIONS.indexOf(current) : -1
   return (
     <nav
       id="navigation"
-      className="ws-index"
+      className="ws-anchors"
       aria-label={t('navigation')}
       data-testid="section-index"
-      data-sticky-chrome="true"
-      inert={pageInert}
-      style={
-        {
-          '--ws-index-active': Math.max(0, activeIndex),
-          ...(marker ? { '--ws-index-y': `${marker.y}px`, '--ws-index-h': `${marker.h}px` } : {}),
-        } as CSSProperties
-      }
-      data-has-current={current ? 'true' : undefined}
-      data-measured={marker ? 'true' : undefined}
     >
-      <ol ref={listRef}>
-        {WORKSPACE_SECTIONS.map((id) => {
-          const Icon = ICONS[id]
-          return (
-            <li key={id}>
-              <a
-                href={`#${id}`}
-                data-testid={`section-link-${id}`}
-                data-section-link={id}
-                aria-current={current === id ? 'location' : undefined}
-                onClick={(event) => onClick(event, id)}
-              >
-                <Icon aria-hidden="true" />
-                <span className="ws-index-label">{t(`sections.${id}.title`)}</span>
-                <span className="ws-index-short" aria-hidden="true">
-                  {t(`sections.${id}.short`)}
-                </span>
-                {/* The compact rail's hover/focus tooltip; the label above
-                    stays the accessible name. */}
-                <span className="ws-index-tip" aria-hidden="true">
-                  {t(`sections.${id}.title`)}
-                </span>
-              </a>
-            </li>
-          )
-        })}
+      <ol>
+        {ANCHORS.map((id) => (
+          <li key={id}>
+            <a
+              href={`#${id}`}
+              data-testid={`section-link-${id}`}
+              data-section-link={id}
+              aria-current={active === id ? 'location' : undefined}
+              onClick={(event) => onClick(event, id)}
+            >
+              {t(`sections.${id}.title`)}
+            </a>
+          </li>
+        ))}
       </ol>
-      <span className="ws-index-indicator" aria-hidden="true" />
     </nav>
   )
-}
+})
+
+/**
+ * The phone's two modes, switched by a bar fixed at the bottom: "Ansehen"
+ * (the canvas) and "Stellen" (the control column). The dock stays pinned in
+ * both, so the result is in view whichever one is showing. Hidden above
+ * 760 px by CSS, where both are on screen (or one tap of the drawer away).
+ */
+export const ModeBar = memo(function ModeBar() {
+  const t = useTranslations('workspace.modes')
+  const { mode, setColumnOpen, exitCompare } = useWorkspace()
+  const editing = useColumnOpen() === true
+  const select = (edit: boolean) => {
+    // Out of the comparison first: "Stellen" edits the active plan.
+    if (edit && mode === 'compare') exitCompare()
+    setColumnOpen(edit, { focus: true })
+  }
+  return (
+    <nav className="ws-modes" aria-label={t('label')} data-testid="mode-bar" data-bottom-chrome>
+      <button
+        type="button"
+        data-testid="mode-view"
+        aria-pressed={!editing}
+        onClick={() => select(false)}
+      >
+        <ChartNoAxesCombined size={20} aria-hidden="true" />
+        {t('view')}
+      </button>
+      <button
+        type="button"
+        data-testid="mode-edit"
+        aria-pressed={editing}
+        onClick={() => select(true)}
+      >
+        <SlidersHorizontal size={20} aria-hidden="true" />
+        {t('edit')}
+      </button>
+    </nav>
+  )
+})

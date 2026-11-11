@@ -90,6 +90,7 @@ export function FlowsGroup() {
     >
       <CashFlowList
         compact
+        layout="column"
         flows={cashFlows}
         currentAge={params.currentAge}
         retirementAge={params.retirementAge}

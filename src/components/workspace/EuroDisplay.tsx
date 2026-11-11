@@ -5,15 +5,22 @@ import { SegmentedRadio } from '@/components/ui/segmented-radio'
 import { useDisplayReal, useSetDisplayReal } from '@/lib/stores/displayStore'
 
 /**
- * The global nominal / today's-€ switch. Rendered in the rail footer from
- * 1024px up and inside the Menu dialog, which shows it wherever the rail's is
- * not on screen (below 1024px, and beside the compact rail while a docked
- * panel is open). The secondary instance passes its own test id.
+ * The global nominal / today's-€ switch. It has one place at every width:
+ * the bar. On narrow phones each option shows a short label; the full one
+ * stays its accessible name.
  */
 export function EuroDisplay({ testId = 'display-toggle' }: { testId?: string }) {
   const t = useTranslations('simulation.display')
   const real = useDisplayReal()
   const setReal = useSetDisplayReal()
+  const label = (full: string, short: string) => (
+    <>
+      <span className="workspace-euro-full">{full}</span>
+      <span className="workspace-euro-short" aria-hidden="true">
+        {short}
+      </span>
+    </>
+  )
   return (
     <SegmentedRadio
       className="workspace-euro"
@@ -22,8 +29,8 @@ export function EuroDisplay({ testId = 'display-toggle' }: { testId?: string }) 
       value={real}
       onChange={setReal}
       options={[
-        { value: false, label: t('nominal') },
-        { value: true, label: t('real') },
+        { value: false, label: label(t('nominal'), t('nominalShort')) },
+        { value: true, label: label(t('real'), t('realShort')) },
       ]}
     />
   )

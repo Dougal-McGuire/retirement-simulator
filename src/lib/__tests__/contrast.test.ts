@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { GHOST_OUTLINE_OPACITY } from '@/components/simulation-compact/fanGeometry'
 
 /**
  * WCAG contrast guard for the interface tokens (spec §6.8). Parses
@@ -165,11 +166,22 @@ const TEXT_PAIRS: [string, string][] = [
   ['--danger', '--ui-bg'],
 ]
 
-/** Non-text graphics (WCAG 1.4.11): the index marker against its track and ground. */
+/**
+ * Non-text graphics (WCAG 1.4.11): the index marker against its track and
+ * ground, and the fan chart's lines. The saved plan's ghost (its dashed
+ * median) and the draft's median both run across the chart's surface and the
+ * two bands of the draft, so each has to stand out from all three.
+ */
 const GRAPHIC_PAIRS: [string, string][] = [
   ['--ui-accent', '--ui-border'],
   ['--ui-accent', '--ui-surface'],
   ['--ui-accent', '--ui-bg'],
+  ['--viz-ghost', '--ui-surface'],
+  ['--viz-ghost', '--viz-seq-1'],
+  ['--viz-ghost', '--viz-seq-2'],
+  ['--viz-seq-5', '--ui-surface'],
+  ['--viz-seq-5', '--viz-seq-1'],
+  ['--viz-seq-5', '--viz-seq-2'],
 ]
 
 describe('colour parsing', () => {
@@ -197,6 +209,25 @@ describe.each(Object.keys(SCHEMES) as Scheme[])('%s scheme', (scheme) => {
 
   it.each(GRAPHIC_PAIRS)('%s against %s meets 3:1 for graphics', (fg, bg) => {
     expect(contrast(color(fg, scheme), color(bg, scheme))).toBeGreaterThanOrEqual(3)
+  })
+
+  it('the ghost band outline keeps 3:1 at the opacity it is drawn with', () => {
+    const [r, g, b] = color('--viz-ghost', scheme)
+    const outline: Rgba = [r, g, b, GHOST_OUTLINE_OPACITY]
+    // The outline runs outside the draft's fan (the surface) and through its
+    // outer band wherever the two futures overlap.
+    for (const ground of ['--ui-surface', '--viz-seq-1']) {
+      expect(contrast(outline, color(ground, scheme))).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it('the ghost is quieter than the draft: grey beside the series colour', () => {
+    // Not a contrast requirement — what keeps "jetzt" and "gespeichert" apart
+    // without relying on the dash alone: the ghost carries (almost) no chroma.
+    const [r, g, b] = color('--viz-ghost', scheme)
+    expect(Math.max(r, g, b) - Math.min(r, g, b)).toBeLessThan(0.12)
+    const [dr, dg, db] = color('--viz-seq-5', scheme)
+    expect(Math.max(dr, dg, db) - Math.min(dr, dg, db)).toBeGreaterThan(0.3)
   })
 
   it('defines the workspace elevation and overlay tokens', () => {

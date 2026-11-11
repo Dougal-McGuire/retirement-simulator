@@ -62,7 +62,7 @@ test.describe('the example plan button with unsaved edits', () => {
     await expect(page.getByTestId('plan-menu-trigger')).toContainText('Base plan')
     await expect(page.getByTestId('result-bar')).toHaveAttribute('data-dirty', 'true')
     await openSection(page, 'levers')
-    await expect(leverSlider(page, 'Retirement age')).toHaveAttribute(
+    await expect(leverSlider(page)).toHaveAttribute(
       'aria-valuenow',
       String(edited)
     )

@@ -3,8 +3,8 @@ import {
   expect,
   expectNoHorizontalOverflow,
   gotoWorkspace,
+  groupHeader,
   openSection,
-  sectionHeading,
   test,
 } from './helpers/workspace'
 
@@ -64,49 +64,56 @@ async function editFromLedger(page: Page, label: string) {
     .click()
 }
 
-test('ledger labels open the matching panel and field', async ({ page }) => {
+test('ledger labels open the matching group and field in the control column', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1366, height: 900 })
   await gotoWorkspace(page, '/en/simulation#cashflow')
-  const panel = page.getByTestId('edit-panel')
-  const title = page.getByTestId('edit-panel-title')
   const year = page.getByTestId('cashflow-year-select')
   // The table lists what the year holds: a pension year has both taxes.
   await year.selectOption('67')
+  // Each label names the group it leads to, as the column names it.
+  await expect(
+    page
+      .getByTestId('cashflow-ledger')
+      .getByRole('button', { name: 'Capital gains tax – edit in “Market & taxes”' })
+  ).toBeVisible()
 
-  // Field deep links: the panel opens on the field that sets the number.
+  // Field deep links: the group opens on the field that sets the number.
   await editFromLedger(page, 'Capital gains tax')
-  await expect(title).toHaveText('Market & taxes')
+  await expect(groupHeader(page, 'market')).toHaveAttribute('aria-expanded', 'true')
   await expect(page.locator('#editor-capitalGainsTax')).toBeFocused()
 
   // The pension-tax field lives in a disclosure, which opens for it.
   await editFromLedger(page, 'Income tax')
-  await expect(panel).toHaveAttribute('data-panel', 'market')
   await expect(page.locator('#editor-pensionTaxablePortion')).toBeFocused()
 
-  // Panel-only targets focus the panel title; one panel at a time, swapped
-  // in place.
+  // Group-only targets focus the group's header; the groups opened before
+  // stay open beside it.
   for (const label of ['Pensions \\(gross\\)', 'Regular spending', 'Spending budget']) {
     await editFromLedger(page, label)
-    await expect(panel).toHaveAttribute('data-panel', 'flows')
-    await expect(title).toHaveText('Income & spending')
-    await expect(title).toBeFocused()
+    await expect(groupHeader(page, 'flows')).toHaveAttribute('aria-expanded', 'true')
+    await expect(groupHeader(page, 'flows')).toBeFocused()
+    await expect(groupHeader(page, 'flows')).toBeInViewport({ ratio: 1 })
   }
+  await expect(groupHeader(page, 'market')).toHaveAttribute('aria-expanded', 'true')
 
   // A working year: the savings contribution.
   await year.selectOption('55')
   await editFromLedger(page, 'Savings contribution')
-  await expect(panel).toHaveAttribute('data-panel', 'savings')
-  await expect(title).toHaveText('Assets & savings')
+  await expect(groupHeader(page, 'savings')).toHaveAttribute('aria-expanded', 'true')
   await expect(page.locator('#editor-annualSavings')).toBeFocused()
 
-  // The withdrawal line has no panel: it closes the editor and goes to Entnahme.
+  // The withdrawal line is set by the rule: the column's Entnahme group.
   await year.selectOption('67')
   await editFromLedger(page, 'Portfolio sale \\(gross\\)')
-  await expect(panel).toHaveCount(0)
-  await expect(sectionHeading(page, 'withdrawal')).toBeInViewport()
+  await expect(groupHeader(page, 'rule')).toHaveAttribute('aria-expanded', 'true')
+  await expect(groupHeader(page, 'rule')).toBeFocused()
   await expect(
     page.locator('[data-testid="withdrawal-strategy-picker"] [aria-pressed="true"]')
-  ).toBeFocused()
+  ).toBeVisible()
+  // The canvas has not left Geldfluss for any of it: the table is still there.
+  await expect(page.getByTestId('cashflow-ledger')).toBeInViewport()
 })
 
 test('phones get the stacked flows without sideways scrolling', async ({ page }) => {

@@ -14,25 +14,25 @@ import { StorageNotice } from '@/components/errors/StorageNotice'
 import { lazyComponent } from '@/components/lazy/lazyComponent'
 import { isUsableResults } from '@/lib/results/usableResults'
 import { hardenPersistence } from '@/lib/storage/hardenPersistence'
-import { EuroDisplay } from '@/components/workspace/EuroDisplay'
 import { ResultAnnouncer } from '@/components/workspace/ResultAnnouncer'
 import { EditPanel } from '@/components/workspace/edit/EditPanel'
 import { ResultBar } from '@/components/workspace/ResultBar'
-import { SectionIndex } from '@/components/workspace/SectionIndex'
+import { ResultDock } from '@/components/workspace/ResultDock'
+import { ModeBar } from '@/components/workspace/SectionIndex'
 import { useRunStatus } from '@/components/workspace/useRunStatus'
-import { WorkspaceBrand } from '@/components/workspace/WorkspaceShell'
+import { useColumnOpen } from '@/components/workspace/useWorkspaceUiStore'
 import {
   WorkspaceProvider,
   useWorkspace,
   useWorkspaceInternals,
 } from '@/components/workspace/WorkspaceProvider'
-import { AssumptionsSection } from '@/components/workspace/sections/AssumptionsSection'
 import { CashflowSection } from '@/components/workspace/sections/CashflowSection'
 import { LeversSection } from '@/components/workspace/sections/LeversSection'
-import { ResultSection } from '@/components/workspace/sections/ResultSection'
+import { ResultHead } from '@/components/workspace/sections/ResultHead'
 import { WithdrawalSection } from '@/components/workspace/sections/WithdrawalSection'
 import './workspace.css'
 import './ws-page.css'
+import './ws-frame.css'
 
 // Before any component can set state: a full quota must not throw out of a
 // store update (see `hardenPersistence`).
@@ -44,9 +44,9 @@ const CompareView = lazyComponent(() =>
   import('@/components/simulation-compact/CompareView').then((module) => module.CompareView)
 )
 
+/** The canvas, top to bottom: the result head, then the three sections under it. */
 const SECTIONS = [
-  { id: 'result', Section: ResultSection },
-  { id: 'assumptions', Section: AssumptionsSection },
+  { id: 'result', Section: ResultHead },
   { id: 'cashflow', Section: CashflowSection },
   { id: 'withdrawal', Section: WithdrawalSection },
   { id: 'levers', Section: LeversSection },
@@ -66,10 +66,10 @@ function WorkspaceError() {
 }
 
 /**
- * `<main>` and its run-state attributes. Only this element re-renders when a
- * run starts, lands or stops holding "running": the sections arrive as
- * `children` created by the page, which does not re-render for runs, so React
- * skips them here (§7 render isolation).
+ * `<main>` — the result canvas — and its run-state attributes. Only this
+ * element re-renders when a run starts, lands or stops holding "running":
+ * the sections arrive as `children` created by the page, which does not
+ * re-render for runs, so React skips them here (render isolation).
  */
 function WorkspaceMain({ inert, children }: { inert: boolean; children: ReactNode }) {
   const loading = useSimulationLoading()
@@ -88,21 +88,61 @@ function WorkspaceMain({ inert, children }: { inert: boolean; children: ReactNod
 }
 
 /**
- * The one-page workspace: a sticky result bar, five sections indexed by one
- * navigation (rail / chip row / bottom bar, by width), the assumptions in an
- * edit panel that leaves the results visible, and plan comparison as a mode
- * of the same page.
+ * The page's root element. Its attributes follow the column's fold state,
+ * which lives in the UI store: only this wrapper re-renders when the drawer
+ * folds or the phone changes mode — the bar, canvas and column arrive as
+ * `children` and are skipped.
+ */
+function WorkspaceFrame({ children }: { children: ReactNode }) {
+  const { mode, panelMode } = useWorkspace()
+  const { pageRef } = useWorkspaceInternals()
+  const columnOpen = useColumnOpen()
+  return (
+    <div
+      ref={pageRef}
+      className="ws-page"
+      data-mode={mode}
+      data-panel-mode={panelMode}
+      data-column={columnOpen === null ? undefined : columnOpen ? 'open' : 'closed'}
+    >
+      {children}
+    </div>
+  )
+}
+
+/** The canvas, inert while the phone shows "Stellen" in its place. */
+function WorkspaceCanvas({ children }: { children: ReactNode }) {
+  const { panelMode } = useWorkspace()
+  const columnOpen = useColumnOpen()
+  return (
+    <WorkspaceMain inert={panelMode === 'sheet' && columnOpen === true}>{children}</WorkspaceMain>
+  )
+}
+
+/**
+ * The one-page workspace, built so that the result is always in view:
+ *
+ * - a slim bar (plan, draft state, save; € switch, PDF, Menü);
+ * - the result canvas, which scrolls with the page — the head (figures, the
+ *   fan chart with the saved plan as a ghost, the changes) and under it
+ *   Geldfluss, Entnahme and Wirkung;
+ * - the dock, the head's collapsed form, pinned under the bar once the
+ *   head's chart has scrolled away (always, below 1180 px);
+ * - the control column with every input exactly once: a permanent pane from
+ *   1180 px, a drawer at 761–1179, the mode "Stellen" on phones.
+ *
+ * Plan comparison is a mode of the same page: CompareView takes the canvas
+ * and the column gives way.
  */
 function WorkspacePage() {
   const t = useTranslations('workspace')
   const tp = useTranslations('plans')
   // Nothing here may subscribe to run state or results: a re-render of the
-  // page is a re-render of every section, the panel and the bar.
+  // page is a re-render of every section, the column and the bar.
   const error = useSimulationStore((state) => state.error)
   const run = useSimulationStore((state) => state.runSimulation)
   const activePlan = useActivePlan()
-  const { mode, panelMode, editor, pageInert, exitCompare } = useWorkspace()
-  const { pageRef } = useWorkspaceInternals()
+  const { mode, exitCompare } = useWorkspace()
 
   useEffect(() => {
     const initialize = () => {
@@ -121,12 +161,25 @@ function WorkspacePage() {
     else return persist.onFinishHydration(initialize)
   }, [])
 
-  // `R` recalculates, except while typing or inside a dialog (the edit panel
-  // is a dialog too).
+  // `R` recalculates, except while typing or inside a dialog. F6 moves
+  // between the canvas and the control column (keyboard order: bar, head,
+  // canvas, column — F6 is the shortcut across).
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (!['r', 'R'].includes(event.key) || event.metaKey || event.ctrlKey || event.altKey) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
       const target = event.target as HTMLElement | null
+      if (event.key === 'F6') {
+        const column = document.getElementById('edit-panel')
+        const inColumn = Boolean(target && column?.contains(target))
+        const next = inColumn
+          ? document.getElementById('result-title')
+          : document.getElementById('edit-panel-title')
+        if (!next || next.getClientRects().length === 0) return
+        event.preventDefault()
+        next.focus({ preventScroll: inColumn ? false : true })
+        return
+      }
+      if (!['r', 'R'].includes(event.key)) return
       if (target?.closest('input, select, textarea, [role="dialog"]') || target?.isContentEditable)
         return
       run()
@@ -137,37 +190,19 @@ function WorkspacePage() {
 
   const plan = activePlan ? planDisplayName(activePlan, tp) : t('brand')
   return (
-    <div
-      ref={pageRef}
-      className="ws-page"
-      data-mode={mode}
-      data-panel-mode={panelMode}
-      data-panel-open={editor ? 'true' : undefined}
-    >
-      <aside className="ws-rail" inert={pageInert}>
-        <WorkspaceBrand />
-        {/* The compact rail (docked panel open) shows the app mark instead of the name. */}
-        <span
-          className="ws-rail-mark brand-mark"
-          aria-hidden="true"
-          style={{ WebkitMaskImage: 'url(/piggy.svg)', maskImage: 'url(/piggy.svg)' }}
-        />
-        <SectionIndex />
-        <div className="ws-rail-footer">
-          <EuroDisplay />
-        </div>
-      </aside>
+    <WorkspaceFrame>
       <ResultBar />
-      <WorkspaceMain inert={pageInert}>
+      <ResultDock />
+      <WorkspaceCanvas>
         <div className="ws-scroll-sentinel" data-scroll-sentinel aria-hidden="true" />
         <h1 className="sr-only">{t('pageTitle', { plan })}</h1>
         <StorageNotice className="ws-storage-notice" />
         {error && <WorkspaceError />}
         <div className="ws-sections" hidden={mode === 'compare'}>
           {/* The sections read a deferred copy of the results: when a run
-              lands, the result bar (outside) commits first and the charts
-              below follow in an interruptible render. Each section fails
-              on its own: the bar and the other sections keep working. */}
+              lands, the head's figures and the dock (which read the store)
+              commit first and the charts follow in an interruptible render.
+              Each section fails on its own: the rest keeps working. */}
           <DeferredResultsScope>
             {SECTIONS.map(({ id, Section }) => (
               <SectionBoundary
@@ -185,15 +220,16 @@ function WorkspacePage() {
           <SectionBoundary name="compare">
             <CompareView
               onExit={() => exitCompare()}
-              onOpenPlanEditor={() => exitCompare({ section: 'assumptions', focus: true })}
+              onOpenPlanEditor={() => exitCompare({ column: true })}
             />
           </SectionBoundary>
         )}
-      </WorkspaceMain>
+      </WorkspaceCanvas>
       <EditPanel />
+      <ModeBar />
       {/* The one live region for results; outside everything that can go inert. */}
       <ResultAnnouncer />
-    </div>
+    </WorkspaceFrame>
   )
 }
 

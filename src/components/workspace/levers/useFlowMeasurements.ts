@@ -67,12 +67,12 @@ export function impactMagnitude(impact: FlowImpact, saturated: boolean): number 
  * Largest items are measured first; finished items are cached per draft, so
  * an interrupted pass resumes where it stopped.
  */
-export function useFlowMeasurements({ near, holding }: { near: boolean; holding: boolean }): {
+export function useFlowMeasurements({ near }: { near: boolean }): {
   measurement: FlowMeasurement | null
   fresh: boolean
   measuring: boolean
 } {
-  const { gateOpen, gateRef, settled } = useSettledBase({ near, holding })
+  const { gateOpen, gateRef, settled } = useSettledBase({ near })
   const [measurement, setMeasurement] = useState<FlowMeasurement | null>(null)
   const [measuring, setMeasuring] = useState(false)
   const cacheRef = useRef<{ fingerprint: string; byId: Map<string, FlowImpact> } | null>(null)

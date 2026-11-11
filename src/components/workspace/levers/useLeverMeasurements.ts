@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import type { SimulationParams, SimulationResults } from '@/types'
+import type { SimulationResults } from '@/types'
+import { runInBackgroundSlot } from '@/lib/simulation/backgroundQueue'
 import { simulationFingerprint } from '@/lib/simulation/context'
 import {
   areSimulationParamsEqual,
@@ -52,27 +53,52 @@ export interface LeverMeasurement {
 export interface LeverGateInputs {
   /** The lever list is near the viewport. */
   near: boolean
-  /** An assumption panel is open (its edits run the simulation). */
-  editorOpen: boolean
   /** Compare mode: the sections are hidden. */
   comparing: boolean
   /** A run is loading or queued. */
   busy: boolean
   /** The shown results were computed for the current draft. */
   current: boolean
-  /** A quick slider is held: the next drag step must not wait for a lever run. */
+  /**
+   * A control of the column is held (a slider being dragged, a stepper kept
+   * pressed): the next step must not wait for a lever run.
+   */
   holding: boolean
 }
 
 /**
- * Whether background lever runs may use the worker now. Everything the reader
- * is doing wins: the main run, an open panel, a held slider, another place on
- * the page.
+ * Whether background lever runs may use the worker now. The control column
+ * is always there, so the gate is idleness: the list is near the screen,
+ * nothing is running, nothing is held, and the shown results are the
+ * draft's. Everything the reader is doing wins.
  */
 export function shouldMeasureLevers(gate: LeverGateInputs): boolean {
-  return (
-    gate.near && !gate.editorOpen && !gate.comparing && !gate.busy && gate.current && !gate.holding
-  )
+  return gate.near && !gate.comparing && !gate.busy && gate.current && !gate.holding
+}
+
+/**
+ * True while a pointer is down on a control of the column — the one place
+ * values are dragged. Typing needs no flag: each keystroke starts a run, and
+ * the settle timer waits for the last one.
+ */
+function useColumnHold(): boolean {
+  const [holding, setHolding] = useState(false)
+  useEffect(() => {
+    const down = (event: PointerEvent) => {
+      const target = event.target
+      if (target instanceof Element && target.closest('#edit-panel')) setHolding(true)
+    }
+    const up = () => setHolding(false)
+    document.addEventListener('pointerdown', down, true)
+    document.addEventListener('pointerup', up, true)
+    document.addEventListener('pointercancel', up, true)
+    return () => {
+      document.removeEventListener('pointerdown', down, true)
+      document.removeEventListener('pointerup', up, true)
+      document.removeEventListener('pointercancel', up, true)
+    }
+  }, [])
+  return holding
 }
 
 export const isLeverSaturated = (successRate: number) => successRate >= LEVER_SATURATION
@@ -104,28 +130,9 @@ export function sortLeverResults(levers: LeverResult[], saturated: boolean): Lev
   )
 }
 
-/**
- * One background job on the shared worker at a time, across every list that
- * measures in the background (stress levers, uncertain items). The worker
- * runs jobs in order, so this is what bounds the wait of the result bar's
- * next run to a single background job. `wanted` is checked once the slot is
- * free: a job whose gate closed while it waited is never sent.
- */
-let backgroundTail: Promise<unknown> = Promise.resolve()
-
-export function runInBackgroundSlot(
-  params: SimulationParams,
-  wanted: () => boolean
-): Promise<SimulationResults | null> {
-  const job = backgroundTail.then(async () => {
-    if (!wanted()) return null
-    const { runSimulationInClient } = await import('@/lib/simulation/workerClient')
-    if (!wanted()) return null
-    return runSimulationInClient(params)
-  })
-  backgroundTail = job.catch(() => null)
-  return job
-}
+// The one queue every background measurement shares (levers, uncertain
+// items, the saved plan's result for the ghost).
+export { runInBackgroundSlot }
 
 export interface SettledBase {
   /** `shouldMeasureLevers` for the current page state. */
@@ -141,19 +148,14 @@ export interface SettledBase {
 
 /**
  * The gate and settle timer every background measurement shares: the list is
- * near the screen, no panel is open, nothing is running or held, and the
- * shown results describe the current draft — for `LEVER_SETTLE_MS`.
+ * near the screen, nothing is running or held, and the shown results describe
+ * the current draft — for `LEVER_SETTLE_MS`.
  */
-export function useSettledBase({
-  near,
-  holding,
-}: {
-  near: boolean
-  holding: boolean
-}): SettledBase {
-  const { editor, mode } = useWorkspace()
+export function useSettledBase({ near }: { near: boolean }): SettledBase {
+  const { mode } = useWorkspace()
+  const holding = useColumnHold()
   // Deferred inside the page's results scope: a landing run reaches the list
-  // after the result bar. The settle timer and the `getState()` checks
+  // after the result head. The settle timer and the `getState()` checks
   // compare against the store, so a superseded result is never measured.
   const results = useUsableResults()
   // Narrow selectors: while a slider is scrubbed these flip a few times, and
@@ -176,7 +178,6 @@ export function useSettledBase({
 
   const gateOpen = shouldMeasureLevers({
     near,
-    editorOpen: editor !== null,
     comparing: mode === 'compare',
     busy,
     current,
@@ -219,14 +220,8 @@ export interface LeverMeasurementsState {
  * resumes instead of starting over, and a re-opened gate with nothing changed
  * measures nothing.
  */
-export function useLeverMeasurements({
-  near,
-  holding,
-}: {
-  near: boolean
-  holding: boolean
-}): LeverMeasurementsState {
-  const { gateOpen, gateRef, settled } = useSettledBase({ near, holding })
+export function useLeverMeasurements({ near }: { near: boolean }): LeverMeasurementsState {
+  const { gateOpen, gateRef, settled } = useSettledBase({ near })
 
   const [measurement, setMeasurement] = useState<LeverMeasurement | null>(null)
   const [measuring, setMeasuring] = useState(false)

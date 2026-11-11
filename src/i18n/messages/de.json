@@ -605,31 +605,30 @@
     "display": {
       "label": "Darstellung der Eurobeträge",
       "nominal": "Nominal",
-      "real": "Heutige €"
+      "real": "Heutige €",
+      "nominalShort": "Nom.",
+      "realShort": "Heute"
     }
   },
   "simulationCompact": {
     "commandBar": {
-      "ageAria": "Renteneintrittsalter",
-      "saveAria": "Jährliche Sparrate",
-      "spendAria": "Monatliche Ausgaben",
-      "spendValue": "{amount} pro Monat",
-      "roiAria": "Erwartete Rendite",
       "saveButton": "Speichern"
     },
-    "advanced": {
-      "volatilityAria": "Renditevolatilität",
-      "inflationAria": "Durchschnittliche Inflation",
-      "pensionAria": "Monatliche gesetzliche Rente",
-      "endAgeAria": "Endalter des Plans",
-      "glidePath": "Gleitpfad {start} → {end}"
-    },
     "chart": {
-      "bandOuter": "P10–90",
-      "bandInner": "P20–80",
-      "median": "Median",
-      "nominal": "Nominal",
-      "real": "Real"
+      "bandOuter": "8 von 10 Verläufen",
+      "bandInner": "6 von 10",
+      "median": "mittlerer Verlauf",
+      "nominal": "Nominale €",
+      "real": "Heutige €",
+      "title": "Vermögen",
+      "now": "jetzt",
+      "saved": "gespeichert",
+      "options": "Diagramm-Optionen",
+      "range": "Alter {from}–{to}",
+      "retirementMarker": "Ruhestart {age}",
+      "savedMarker": "war {age}",
+      "pensionMarker": "Rente ab {age}",
+      "savedMedian": "gespeichert, mittlerer Verlauf"
     },
     "compare": {
       "title": "Pläne vergleichen",
@@ -681,8 +680,8 @@
     "retry": "Erneut berechnen",
     "tools": {
       "button": "Menü",
-      "title": "Bericht und Einstellungen",
-      "description": "Bericht exportieren, Sprache, Konto und Darstellung ändern."
+      "title": "Einstellungen",
+      "description": "Sprache, Konto und Darstellung ändern."
     }
   },
   "parameterControls": {
@@ -1145,11 +1144,11 @@
     "reset": "Zoom zurücksetzen",
     "tooltip": {
       "label": "Alter {age}",
-      "p90": "90. Perzentil",
-      "p80": "80. Perzentil",
-      "median": "Median",
-      "p20": "20. Perzentil",
-      "p10": "10. Perzentil"
+      "p90": "Oberer Rand · 8 von 10",
+      "p80": "Oberer Rand · 6 von 10",
+      "median": "Mittlerer Verlauf",
+      "p20": "Unterer Rand · 6 von 10",
+      "p10": "Unterer Rand · 8 von 10"
     },
     "scale": {
       "label": "Skalierung der Werteachse",
@@ -2176,27 +2175,11 @@
   },
   "planEditor": {
     "groups": {
-      "personal": {
-        "title": "Person & Zeitachse",
-        "description": "Die Alter, die Ansparphase und Entnahmephase abstecken."
-      },
-      "income": {
-        "title": "Vermögen & Sparen",
-        "description": "Was du heute hast und bis zum Ruhestand zurücklegst."
-      },
-      "market": {
-        "title": "Markt & Steuern",
-        "description": "Renditeannahmen und deutsche Steuern."
-      },
       "cashFlows": {
-        "title": "Einnahmen & Ausgaben",
-        "description": "Alles, was dieser Plan zahlt oder einnimmt — und wie lange.",
         "incomePointer": "{count, plural, =0 {Einmalige Einnahmen – Bearbeitung unter „Einnahmen & Ausgaben“} =1 {# einmalige Einnahme, Bearbeitung unter „Einnahmen & Ausgaben“} other {# einmalige Einnahmen, Bearbeitung unter „Einnahmen & Ausgaben“}}"
       },
       "withdrawal": {
-        "title": "Entnahme",
-        "description": "Wie aus dem Depot ein Einkommen wird.",
-        "pointer": "Entnahmeregel: {strategy} — festgelegt im Abschnitt „Entnahme“"
+        "pointer": "Entnahmeregel: {strategy} — festgelegt in der Gruppe „Entnahme“"
       }
     },
     "summary": {
@@ -2223,9 +2206,7 @@
       "undone": "Zurücksetzen rückgängig gemacht"
     },
     "sections": {
-      "staleStats": "Ein Wert unten liegt außerhalb des gültigen Bereichs — diese Kennzahlen beschreiben noch die zuletzt übernommene Eingabe.",
-      "previous": "Zurück: {title}",
-      "next": "Weiter: {title}"
+      "staleStats": "Ein Wert unten liegt außerhalb des gültigen Bereichs — diese Kennzahlen beschreiben noch die zuletzt übernommene Eingabe."
     }
   },
   "withdrawalPlanner": {
@@ -2421,38 +2402,10 @@
     "brand": "Ruhestandsplanung",
     "navigation": "Abschnitte",
     "saved": "Plan gespeichert",
-    "unsaved": "Ungespeicherte Änderungen",
     "calculate": "Neu berechnen",
     "computing": "Berechnung läuft …",
-    "lastsTo": "Vermögen reicht im Median bis Alter",
-    "badPaths": "Schwächere 10 %: bis Alter {age}",
-    "firstDraw": "Monatliche Depotentnahme zum Ruhestart",
-    "grossMean": "Durchschnitt, brutto einschließlich Kapitalertragsteuer",
-    "endAssets": "Vermögen am Ende · Median",
-    "lowAssets": "Schwächere 10 %: {amount}",
-    "assetTitle": "Vermögensentwicklung",
-    "assetDescription": "Die Linie zeigt den Median, das Band die Bandbreite der simulierten Verläufe. Einzelne Jahre lassen sich im Diagramm untersuchen.",
-    "retirement": "Ruhestart",
-    "ageValue": "Mit {age} Jahren",
-    "startingAssets": "Vermögen heute",
-    "savingsHint": "{amount} Sparbeitrag pro Jahr",
-    "plannedBudget": "Geplantes Monatsbudget",
     "edit": "Bearbeiten",
-    "footer": "Alle Ergebnisse hängen von deinen Annahmen ab. Steuern und Kapitalmärkte werden vereinfacht modelliert.",
-    "today": "Heute",
-    "firstPension": "Erste geplante Rente",
-    "noPension": "Keine eingetragen",
-    "horizon": "Planungshorizont",
-    "whatIf": {
-      "note": "Änderungen hier sind Entwürfe – sie gelten erst für deinen Plan, wenn du speicherst.",
-      "pending": "Speichern oder verwerfen kannst du sie oben in der Ergebnisleiste."
-    },
-    "compareEntry": {
-      "title": "Mit einem anderen Plan vergleichen",
-      "detail": "{active} direkt neben {other}",
-      "duplicateTitle": "Variante anlegen, um zu vergleichen",
-      "duplicateDetail": "Kopiert deinen aktuellen Plan – so prüfst du eine Änderung neben dem Original."
-    },
+    "footer": "Alle Ergebnisse hängen von deinen Annahmen ab. Steuern und Kapitalmärkte werden vereinfacht modelliert. Eine Modellrechnung, keine Garantie.",
     "discard": "Verwerfen",
     "discardedToast": "Ungespeicherte Änderungen an „{name}“ verworfen",
     "calculateHint": "Ergebnisse aktualisieren sich automatisch. Neu berechnen brauchst du nur, wenn sie veraltet sind.",
@@ -2474,7 +2427,6 @@
       "compare": "Pläne vergleichen",
       "saveAsNew": "Änderungen als neuen Plan speichern …"
     },
-    "unsavedShort": "Ungespeichert",
     "pageTitle": "{plan} – Ruhestandsplanung",
     "sections": {
       "result": {
@@ -2495,98 +2447,51 @@
       "withdrawal": {
         "title": "Entnahme",
         "short": "Entnahme",
-        "description": "Wie aus deinem Depot ein Einkommen wird – und was es in schwachen Jahren tut."
+        "description": "Was deine Entnahmeregel aus dem Depot macht – auch in schwachen Jahren."
       },
       "levers": {
-        "title": "Stellschrauben",
-        "short": "Hebel",
-        "description": "Probier Änderungen aus und sieh, was am meisten bewirkt."
+        "title": "Wirkung",
+        "short": "Wirkung",
+        "description": "Was dein Ergebnis am meisten bewegt – gemessen an deinem Plan."
       }
     },
     "bar": {
       "label": "Ergebnis deines Plans",
-      "success": "Erfolgsquote",
-      "successShort": "Erfolg",
-      "endAssets": "Vermögen am Ende · Median",
-      "endAssetsShort": "Ende · Median",
       "deltaAria": "Veränderung gegenüber dem gespeicherten Plan: {delta}",
-      "saveAsNew": "Als neuen Plan speichern …"
+      "saveAsNew": "Als Variante speichern …",
+      "saveMenu": "Speichern",
+      "saveMore": "Weitere Möglichkeiten zum Speichern",
+      "pdf": "PDF"
     },
     "verdict": {
-      "lead": "der simulierten Verläufe finanzieren dein Budget und dein Vermögensziel bis Alter {end}."
-    },
-    "runContext": {
-      "monteCarlo": "Monte-Carlo-Simulation mit {runs} Läufen",
-      "historical": "Historische Renditen, {runs} Startjahre",
-      "disclaimer": "Eine Modellrechnung, keine Garantie."
-    },
-    "lifeStages": {
-      "label": "Lebensphasen",
-      "editAria": "{label}: {value} – bearbeiten"
+      "sentence": "Dein Geld reicht in {count} von 100 Verläufen bis {end}.",
+      "sentenceLegacy": "In {count} von 100 Verläufen reicht dein Geld bis {end} und dein Vermögensziel bleibt übrig."
     },
     "cards": {
-      "person": {
-        "label": "Geplanter Ruhestart",
-        "value": "Mit {age} Jahren",
-        "detail": "Heute {current} · geplant bis {end}",
-        "pension": "Gesetzliche Rente ab {age}"
-      },
-      "savings": {
-        "growth": "{rate} pro Jahr · Sparquote {share}"
-      },
-      "flows": {
-        "value": "{amount} pro Monat",
-        "counts": "{pensions, plural, =0 {keine Rente} one {# Rente} other {# Renten}} · {expenses} Ausgabenposten · {incomes} Einnahmen",
-        "pensions": "Renten mit {age}: {amount} brutto/Monat",
-        "statutoryOff": "Gesetzliche Rente ausgeschaltet",
-        "pensionsOff": "{count, plural, one {Rente ausgeschaltet} other {Alle # Renten ausgeschaltet}}",
-        "switchedOff": "{count} ausgeschaltet"
-      },
-      "market": {
-        "label": "Erwartete Rendite",
-        "labelHistorical": "Marktmodell",
-        "value": "{rate} pro Jahr",
-        "valueHistorical": "Historische Renditen",
-        "detail": "Inflation {inflation} · Schwankung ± {volatility}",
-        "detailHistorical": "{from}–{to} · {count} Startjahre",
-        "glideOn": "Gleitpfad {start} → {end}",
-        "glideOff": "Gleitpfad aus",
-        "tax": "Steuerlast ≈ {rate}"
-      },
       "startingValues": "Ausgangswerte in heutigen Euro"
     },
     "guidedSetup": "Geführte Einrichtung",
-    "guidedSetupHint": "Lieber Schritt für Schritt?",
     "editPanel": {
-      "close": "Bearbeiten schließen",
-      "done": "Fertig",
-      "navLabel": "Annahmen durchgehen",
-      "editAria": "{title} bearbeiten",
       "liveResult": "Erfolgsquote jetzt {rate}",
       "liveDelta": "{delta} gegenüber dem gespeicherten Plan",
       "toFlows": "Zu Einnahmen & Ausgaben",
-      "toWithdrawal": "Zum Abschnitt Entnahme"
+      "toWithdrawal": "Zur Entnahmeregel"
     },
     "planManager": {
       "title": "Pläne verwalten",
       "description": "Wechseln, anlegen, umbenennen, duplizieren oder löschen."
     },
     "levers": {
-      "quickTitle": "Schnell ausprobieren",
-      "more": "Weitere Regler",
-      "editMarket": "Alle Marktannahmen bearbeiten",
       "impactTitle": "Was am meisten bewirkt",
       "apply": "Übernehmen",
       "applyAria": "„{name}“ in den Entwurf übernehmen",
       "appliedToast": "„{name}“ übernommen – noch nicht gespeichert.",
-      "reset": "{label} zurücksetzen",
       "baseline": "Basis {rate} — der Wert aus dem Ergebnis, gemessen über {runs} Läufe. Jeder Effekt unten ist die Veränderung dazu.",
       "baselineHistorical": "Basis {rate} — der Wert aus dem Ergebnis, gemessen über {runs} historische Startjahre. Jeder Effekt unten ist die Veränderung dazu.",
       "measuring": "Wird gemessen …",
       "waiting": "Wird neu gemessen, sobald deine Eingaben ruhen.",
       "leadsTo": "ergibt",
       "saveAsPlan": "Als Plan speichern",
-      "pensionOff": "Gesetzliche Rente ausgeschaltet",
       "worstDecileUnit": "schlechtestes Zehntel",
       "flows": {
         "title": "Unsichere Posten",
@@ -2606,6 +2511,117 @@
     "meta": {
       "title": "Dein Ruhestandsplan — Ruhestandssimulator",
       "description": "Ergebnis, Annahmen, Geldfluss, Entnahme und Stellschrauben deines Ruhestandsplans auf einer Seite – live neu berechnet."
+    },
+    "head": {
+      "lastsTo": "Reicht bis",
+      "atEnd": "Am Ende",
+      "firstDraw": "Entnahme anfangs",
+      "firstDrawHint": "Durchschnittliche Depotentnahme im ersten Ruhestandsjahr, brutto. Führt zum Abschnitt Entnahme.",
+      "badCase": "schlechter Verlauf"
+    },
+    "dock": {
+      "label": "Ergebnis im Blick",
+      "rate": "Erfolgsquote",
+      "end": "Ende",
+      "lastsTo": "bis {age}",
+      "toHead": "Zum Diagramm"
+    },
+    "modes": {
+      "label": "Ansicht wechseln",
+      "view": "Ansehen",
+      "edit": "Stellen"
+    },
+    "withdrawal": {
+      "rule": "Regel: {strategy}",
+      "change": "Regel ändern"
+    },
+    "units": {
+      "monthly": "{amount}/Mon.",
+      "annual": "{amount}/Jahr",
+      "once": "{amount} einmalig"
+    },
+    "column": {
+      "title": "Annahmen",
+      "fold": "Annahmen einklappen",
+      "unfold": "Annahmen ausklappen",
+      "changed": "mit ungespeicherten Änderungen",
+      "groups": {
+        "person": "Zeit",
+        "savings": "Vermögen & Sparen",
+        "flows": "Einnahmen & Ausgaben",
+        "rule": "Entnahme",
+        "market": "Markt & Steuern"
+      },
+      "summary": {
+        "person": "{current} · {retirement} · {end}",
+        "savings": "{assets} · {savings}/Jahr",
+        "flows": "{amount}/Mon.",
+        "flowsOff": "{summary} · {count} aus",
+        "rule": "{strategy} · {rate}",
+        "strategy": {
+          "fixedReal": "Feste Kaufkraft",
+          "vanguardDynamic": "Dynamisch",
+          "guytonKlinger": "Guyton-Klinger",
+          "percentOfPortfolio": "Prozent vom Depot"
+        },
+        "market": "{rate} Rendite · {inflation} Inflation",
+        "marketHistorical": "Historisch {from}–{to}"
+      },
+      "flows": {
+        "add": "Posten",
+        "count": "{count, plural, =0 {Noch kein Posten} one {# Posten} other {# Posten}}",
+        "allOn": "alle an",
+        "off": "{count} aus"
+      }
+    },
+    "changes": {
+      "lead": "Geändert:",
+      "field": "{label} {from} → {to}",
+      "flowOff": "{name} aus",
+      "flowOn": "{name} an",
+      "flowAdded": "{name} neu",
+      "flowRemoved": "{name} entfernt",
+      "flowAmount": "{name} {from} → {to}",
+      "flowChanged": "{name} geändert",
+      "revert": "Änderung zurücknehmen: {change}",
+      "more": "+{count}",
+      "less": "Weniger zeigen",
+      "other": "Weitere Änderungen",
+      "count": "{count, plural, one {# Änderung} other {# Änderungen}}",
+      "countShort": "{count} Änd.",
+      "listLabel": "Ungespeicherte Änderungen",
+      "fields": {
+        "currentAge": "Heute",
+        "retirementAge": "Ruhestart",
+        "legalRetirementAge": "Rente ab",
+        "endAge": "Planen bis",
+        "currentAssets": "Vermögen",
+        "annualSavings": "Sparen pro Jahr",
+        "annualSavingsGrowthRate": "Wachstum der Sparrate",
+        "withdrawalStrategy": "Entnahmeregel",
+        "dsWithdrawalRate": "Entnahmerate",
+        "dsCeilingRate": "Obergrenze",
+        "dsFloorRate": "Untergrenze",
+        "spendingFloorReal": "Ausgaben-Untergrenze",
+        "marketModel": "Marktmodell",
+        "averageROI": "Rendite",
+        "roiVolatility": "Schwankung der Rendite",
+        "averageInflation": "Inflation",
+        "inflationVolatility": "Schwankung der Inflation",
+        "glidePathEnabled": "Gleitpfad",
+        "equityAllocationStart": "Aktienquote heute",
+        "equityAllocationEnd": "Aktienquote im Ruhestand",
+        "bondReturn": "Anleiherendite",
+        "bondVolatility": "Schwankung der Anleihen",
+        "simulationRuns": "Läufe",
+        "capitalGainsTax": "Abgeltungsteuer",
+        "taxAllowanceAnnual": "Sparerpauschbetrag",
+        "householdType": "Veranlagung",
+        "equityFundExemption": "Teilfreistellung",
+        "pensionTaxablePortion": "Besteuerungsanteil der Rente",
+        "pensionTaxRate": "Steuersatz auf die Rente",
+        "legacyTargetReal": "Vermögensziel"
+      }
     }
   }
 }
