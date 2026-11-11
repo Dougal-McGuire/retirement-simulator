@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { MiniFanChart } from '@/components/simulation-compact/MiniFanChart'
 import { useDisplayReal } from '@/lib/stores/displayStore'
 import { usePlanIsDirty } from '@/lib/stores/simulationStore'
-import { ChangeMenu } from './ChangeChips'
+import { ChangeMenu, ChangeMenuSizer } from './ChangeChips'
 import {
   EndDelta,
   EndFigure,
@@ -139,6 +139,7 @@ export const ResultDock = memo(function ResultDock() {
         <DockFigures />
         <DockChart />
         <div className="ws-dock-changes-slot">
+          <ChangeMenuSizer />
           <ChangeMenu />
         </div>
       </div>

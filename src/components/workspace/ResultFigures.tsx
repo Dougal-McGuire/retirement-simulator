@@ -13,7 +13,7 @@ import { moneyDeltaTone, QUIET_DELTA_EUROS } from './savedDelta'
 import { Skeleton } from './Skeleton'
 import { useRunStatus, type RunStatus } from './useRunStatus'
 import { useSavedPlanResults } from './useSavedPlanResults'
-import { useSavedSuccessDelta } from './useSavedSuccessDelta'
+import { useSavedSuccessDelta, useSuccessDeltaSizers } from './useSavedSuccessDelta'
 import { useUsableStoreResults } from './useUsableResults'
 import { useDockPinned } from './useWorkspaceUiStore'
 
@@ -30,6 +30,34 @@ import { useDockPinned } from './useWorkspaceUiStore'
  * `dock-…`), so an id always names exactly one element — the one on screen.
  */
 export type ResultSurface = 'head' | 'dock'
+
+/**
+ * Reserves a delta slot's width in the device's own font: an invisible copy
+ * of the widest reading the slot is built for, stacked under the real delta.
+ * A width in pixels fits one font only — the system font differs by platform,
+ * and a chip that outgrows its slot moves everything beside it with the first
+ * edit. `narrow` is the reading the phone's dock has room for (ws-frame.css).
+ */
+function SlotSizer({
+  className,
+  wide,
+  narrow,
+}: {
+  className: string
+  wide: string
+  narrow: string
+}) {
+  return (
+    <>
+      <span className={`${className} ws-figure-sizer`} data-size="wide" aria-hidden="true">
+        {wide}
+      </span>
+      <span className={`${className} ws-figure-sizer`} data-size="narrow" aria-hidden="true">
+        {narrow}
+      </span>
+    </>
+  )
+}
 
 export function useFigureId(surface: ResultSurface): (id: string) => string {
   const pinned = useDockPinned()
@@ -121,8 +149,10 @@ export const RateDelta = memo(function RateDelta({ surface }: { surface: ResultS
   const t = useTranslations('workspace')
   const id = useFigureId(surface)
   const delta = useSavedSuccessDelta()
+  const sizer = useSuccessDeltaSizers()
   return (
     <span className="ws-figure-slot" data-slot="rate-delta">
+      <SlotSizer className="ws-figure-delta ds-delta" wide={sizer.wide} narrow={sizer.narrow} />
       {delta.text && (
         <span
           className={`ws-figure-delta ds-delta ds-delta--${delta.tone}`}
@@ -163,6 +193,14 @@ export const EndFigure = memo(function EndFigure({
   )
 })
 
+/**
+ * The money deltas the slot keeps room for: "−1,88 Mio €" where there is
+ * room, "−888 T€" in the phone's dock. Eights, the widest digit where a font
+ * has no tabular figures.
+ */
+const WIDE_MONEY_DELTA = 1_880_000
+const NARROW_MONEY_DELTA = 888_000
+
 /** End assets against the saved plan: "+360 T€", in its own reserved slot. */
 export const EndDelta = memo(function EndDelta({
   surface,
@@ -186,6 +224,11 @@ export const EndDelta = memo(function EndDelta({
         : `${delta > 0 ? '+' : '−'}${money.compact(Math.abs(delta))}`
   return (
     <span className="ws-figure-slot" data-slot="end-delta">
+      <SlotSizer
+        className="ws-figure-money-delta"
+        wide={`−${money.compact(WIDE_MONEY_DELTA)}`}
+        narrow={`−${money.compact(NARROW_MONEY_DELTA)}`}
+      />
       {text !== null && delta !== null && (
         <span
           className="ws-figure-money-delta"
@@ -240,7 +283,13 @@ export const RunStatusFigure = memo(function RunStatusFigure({
         title={t(`status.${status}`)}
       >
         <StatusIcon size={16} aria-hidden="true" />
-        <span className={showLabel ? 'ws-figure-status-label' : 'sr-only'}>
+        {/* The label keeps room for its two usual wordings (ws-frame.css), so
+            the sentence beside it does not re-wrap while a run is in flight. */}
+        <span
+          className={showLabel ? 'ws-figure-status-label' : 'sr-only'}
+          data-running={showLabel ? t('status.running') : undefined}
+          data-updated={showLabel ? t('status.updated') : undefined}
+        >
           {t(`status.${status}`)}
         </span>
       </span>

@@ -458,10 +458,27 @@
 :is(.ws-head-rate, .ws-head-facts, .ws-dock-rate, .ws-dock-end)[data-running] .ws-figure {
   opacity: 0.55;
 }
-/* Delta slots keep their width, so nothing shifts when a delta appears. */
+/* Delta slots keep their width, so nothing shifts when a delta appears. The
+   width comes from an invisible copy of the widest reading (`SlotSizer`),
+   stacked in the same cell as the real delta: it follows the device's font.
+   The pixel floors below are what that copy measures in the font this was
+   drawn with; a wider system font simply gets a wider slot. */
 .ws-figure-slot {
-  display: inline-flex;
+  display: inline-grid;
   align-items: center;
+  justify-items: start;
+}
+.ws-figure-slot > * {
+  grid-area: 1 / 1;
+}
+.ws-figure-sizer {
+  visibility: hidden;
+  pointer-events: none;
+  user-select: none;
+  animation: none;
+}
+.ws-figure-sizer[data-size='narrow'] {
+  display: none;
 }
 /* Room for "−12,5 Pkt." and "−1,20 Mio €". */
 .ws-figure-slot[data-slot='rate-delta'] {
@@ -500,7 +517,9 @@
   min-width: 0;
   margin: 0;
   font-size: var(--ui-font-lead);
-  line-height: 1.4;
+  /* Two lines are exactly the row's 44 px: a sentence that wraps (a narrow
+     canvas, a wide font) does not make the row a fraction taller. */
+  line-height: 22px;
   color: var(--ui-text);
   text-wrap: pretty;
 }
@@ -518,7 +537,24 @@
   margin: 0;
 }
 .ws-figure-status-label {
+  display: inline-flex;
+  flex-direction: column;
   font-size: var(--ui-font-small);
+}
+/* Zero-height copies of "Berechne …" and "Aktualisiert": the label is always
+   as wide as the wider one, in whatever font the device has. */
+.ws-figure-status-label::before,
+.ws-figure-status-label::after {
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  white-space: nowrap;
+}
+.ws-figure-status-label::before {
+  content: attr(data-running);
+}
+.ws-figure-status-label::after {
+  content: attr(data-updated);
 }
 .ws-figure-run-button {
   min-width: 44px;
@@ -1030,13 +1066,24 @@
   height: 100%;
 }
 /* Reserved: the slot is as wide clean as dirty, so the mini chart beside it
-   never changes size when "n Änderungen ▾" arrives. */
+   never changes size when "n Änderungen ▾" arrives. An invisible copy of the
+   trigger (`ChangeMenuSizer`) sits in the same cell and sets the width in the
+   device's font; the rem values are floors. */
 .ws-dock .ws-dock-changes-slot {
-  display: flex;
+  display: grid;
   flex: none;
-  justify-content: flex-end;
-  width: 9.5rem;
+  align-items: center;
+  justify-items: end;
+  min-width: 9.5rem;
   margin-left: auto;
+}
+.ws-dock .ws-dock-changes-slot > * {
+  grid-area: 1 / 1;
+}
+.ws-dock-changes-sizer {
+  visibility: hidden;
+  pointer-events: none;
+  user-select: none;
 }
 .ws-dock-changes {
   position: relative;
@@ -1081,7 +1128,7 @@
 @media (min-width: 761px) {
   @container ws-dock (max-width: 899px) {
     .ws-dock .ws-dock-changes-slot {
-      width: 5.75rem;
+      min-width: 5.75rem;
     }
     .ws-dock-changes-long {
       position: absolute;
@@ -1162,6 +1209,15 @@
 .ws-panel-body * {
   scroll-margin-top: 64px;
   scroll-margin-bottom: 8px;
+}
+/* Not the stuck header itself: with a margin above it, a header pinned at
+   the column's top edge reaches out of the column, the column cannot scroll
+   it "into view", and a browser that asks the page instead scrolls the whole
+   canvas by half a screen (seen with Tab and with Chromium's
+   scroll-into-view before a click). */
+.ws-panel-body .ws-group-heading,
+.ws-panel-body .ws-group-heading * {
+  scroll-margin-top: 0;
 }
 .ws-group {
   border-bottom: 1px solid var(--ui-border);
@@ -1700,7 +1756,7 @@
   .ws-dock .ws-dock-changes-slot {
     grid-area: changes;
     justify-self: end;
-    width: auto;
+    min-width: 0;
     margin-left: 0;
   }
   /* 36 px in the dock's second row; 44 px to the finger. */
@@ -1732,6 +1788,13 @@
   }
   .ws-dock .ws-figure-slot[data-slot='end-delta'] {
     min-inline-size: 62px;
+  }
+  /* ...and for the shorter readings only ("−8,8 Pkt.", "−888 T€"). */
+  .ws-dock .ws-figure-sizer[data-size='wide'] {
+    display: none;
+  }
+  .ws-dock .ws-figure-sizer[data-size='narrow'] {
+    display: inline-block;
   }
   .ws-dock .ws-figure-end {
     min-inline-size: 0;
