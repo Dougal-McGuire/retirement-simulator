@@ -99,6 +99,22 @@ export const ChangeRow = memo(function ChangeRow() {
  * Renders nothing while the plan is clean (its slot in the dock keeps the
  * width).
  */
+/**
+ * Holds the dock's slot open at the width "n Änderungen ▾" will have — in the
+ * device's own font, which a width in rem cannot know. An invisible copy of
+ * the trigger with a wide single-digit count, stacked under the real one.
+ */
+export function ChangeMenuSizer() {
+  const t = useTranslations('workspace.changes')
+  return (
+    <span className="ws-dock-changes ws-dock-changes-sizer" aria-hidden="true">
+      <span className="ws-dock-changes-long">{t('count', { count: 8 })}</span>
+      <span className="ws-dock-changes-short">{t('countShort', { count: 8 })}</span>
+      <ChevronDown size={14} />
+    </span>
+  )
+}
+
 export const ChangeMenu = memo(function ChangeMenu() {
   const t = useTranslations('workspace.changes')
   const changes = useDraftChanges()

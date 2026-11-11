@@ -76,3 +76,18 @@ export function useSavedSuccessDelta(): SavedSuccessDelta {
     pending: running,
   }
 }
+
+/**
+ * The widest delta readings the result's slots keep room for, worded and
+ * formatted exactly like a real one: "−88,8 Pkt." where there is room,
+ * "−8,8 Pkt." in the phone's dock (see `SlotSizer` in `ResultFigures`).
+ */
+export function useSuccessDeltaSizers(): { wide: string; narrow: string } {
+  const t = useTranslations('planDashboard.scenarios')
+  const format = useFormatter()
+  const points = (value: number) =>
+    t('deltaPoints', {
+      value: `−${format.number(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`,
+    })
+  return { wide: points(88.8), narrow: points(8.8) }
+}
