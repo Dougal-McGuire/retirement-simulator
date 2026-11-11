@@ -1210,6 +1210,15 @@
   scroll-margin-top: 64px;
   scroll-margin-bottom: 8px;
 }
+/* Not the stuck header itself: with a margin above it, a header pinned at
+   the column's top edge reaches out of the column, the column cannot scroll
+   it "into view", and a browser that asks the page instead scrolls the whole
+   canvas by half a screen (seen with Tab and with Chromium's
+   scroll-into-view before a click). */
+.ws-panel-body .ws-group-heading,
+.ws-panel-body .ws-group-heading * {
+  scroll-margin-top: 0;
+}
 .ws-group {
   border-bottom: 1px solid var(--ui-border);
 }

@@ -620,11 +620,24 @@ test('ledger labels open the matching group and field in the column; the canvas 
     expect(Math.abs((await settledTop(page, tax)) - before), `round ${round}`).toBeLessThanOrEqual(
       2
     )
+    // The header stuck at the column's top carries no scroll margin: with one
+    // it reaches out of the column, and a browser asked to bring it into view
+    // (Tab, or the scroll-into-view before a click) scrolls the whole page —
+    // on CI's Chromium the canvas jumped by 370 px when the group was closed.
+    expect(
+      await groupHeader(page, 'market').evaluate((el) => getComputedStyle(el).scrollMarginTop)
+    ).toBe('0px')
     await closePanel(page, 'market')
+    expect(
+      Math.abs((await settledTop(page, tax)) - before),
+      `round ${round}, closed`
+    ).toBeLessThanOrEqual(2)
   }
 
   // The portfolio draw is set by the Entnahme rule: its group opens.
-  await page.getByRole('button', { name: /^Portfolio sale \(gross\) – edit in “Withdrawal”/ }).click()
+  await page
+    .getByRole('button', { name: /^Portfolio sale \(gross\) – edit in “Withdrawal”/ })
+    .click()
   await expect(groupHeader(page, 'rule')).toHaveAttribute('aria-expanded', 'true')
   await expect(groupHeader(page, 'rule')).toBeFocused()
   await expect(page.getByTestId('withdrawal-strategy-picker')).toBeVisible()
