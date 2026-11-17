@@ -109,6 +109,7 @@ export const SpendingSchema = z.object({
 })
 
 export const AssumptionsSchema = z.object({
+  oneOffIncomeTiming: z.enum(['bookingAge', 'yearEnd']).optional(),
   roiMean: z.number().min(-1).max(10),
   roiStdev: z.number().min(0).max(10),
   inflationMean: z.number().min(-1).max(10),

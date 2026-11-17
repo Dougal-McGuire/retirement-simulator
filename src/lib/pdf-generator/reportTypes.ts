@@ -8,7 +8,7 @@ import type {
   Summary,
 } from '@/lib/pdf-generator/schema/reportData'
 
-import type { WithdrawalStrategy, IncomeTaxTreatment, PensionTaxMode } from '@/types'
+import type { OneOffIncomeTiming, WithdrawalStrategy, IncomeTaxTreatment, PensionTaxMode } from '@/types'
 import { localizeCashFlowName } from '@/lib/plans/cashFlowName'
 import { NOMINAL_UNIT, type ReportEuroUnit } from '@/lib/pdf-generator/euroUnit'
 import { getPlanHealth } from '@/lib/simulation/planInsights'
@@ -199,6 +199,7 @@ export interface ReportProfile {
 }
 
 export interface ReportAssumptions {
+  oneOffIncomeTiming: OneOffIncomeTiming
   expectedReturn: number
   returnVolatility: number
   inflation: number
@@ -559,6 +560,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       monthlyPension: data.finances.expectedMonthlyPensionEUR,
     },
     assumptions: {
+      oneOffIncomeTiming: data.assumptions.oneOffIncomeTiming ?? 'yearEnd',
       expectedReturn: data.assumptions.roiMean,
       returnVolatility: data.assumptions.roiStdev,
       inflation: data.assumptions.inflationMean,

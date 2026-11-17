@@ -6,7 +6,7 @@ import { ChevronRight, PencilLine, PowerOff } from 'lucide-react'
 import type { AnnualCashFlow, CashFlow, SimulationParams, SimulationResults } from '@/types'
 import type { EditTarget } from '@/components/workspace/WorkspaceProvider'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
-import { flowWindowLabel, monthFormatter } from '@/lib/plans/flowWindow'
+import { flowWindowLabel, monthFormatter, oneOffCreditLabel } from '@/lib/plans/flowWindow'
 import {
   breakdownLedger,
   buildFlowTracks,
@@ -157,10 +157,11 @@ export function CashflowCard({ results, onEdit }: CashflowCardProps) {
         tFlows,
         { formatMonth }
       )
-      // One-off income is credited a year after its booked age.
-      return isOnceIncomeFlow(flow)
-        ? `${label} · ${ts('creditedAt', { age: (flow.startAge ?? params?.currentAge ?? 0) + 1 })}`
-        : label
+      if (!params || !isOnceIncomeFlow(flow)) return label
+      const credit = oneOffCreditLabel(
+        flow.startAge ?? params.currentAge, params.currentAge, params.endAge, params.oneOffIncomeTiming, tFlows
+      )
+      return `${label} · ${credit}`
     }
     return {
       name: (node) => {
@@ -425,7 +426,9 @@ export function CashflowCard({ results, onEdit }: CashflowCardProps) {
             <summary>{t('assumptionsTitle')}</summary>
             <div className="ws-disclosure-body ws-footnote" style={{ maxWidth: '72ch' }}>
               <p>{t('assumptions')}</p>
-              <p style={{ marginTop: 8 }}>{t('oneOffTiming')}</p>
+              <p style={{ marginTop: 8 }}>
+                {t(results?.params.oneOffIncomeTiming === 'bookingAge' ? 'oneOffTiming' : 'legacyOneOffTiming')}
+              </p>
             </div>
           </details>
         </>

@@ -75,7 +75,9 @@ const HeadNumbers = memo(function HeadNumbers() {
           <RateDelta surface="head" />
         </span>
         <p className="ws-head-sentence">
-          {sentence ?? t(status === 'running' ? 'computing' : 'status.empty')}
+          {stale
+            ? t('verdict.previous')
+            : (sentence ?? t(status === 'running' ? 'computing' : 'status.empty'))}
         </p>
         <span className="ws-head-run">
           <RunStatusFigure surface="head" status={status} needsRun={needsRun} showLabel />
@@ -84,7 +86,6 @@ const HeadNumbers = memo(function HeadNumbers() {
 
       {results && (
         <p className="m-0 text-sm text-muted-foreground">
-          {stale && <strong>{t('verdict.previous')} </strong>}
           <SimulationPrecision results={results} />
         </p>
       )}

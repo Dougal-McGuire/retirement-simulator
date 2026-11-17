@@ -12,6 +12,7 @@ import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput
 import { WizardLiveResult } from '@/components/forms/WizardLiveResult'
 import { timelineIssues } from '@/lib/validation/fieldValidation'
 import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
+import { oneOffCreditLabel } from '@/lib/plans/flowWindow'
 import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
 import { CashFlowList } from '@/components/forms/fields/CashFlowList'
 import {
@@ -65,6 +66,7 @@ export default function SetupPage() {
    */
   const [isNavigating, startNavigation] = useTransition()
   const t = useTranslations('setup')
+  const tFlows = useTranslations('setup.cashFlows')
   const tStatus = useTranslations('stepStatus')
   const tUi = useTranslations('ui')
   const tPlans = useTranslations('plans')
@@ -521,6 +523,8 @@ export default function SetupPage() {
                   namePlaceholder: t('assets.oneTimeIncomes.namePlaceholder'),
                   ageLabel: t('assets.oneTimeIncomes.ageLabel'),
                   agePrefix: tUi('age'),
+                  creditLabel: (age) =>
+                    oneOffCreditLabel(age, params.currentAge, params.endAge, params.oneOffIncomeTiming, tFlows),
                   amountLabel: t('assets.oneTimeIncomes.amountLabel'),
                   addHint: t('assets.oneTimeIncomes.addHint'),
                   remove: t('assets.oneTimeIncomes.remove'),

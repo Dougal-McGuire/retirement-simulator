@@ -30,12 +30,15 @@ it('makes new one-off income spendable in the entered year, including both horiz
   const rows = result.cashFlowMeans!
   expect(rows.map((row) => row.oneOffIncomeGross)).toEqual([100, 0, 200])
   expect(rows.map((row) => row.shortfall)).toEqual([0, 100, 0])
-  expect(buildFlowTracks(result.params).tracks.find((t) => t.flow.name === 'First')?.gross)
-    .toEqual([100, 0, 0])
+  expect(buildFlowTracks(result.params).tracks.find((t) => t.flow.name === 'First')?.gross).toEqual(
+    [100, 0, 0]
+  )
 })
 
 it('retains the effective years and final closing credit on repeated loads of a legacy setup', () => {
-  const oldSetup = Object.fromEntries(Object.entries(plan).filter(([key]) => key !== 'oneOffIncomeTiming'))
+  const oldSetup = Object.fromEntries(
+    Object.entries(plan).filter(([key]) => key !== 'oneOffIncomeTiming')
+  )
   const restored = normalizePersistedParams(normalizePersistedParams(oldSetup))
   const rows = runMonteCarloSimulation(restored).cashFlowMeans!
   expect(rows.map((row) => row.oneOffIncomeGross)).toEqual([0, 100, 200])

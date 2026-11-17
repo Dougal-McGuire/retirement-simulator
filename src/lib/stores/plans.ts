@@ -259,9 +259,9 @@ export interface BootstrapPlansResult {
 function isUntouchedDefaultPlan(plan: Plan, normalizeParams: ParamsNormalizer): boolean {
   if (plan.id !== DEFAULT_PLAN_ID) return false
   if (plan.nameKey !== DEFAULT_PLAN_NAME_KEY && plan.name !== DEFAULT_PLAN_NAME) return false
-  return (
-    JSON.stringify(normalizeParams(plan.params)) === JSON.stringify(normalizeParams(DEFAULT_PARAMS))
-  )
+  const params = normalizeParams(plan.params)
+  const defaults = { ...DEFAULT_PARAMS, oneOffIncomeTiming: params.oneOffIncomeTiming }
+  return JSON.stringify(params) === JSON.stringify(normalizeParams(defaults))
 }
 
 /**

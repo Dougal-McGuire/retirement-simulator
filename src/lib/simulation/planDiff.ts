@@ -47,6 +47,7 @@ export type AssumptionKind =
   | 'householdType'
   /** A flow's switch: values are `FlowSwitchState`s. */
   | 'flowSwitch'
+  | 'oneOffIncomeTiming'
 
 export interface AssumptionRow {
   /** Translation key suffix under `plans.comparison.assumptions.rows`. */
@@ -463,6 +464,12 @@ const rowSpecs: RowSpec[] = [
   },
 
   {
+    key: 'oneOffIncomeTiming',
+    group: 'income',
+    kind: 'oneOffIncomeTiming',
+    read: (p) => p.oneOffIncomeTiming,
+  },
+  {
     key: 'scheduledIncome',
     group: 'income',
     kind: 'currency',
@@ -695,7 +702,10 @@ export function buildAssumptionRows(paramsList: SimulationParams[]): AssumptionR
       ).total > 0
   )
 
+  const hasOneOffIncome = paramsList.some((params) => params.oneTimeIncomes?.length > 0)
+
   return rowSpecs
+    .filter((spec) => spec.key !== 'oneOffIncomeTiming' || hasOneOffIncome)
     .filter((spec) => (spec.key === 'marketModel' ? usesHistory : true))
     .filter((spec) => rowIsRead(spec.key))
     .filter((spec) => (glidePathRowKeys.has(spec.key) ? usesGlidePath : true))

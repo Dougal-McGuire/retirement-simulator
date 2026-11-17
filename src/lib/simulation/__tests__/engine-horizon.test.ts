@@ -199,9 +199,10 @@ describe('flows outside the horizon are not part of the plan', () => {
   })
 })
 
-describe('a one-off booked for the last year is not lost', () => {
+describe('legacy one-off timing at the horizon', () => {
   const plan = (startAge: number) =>
     det({
+      oneOffIncomeTiming: 'yearEnd',
       currentAge: 60,
       retirementAge: 60,
       legalRetirementAge: 67,

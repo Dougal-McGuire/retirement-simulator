@@ -1,5 +1,5 @@
-import { readOneOffIncomeTiming } from '@/types'
 import {
+  readOneOffIncomeTiming,
   AnnualCashFlow,
   DEFAULT_CAPITAL_GAINS_TAX,
   openingPortfolioGain,

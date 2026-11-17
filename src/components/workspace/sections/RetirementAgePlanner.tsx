@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { comparisonRunCount, samplingInterval95 } from '@/lib/simulation/context'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { useSimulationParams, useSimulationStore } from '@/lib/stores/simulationStore'
 import type { AgePlannerResponse } from '@/lib/simulation/retirementFrontier.worker'
@@ -26,16 +27,26 @@ function AgeComparisonForm() {
   const [budgetOverride, setBudget] = useState<string | null>(null)
   const [probability, setProbability] = useState('90')
   const [endOverride, setEnd] = useState<string | null>(null)
+  const [maxOverride, setMaxAge] = useState<string | null>(null)
+  const [final, setFinal] = useState(false)
   const [run, setRun] = useState<Run | null>(null)
   const worker = useRef<Worker | null>(null)
   const budget =
     budgetOverride ??
     String(Math.round(calculateCombinedExpenses(params.customExpenses).combinedMonthly))
   const end = endOverride ?? String(params.endAge)
-  const inputs = [budget, probability, end].join('|')
+  const maximumAge = Math.min(100, Number(end))
+  const maxAge = maxOverride ?? String(maximumAge)
+  const historical = params.marketModel === 'historical'
+  const inputs = [budget, probability, end, maxAge, final].join('|')
   const visible = run?.params === params && run.inputs === inputs ? run : null
   const data = visible?.result
   const running = visible?.status === 'running'
+  const earliest = data?.rows.find((row) => row.age === data.earliestAge)
+  const interval =
+    data && earliest && !historical
+      ? samplingInterval95(Math.round((earliest.successRate * data.paths) / 100), data.paths)
+      : null
   const money = (value: number, signed = false) =>
     format.number(value, {
       style: 'currency',
@@ -44,7 +55,7 @@ function AgeComparisonForm() {
       signDisplay: signed ? 'exceptZero' : 'auto',
     })
   const percent = (value: number) =>
-    format.number(value / 100, { style: 'percent', maximumFractionDigits: 2 })
+    format.number(value / 100, { style: 'percent', maximumFractionDigits: 1 })
   useEffect(
     () => () => {
       if (worker.current) {
@@ -85,6 +96,8 @@ function AgeComparisonForm() {
           monthlyBudget: Number(budget),
           probability: Number(probability),
           endAge: Number(end),
+          maxRetirementAge: Number(maxAge),
+          final,
         },
       })
     } catch {
@@ -149,9 +162,53 @@ function AgeComparisonForm() {
             onChange={(e) => setEnd(e.target.value)}
           />
         </label>
-        <Button type="submit" variant="outline" disabled={running}>
-          {t('compare')}
-        </Button>
+        <label>
+          {t('maxAge')}
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={params.currentAge}
+            max={maximumAge}
+            step={1}
+            required
+            value={maxAge}
+            onChange={(e) => setMaxAge(e.target.value)}
+          />
+        </label>
+        {!historical && (
+          <label>
+            {t('precision')}
+            <select
+              value={final ? 'final' : 'quick'}
+              onChange={(e) => setFinal(e.target.value === 'final')}
+            >
+              <option value="quick">
+                {t('quick', { paths: comparisonRunCount([params], false) })}
+              </option>
+              <option value="final">
+                {t('final', { paths: comparisonRunCount([params], true) })}
+              </option>
+            </select>
+          </label>
+        )}
+        {running ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={(event) => {
+              event.preventDefault()
+              worker.current?.terminate()
+              worker.current = null
+              setRun(null)
+            }}
+          >
+            {t('cancel')}
+          </Button>
+        ) : (
+          <Button type="submit" variant="outline">
+            {t('compare')}
+          </Button>
+        )}
       </form>
       <p role="status" aria-live="polite" className="ws-age-status">
         {running
@@ -179,7 +236,18 @@ function AgeComparisonForm() {
                 {data.rows.map((row) => (
                   <tr key={row.age} data-earliest={row.age === data.earliestAge || undefined}>
                     <th scope="row">{row.age}</th>
-                    <td>{percent(row.successRate)}</td>
+                    <td
+                      title={t('count', {
+                        hits: Math.round((row.successRate * data.paths) / 100),
+                        paths: data.paths,
+                      })}
+                    >
+                      {row.successRate < Number(probability) &&
+                      Math.round(row.successRate * 10) / 10 >= Number(probability)
+                        ? '<'
+                        : ''}
+                      {percent(row.successRate)}
+                    </td>
                     <td>{row.monthlyLimit === null ? t('unfunded') : money(row.monthlyLimit)}</td>
                     <td>{row.extraYearGain === null ? '—' : money(row.extraYearGain, true)}</td>
                   </tr>
@@ -188,11 +256,23 @@ function AgeComparisonForm() {
             </table>
           </div>
           <p className="ws-withdrawal-muted">
-            {t('sample', {
+            {t(historical ? 'historicalSample' : final ? 'finalSample' : 'quickSample', {
               paths: data.paths,
+            })}{' '}
+            {t('sample', {
               end: Number(end),
               probability: percent(Number(probability)),
             })}
+            {interval && (
+              <>
+                {' '}
+                {t('interval', {
+                  age: earliest!.age,
+                  low: percent(interval.lower),
+                  high: percent(interval.upper),
+                })}
+              </>
+            )}
           </p>
         </>
       )}

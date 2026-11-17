@@ -57,6 +57,7 @@ const BASE: SimulationParams = {
   annualSavingsGrowthRate: 0.02,
   monthlyPension: 0,
   oneTimeIncomes: [],
+  oneOffIncomeTiming: 'yearEnd',
   averageROI: 0.07,
   roiVolatility: 0.15,
   averageInflation: 0.025,

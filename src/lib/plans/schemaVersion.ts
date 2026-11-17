@@ -34,7 +34,7 @@
  *       tombstones from the blob and push deleted plans back, and it replaces
  *       the blob without ever having read it. It is therefore refused (`409
  *       outdated-client`) on every request and can neither read nor write.
- *   4 — plan-specific one-off income timing.
+ *   4 — plan-specific one-off income timing, opening unrealized gains and the real lifestyle floor.
  */
 export const PLAN_SCHEMA_VERSION = 4
 

@@ -1,4 +1,5 @@
-import type { CashFlow, SimulationParams } from '@/types'
+import { oneOffSpendableAge } from '@/lib/simulation/cashFlows'
+import type { CashFlow, OneOffIncomeTiming, SimulationParams } from '@/types'
 
 /**
  * When a cash flow pays: the one reading of a flow's window that every list,
@@ -92,6 +93,20 @@ export function monthFormatter(format: {
     const [year, month] = value.split('-').map(Number)
     return format.dateTime(new Date(year, month - 1, 1), { month: 'short', year: 'numeric' })
   }
+}
+
+/** What happens to a single income at the age entered in the form. */
+export function oneOffCreditLabel(
+  bookedAge: number,
+  currentAge: number,
+  endAge: number,
+  timing: OneOffIncomeTiming | undefined,
+  t: (key: 'credit.open' | 'credit.legacy' | 'credit.close' | 'credit.outside', values: { age: number }) => string
+): string {
+  if (bookedAge < currentAge || bookedAge > endAge) return t('credit.outside', { age: bookedAge })
+  const age = oneOffSpendableAge(bookedAge, timing)
+  if (age > endAge) return t('credit.close', { age: endAge })
+  return t(age === bookedAge ? 'credit.open' : 'credit.legacy', { age })
 }
 
 /** The window as the UI writes it, in whatever language `t` speaks. */

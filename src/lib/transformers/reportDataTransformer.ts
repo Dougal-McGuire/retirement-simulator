@@ -302,6 +302,7 @@ export function transformToReportData(
         })),
     },
     assumptions: {
+      oneOffIncomeTiming: params.oneOffIncomeTiming,
       roiMean: params.averageROI,
       roiStdev: params.roiVolatility,
       inflationMean: params.averageInflation,

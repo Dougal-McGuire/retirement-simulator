@@ -190,9 +190,11 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
     [selectedPlans, runsById, paramsFor, displayReal]
   )
 
-  const hasError = selectedPlans.some(
+  const failedPlans = selectedPlans.filter(
     (plan) => failedById[plan.id] === simulationFingerprint(paramsFor(plan))
   )
+  const hasError = failedPlans.length > 0
+  const baseFailed = failedPlans.some((plan) => plan.id === activePlanId)
   const base = ready.find((run) => run.plan.id === activePlanId)
   const alts = ready.filter((run) => run !== base)
   const firstAlt = alts[0]
@@ -568,13 +570,12 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
         <div className="compare-chart">
           {chartSeries.length > 0 ? (
             <CompareFanChart series={chartSeries} />
+          ) : baseFailed ? (
+            <p className="ws-callout">{t('baseChartFailed')}</p>
           ) : (
             <div className="ds-card ws-fan" style={{ padding: 16 }}>
               <Skeleton height={40} width="16rem" />
               <Skeleton variant="chart" height={266} style={{ marginTop: 12 }} />
-              <p className="sr-only" role="status">
-                {t('running')}
-              </p>
             </div>
           )}
         </div>

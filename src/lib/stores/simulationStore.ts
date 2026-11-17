@@ -569,7 +569,11 @@ export const useSimulationStore = create<SimulationStore>()(
             // Built-in plans (the demo) carry a key so their name follows the
             // UI language until the user renames them.
             nameKey: options?.nameKey,
-            params: normalizePersistedParams(params ?? currentParams),
+            // A new plan adopts the current convention. Explicit snapshots (e.g.
+            // restoring a deleted plan) and separate duplicate/variant actions keep theirs.
+            params: normalizePersistedParams(
+              params ?? { ...currentParams, oneOffIncomeTiming: DEFAULT_PARAMS.oneOffIncomeTiming }
+            ),
           })
 
           commitPlans([...plans, plan])

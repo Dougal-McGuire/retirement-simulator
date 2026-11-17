@@ -1,5 +1,5 @@
 import type { SimulationParams } from '@/types'
-import { DEFAULT_PATH_SEED, effectiveRunCount } from './context'
+import { DEFAULT_PATH_SEED, comparisonRunCount, effectiveRunCount } from './context'
 import {
   buildEquityGlidePath,
   buildSimulationDistributions,
@@ -17,6 +17,8 @@ export interface AgePlannerTargets {
   monthlyBudget: number
   probability: number
   endAge: number
+  maxRetirementAge?: number
+  final?: boolean
 }
 
 export interface RetirementAgeRow {
@@ -34,7 +36,6 @@ export interface RetirementAgeComparison {
   paths: number
 }
 
-export const AGE_PLANNER_PATH_LIMIT = 500
 const BUDGET_STEP = 10
 
 /**
@@ -88,7 +89,11 @@ export function compareRetirementAges(
   onProgress?: (done: number, total: number) => void
 ): RetirementAgeComparison {
   const plan = normalizeSimulationParams(original)
+  const lastAge = targets.maxRetirementAge ?? Math.min(targets.endAge, 100)
   if (
+    !Number.isInteger(lastAge) ||
+    lastAge < plan.currentAge ||
+    lastAge > Math.min(targets.endAge, 100) ||
     !Number.isFinite(targets.monthlyBudget) ||
     targets.monthlyBudget < 0 ||
     !Number.isFinite(targets.probability) ||
@@ -100,11 +105,10 @@ export function compareRetirementAges(
   ) {
     throw new RangeError('Invalid age planner targets')
   }
-  const lastAge = Math.min(
-    targets.endAge,
-    Math.max(plan.currentAge, plan.legalRetirementAge, plan.retirementAge)
-  )
-  const paths = Math.min(effectiveRunCount(plan), AGE_PLANNER_PATH_LIMIT)
+  const paths =
+    plan.marketModel === 'historical'
+      ? effectiveRunCount(plan)
+      : comparisonRunCount([plan], targets.final ?? false)
   const successesNeeded = Math.ceil((targets.probability * paths) / 100)
   // Removing the budget from the *expanded schedule* removes every ordinary
   // expense (also fixed/growing ones) while preserving taxes, pensions and all

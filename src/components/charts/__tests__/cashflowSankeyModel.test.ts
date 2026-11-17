@@ -167,8 +167,8 @@ describe('ledger rows from the engine', () => {
     expect(ids(at(63))).toContain('otherIncome')
     expect(ids(at(63))).not.toContain('pension')
     expect(ids(at(68))).toContain('pension')
-    // Booked at 70, credited at 71 like every one-off.
-    expect(ids(at(71))).toContain('oneOffIncome')
+    // A new plan credits the inheritance at the age entered.
+    expect(ids(at(70))).toContain('oneOffIncome')
     expect(ids(at(85))).toContain('scheduledExpenses')
   })
 

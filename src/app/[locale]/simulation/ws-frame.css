@@ -621,6 +621,14 @@
   display: inline-block;
   min-inline-size: 5.8em;
 }
+.ws-head-facts [data-fact='draw'] dt {
+  max-inline-size: 18em;
+  min-width: 0;
+  white-space: normal;
+}
+.ws-head-facts [data-fact='draw'] dd {
+  flex-shrink: 0;
+}
 .ws-head-facts [data-fact='draw'] .ws-head-fact {
   min-inline-size: 6.8em;
 }

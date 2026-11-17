@@ -199,6 +199,7 @@ const GOLDEN_PARAMS: SimulationParams = {
   annualSavingsGrowthRate: 0.02,
   monthlyPension: 5000,
   oneTimeIncomes: [],
+  oneOffIncomeTiming: 'bookingAge',
   averageROI: 0.07,
   roiVolatility: 0.15,
   averageInflation: 0.025,

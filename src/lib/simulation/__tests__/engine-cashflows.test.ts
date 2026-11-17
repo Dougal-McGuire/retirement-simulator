@@ -145,6 +145,7 @@ describe('one-off cash flows', () => {
     // Long-standing behaviour that existing plans' numbers depend on, so it is
     // pinned here rather than left to the projection round-trip.
     const params = flat({
+      oneOffIncomeTiming: 'yearEnd',
       cashFlows: [
         {
           id: 'legacy',
@@ -163,7 +164,7 @@ describe('one-off cash flows', () => {
 
   it('re-prices a one-off income into the euros of the year it arrives', () => {
     // Quoted in today's money like every other flow: an inheritance booked for
-    // age 61 is worth two years of inflation more when it lands at 62.
+    // age 61 is credited with the one year of inflation since the plan began at 60.
     const params = flat({
       averageInflation: 0.02,
       inflationVolatility: 0,
@@ -179,7 +180,7 @@ describe('one-off cash flows', () => {
       ],
     })
 
-    expect(assetsAt(params, 62) - 1_000_000).toBeCloseTo(50_000 * Math.pow(1.02, 2), 6)
+    expect(assetsAt(params, 61) - 1_000_000).toBeCloseTo(50_000 * 1.02, 6)
 
     const nominal = flat({
       averageInflation: 0.02,
@@ -197,7 +198,7 @@ describe('one-off cash flows', () => {
       ],
     })
 
-    expect(assetsAt(nominal, 62) - 1_000_000).toBeCloseTo(50_000, 6)
+    expect(assetsAt(nominal, 61) - 1_000_000).toBeCloseTo(50_000, 6)
   })
 })
 

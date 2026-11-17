@@ -40,7 +40,7 @@ import { showActionToast } from '@/components/ui/action-toast'
 import { useGroupedNumber } from './useGroupedNumber'
 import { FlowOffTag, FlowSwitch } from './FlowSwitch'
 import { createFlowId, removeFlow, toggleFlow } from '@/lib/plans/flowOps'
-import { flowWindowLabel, monthFormatter } from '@/lib/plans/flowWindow'
+import { flowWindowLabel, monthFormatter, oneOffCreditLabel } from '@/lib/plans/flowWindow'
 import {
   cashFlowDraftIssues,
   isCompleteMonth,
@@ -511,6 +511,9 @@ export function CashFlowList({
     }`
   }
 
+  const creditLabel = (age: number) =>
+    oneOffCreditLabel(age, currentAge, endAge, tax.oneOffIncomeTiming, t)
+
   const windowLabel = (flow: CashFlow) =>
     flowWindowLabel(flow, { currentAge, legalRetirementAge }, t, { formatMonth })
 
@@ -732,11 +735,21 @@ export function CashFlowList({
             inputMode="numeric"
             min={currentAge}
             max={endAge}
+            aria-describedby={
+              state.kind === 'income' && state.frequency === 'once' ? `cashflow-credit-${key}` : undefined
+            }
             value={state.startAge}
             placeholder={String(state.kind === 'pension' ? legalRetirementAge : currentAge)}
-            onChange={(event) => setState({ ...state, startAge: event.target.value })}
+            onChange={(event) =>
+              setState({ ...state, startAge: event.target.value, startDate: '' })
+            }
             className="rounded-sm h-11 border border-border px-3 text-xs font-semibold"
           />
+          {state.kind === 'income' && state.frequency === 'once' && (
+            <span id={`cashflow-credit-${key}`} className="mt-1 text-xs text-muted-foreground">
+              {creditLabel(parseAge(state.startAge) ?? currentAge)}
+            </span>
+          )}
         </div>
 
         {state.frequency === 'once' && state.kind !== 'pension' && (
@@ -1243,6 +1256,9 @@ export function CashFlowList({
                         {/* Narrow containers fold the period column into this line. */}
                         <span className="@xl:hidden">{windowLabel(flow)} · </span>
                         {frequencyLabel(flow.frequency)}
+                        {on && flow.kind === 'income' && flow.frequency === 'once'
+                          ? ` · ${creditLabel(flow.startAge ?? currentAge)}`
+                          : ''}
                         {flow.inflationLinked === false ? ` · ${t('fields.nominalTag')}` : ''}
                         {flow.growthRate
                           ? ` · ${format.number(flow.growthRate, { style: 'percent', maximumFractionDigits: 1 })}`

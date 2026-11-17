@@ -1,3 +1,4 @@
+import { PLAN_SCHEMA_VERSION } from '../src/lib/plans/schemaVersion'
 import type { Page, Request } from '@playwright/test'
 import { test, expect, openPanel, openPlanMenu, waitForResults } from './helpers/workspace'
 import { isAuthEnabled, stubSignedIn } from './helpers/auth'
@@ -18,9 +19,13 @@ import { isAuthEnabled, stubSignedIn } from './helpers/auth'
  * registered here win over the 501 stub `stubSignedIn` installs.
  */
 
-const PLAN_SCHEMA_VERSION = '3'
 /** A schema version from a build newer than the one under test. */
-const NEWER_SCHEMA = 4
+const NEWER_SCHEMA = PLAN_SCHEMA_VERSION + 1
+const outdatedClient = {
+  status: 409,
+  body: { error: 'outdated-client', schemaVersion: NEWER_SCHEMA },
+  headers: { 'x-plan-schema': String(NEWER_SCHEMA) },
+}
 
 interface PlansCall {
   method: string
@@ -50,7 +55,7 @@ async function servePlans(
     await route.fulfill({
       status,
       contentType: 'application/json',
-      headers: { 'x-plan-schema': PLAN_SCHEMA_VERSION, ...(headers ?? {}) },
+      headers: { 'x-plan-schema': String(PLAN_SCHEMA_VERSION), ...(headers ?? {}) },
       body: JSON.stringify(body),
     })
   })
@@ -63,7 +68,7 @@ const gets = (calls: PlansCall[]) => calls.filter((call) => call.method === 'GET
 /** `GET` answer of an account that holds nothing, at revision `rev`. */
 const emptyAccount = (rev = 0): Answer => ({
   status: 200,
-  body: { configured: true, schemaVersion: Number(PLAN_SCHEMA_VERSION), rev, blob: null },
+  body: { configured: true, schemaVersion: PLAN_SCHEMA_VERSION, rev, blob: null },
 })
 
 /** `PUT` answer of a stored write that produced revision `rev`. */
@@ -111,7 +116,7 @@ test.describe('cloud sync schema guard', () => {
   test('a 409 on PUT shows the reload notice and nothing is pushed again', async ({ page }) => {
     const calls = await servePlans(page, (method) =>
       method === 'PUT'
-        ? { status: 409, body: { error: 'outdated-client', schemaVersion: NEWER_SCHEMA } }
+        ? outdatedClient
         : emptyAccount()
     )
 
@@ -145,7 +150,7 @@ test.describe('cloud sync schema guard', () => {
     expect(gets(calls)).toHaveLength(1)
 
     // Every request stated the schema version.
-    expect(calls.every((call) => call.schema === PLAN_SCHEMA_VERSION)).toBe(true)
+    expect(calls.every((call) => call.schema === String(PLAN_SCHEMA_VERSION))).toBe(true)
 
     // "Neu laden" reloads the page.
     await Promise.all([
@@ -157,7 +162,7 @@ test.describe('cloud sync schema guard', () => {
   test('a 409 on GET stops sync before anything is merged or pushed', async ({ page }) => {
     const calls = await servePlans(page, (method) =>
       method === 'GET'
-        ? { status: 409, body: { error: 'outdated-client', schemaVersion: NEWER_SCHEMA } }
+        ? outdatedClient
         : stored(1)
     )
 
@@ -184,7 +189,8 @@ test.describe('cloud sync schema guard', () => {
   test('an older server (rollback) pauses sync without asking for a reload', async ({ page }) => {
     const calls = await servePlans(page, () => ({
       status: 409,
-      body: { error: 'outdated-server', schemaVersion: 2 },
+      body: { error: 'outdated-server', schemaVersion: PLAN_SCHEMA_VERSION - 1 },
+      headers: { 'x-plan-schema': String(PLAN_SCHEMA_VERSION - 1) },
     }))
 
     await page.goto('/de/simulation')
@@ -301,10 +307,10 @@ test.describe('cloud sync: reads that fail, writes that come too late', () => {
           status: 200,
           body: {
             configured: true,
-            schemaVersion: Number(PLAN_SCHEMA_VERSION),
+            schemaVersion: PLAN_SCHEMA_VERSION,
             rev: 1,
             blob: {
-              schemaVersion: Number(PLAN_SCHEMA_VERSION),
+              schemaVersion: PLAN_SCHEMA_VERSION,
               rev: 1,
               updatedAt: Date.now(),
               plans: [remotePlan],
@@ -372,10 +378,10 @@ test.describe('cloud sync: reads that fail, writes that come too late', () => {
           status: 200,
           body: {
             configured: true,
-            schemaVersion: Number(PLAN_SCHEMA_VERSION),
+            schemaVersion: PLAN_SCHEMA_VERSION,
             rev: 1,
             blob: {
-              schemaVersion: Number(PLAN_SCHEMA_VERSION),
+              schemaVersion: PLAN_SCHEMA_VERSION,
               rev: 1,
               updatedAt: Date.now(),
               plans: [accountPlan],

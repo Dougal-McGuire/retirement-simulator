@@ -363,6 +363,33 @@ describe('simulationStore', () => {
     expect(state).not.toHaveProperty('savedSetups')
   })
 
+  it('imports an unstamped setup beside an old starter and uses booking-age timing for a new plan', () => {
+    const legacyParams = { ...DEFAULT_PARAMS, oneOffIncomeTiming: undefined }
+    const { useSimulationStore } = loadStore({
+      [STORE_KEY]: JSON.stringify({
+        version: 3,
+        state: {
+          params: legacyParams,
+          plans: [{ id: 'plan-base', name: 'Base plan', params: legacyParams }],
+          activePlanId: 'plan-base',
+        },
+      }),
+      [SAVED_SETUPS_KEY]: JSON.stringify([{
+        id: 'old', name: 'Old setup', timestamp: 1,
+        params: { ...legacyParams, oneTimeIncomes: [{ name: 'Gift', amount: 5000, age: 60 }] },
+      }]),
+    })
+    const restored = useSimulationStore.getState()
+    const imported = restored.plans.find((entry) => entry.id === 'old')
+    expect(imported?.params.oneOffIncomeTiming).toBe('yearEnd')
+    expect(imported?.params.oneTimeIncomes[0].age).toBe(60)
+    restored.setActivePlan('old')
+    const copyId = restored.duplicatePlan('old')
+    expect(useSimulationStore.getState().plans.find((p) => p.id === copyId)?.params.oneOffIncomeTiming).toBe('yearEnd')
+    const newId = restored.createPlan('New')
+    expect(useSimulationStore.getState().plans.find((p) => p.id === newId)?.params.oneOffIncomeTiming).toBe('bookingAge')
+  })
+
   it('drops malformed saved setups from the main persisted store', () => {
     const { useSimulationStore } = loadStore({
       [STORE_KEY]: JSON.stringify({

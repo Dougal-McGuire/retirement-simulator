@@ -113,6 +113,7 @@ it.each(['historical', 'monteCarlo'] as const)(
       amount: 2000,
     }
     const result = compareRetirementAges(params, {
+      maxRetirementAge: 66,
       monthlyBudget: 2000,
       probability: 80,
       endAge: 90,
@@ -151,4 +152,19 @@ it.each([
   { monthlyBudget: 0, probability: 90, endAge: NaN },
 ])('rejects invalid targets %j', (targets) => {
   expect(() => compareRetirementAges(flat, targets)).toThrow(RangeError)
+})
+
+it('finds an age beyond the statutory and planned ages, or respects an earlier search limit', () => {
+  const params = { ...flat, currentAssets: 0, retirementAge: 67, endAge: 72 }
+  const targets = { monthlyBudget: 1000, probability: 90, endAge: 72 }
+  expect(compareRetirementAges(params, targets).earliestAge).toBe(69)
+  expect(compareRetirementAges(params, { ...targets, maxRetirementAge: 67 }).earliestAge).toBeNull()
+})
+
+it('uses the full final Monte Carlo budget but only distinct historical start years', () => {
+  const targets = { monthlyBudget: 1000, probability: 90, endAge: 65, final: true }
+  expect(compareRetirementAges(flat, targets).paths).toBe(5000)
+  const historical: SimulationParams = { ...flat, marketModel: 'historical' }
+  const quick = compareRetirementAges(historical, { ...targets, final: false })
+  expect(compareRetirementAges(historical, targets)).toEqual(quick)
 })

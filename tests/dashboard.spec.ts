@@ -358,6 +358,47 @@ test.describe('one-page workspace', () => {
     await expect(page.getByTestId('run-button')).toBeVisible()
   })
 
+  test('recovers the comparison chart after the base plan worker fails', async ({ page }) => {
+    test.setTimeout(90000)
+    await gotoWorkspace(page)
+    const compare = await enterCompare(page)
+    await compare.getByRole('button', { name: /Add plan/ }).click()
+    const counts = compare.getByTestId('simulation-precision')
+    await expect(counts).toHaveCount(2, { timeout: 30000 })
+
+    // Corrupt just the first final-comparison request. The real worker catches
+    // the engine error and returns its normal failure reply for the base plan.
+    await page.evaluate(() => {
+      const send = Worker.prototype.postMessage
+      Worker.prototype.postMessage = new Proxy(send, {
+        apply(original, worker, [message, ...rest]) {
+          if (message?.params?.simulationRuns === 5000) {
+            Worker.prototype.postMessage = send
+            message = { ...message, params: null }
+          }
+          return Reflect.apply(original, worker, [message, ...rest])
+        },
+      })
+    })
+    await compare.getByTestId('compare-final').click()
+    await expect(
+      compare.getByRole('status').filter({ hasText: 'Comparison incomplete' })
+    ).toBeVisible({
+      timeout: 30000,
+    })
+    await expect(counts).toHaveCount(1)
+    await expect(compare.getByText('Re-running…', { exact: true })).toHaveCount(0)
+    await expect(compare.locator('.compare-chart [data-variant="chart"]')).toHaveCount(0)
+    await expect(compare.getByText('The chart needs a result for the base plan.')).toBeVisible()
+
+    await compare.getByRole('button', { name: 'Retry failed plans' }).click()
+    await expect(counts.filter({ hasText: 'of 5,000 Monte Carlo paths' })).toHaveCount(2, {
+      timeout: 30000,
+    })
+    await expect(compare.getByTestId('compare-fan-chart')).toBeVisible()
+    await expect(compare.getByRole('button', { name: 'Retry failed plans' })).toHaveCount(0)
+  })
+
   test('runs on demand from the Run button', async ({ page }) => {
     await page.goto('/en/simulation')
     await expect(page.getByTestId('success-pill')).toBeVisible({ timeout: 30000 })
@@ -634,6 +675,9 @@ test.describe('cash-flow ergonomics', () => {
     const year = new Date().getFullYear() + 8
     await card.locator('#cashflow-date-new').selectOption('01')
     await card.locator('#cashflow-date-year-new').selectOption(String(year))
+    await expect(card.locator('#cashflow-start-new')).toHaveAccessibleDescription(
+      'Available at the start of age 63.'
+    )
     await card.getByRole('button', { name: 'Advanced options' }).click()
     await card.locator('#cashflow-tax-new').click()
     await page.getByRole('option', { name: /One-fifth rule/ }).click()
@@ -643,6 +687,7 @@ test.describe('cash-flow ergonomics', () => {
     const list = card.getByTestId('cashflow-list')
     await expect(list).toContainText('Kapitaloption')
     await expect(list).toContainText(`Jan ${year} · age 63`)
+    await expect(list).toContainText('Available at the start of age 63.')
     await expect(list).toContainText(/tax €[\d,]+ · net €[\d,]+/)
     await expect(list).toContainText('source: company pension, gross')
   })
