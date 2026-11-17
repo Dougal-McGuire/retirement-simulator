@@ -9,6 +9,7 @@ import {
   leverSlider,
   openPanel,
   openSection,
+  readPersistedState,
   readStoredParams,
   sectionHeading,
   test,
@@ -78,6 +79,7 @@ test.describe('one-page workspace', () => {
       // Still current once the smooth scroll has landed and scroll-spy resumed.
       await expect(heading).toBeInViewport()
       await expect(link).toHaveAttribute('aria-current', 'location')
+      await expect(page).toHaveURL(new RegExp(`#${id}(:\\w+)?$`))
       await expect(page.locator('[aria-current="location"]')).toHaveCount(1)
     }
 
@@ -453,19 +455,17 @@ test.describe('working copy', () => {
     const age = page.getByRole('spinbutton', { name: 'Current Age' })
     await age.fill('44')
     await age.blur()
+    await expect(page.getByTestId('wizard-plan-context')).toHaveAttribute('data-dirty', 'true')
 
     // Walk away without finishing the wizard.
     await page.goto('/en/simulation')
 
-    const state = await page.evaluate(() => {
-      const parsed = JSON.parse(window.localStorage.getItem('retirement-simulator-store') as string)
-      return {
-        planAge: parsed.state.plans[0].params.currentAge,
-        draftAge: parsed.state.draftParams?.currentAge ?? null,
-      }
-    })
-    expect(state.planAge).toBe(55)
-    expect(state.draftAge).toBe(44)
+    await expect
+      .poll(() => readPersistedState(page))
+      .toMatchObject({
+        storedPlan: { currentAge: 55 },
+        draft: { currentAge: 44 },
+      })
   })
 })
 

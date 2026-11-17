@@ -524,7 +524,13 @@ export default function SetupPage() {
                   ageLabel: t('assets.oneTimeIncomes.ageLabel'),
                   agePrefix: tUi('age'),
                   creditLabel: (age) =>
-                    oneOffCreditLabel(age, params.currentAge, params.endAge, params.oneOffIncomeTiming, tFlows),
+                    oneOffCreditLabel(
+                      age,
+                      params.currentAge,
+                      params.endAge,
+                      params.oneOffIncomeTiming,
+                      tFlows
+                    ),
                   amountLabel: t('assets.oneTimeIncomes.amountLabel'),
                   addHint: t('assets.oneTimeIncomes.addHint'),
                   remove: t('assets.oneTimeIncomes.remove'),
@@ -789,6 +795,7 @@ export default function SetupPage() {
                 <div className="flex items-center gap-2">
                   <CardTitle
                     as="h2"
+                    id="setup-step-heading"
                     ref={stepHeadingRef}
                     tabIndex={-1}
                     className="text-xl font-extrabold   text-ink"
@@ -804,9 +811,14 @@ export default function SetupPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
-                <div key={activeStepKey} className="animate-step-in">
+                <fieldset
+                  key={activeStepKey}
+                  disabled={!progressLoaded}
+                  aria-labelledby="setup-step-heading"
+                  className="min-w-0 animate-step-in"
+                >
                   {renderStepContent()}
-                </div>
+                </fieldset>
               </CardContent>
             </Card>
 

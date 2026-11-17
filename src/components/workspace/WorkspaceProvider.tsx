@@ -485,7 +485,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }),
     [scrollToSection, showGroup, enterCompare, finishExitCompare]
   )
-  useWorkspaceHash(hashApi)
+  const navigateToSection = useWorkspaceHash(hashApi)
 
   // Compare on phones: the wrapped header slides up behind the pinned chrome
   // until only its exit row is left pinned. `--ws-compare-pin` is how far —
@@ -567,7 +567,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       closeEditor,
       toggleGroup,
       setColumnOpen,
-      scrollToSection,
+      scrollToSection: navigateToSection,
       enterCompare: (invoker?: HTMLElement | null) => enterCompare(invoker),
       exitCompare,
     }),
@@ -578,7 +578,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       closeEditor,
       toggleGroup,
       setColumnOpen,
-      scrollToSection,
+      navigateToSection,
       enterCompare,
       exitCompare,
     ]

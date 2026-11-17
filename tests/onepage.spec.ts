@@ -603,11 +603,9 @@ test('ledger labels open the matching group and field in the column; the canvas 
   await waitForResults(page)
 
   const tax = page.getByRole('button', { name: /^Capital gains tax – edit in/ })
-  // A reader scrolls with the wheel, which ends the landing's hold on
-  // `#cashflow` (it re-aims while sections mount, for up to five seconds);
-  // a scripted scroll alone would be undone by it on a slow machine.
-  await page.mouse.move(400, 500)
-  await page.mouse.wheel(0, 40)
+  // Interacting with the heading releases the deep link's hold on the section
+  // before we position the ledger row on screen.
+  await page.locator('#cashflow-title').click()
   await tax.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
   await expect(tax).toBeInViewport({ ratio: 1 })
   for (const round of [1, 2]) {

@@ -7,6 +7,7 @@ import {
   readPersistedState,
   sectionHeading,
   test,
+  waitForResults,
 } from './helpers/workspace'
 
 /**
@@ -55,6 +56,7 @@ test.describe('withdrawal planner', () => {
       localStorage.setItem(key, JSON.stringify(entry))
     })
     await page.reload()
+    await waitForResults(page)
     await openPanel(page, 'savings')
     const loss = page.getByLabel('Unrealised gain or loss today', { exact: true })
     await loss.fill('')
@@ -67,8 +69,10 @@ test.describe('withdrawal planner', () => {
     await expect
       .poll(async () => (await readPersistedState(page))?.storedPlan?.initialUnrealizedGain)
       .toBe(-5000)
+    await expect(page).toHaveURL(/:savings$/)
     await page.reload()
-    await openPanel(page, 'savings')
+    // The URL reopens this group after hydration.
+    await expect(groupHeader(page, 'savings')).toHaveAttribute('aria-expanded', 'true')
     await expect(loss).toHaveValue('-5,000')
     await expect(loss).toHaveAccessibleDescription(/opening cost basis is €15,000/)
 
@@ -191,13 +195,20 @@ test.describe('withdrawal planner', () => {
     const rule = page.locator('#plan-editor-withdrawal')
     await planner.getByTestId('strategy-compare-run').click()
 
-    await expect(planner.getByTestId('strategy-compare-row')).toHaveCount(4, { timeout: 60000 })
-    await expect(planner.getByTestId('strategy-compare-table')).toContainText('Success rate')
-    // Best-per-column marking: at least one winner is called out.
-    await expect(planner.getByTestId('strategy-compare-table')).toContainText('Best')
+    const strategies = planner
+      .getByTestId(/^strategy-compare-(row|card)$/)
+      .filter({ visible: true })
+    await expect(strategies).toHaveCount(4, { timeout: 60000 })
+    const comparison = planner
+      .getByTestId(/^strategy-compare-(table|card)$/)
+      .filter({ visible: true })
+    await expect(comparison.getByText('Success rate', { exact: true }).first()).toBeVisible()
+    await expect(comparison.getByText('Best', { exact: true }).first()).toBeVisible()
 
-    // The table can drive the plan: the column's picker follows.
-    await planner.getByTestId('strategy-compare-apply-guytonKlinger').click()
+    // Both the wide table and the narrow cards can change the plan.
+    await comparison
+      .getByRole('button', { name: 'Use this strategy: Guyton-Klinger guardrails' })
+      .click()
     await expect(rule.getByTestId('withdrawal-strategy-guytonKlinger')).toHaveAttribute(
       'aria-pressed',
       'true'
