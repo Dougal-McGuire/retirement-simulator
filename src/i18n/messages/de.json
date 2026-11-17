@@ -696,6 +696,11 @@
         "guytonKlinger": "Guyton-Klinger {rate}",
         "percentOfPortfolio": "% vom Portfolio {rate}"
       },
+      "rateChange": {
+        "points": "{value} Pkt.",
+        "smallGain": "um < {value} Pkt. höher",
+        "smallLoss": "um < {value} Pkt. niedriger"
+      },
       "runFinal": "Genauen Vergleich berechnen · {runs} Verläufe",
       "failed": "Vergleich unvollständig",
       "baseChartFailed": "Für das Diagramm fehlt das Ergebnis des Basisplans.",

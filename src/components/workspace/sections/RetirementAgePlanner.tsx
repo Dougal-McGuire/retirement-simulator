@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useFormatter, useLocale, useTranslations } from 'next-intl'
+import { formatSimulationRate } from '@/lib/format/simulationRate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { comparisonRunCount, samplingInterval95 } from '@/lib/simulation/context'
+import { comparisonRunCount, formatSamplingInterval95 } from '@/lib/simulation/context'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { useSimulationParams, useSimulationStore } from '@/lib/stores/simulationStore'
 import type { AgePlannerResponse } from '@/lib/simulation/retirementFrontier.worker'
@@ -24,6 +25,7 @@ function AgeComparisonForm() {
   const params = useSimulationParams()
   const t = useTranslations('workspace.agePlanner')
   const format = useFormatter()
+  const locale = useLocale()
   const [budgetOverride, setBudget] = useState<string | null>(null)
   const [probability, setProbability] = useState('90')
   const [endOverride, setEnd] = useState<string | null>(null)
@@ -45,7 +47,11 @@ function AgeComparisonForm() {
   const earliest = data?.rows.find((row) => row.age === data.earliestAge)
   const interval =
     data && earliest && !historical
-      ? samplingInterval95(Math.round((earliest.successRate * data.paths) / 100), data.paths)
+      ? formatSamplingInterval95(
+          Math.round((earliest.successRate * data.paths) / 100),
+          data.paths,
+          format.number
+        )
       : null
   const money = (value: number, signed = false) =>
     format.number(value, {
@@ -246,7 +252,7 @@ function AgeComparisonForm() {
                       Math.round(row.successRate * 10) / 10 >= Number(probability)
                         ? '<'
                         : ''}
-                      {percent(row.successRate)}
+                      {formatSimulationRate(row.successRate, locale)}
                     </td>
                     <td>{row.monthlyLimit === null ? t('unfunded') : money(row.monthlyLimit)}</td>
                     <td>{row.extraYearGain === null ? '—' : money(row.extraYearGain, true)}</td>
@@ -268,8 +274,8 @@ function AgeComparisonForm() {
                 {' '}
                 {t('interval', {
                   age: earliest!.age,
-                  low: percent(interval.lower),
-                  high: percent(interval.upper),
+                  low: interval.lower,
+                  high: interval.upper,
                 })}
               </>
             )}

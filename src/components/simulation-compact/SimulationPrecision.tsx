@@ -2,7 +2,7 @@
 
 import { useFormatter, useTranslations } from 'next-intl'
 import { InfoTip } from '@/components/ui/info-tip'
-import { buildSimulationContext, samplingInterval95 } from '@/lib/simulation/context'
+import { buildSimulationContext, formatSamplingInterval95 } from '@/lib/simulation/context'
 import type { SimulationResults } from '@/types'
 
 /** Counts and sampling precision from the result actually on screen. */
@@ -28,17 +28,10 @@ export function SimulationPrecision({ results }: { results: SimulationResults })
       </span>
     )
   }
-  const interval = samplingInterval95(successCount, effectiveRuns)
-  // Round outwards so an observed 0% or 100% never appears perfectly certain.
-  const percent = (tenths: number) =>
-    format.number(tenths / 1000, { style: 'percent', maximumFractionDigits: 1 })
+  const interval = formatSamplingInterval95(successCount, effectiveRuns, format.number)
   return (
     <span data-testid="simulation-precision">
-      {t('monteCarlo', counts)} ·{' '}
-      {t('interval', {
-        lower: percent(Math.floor(interval.lower * 10)),
-        upper: percent(Math.ceil(interval.upper * 10)),
-      })}{' '}
+      {t('monteCarlo', counts)} · {t('interval', interval)}{' '}
       <InfoTip label={t('intervalLabel')} content={t('intervalDetail')} />
     </span>
   )

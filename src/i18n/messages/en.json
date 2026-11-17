@@ -696,6 +696,11 @@
         "guytonKlinger": "Guyton-Klinger {rate}",
         "percentOfPortfolio": "% of portfolio {rate}"
       },
+      "rateChange": {
+        "points": "{value} pts",
+        "smallGain": "< {value} pts higher",
+        "smallLoss": "< {value} pts lower"
+      },
       "runFinal": "Run final comparison · {runs} paths",
       "failed": "Comparison incomplete",
       "baseChartFailed": "The chart needs a result for the base plan.",

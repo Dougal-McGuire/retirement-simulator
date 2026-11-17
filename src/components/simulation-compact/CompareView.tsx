@@ -14,6 +14,7 @@ import {
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import { flowWindowLabel, monthFormatter } from '@/lib/plans/flowWindow'
 import { comparisonRunCount, simulationFingerprint } from '@/lib/simulation/context'
+import { formatSimulationRate, formatSimulationRateDelta } from '@/lib/format/simulationRate'
 import { useDisplayReal } from '@/lib/stores/displayStore'
 import { SimulationPrecision } from './SimulationPrecision'
 import { planDisplayName } from '@/lib/plans/planName'
@@ -57,7 +58,7 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
   const tChart = useTranslations('simulationCompact.chart')
   const tSwitch = useTranslations('plans.comparison.flowSwitch')
   const tFlows = useTranslations('setup.cashFlows')
-  const tScenarios = useTranslations('planDashboard.scenarios')
+  const tRateChange = useTranslations('simulationCompact.compare.rateChange')
   const format = useFormatter()
   const locale = useLocale()
   const plans = usePlans()
@@ -224,12 +225,6 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
     }
   }
 
-  const percentValue = (rate: number) =>
-    format.number(rate / 100, {
-      style: 'percent',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: final ? 1 : 0,
-    })
   const lastsValue = (run: PlanRun) =>
     run.kpis.lastsToMedian == null
       ? `${format.number(run.params.endAge)}+`
@@ -484,7 +479,8 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
         {ready.map((run) => (
           <p key={run.plan.id}>
             <strong>
-              {planDisplayName(run.plan, tPlans)} · {percentValue(run.kpis.successRate)}
+              {planDisplayName(run.plan, tPlans)} ·{' '}
+              {formatSimulationRate(run.kpis.successRate, locale)}
             </strong>
             {' · '}
             <SimulationPrecision results={run.results} />
@@ -499,19 +495,10 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
               {
                 key: 'success',
                 label: t('kpi.success'),
-                baseValue: percentValue(base.kpis.successRate),
-                altValue: percentValue(firstAlt.kpis.successRate),
-                delta: Number(
-                  (firstAlt.kpis.successRate - base.kpis.successRate).toFixed(final ? 1 : 0)
-                ),
-                // The catalog's unit ("Pkt." / "pts"), as in the result bar.
-                text: (d: number) =>
-                  tScenarios('deltaPoints', {
-                    value: `${d < 0 ? '−' : '+'}${format.number(Math.abs(d), {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: final ? 1 : 0,
-                    })}`,
-                  }),
+                baseValue: formatSimulationRate(base.kpis.successRate, locale),
+                altValue: formatSimulationRate(firstAlt.kpis.successRate, locale),
+                delta: firstAlt.kpis.successRate - base.kpis.successRate,
+                text: (d: number) => formatSimulationRateDelta(d, locale, tRateChange),
                 toneNegative: 'danger' as const,
               },
               {

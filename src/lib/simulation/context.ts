@@ -111,6 +111,21 @@ export function samplingInterval95(successCount: number, runs: number) {
   }
 }
 
+const intervalPercentFormat = { style: 'percent', maximumFractionDigits: 1 } as const
+
+/** Show one decimal percentage point, always enclosing the unrounded Wilson interval. */
+export function formatSamplingInterval95(
+  successCount: number,
+  runs: number,
+  formatNumber: (value: number, options: typeof intervalPercentFormat) => string
+) {
+  const interval = samplingInterval95(successCount, runs)
+  return {
+    lower: formatNumber(Math.floor(interval.lower * 10) / 1000, intervalPercentFormat),
+    upper: formatNumber(Math.ceil(interval.upper * 10) / 1000, intervalPercentFormat),
+  }
+}
+
 /** Use the same Monte Carlo sample size for every plan in a comparison. Historical
  * replays always use the complete set of start years and never raise this budget. */
 export function comparisonRunCount(plans: SimulationParams[], final: boolean): number {

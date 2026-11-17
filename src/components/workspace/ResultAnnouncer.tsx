@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatSimulationRate } from '@/lib/format/simulationRate'
 import { isUsableResults } from '@/lib/results/usableResults'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
 import { useRunStatus } from './useRunStatus'
@@ -25,7 +26,7 @@ export const ANNOUNCE_SETTLE_MS = 1500
  */
 export function ResultAnnouncer() {
   const t = useTranslations('workspace.editPanel')
-  const format = useFormatter()
+  const locale = useLocale()
   const { status } = useRunStatus()
   const delta = useSavedSuccessDelta()
   const rate = useSimulationStore((state) =>
@@ -59,18 +60,14 @@ export function ResultAnnouncer() {
       armed.current = false
       const { rate: value, delta: deltaText } = latest.current
       if (value === null) return
-      const rateText = format.number(Math.round(value * 10) / 1000, {
-        style: 'percent',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 1,
-      })
+      const rateText = formatSimulationRate(value, locale)
       const text = deltaText
         ? `${t('liveResult', { rate: rateText })} (${t('liveDelta', { delta: deltaText })})`
         : t('liveResult', { rate: rateText })
       // The same words again still have to change the region to be spoken.
       setMessage((previous) => (previous === text ? `${text} ` : text))
     }, ANNOUNCE_SETTLE_MS)
-  }, [status, format, t])
+  }, [status, locale, t])
 
   // Still editing (a keystroke whose run has not started yet): wait for it.
   useEffect(

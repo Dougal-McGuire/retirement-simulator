@@ -1,5 +1,10 @@
 import { DEFAULT_PARAMS, type SimulationParams } from '@/types'
-import { comparisonRunCount, effectiveRunCount, samplingInterval95 } from '../context'
+import {
+  comparisonRunCount,
+  effectiveRunCount,
+  formatSamplingInterval95,
+  samplingInterval95,
+} from '../context'
 import { lognormalParamsFromArithmetic, runMonteCarloSimulation } from '../engine'
 import { HISTORICAL_PATH_COUNT } from '../data/historicalMarket'
 
@@ -15,6 +20,25 @@ test('the approximate 95% interval narrows with more runs and remains open at th
   expect(samplingInterval95(500, 500).upper).toBe(100)
   expect(samplingInterval95(500, 500).lower).toBeCloseTo(99.238, 3)
 })
+
+test.each([10000, 20000])(
+  'outward-rounded limits stay distinct in English and German at %i paths',
+  (runs) => {
+    for (const locale of ['en', 'de']) {
+      const number = (value: number, options: Intl.NumberFormatOptions) =>
+        new Intl.NumberFormat(locale, options).format(value)
+      const percent = new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 1 })
+      expect(formatSamplingInterval95(0, runs, number)).toEqual({
+        lower: percent.format(0),
+        upper: percent.format(0.001),
+      })
+      expect(formatSamplingInterval95(runs, runs, number)).toEqual({
+        lower: percent.format(0.999),
+        upper: percent.format(1),
+      })
+    }
+  }
+)
 
 test('all selected Monte Carlo plans get a common budget, independently of historical runs', () => {
   const monteCarlo = { ...DEFAULT_PARAMS, simulationRuns: 200 }
