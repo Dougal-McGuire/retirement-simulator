@@ -248,11 +248,7 @@ function AgeComparisonForm() {
                         paths: data.paths,
                       })}
                     >
-                      {row.successRate < Number(probability) &&
-                      Math.round(row.successRate * 10) / 10 >= Number(probability)
-                        ? '<'
-                        : ''}
-                      {formatSimulationRate(row.successRate, locale)}
+                      {formatSimulationRate(row.successRate, locale, Number(probability))}
                     </td>
                     <td>{row.monthlyLimit === null ? t('unfunded') : money(row.monthlyLimit)}</td>
                     <td>{row.extraYearGain === null ? '—' : money(row.extraYearGain, true)}</td>

@@ -1,8 +1,15 @@
 import { numberFormat } from './money'
 
 /** Percent on a 0–100 scale. Reserve 0% and 100% for actual sample endpoints. */
-export function formatSimulationRate(rate: number, locale: string): string {
+export function formatSimulationRate(rate: number, locale: string, target?: number): string {
   const percent = numberFormat(locale, { style: 'percent', maximumFractionDigits: 1 })
+  // A rounded near miss must agree with the planner's qualification decision.
+  if (target !== undefined && rate < target && Math.round(rate * 10) / 10 >= target) {
+    return (
+      '<' +
+      numberFormat(locale, { style: 'percent', maximumFractionDigits: 10 }).format(target / 100)
+    )
+  }
   if (rate > 0 && rate < 0.1) return '<' + percent.format(0.001)
   if (rate < 100 && rate > 99.9) return '>' + percent.format(0.999)
   return percent.format(rate / 100)

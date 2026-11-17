@@ -43,6 +43,14 @@ describe.each([
       expect(change(alt, alt)).toBe('±0')
     })
 
+    it('does not round a near miss up to its target or combine two inequality signs', () => {
+      const space = locale === 'de' ? ' ' : ''
+      expect(formatSimulationRate(89.98, locale, 90)).toBe('<90' + space + '%')
+      expect(formatSimulationRate(99.99, locale, 100)).toBe('<100' + space + '%')
+      expect(formatSimulationRate(100, locale, 100)).toBe('100' + space + '%')
+      expect(formatSimulationRate(89.7, locale, 90)).toBe(locale === 'de' ? '89,7 %' : '89.7%')
+    })
+
     it('preserves a single success or failure and the direction of a sub-display-unit change', () => {
       const rare = 100 / 20000
       expect(formatSimulationRate(rare, locale)).toBe(low)
