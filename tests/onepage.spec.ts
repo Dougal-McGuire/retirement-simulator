@@ -18,6 +18,7 @@ import {
   showColumn,
   successRate,
   test,
+  waitForLeversMeasured,
   waitForResults,
   waitForScrollSettled,
 } from './helpers/workspace'
@@ -232,13 +233,19 @@ test('5 · scroll-spy marks the section being read and replaces (never pushes) t
   await page.goto('/en/simulation')
   await waitForResults(page)
 
+  // Mount and measure the lazy Impact section before scrolling between sections.
+  // Its changing height can move the reading line back into Withdrawal on iPad.
+  const levers = page.locator('#levers')
+  await levers.evaluate((el) => el.scrollIntoView())
+  await waitForLeversMeasured(page)
+
   await page.locator('#cashflow').evaluate((el) => el.scrollIntoView())
   await expect(page.getByTestId('section-link-cashflow')).toHaveAttribute(
     'aria-current',
     'location'
   )
   await expect(page).toHaveURL(/#cashflow$/)
-  await page.locator('#levers').evaluate((el) => el.scrollIntoView())
+  await levers.evaluate((el) => el.scrollIntoView())
   await expect(page).toHaveURL(/#levers$/)
   await expect(page.getByTestId('section-link-levers')).toHaveAttribute('aria-current', 'location')
   await expect(page.locator('[aria-current="location"]')).toHaveCount(1)

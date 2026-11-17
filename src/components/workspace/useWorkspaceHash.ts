@@ -7,6 +7,7 @@ import type { ScrollToSectionOptions } from './WorkspaceProvider'
 import {
   groupForTarget,
   parseWorkspaceHash,
+  scrollDistanceToElement,
   type WorkspaceHash,
   type WorkspaceSectionId,
 } from './workspaceNav'
@@ -97,11 +98,17 @@ export function useWorkspaceHash(api: WorkspaceHashApi) {
   const landOn = useCallback((section: WorkspaceSectionId, opts?: ScrollToSectionOptions) => {
     releaseHold.current?.()
     apiRef.current.scrollToSection(section, opts)
+    const anchorTarget = opts?.focus ? document.getElementById(section) : null
     releaseHold.current = holdSectionInView(
-      () => apiRef.current.scrollToSection(section, { behavior: 'instant', keepColumn: true }),
+      () => {
+        // Correct an anchor displaced down the page by lazy content. Once the
+        // reader has scrolled farther into the section, leave them there.
+        if (anchorTarget && scrollDistanceToElement(anchorTarget) <= 1) return
+        apiRef.current.scrollToSection(section, { behavior: 'instant', keepColumn: true })
+      },
       // On a hash landing, re-aim once after its column group has been applied.
       // A focused anchor jump can keep animating until the page changes size.
-      opts?.focus ? document.body.offsetHeight : undefined
+      anchorTarget ? document.body.offsetHeight : undefined
     )
   }, [])
 
