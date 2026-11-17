@@ -138,7 +138,7 @@ const GOLDEN_ASSET_P50_REAL = [
  * additive rather than a rewrite. Regenerated with exception 3 above (was
  * 98.4%): an untaxed pension is still a pension the rule now spends.
  */
-const NEUTRAL_TAX_SUCCESS_RATE = 82.39999999999999
+const NEUTRAL_TAX_SUCCESS_RATE = 82.4 // Exactly 412 successful paths out of 500.
 
 /** The parameter overrides that turn all three new shelters off. */
 const NEUTRAL_TAX_PARAMS: SimulationParams = {
