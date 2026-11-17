@@ -112,6 +112,7 @@ This is a Next.js 16.4 retirement planning simulator using React 19, TypeScript,
 - **SimulationParams**: Demographics (ages), assets, income (savings, pension), expenses (monthly, annual), market assumptions (ROI, inflation, volatility, taxes)
 - **SimulationResults**: Percentile data for assets and spending at each age, success rate
 - **Plan**: Named `SimulationParams` snapshot with id and timestamps (`MAX_PLANS = 12`)
+- **One-off income timing**: new plans deposit income at the opening of its booking age. Plans and pre-plan setups without `oneOffIncomeTiming` keep the previous `yearEnd` convention: the next age's opening, or the final year's close after spending for a booking at `endAge`. Both conventions assess tax at the booked age. Duplicates and variants retain the source timing.
 - **CashFlow**: one list of incomes, expenses and pensions (`params.cashFlows`); `enabled: false` keeps a flow in the plan but out of every calculation (`isCashFlowEnabled`, see `docs/specs/2026-09-28-flow-switches.md`)
 - **DEFAULT_PARAMS**: Realistic German retirement scenario (see `src/types/index.ts`). The withdrawal rate (`dsWithdrawalRate`, default 4 %) is what the portfolio pays *on top of* pensions and other income (`docs/specs/2026-11-09-withdrawal-rules-with-income.md`). A change to the defaults needs the landing preview re-baked (`src/components/landing/preview-data.ts`, guarded by its test); the engine master in `engine-golden.test.ts` is frozen at its own parameter set
 
