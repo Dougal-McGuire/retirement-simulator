@@ -168,3 +168,24 @@ it('uses the full final Monte Carlo budget but only distinct historical start ye
   const quick = compareRetirementAges(historical, { ...targets, final: false })
   expect(compareRetirementAges(historical, targets)).toEqual(quick)
 })
+
+it('reports an exact 58 of 100 as meeting the 58% target', () => {
+  const plan = {
+    ...DEFAULT_PARAMS,
+    currentAge: 65,
+    retirementAge: 65,
+    legalRetirementAge: 65,
+    endAge: 65,
+    currentAssets: 12000,
+    annualSavings: 0,
+    monthlyPension: 0,
+    capitalGainsTax: 0,
+    cashFlows: [],
+    oneTimeIncomes: [],
+    customExpenses: [],
+    simulationRuns: 100,
+  }
+  const result = compareRetirementAges(plan, { monthlyBudget: 1063, probability: 58, endAge: 65 })
+  expect(result.earliestAge).toBe(65)
+  expect(result.rows[0].successRate).toBe(58)
+})

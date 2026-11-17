@@ -98,6 +98,14 @@ export function effectiveRunCount(
     : normalizeRunCount(params.simulationRuns)
 }
 
+/**
+ * Integer counts stay exact through the multiplication. For example,
+ * (58 / 100) * 100 lands below 58 and mislabels a plan that met its target.
+ */
+export function observedSuccessPercent(hits: number, paths: number): number {
+  return (100 * hits) / paths
+}
+
 /** Two-sided 95% Wilson score limits for a Monte Carlo success share, in percent. */
 export function samplingInterval95(successCount: number, runs: number) {
   const z = 1.959963984540054

@@ -1,5 +1,10 @@
 import type { SimulationParams } from '@/types'
-import { DEFAULT_PATH_SEED, comparisonRunCount, effectiveRunCount } from './context'
+import {
+  DEFAULT_PATH_SEED,
+  observedSuccessPercent,
+  comparisonRunCount,
+  effectiveRunCount,
+} from './context'
 import {
   buildEquityGlidePath,
   buildSimulationDistributions,
@@ -152,7 +157,7 @@ export function compareRetirementAges(
     rows.push({
       age,
       monthlyLimit,
-      successRate: (hits / paths) * 100,
+      successRate: observedSuccessPercent(hits, paths),
       extraYearGain: monthlyLimit != null && previous != null ? monthlyLimit - previous : null,
     })
     if (earliestAge === null && hits >= successesNeeded) earliestAge = age

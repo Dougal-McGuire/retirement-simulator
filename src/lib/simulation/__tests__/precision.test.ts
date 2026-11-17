@@ -1,6 +1,8 @@
 import { DEFAULT_PARAMS, type SimulationParams } from '@/types'
 import {
+  MAX_SIMULATION_RUNS,
   comparisonRunCount,
+  observedSuccessPercent,
   effectiveRunCount,
   formatSamplingInterval95,
   samplingInterval95,
@@ -104,4 +106,20 @@ test('changing return and inflation assumptions transforms the same year-by-year
   expect(changed).toHaveLength(original.length)
   expect(original.length).toBeGreaterThan(0)
   changed.forEach((draw, index) => expect(draw).toBeCloseTo(original[index], 9))
+})
+
+it('agrees with the count-based decision at every supported run count and whole-percent target', () => {
+  for (let paths = 1; paths <= MAX_SIMULATION_RUNS; paths++) {
+    for (let target = 1; target <= 100; target++) {
+      const needed = Math.ceil((target * paths) / 100)
+      const at = observedSuccessPercent(needed, paths)
+      const below = observedSuccessPercent(needed - 1, paths)
+      const exact = (target * paths) % 100 === 0
+      if (below >= target || at < target || (exact && at !== target)) {
+        throw new Error(
+          `Threshold mismatch at ${needed}/${paths}, target ${target}%: ${below}, ${at}`
+        )
+      }
+    }
+  }
 })

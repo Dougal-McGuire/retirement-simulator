@@ -15,7 +15,12 @@ import {
   type HistoricalMarketYear,
 } from '@/lib/simulation/data/historicalMarket'
 import { ShortfallDistribution } from '@/lib/simulation/shortfalls'
-import { DEFAULT_PATH_SEED, effectiveRunCount, normalizeRunCount } from '@/lib/simulation/context'
+import {
+  DEFAULT_PATH_SEED,
+  observedSuccessPercent,
+  effectiveRunCount,
+  normalizeRunCount,
+} from '@/lib/simulation/context'
 import {
   type CashFlowSeries,
   type PensionContext,
@@ -866,7 +871,10 @@ export function normalizeSimulationParams(params: SimulationParams): SimulationP
     dsCeilingRate: clamp(sanitizeFiniteNumber(params.dsCeilingRate, 0.05), 0, 0.15),
     dsFloorRate: clamp(sanitizeFiniteNumber(params.dsFloorRate, -0.025), -0.15, 0),
     spendingFloorReal: Math.max(0, sanitizeFiniteNumber(params.spendingFloorReal, 0)),
-    lifestyleFloorMonthlyReal: Math.max(0, sanitizeFiniteNumber(params.lifestyleFloorMonthlyReal, 0)),
+    lifestyleFloorMonthlyReal: Math.max(
+      0,
+      sanitizeFiniteNumber(params.lifestyleFloorMonthlyReal, 0)
+    ),
     simulationRuns: normalizeRunCount(params.simulationRuns),
   }
 }
@@ -1220,10 +1228,7 @@ export function runSingleSimulation(
 
     // The run fails in the first year it leaves a material part of its
     // spending unpaid — not when the balance touches zero.
-    if (
-      depletionIndex === null &&
-      isUnderfunded(yearShortfall, requestedSpending)
-    ) {
+    if (depletionIndex === null && isUnderfunded(yearShortfall, requestedSpending)) {
       depletionIndex = yearIndex
       if (!recordHistory) break // A success-only trial can already answer false.
     }
@@ -1400,9 +1405,8 @@ export function runMonteCarloSimulation(
       if (lifestyleGaps && age >= schedule.effectiveRetirementAge) {
         // Reserve the year's scheduled items first. An expensive one-off must
         // not make the household appear to have a larger ordinary budget.
-        const ordinarySpending = Math.max(
-          0, realRow.expenses - realRow.shortfall - (realRow.scheduledExpenses ?? 0)
-        ) / 12
+        const ordinarySpending =
+          Math.max(0, realRow.expenses - realRow.shortfall - (realRow.scheduledExpenses ?? 0)) / 12
         const gap = lifestyleFloor - ordinarySpending
         // Ignore roundoff from deflating an exactly funded, indexed budget.
         if (gap > 0.000001) lifestyleGaps.recordYear(age, gap, index === lastIndex)
@@ -1468,8 +1472,8 @@ export function runMonteCarloSimulation(
   const inflationIndexP50 = calculatePercentiles(inflationIndexRuns).p50
 
   // Calculate success rate
-  const successRate = (successfulRuns / effectiveRuns) * 100
-  const depletionSuccessRate = (survivingRuns / effectiveRuns) * 100
+  const successRate = observedSuccessPercent(successfulRuns, effectiveRuns)
+  const depletionSuccessRate = observedSuccessPercent(survivingRuns, effectiveRuns)
   const withdrawalTaxDrag =
     taxDragRatios.length > 0 ? calculatePercentile(taxDragRatios, 50) : undefined
 
