@@ -109,7 +109,7 @@ export function useRateFormat(): (value: number) => string {
     (value: number) =>
       format.number(value / 100, {
         style: 'percent',
-        minimumFractionDigits: 1,
+        minimumFractionDigits: 0,
         maximumFractionDigits: 1,
       }),
     [format]

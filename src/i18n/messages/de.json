@@ -90,9 +90,9 @@
       "runsChip": "{runs} Läufe",
       "pensionMarker": "Rente · {age}",
       "outcomes": {
-        "low": "Schlechteste 10%",
+        "low": "10. Perzentil",
         "median": "Median",
-        "high": "Beste 10%"
+        "high": "90. Perzentil"
       },
       "caption": "Echte Ausgabe der eingebauten Engine: {runs} Simulationen des Standardplans der App. {successRate} davon blieben bis Alter {endAge} finanziert."
     },
@@ -159,21 +159,22 @@
     },
     "spread": {
       "eyebrow": "Warum eine Zahl täuscht",
-      "title": "Gleicher Plan. Gleiche Durchschnittsrendite. Drei sehr verschiedene Zukünfte.",
-      "body": "So viel Vermögen bleibt im Beispielplan oben mit Alter {endAge} übrig. Verändert hat sich nur die Reihenfolge der Marktrenditen — und allein sie entscheidet, ob der Plan komfortabel oder knapp endet.",
+      "title": "Ein Plan. Wie viel könnte übrig bleiben?",
+      "body": "So verteilen sich die simulierten Endvermögen mit {endAge}. Alle Verläufe starten mit denselben Annahmen. Rendite und Inflation variieren von Jahr zu Jahr.",
       "footnote": "{runs} Läufe des Standardplans · {successRate} blieben bis Alter {endAge} finanziert. Ändere eine Annahme, und die gesamte Bandbreite zeichnet sich neu.",
       "items": {
         "low": {
-          "label": "Schlechteste 10% der Läufe",
-          "body": "Ein schwaches erstes Jahrzehnt. Der Plan trägt noch, lässt aber kaum Spielraum für Überraschungen."
+          "label": "10. Perzentil",
+          "body": "Etwa jeder zehnte Verlauf endet bei diesem Betrag oder darunter."
         },
         "median": {
-          "label": "Mittlerer Lauf",
-          "body": "Das mittlere Ergebnis — genau die eine Zahl, die eine Tabellenkalkulation allein gezeigt hätte."
+          "label": "Median",
+          "body": "Die Hälfte der simulierten Endvermögen liegt bei diesem Betrag oder darunter."
         },
         "high": {
-          "label": "Beste 10% der Läufe",
-          "body": "Ein freundlicher Markt. Zehnmal so viel Endvermögen wie im Pechfall — bei identischen Eingaben."
+          "label": "90. Perzentil",
+          "body": "Etwa jeder zehnte Verlauf endet bei diesem Betrag oder darüber.",
+          "ratio": "Etwa das {ratio}-Fache des Vermögens am 10. Perzentil."
         }
       }
     },
@@ -335,6 +336,12 @@
           "label": "Aktuelles Vermögen",
           "help": "Gesamter Wert deiner derzeitigen Anlagen und Ersparnisse"
         },
+        "initialUnrealizedGain": {
+          "label": "Heutiger Buchgewinn oder -verlust",
+          "help": "Ziehe den Kaufpreis vom heutigen Depotwert ab. Bei einem Verlust gib einen negativen Betrag ein. Bei null entspricht der Kaufpreis dem heutigen Depotwert. Der Anschaffungswert beträgt {basis}.",
+          "range": "Der Buchgewinn kann den heutigen Depotwert nicht übersteigen.",
+          "assetRange": "Der Depotwert muss mindestens dem Buchgewinn entsprechen. Passe gegebenenfalls zuerst den Buchgewinn an."
+        },
         "annualSavings": {
           "label": "Jährliche Sparrate",
           "help": "Wie viel kannst du bis zum Ruhestand pro Jahr zurücklegen?"
@@ -411,7 +418,7 @@
       },
       "simulationRuns": {
         "label": "Simulationsläufe",
-        "help": "Mehr Läufe erzeugen genauere Ergebnisse, benötigen aber mehr Zeit"
+        "help": "Mehr Läufe verringern die Stichprobenunsicherheit und verlängern die Rechenzeit."
       }
     },
     "expenseTemplates": {
@@ -608,6 +615,15 @@
       "real": "Heutige €",
       "nominalShort": "Nom.",
       "realShort": "Heute"
+    },
+    "precision": {
+      "monteCarlo": "{successes} von {runs} Monte-Carlo-Verläufen erreichten das Ziel",
+      "interval": "95-%-Stichprobenintervall {lower}–{upper}",
+      "intervalLabel": "Monte-Carlo-Stichprobenunsicherheit",
+      "intervalDetail": "Das Wilson-Intervall zeigt, wie genau diese Stichprobe die Erfolgsquote unter deinen Annahmen schätzt. Künftige Marktrenditen und Fehler in den Annahmen bringen zusätzliche Unsicherheit mit sich.",
+      "historical": "Ziel in {successes} von {runs} historischen Startjahren erreicht",
+      "historicalLabel": "Historische Startjahre",
+      "historicalDetail": "Jedes Jahr von {first} bis {last} dient einmal als Startjahr. Die Verläufe überlappen sich und beginnen nach dem letzten Datenjahr wieder im ersten. Die Quote beschreibt diese historischen Verläufe."
     }
   },
   "simulationCompact": {
@@ -634,7 +650,7 @@
       "title": "Pläne vergleichen",
       "addPlan": "+ Plan hinzufügen (max. {max})",
       "running": "Wird neu berechnet…",
-      "meta": "{count, plural, =1 {# Plan neu berechnet} other {# Pläne neu berechnet}} · je {runs} Läufe",
+      "meta": "{count, plural, one {# Plan berechnet} other {# Pläne berechnet}}",
       "exit": "Vergleich beenden",
       "changedRows": "Geänderte Zeilen hervorgehoben",
       "openEditor": "Annahmen bearbeiten →",
@@ -653,7 +669,7 @@
       "kpi": {
         "success": "Erfolgsquote",
         "lastsTo": "Vermögen reicht bis",
-        "firstYearDraw": "Entnahme im 1. Jahr",
+        "firstYearDraw": "Bruttoentnahme im 1. Jahr",
         "medianEnd": "Median-Endvermögen",
         "years": "J."
       },
@@ -673,7 +689,15 @@
         "vanguardDynamic": "Vanguard {rate}",
         "guytonKlinger": "Guyton-Klinger {rate}",
         "percentOfPortfolio": "% vom Portfolio {rate}"
-      }
+      },
+      "runFinal": "Genauen Vergleich berechnen · {runs} Verläufe",
+      "failed": "Vergleich unvollständig",
+      "retry": "Fehlende Pläne erneut berechnen",
+      "backToPreview": "Zurück zum Schnellvergleich",
+      "previewPaths": "Schnellvergleich · je Plan dieselben {runs} Marktszenarien",
+      "finalPaths": "Genauer Vergleich · je Plan dieselben {runs} Marktszenarien",
+      "mixedModels": "Die Pläne verwenden verschiedene Marktmodelle. Monte-Carlo-Pläne nutzen dieselben Zufallsziehungen. Historische Pläne durchlaufen alle verfügbaren Startjahre.",
+      "historicalPaths": "Alle Pläne durchlaufen dieselben historischen Startjahre."
     },
     "pageTitle": "Ruhestandsplanung",
     "error": "Die Simulation konnte nicht berechnet werden. Bitte erneut versuchen.",
@@ -914,7 +938,7 @@
       },
       "simulationRuns": {
         "label": "Anzahl der Läufe",
-        "tooltip": "Monte-Carlo-Simulationen. Mehr Läufe bedeuten höhere Genauigkeit, benötigen aber mehr Rechenzeit."
+        "tooltip": "Mehr Verläufe verkleinern das Stichprobenintervall und verlängern die Rechenzeit. Die Marktannahmen bleiben gleich."
       },
       "withdrawalStrategy": {
         "label": "Entnahmestrategie",
@@ -1037,6 +1061,11 @@
             "label": "Zusammenveranlagung"
           }
         }
+      },
+      "lifestyleFloorMonthlyReal": {
+        "label": "Monatsminimum für den Alltag (heutige Euro)",
+        "tooltip": "Vergleiche die gedeckten Alltagsausgaben nach gesondert geplanten Ausgaben mit diesem Betrag. Der Vergleich lässt Entnahmen und Erfolgsquote unverändert. Mit 0 schaltest du ihn aus.",
+        "range": "Gib null oder einen positiven Betrag ein."
       },
       "spendingFloorReal": {
         "label": "Garantierte Untergrenze (heutige €, p.a.)",
@@ -2075,6 +2104,7 @@
           "endAge": "Planungshorizont",
           "bridgeYears": "Rentenlücke",
           "currentAssets": "Aktuelles Vermögen",
+          "initialUnrealizedGain": "Buchgewinn oder -verlust zu Beginn",
           "annualSavings": "Jährliche Sparrate",
           "annualSavingsGrowthRate": "Wachstum der Sparrate",
           "monthlyPension": "Monatliche Rente",
@@ -2106,6 +2136,7 @@
           "pensionTaxablePortion": "Besteuerungsanteil der Rente",
           "pensionTaxRate": "Einkommensteuersatz auf die Rente",
           "legacyTargetReal": "Nachlassziel (heutige Kaufkraft)",
+          "lifestyleFloorMonthlyReal": "Monatsminimum für den Alltag",
           "spendingFloorReal": "Garantierte Ausgabenuntergrenze"
         },
         "differsCount": "{count, plural, one {# Abweichung} other {# Abweichungen}}"
@@ -2210,6 +2241,9 @@
     }
   },
   "withdrawalPlanner": {
+    "firstSale": "Der erste Depotverkauf fällt ins Jahr mit Alter {age}. Im Durchschnitt aller Pfade beträgt der Erlös {gross}, davon {gain} Gewinn oder Verlust. Nach {tax} Kapitalertragsteuer bleiben {net} {unit, select, real {in heutiger Kaufkraft} other {in nominalen Euro}}.",
+    "saleMethodLabel": "Wie das Modell einen Verkauf besteuert",
+    "saleMethod": "Jeder verkaufte Euro enthält denselben Anteil der gesamten Anschaffungskosten. Auf Gewinne wendet das Modell die eingestellte Teilfreistellung und den verbleibenden Jahresfreibetrag an. Einzelne Kaufzeitpunkte (FIFO) und Verlustverrechnungstöpfe bleiben unberücksichtigt.",
     "noParams": "Diese Strategie hat keine Einstellungen: Sie gibt einfach das Budget des Plans aus, inflationsgebunden.",
     "stats": {
       "firstYear": "Erstes Ruhestandsjahr",
@@ -2399,6 +2433,47 @@
     "oneOffTiming": "Zur Kompatibilität mit bestehenden Plänen wird eine Einmaleinnahme beim nächsten Lebensalter nach dem eingetragenen Buchungsalter ins Depot eingezahlt. Die Tabelle zeigt das Jahr der tatsächlichen Gutschrift einschließlich des zugehörigen Steuerabzugs."
   },
   "workspace": {
+    "agePlanner": {
+      "title": "Wann kann ich in den Ruhestand gehen?",
+      "intro": "Vergleiche, ab welchem Alter du dir ein festes Monatsbudget in heutiger Kaufkraft leisten kannst. Mit jedem weiteren Arbeitsjahr sparst du länger und verkürzt die Entnahmephase.",
+      "budget": "Lebenshaltung (€/Monat)",
+      "probability": "Erfolgsziel (%)",
+      "end": "Planung bis Alter",
+      "compare": "Alter vergleichen",
+      "running": "Berechnung läuft …",
+      "progress": "{done} von {total} Altersstufen verglichen …",
+      "error": "Der Vergleich konnte nicht berechnet werden. Versuche es erneut.",
+      "earliest": "Frühester Ruhestand mit deinem Erfolgsziel: mit {age} Jahren.",
+      "none": "Kein Ruhestandsalter von {from} bis {to} Jahren erreicht dein Ziel.",
+      "table": "Ruhestandsalter und Monatsbudget",
+      "age": "Ruhestand mit",
+      "rate": "Erfolg beim Wunschbudget",
+      "limit": "Tragbar pro Monat",
+      "gain": "Mehr gegenüber einem Jahr früher",
+      "unfunded": "Ziel verfehlt",
+      "sample": "Für jedes Alter gelten dieselben {paths, number} Marktverläufe bis einschließlich Alter {end}. Tragbar ist die höchste 10-€-Stufe, die dein Erfolgsziel von {probability} erreicht.",
+      "method": "Was fließt in den Vergleich ein?",
+      "budgetMethod": "Ab Ruhestandsbeginn ersetzt dein Wunschbudget alle unbefristeten laufenden Lebenshaltungskosten und behält seine Kaufkraft. Ausgaben mit festem Termin oder Zeitraum kommen zum geplanten Zeitpunkt hinzu. Renten, weitere Einnahmen, Steuern, Sparraten und ein mögliches Erbziel stammen aus deinem Plan.",
+      "successMethod": "Das Erfolgsziel ist erreicht, wenn genügend Verläufe in jedem Jahr mindestens 99 % der geplanten Ausgaben decken und ein mögliches Erbziel erfüllen. Der Vergleich beginnt bei deinem heutigen Alter und reicht bis zum höheren Wert aus geplantem Ruhestandsalter und Regelrentenalter, höchstens bis zum Planungsende. Es zählen bis zu 500 Monte-Carlo-Verläufe oder alle historischen Startjahre."
+    },
+    "shortfalls": {
+      "title": "Ausgabenlücken im Detail",
+      "fundingCount": "Deckungslücken in {count, number} von {total, number} Verläufen",
+      "fundingHeading": "Ungedeckte geplante Ausgaben",
+      "fundingDefinition": "Eine Deckungslücke entsteht, wenn mehr als 1 % der für ein Jahr geplanten Ausgaben ungedeckt bleiben. Dazu zählen auch Ausgaben vor dem Ruhestand.",
+      "firstAge": "Alter bei der ersten Lücke",
+      "monthlyGap": "Monatliche Lücke in heutigen Euro",
+      "duration": "Jahre mit einer Lücke",
+      "atHorizon": "Mit {age} Jahren hatten {count, number} der {affected, number} betroffenen Verläufe weiterhin eine Lücke. Hier endet die Simulation.",
+      "bequest": "In {count, number} von {total, number} Verläufen waren die Ausgaben jedes Jahr gedeckt, doch das Endvermögen lag unter dem Nachlassziel von {target} in heutigen Euro.",
+      "lifestyleHeading": "Alltagsausgaben im Ruhestand",
+      "lifestyleFunded": "Davon hatten {count, number} Verläufe in keinem Jahr eine Deckungslücke bei den geplanten Ausgaben.",
+      "lifestyleCount": "In {count, number} von {total, number} Verläufen blieb nach den gesondert geplanten Ausgaben weniger als dein Monatsminimum von {target} in heutigen Euro für den Alltag übrig.",
+      "noFloor": "Mit einem persönlichen Monatsminimum siehst du, wie oft deine Entnahmeregel weniger Geld für den Alltag vorsieht, selbst wenn alle Ausgaben gedeckt sind.",
+      "setFloor": "Monatsminimum festlegen",
+      "editFloor": "Monatsminimum ändern",
+      "method": "Die Kennzahlen zeigen den Median der jeweils betroffenen Verläufe. Jeder Verlauf geht mit seiner durchschnittlichen Monatslücke in den betroffenen Jahren ein. Zwischen Jahren mit einer Lücke können Jahre ohne Lücke liegen."
+    },
     "brand": "Ruhestandsplanung",
     "navigation": "Abschnitte",
     "saved": "Plan gespeichert",
@@ -2464,8 +2539,9 @@
       "pdf": "PDF"
     },
     "verdict": {
-      "sentence": "Dein Geld reicht in {count} von 100 Verläufen bis {end}.",
-      "sentenceLegacy": "In {count} von 100 Verläufen reicht dein Geld bis {end} und dein Vermögensziel bleibt übrig."
+      "sentence": "Anteil der Verläufe, in denen das Geld bis {end} reicht.",
+      "sentenceLegacy": "Anteil der bis {end} finanzierten Verläufe mit erreichtem Vermögensziel.",
+      "previous": "Letztes berechnetes Ergebnis."
     },
     "cards": {
       "startingValues": "Ausgangswerte in heutigen Euro"
@@ -2515,9 +2591,10 @@
     "head": {
       "lastsTo": "Reicht bis",
       "atEnd": "Am Ende",
-      "firstDraw": "Entnahme anfangs",
+      "firstDraw": "Erste Bruttoentnahme · nominal",
       "firstDrawHint": "Durchschnittliche Depotentnahme im ersten Ruhestandsjahr, brutto. Führt zum Abschnitt Entnahme.",
-      "badCase": "schlechter Verlauf"
+      "badCase": "schlechter Verlauf",
+      "firstDrawReal": "Erste Bruttoentnahme · heutige €"
     },
     "dock": {
       "label": "Ergebnis im Blick",
@@ -2596,12 +2673,14 @@
         "legalRetirementAge": "Rente ab",
         "endAge": "Planen bis",
         "currentAssets": "Vermögen",
+        "initialUnrealizedGain": "Buchgewinn oder -verlust zu Beginn",
         "annualSavings": "Sparen pro Jahr",
         "annualSavingsGrowthRate": "Wachstum der Sparrate",
         "withdrawalStrategy": "Entnahmeregel",
         "dsWithdrawalRate": "Entnahmerate",
         "dsCeilingRate": "Obergrenze",
         "dsFloorRate": "Untergrenze",
+        "lifestyleFloorMonthlyReal": "Monatsminimum für den Alltag",
         "spendingFloorReal": "Ausgaben-Untergrenze",
         "marketModel": "Marktmodell",
         "averageROI": "Rendite",

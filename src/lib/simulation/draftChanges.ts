@@ -98,6 +98,7 @@ const FIELD_SPECS: readonly FieldSpec[] = [
   { key: 'endAge', group: 'person', kind: 'age' },
 
   { key: 'currentAssets', group: 'savings', kind: 'currency' },
+  { key: 'initialUnrealizedGain', group: 'savings', kind: 'currency' },
   { key: 'annualSavings', group: 'savings', kind: 'currency' },
   { key: 'annualSavingsGrowthRate', group: 'savings', kind: 'rate' },
 
@@ -106,6 +107,7 @@ const FIELD_SPECS: readonly FieldSpec[] = [
   { key: 'dsCeilingRate', group: 'rule', kind: 'rate' },
   { key: 'dsFloorRate', group: 'rule', kind: 'rate' },
   { key: 'spendingFloorReal', group: 'rule', kind: 'currency' },
+  { key: 'lifestyleFloorMonthlyReal', group: 'rule', kind: 'currency' },
 
   { key: 'marketModel', group: 'market', kind: 'marketModel' },
   { key: 'averageROI', group: 'market', kind: 'rate' },

@@ -77,6 +77,19 @@ describe('compare run queue', () => {
     expect(results.get('b')).toBe('v2')
   })
 
+  it('reports a failed plan and accepts a retry of the same fingerprint', async () => {
+    const run = jest.fn().mockRejectedValueOnce(new Error('unavailable')).mockResolvedValue('done')
+    const onError = jest.fn()
+    const onResult = jest.fn()
+    const queue = createCompareRunQueue({ run, onError, onResult })
+    queue.request([job('a')])
+    await flush()
+    expect(onError).toHaveBeenCalledWith('a', 'v1')
+    queue.request([job('a')])
+    await flush()
+    expect(onResult).toHaveBeenCalledWith('a', 'v1', 'done')
+  })
+
   it('reports running while work is queued and stops after dispose', async () => {
     const { running, show, queue, runs, settle } = harness()
     show([job('a'), job('b')])

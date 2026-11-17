@@ -1,6 +1,8 @@
+import { readOneOffIncomeTiming } from '@/types'
 import {
   AnnualCashFlow,
   DEFAULT_CAPITAL_GAINS_TAX,
+  openingPortfolioGain,
   SimulationParams,
   SimulationResults,
   PercentileData,
@@ -12,7 +14,8 @@ import {
   HISTORICAL_MARKET_YEARS,
   type HistoricalMarketYear,
 } from '@/lib/simulation/data/historicalMarket'
-import { DEFAULT_PATH_SEED, effectiveRunCount } from '@/lib/simulation/context'
+import { ShortfallDistribution } from '@/lib/simulation/shortfalls'
+import { DEFAULT_PATH_SEED, effectiveRunCount, normalizeRunCount } from '@/lib/simulation/context'
 import {
   type CashFlowSeries,
   type PensionContext,
@@ -102,6 +105,8 @@ export function hashSimulationParams(params: SimulationParams): number {
     legalRetirementAge: params.legalRetirementAge,
     endAge: params.endAge,
     currentAssets: params.currentAssets,
+    oneOffIncomeTiming: readOneOffIncomeTiming(params.oneOffIncomeTiming),
+    initialUnrealizedGain: openingPortfolioGain(params.currentAssets, params.initialUnrealizedGain),
     annualSavings: params.annualSavings,
     annualSavingsGrowthRate: params.annualSavingsGrowthRate,
     monthlyPension: params.monthlyPension,
@@ -127,6 +132,7 @@ export function hashSimulationParams(params: SimulationParams): number {
     dsCeilingRate: params.dsCeilingRate,
     dsFloorRate: params.dsFloorRate,
     spendingFloorReal: params.spendingFloorReal,
+    lifestyleFloorMonthlyReal: params.lifestyleFloorMonthlyReal ?? 0,
     simulationRuns: params.simulationRuns,
     customExpenses: (params.customExpenses ?? []).map((expense) => [
       expense.interval,
@@ -482,6 +488,9 @@ export const GK_PROSPERITY_RAISE = 0.1
  */
 export const UNFUNDED_SPENDING_TOLERANCE = 0.01
 
+const isUnderfunded = (shortfall: number, requested: number) =>
+  shortfall > requested * UNFUNDED_SPENDING_TOLERANCE
+
 /**
  * Vanguard dynamic spending. The rule governs what the *portfolio* pays:
  * what the household can afford this year is its other income plus
@@ -735,13 +744,7 @@ export function applyWithdrawalStrategy({
 /** Youngest plan age the engine accepts — the same bound the editor and the wizard use. */
 export const MIN_CURRENT_AGE = 16
 
-/**
- * Upper bound on Monte Carlo paths per run. The editor stops at 10,000; this
- * is the engine's own stop for anything that reaches it another way (an
- * imported plan, a hand-edited store), where 10⁷ runs would just hang the
- * worker.
- */
-export const MAX_SIMULATION_RUNS = 20_000
+export { MAX_SIMULATION_RUNS } from '@/lib/simulation/context'
 
 /**
  * The parameter set the engine actually simulates: every scalar forced into
@@ -821,7 +824,12 @@ export function normalizeSimulationParams(params: SimulationParams): SimulationP
     retirementAge,
     legalRetirementAge,
     endAge,
+    oneOffIncomeTiming: readOneOffIncomeTiming(params.oneOffIncomeTiming),
     currentAssets: Math.max(0, sanitizeFiniteNumber(params.currentAssets, 0)),
+    initialUnrealizedGain: openingPortfolioGain(
+      sanitizeFiniteNumber(params.currentAssets, 0),
+      params.initialUnrealizedGain
+    ),
     annualSavings: Math.max(0, sanitizeFiniteNumber(params.annualSavings, 0)),
     annualSavingsGrowthRate: clamp(
       sanitizeFiniteNumber(params.annualSavingsGrowthRate, 0),
@@ -858,11 +866,8 @@ export function normalizeSimulationParams(params: SimulationParams): SimulationP
     dsCeilingRate: clamp(sanitizeFiniteNumber(params.dsCeilingRate, 0.05), 0, 0.15),
     dsFloorRate: clamp(sanitizeFiniteNumber(params.dsFloorRate, -0.025), -0.15, 0),
     spendingFloorReal: Math.max(0, sanitizeFiniteNumber(params.spendingFloorReal, 0)),
-    simulationRuns: clamp(
-      Math.round(sanitizeFiniteNumber(params.simulationRuns, 1)),
-      1,
-      MAX_SIMULATION_RUNS
-    ),
+    lifestyleFloorMonthlyReal: Math.max(0, sanitizeFiniteNumber(params.lifestyleFloorMonthlyReal, 0)),
+    simulationRuns: normalizeRunCount(params.simulationRuns),
   }
 }
 
@@ -914,7 +919,7 @@ type SimulationSchedule = {
   exemption: number
 }
 
-function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
+export function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
   // Every lifetime recurring expense is retirement budget. The plain ones
   // (inflation-linked, no growth) land in the two base totals — the model the
   // plan has always had; one with its own growth or a fixed euro amount gets a
@@ -938,13 +943,15 @@ function buildSimulationSchedule(params: SimulationParams): SimulationSchedule {
   }
 }
 
-function runSingleSimulation(
+export function runSingleSimulation(
   params: SimulationParams,
   schedule: SimulationSchedule,
   sampler: MarketSampler,
   run: number,
-  random: RandomSource
+  random: RandomSource,
+  recordHistory = true
 ): {
+  terminalAssetsReal: number
   cashFlowHistory: AnnualCashFlow[]
   /** Balance at the *end* of each age's year. */
   assetHistory: number[]
@@ -975,7 +982,7 @@ function runSingleSimulation(
   const closingPriceLevelHistory: number[] = []
   const endOfHorizon = { income: 0, tax: 0 }
   let currentAssets = params.currentAssets
-  let costBasis = params.currentAssets // Track original investment amount
+  let costBasis = params.currentAssets - params.initialUnrealizedGain
   let currentAnnualSavings = params.annualSavings
 
   const { baseMonthlyExpense, baseAnnualExpense } = schedule
@@ -1012,6 +1019,7 @@ function runSingleSimulation(
   let allowanceRemaining = annualAllowance
   let grossWithdrawn = 0
   let taxPaid = 0
+  let yearRealizedGain = 0
   let yearShortfall = 0
 
   /**
@@ -1038,6 +1046,7 @@ function runSingleSimulation(
     const withdrawalRatio = withdrawal > 0 && currentAssets > 0 ? withdrawal / currentAssets : 0
     // Tax and allowance are booked on what was *actually* sold: a portfolio
     // that could not raise the full amount also realised a smaller gain.
+    yearRealizedGain += (currentAssets - costBasis) * withdrawalRatio
     const realizedTaxableGain =
       withdrawal * (1 - clamp(costBasis / currentAssets, 0, 1)) * (1 - exemption)
     const allowanceUsed = Math.min(allowanceRemaining, realizedTaxableGain)
@@ -1060,13 +1069,14 @@ function runSingleSimulation(
     let investmentReturn = 0
     let portfolioContribution = 0
     const savings = age < effectiveRetirementAge ? currentAnnualSavings : 0
+    yearRealizedGain = 0
     yearShortfall = 0
     /** What the plan asked to spend this year; `yearShortfall` of it went unpaid. */
     let requestedSpending = 0
     /** The rule's own numbers for the ledger: what it took, and of what. */
     let ruleWithdrawal = 0
     let rulePortfolio = 0
-    inflationIndexHistory.push(inflationIndex)
+    if (recordHistory) inflationIndexHistory.push(inflationIndex)
     // A new tax year: the allowance is use-it-or-lose-it.
     allowanceRemaining = annualAllowance
 
@@ -1206,19 +1216,19 @@ function runSingleSimulation(
     // covers, not for the budget it asked for. Percentiles, the corridor and
     // the strategy comparison all read this series; the ledger keeps the
     // request and the shortfall side by side.
-    spendingHistory.push(Math.max(0, requestedSpending - yearShortfall) / 12)
+    if (recordHistory) spendingHistory.push(Math.max(0, requestedSpending - yearShortfall) / 12)
 
     // The run fails in the first year it leaves a material part of its
     // spending unpaid — not when the balance touches zero.
     if (
       depletionIndex === null &&
-      yearShortfall > requestedSpending * UNFUNDED_SPENDING_TOLERANCE
+      isUnderfunded(yearShortfall, requestedSpending)
     ) {
       depletionIndex = yearIndex
+      if (!recordHistory) break // A success-only trial can already answer false.
     }
 
-    // A one-off booked for the last year arrives at the end of it, like every
-    // other one-off arrives at the end of its own year: it is part of what is
+    // Under legacy timing a final-year payment arrives at the close. It is part of what is
     // left, and too late to pay for anything. Priced at the year's closing
     // price level — the level the next year would have opened at.
     let endOfHorizonIncome = 0
@@ -1235,6 +1245,7 @@ function runSingleSimulation(
       endOfHorizon.income = endOfHorizonIncome
       endOfHorizon.tax = endOfHorizonIncomeTax
     }
+    if (!recordHistory) continue
     // Both branches above have applied this year's inflation by now.
     closingPriceLevelHistory.push(inflationIndex)
 
@@ -1257,6 +1268,7 @@ function runSingleSimulation(
       incomeGross: extraIncome + oneOffIncomeNet + incomeTax,
       incomeTax,
       capitalGainsTax: taxPaid - taxesBefore,
+      realizedGain: yearRealizedGain,
       expenses: requestedSpending,
       portfolioWithdrawal: grossWithdrawn - withdrawalsBefore,
       portfolioContribution,
@@ -1277,6 +1289,7 @@ function runSingleSimulation(
   }
 
   return {
+    terminalAssetsReal: inflationIndex > 0 ? currentAssets / inflationIndex : currentAssets,
     cashFlowHistory,
     assetHistory,
     spendingHistory,
@@ -1351,6 +1364,11 @@ export function runMonteCarloSimulation(
   const taxDragRatios: number[] = []
   const legacyTarget = Math.max(0, normalizedParams.legacyTargetReal ?? 0)
 
+  const fundingGaps = new ShortfallDistribution()
+  const lifestyleFloor = normalizedParams.lifestyleFloorMonthlyReal ?? 0
+  const lifestyleGaps = lifestyleFloor > 0 ? new ShortfallDistribution() : null
+  let fundedPathsBelowLifestyleFloor = 0
+
   const depletionCounts = new Array<number>(ages.length).fill(0)
 
   // A few real trajectories for the fan chart's sample-path overlay. The first
@@ -1375,6 +1393,20 @@ export function runMonteCarloSimulation(
         result.closingPriceLevelHistory[index],
         index === lastIndex ? result.endOfHorizon : undefined
       )
+      const age = ages[index]
+      if (isUnderfunded(row.shortfall, row.expenses)) {
+        fundingGaps.recordYear(age, realRow.shortfall / 12, index === lastIndex)
+      }
+      if (lifestyleGaps && age >= schedule.effectiveRetirementAge) {
+        // Reserve the year's scheduled items first. An expensive one-off must
+        // not make the household appear to have a larger ordinary budget.
+        const ordinarySpending = Math.max(
+          0, realRow.expenses - realRow.shortfall - (realRow.scheduledExpenses ?? 0)
+        ) / 12
+        const gap = lifestyleFloor - ordinarySpending
+        // Ignore roundoff from deflating an exactly funded, indexed budget.
+        if (gap > 0.000001) lifestyleGaps.recordYear(age, gap, index === lastIndex)
+      }
       for (const key of Object.keys(row) as (keyof AnnualCashFlow)[]) {
         if (run === 0) {
           nominal[key] = 0
@@ -1384,6 +1416,8 @@ export function runMonteCarloSimulation(
         real[key] = (real[key] ?? 0) + (realRow[key] ?? 0) / effectiveRuns
       }
     })
+    fundingGaps.endPath()
+    if (lifestyleGaps?.endPath() && !result.failed) fundedPathsBelowLifestyleFloor++
     assetRuns.push(result.assetHistory)
     spendingRuns.push(result.spendingHistory)
     // Deflate each path by *its own* realised inflation before percentiles are
@@ -1456,6 +1490,13 @@ export function runMonteCarloSimulation(
     depletionSuccessRate,
     withdrawalTaxDrag,
     depletionByAge,
+    shortfallDetails: {
+      paths: effectiveRuns,
+      bequestOnlyPaths: survivingRuns - successfulRuns,
+      fundedPathsBelowLifestyleFloor,
+      funding: fundingGaps.summary(calculatePercentile),
+      lifestyle: lifestyleGaps?.summary(calculatePercentile) ?? null,
+    },
     sampleAssetPaths,
     sampleAssetPathsReal,
     cashFlowMeans,
@@ -1650,6 +1691,7 @@ export function taxContext(params: SimulationParams): PensionContext {
     pensionTaxRate: params.pensionTaxRate,
     householdType: params.householdType === 'couple' ? 'couple' : 'single',
     expectedInflation: params.averageInflation,
+    oneOffIncomeTiming: params.oneOffIncomeTiming,
   }
 }
 

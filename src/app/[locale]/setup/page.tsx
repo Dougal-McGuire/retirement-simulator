@@ -7,6 +7,7 @@ import { useTranslations, useFormatter } from 'next-intl'
 import { Link, useRouter } from '@/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { OpeningGainField } from '@/components/forms/fields/OpeningGainField'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
 import { WizardLiveResult } from '@/components/forms/WizardLiveResult'
 import { timelineIssues } from '@/lib/validation/fieldValidation'
@@ -420,8 +421,12 @@ export default function SetupPage() {
                 className="w-full"
                 unit={t('units.currency')}
                 groupThousands
-                min={0}
-                rangeMessage={t('validation.nonNegative')}
+                min={Math.max(0, params.initialUnrealizedGain)}
+                rangeMessage={
+                  params.initialUnrealizedGain > 0
+                    ? t('assets.fields.initialUnrealizedGain.assetRange')
+                    : t('validation.nonNegative')
+                }
                 invalidMessage={t('validation.notANumber')}
                 onInvalidChange={(invalid) => markInvalid('currentAssets', invalid)}
                 validation={{
@@ -434,6 +439,13 @@ export default function SetupPage() {
                 }}
               />
 
+              <OpeningGainField
+                id="initialUnrealizedGain"
+                assets={params.currentAssets}
+                gain={params.initialUnrealizedGain}
+                onChange={(value) => updateParams({ initialUnrealizedGain: value })}
+                onInvalidChange={(invalid) => markInvalid('initialUnrealizedGain', invalid)}
+              />
               <LabeledNumberInput
                 id="annualSavings"
                 label={t('assets.fields.annualSavings.label')}

@@ -6,6 +6,7 @@ import {
   type CashFlow,
   type CustomExpense,
   type OneTimeIncome,
+  type OneOffIncomeTiming,
   type SimulationParams,
 } from '@/types'
 import {
@@ -134,6 +135,8 @@ export function isPensionFlow(flow: CashFlow): boolean {
 export interface PensionContext {
   /** Age in baseYear, needed when previewing a future pension. */
   currentAge?: number
+  /** An absent marker retains the historical end-of-year convention. */
+  oneOffIncomeTiming?: OneOffIncomeTiming
   legalRetirementAge: number
   pensionTaxablePortion?: number
   pensionTaxRate?: number
@@ -152,6 +155,11 @@ export interface PensionContext {
    * taxed flows are all quoted the same way.
    */
   expectedInflation?: number
+}
+
+/** Opening age at which the deposit is spendable. Beyond endAge means a final closing credit. */
+export function oneOffSpendableAge(bookedAge: number, timing?: OneOffIncomeTiming): number {
+  return timing === 'bookingAge' ? bookedAge : bookedAge + 1
 }
 
 export const currentBaseYear = (): number => new Date().getFullYear()
@@ -710,15 +718,14 @@ export interface CashFlowSeries {
   baselineExtraFixed: number[]
   /**
    * Age a one-off income is **credited** at -> its net amount, in today's
-   * euros, split the same way as the recurring series. The crediting age is
-   * the one *after* the age it is booked for (the long-standing convention:
-   * the money arrives at the end of its year). A payment booked for `endAge`
-   * has no following year and is in `oneTimeIncomeAtEnd` instead.
+   * euros, split the same way as the recurring series. Under legacy timing
+   * the deposit becomes spendable the following year. A legacy deposit
+   * booked for `endAge` is in `oneTimeIncomeAtEnd` instead.
    */
   oneTimeIncomeLinkedByAge: ReadonlyMap<number, number>
   oneTimeIncomeFixedByAge: ReadonlyMap<number, number>
   /**
-   * One-off income booked for `endAge` itself: credited at the end of the
+   * Legacy one-off income booked for `endAge` itself: credited at the end of the
    * final year, so it counts towards what is left but cannot pay for that
    * year. Net amounts and their income tax; the tax is *not* part of
    * `incomeTax*` / `oneTimeIncomeTax*`, which are priced at the year's
@@ -845,7 +852,7 @@ export function buildCashFlowSeries(
     linked: boolean
     /**
      * Gross amount per year offset. For a one-off income (`once`) the offset
-     * is the year it is *booked* for; it is credited one year later.
+     * is the year it is booked and assessed for tax.
      */
     gross: number[]
     once: boolean
@@ -883,11 +890,7 @@ export function buildCashFlowSeries(
     const gross = new Array<number>(years).fill(0)
     const isPension = isPensionFlow(flow)
 
-    // One-off income keeps its long-standing convention: it lands at the start
-    // of the year *after* the age it is booked for — i.e. at the end of its own
-    // year. Changing that would move every existing plan's numbers. A payment
-    // booked before today has already happened; one booked after the horizon
-    // never does.
+    // Keep the booking year for the tax assessment under both timing conventions.
     if (isOnceIncomeFlow(flow)) {
       const bookedAge = flow.startAge ?? currentAge
       if (bookedAge < currentAge || bookedAge > endAge) continue
@@ -1049,9 +1052,8 @@ export function buildCashFlowSeries(
       }
 
       if (once) {
-        // Booked for the horizon's last year: there is no following year to
-        // credit it in, so it is handed over separately (see the interface).
-        if (offset + 1 >= years) {
+        const age = oneOffSpendableAge(currentAge + offset, pension.oneOffIncomeTiming)
+        if (age > endAge) {
           if (linked) {
             oneTimeIncomeAtEnd.netLinked += net
             oneTimeIncomeAtEnd.taxLinked += tax
@@ -1061,10 +1063,9 @@ export function buildCashFlowSeries(
           }
           continue
         }
-        const credited = offset + 1
+        const credited = age - currentAge
         ;(linked ? incomeTaxLinked : incomeTaxFixed)[credited] += tax
         ;(linked ? oneTimeIncomeTaxLinked : oneTimeIncomeTaxFixed)[credited] += tax
-        const age = currentAge + credited
         onceTarget.set(age, (onceTarget.get(age) ?? 0) + net)
         continue
       }

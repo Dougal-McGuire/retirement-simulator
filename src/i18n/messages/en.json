@@ -90,9 +90,9 @@
       "runsChip": "{runs} runs",
       "pensionMarker": "Pension · {age}",
       "outcomes": {
-        "low": "Worst 10%",
+        "low": "10th percentile",
         "median": "Median",
-        "high": "Best 10%"
+        "high": "90th percentile"
       },
       "caption": "Real output of the built-in engine: {runs} simulations of the app's default plan. {successRate} of them stayed funded through age {endAge}."
     },
@@ -159,21 +159,22 @@
     },
     "spread": {
       "eyebrow": "Why one number lies",
-      "title": "Same plan. Same average return. Three very different futures.",
-      "body": "These are the assets left at age {endAge} in the sample plan above. Nothing changed but the order in which the market delivered its returns — and that alone decides whether the plan ends comfortable or uncomfortably thin.",
+      "title": "One plan. How much could be left?",
+      "body": "These amounts show how the simulated balances at age {endAge} are distributed. All paths start with the same assumptions. Returns and inflation vary from year to year.",
       "footnote": "{runs} runs of the default plan · {successRate} stayed funded to age {endAge}. Change any assumption and the whole spread redraws.",
       "items": {
         "low": {
-          "label": "Worst 10% of runs",
-          "body": "A bad first decade. The plan still holds, but there is far less room for a surprise."
+          "label": "10th percentile",
+          "body": "About 1 in 10 paths ends at or below this amount."
         },
         "median": {
-          "label": "Median run",
-          "body": "The middle outcome — the single number a spreadsheet would have shown you on its own."
+          "label": "Median",
+          "body": "Half of the simulated balances are at or below this amount."
         },
         "high": {
-          "label": "Best 10% of runs",
-          "body": "A kind market. Ten times the ending balance of the unlucky case, from the same inputs."
+          "label": "90th percentile",
+          "body": "About 1 in 10 paths ends at or above this amount.",
+          "ratio": "About {ratio} times the balance at the 10th percentile."
         }
       }
     },
@@ -335,6 +336,12 @@
           "label": "Current Assets",
           "help": "Total value of your current investments and savings"
         },
+        "initialUnrealizedGain": {
+          "label": "Unrealised gain or loss today",
+          "help": "Subtract the purchase cost from today’s portfolio value. Enter a negative amount for a loss. Zero assumes the entire starting portfolio was bought at today’s price. The opening cost basis is {basis}.",
+          "range": "The gain cannot exceed the current portfolio value.",
+          "assetRange": "Portfolio value must cover the unrealised gain. Adjust the gain first if needed."
+        },
         "annualSavings": {
           "label": "Annual Savings",
           "help": "How much do you save per year until retirement?"
@@ -411,7 +418,7 @@
       },
       "simulationRuns": {
         "label": "Simulation Runs",
-        "help": "More runs = more accurate results but slower computation"
+        "help": "More runs reduce sampling uncertainty and take longer to calculate."
       }
     },
     "expenseTemplates": {
@@ -608,6 +615,15 @@
       "real": "Today's €",
       "nominalShort": "Nom.",
       "realShort": "Today"
+    },
+    "precision": {
+      "monteCarlo": "{successes} of {runs} Monte Carlo paths met the goal",
+      "interval": "95% sampling interval {lower}–{upper}",
+      "intervalLabel": "Monte Carlo sampling uncertainty",
+      "intervalDetail": "The Wilson interval estimates how precisely this sample measures the success rate under your assumptions. Future market returns and errors in those assumptions add separate uncertainty.",
+      "historical": "Goal met in {successes} of {runs} historical starting years",
+      "historicalLabel": "Historical starting years",
+      "historicalDetail": "Each year from {first} to {last} starts one replay. Paths overlap and wrap to the start of the record. This share describes those recorded histories."
     }
   },
   "simulationCompact": {
@@ -634,7 +650,7 @@
       "title": "Compare plans",
       "addPlan": "+ Add plan (max {max})",
       "running": "Re-running…",
-      "meta": "{count, plural, =1 {# plan re-run} other {# plans re-run}} · {runs} runs each",
+      "meta": "{count, plural, one {# plan calculated} other {# plans calculated}}",
       "exit": "Exit compare",
       "changedRows": "Changed rows highlighted",
       "openEditor": "Edit assumptions →",
@@ -653,7 +669,7 @@
       "kpi": {
         "success": "Success rate",
         "lastsTo": "Wealth lasts to",
-        "firstYearDraw": "1st-year withdrawal",
+        "firstYearDraw": "1st-year gross portfolio withdrawal",
         "medianEnd": "Median end wealth",
         "years": "yrs"
       },
@@ -673,7 +689,15 @@
         "vanguardDynamic": "Vanguard {rate}",
         "guytonKlinger": "Guyton-Klinger {rate}",
         "percentOfPortfolio": "% of portfolio {rate}"
-      }
+      },
+      "runFinal": "Run final comparison · {runs} paths",
+      "failed": "Comparison incomplete",
+      "retry": "Retry failed plans",
+      "backToPreview": "Back to quick comparison",
+      "previewPaths": "Quick comparison · {runs} shared market scenarios per plan",
+      "finalPaths": "Final comparison · {runs} shared market scenarios per plan",
+      "mixedModels": "Selected plans use different market models. Monte Carlo plans share the same random draws. Historical plans replay the available starting years.",
+      "historicalPaths": "All plans replay the same historical starting years."
     },
     "pageTitle": "Retirement planning",
     "error": "The simulation could not be calculated. Please try again.",
@@ -914,7 +938,7 @@
       },
       "simulationRuns": {
         "label": "Number of Runs",
-        "tooltip": "Monte Carlo simulations to run. More runs = higher accuracy but slower computation. 1000+ recommended for reliable results."
+        "tooltip": "More paths narrow the sampling interval and take longer to calculate. The market assumptions stay the same."
       },
       "withdrawalStrategy": {
         "label": "Withdrawal Strategy",
@@ -1037,6 +1061,11 @@
             "label": "Couple (jointly assessed)"
           }
         }
+      },
+      "lifestyleFloorMonthlyReal": {
+        "label": "Monthly lifestyle minimum (today’s euros)",
+        "tooltip": "Compare funded everyday spending with this amount after scheduled expenses. This benchmark leaves withdrawals and the success rate unchanged. Enter 0 to turn it off.",
+        "range": "Enter zero or a positive amount."
       },
       "spendingFloorReal": {
         "label": "Guaranteed floor (today’s €, per year)",
@@ -2075,6 +2104,7 @@
           "endAge": "Plan horizon",
           "bridgeYears": "Pension bridge",
           "currentAssets": "Current assets",
+          "initialUnrealizedGain": "Opening unrealised gain or loss",
           "annualSavings": "Annual savings",
           "annualSavingsGrowthRate": "Savings growth",
           "monthlyPension": "Monthly pension",
@@ -2106,6 +2136,7 @@
           "pensionTaxablePortion": "Taxable share of pension",
           "pensionTaxRate": "Income tax on pension",
           "legacyTargetReal": "Legacy goal (today's €)",
+          "lifestyleFloorMonthlyReal": "Monthly lifestyle minimum",
           "spendingFloorReal": "Guaranteed spending floor"
         },
         "differsCount": "{count, plural, one {# difference} other {# differences}}"
@@ -2210,6 +2241,9 @@
     }
   },
   "withdrawalPlanner": {
+    "firstSale": "The first portfolio sale occurs at age {age}. Across all paths the mean proceeds are {gross}, including a gain or loss of {gain}. After {tax} in capital gains tax, {net} is available {unit, select, real {in today’s euros} other {in nominal euros}}.",
+    "saleMethodLabel": "How the model taxes a sale",
+    "saleMethod": "The model allocates the same share of the portfolio’s purchase cost to each euro sold. It applies the selected partial exemption and remaining annual allowance to gains. Individual purchase lots (FIFO) and loss carryforwards are outside the model.",
     "noParams": "This strategy has no settings: it simply spends the plan’s budget, inflation-linked.",
     "stats": {
       "firstYear": "First retirement year",
@@ -2399,6 +2433,47 @@
     "oneOffTiming": "For compatibility with existing plans, one-off income is credited to the portfolio at the next age after its entered booking age. The table shows the year of the actual credit, including the associated tax."
   },
   "workspace": {
+    "agePlanner": {
+      "title": "When can I retire?",
+      "intro": "Compare retirement ages for a steady monthly budget in today’s euros. Each additional working year adds savings and shortens retirement.",
+      "budget": "Living costs (€/month)",
+      "probability": "Target success (%)",
+      "end": "Plan through age",
+      "compare": "Compare ages",
+      "running": "Calculating…",
+      "progress": "Compared {done} of {total} ages…",
+      "error": "The comparison could not run. Try again.",
+      "earliest": "Earliest age meeting your target: {age}.",
+      "none": "No age from {from} to {to} meets your target.",
+      "table": "Retirement ages and monthly spending",
+      "age": "Retire at",
+      "rate": "Success at target budget",
+      "limit": "Affordable per month",
+      "gain": "Gain vs. retiring a year earlier",
+      "unfunded": "Goal missed",
+      "sample": "Each age uses the same {paths, number} market paths through age {end}, inclusive. The affordable budget is the highest €10 step reaching {probability} success.",
+      "method": "What the comparison includes",
+      "budgetMethod": "From retirement, your target replaces ordinary lifetime expenses and stays constant in purchasing power. Scheduled expenses are added on their original dates. Pensions, other income, taxes, savings and any bequest goal follow your plan.",
+      "successMethod": "An age qualifies when enough paths fund at least 99% of the requested spending every year and meet any bequest goal. The comparison starts at your current age and ends at the later of your planned and statutory retirement ages, or earlier if your horizon ends first. It uses up to 500 Monte Carlo paths or all historical start years."
+    },
+    "shortfalls": {
+      "title": "Explore spending shortfalls",
+      "fundingCount": "Funding gaps in {count, number} of {total, number} paths",
+      "fundingHeading": "Unpaid planned spending",
+      "fundingDefinition": "A path has a funding gap when more than 1% of a year’s requested spending goes unpaid. This includes expenses before retirement.",
+      "firstAge": "Age at first gap",
+      "monthlyGap": "Monthly gap in today’s euros",
+      "duration": "Years with a gap",
+      "atHorizon": "At age {age}, {count, number} of the {affected, number} affected paths still had a gap. The simulation ends at that age.",
+      "bequest": "In {count, number} of {total, number} paths, spending was funded in every year but the final balance fell short of the {target} bequest goal in today’s euros.",
+      "lifestyleHeading": "Everyday spending in retirement",
+      "lifestyleFunded": "Of these paths, {count, number} funded the planned spending in every year.",
+      "lifestyleCount": "In {count, number} of {total, number} paths, funded everyday spending fell below your {target} monthly minimum in today’s euros after allowing for scheduled expenses.",
+      "noFloor": "Set a personal monthly minimum to see how often your withdrawal rule leaves less for everyday spending, even when all payments are funded.",
+      "setFloor": "Set monthly minimum",
+      "editFloor": "Edit monthly minimum",
+      "method": "Figures are medians across the paths affected by each type of gap. Each path contributes its average monthly gap during affected years. Years with a gap can be separated by fully funded years."
+    },
     "brand": "Retirement planner",
     "navigation": "Sections",
     "saved": "Plan saved",
@@ -2464,8 +2539,9 @@
       "pdf": "PDF"
     },
     "verdict": {
-      "sentence": "Your money lasts in {count} of 100 paths to age {end}.",
-      "sentenceLegacy": "In {count} of 100 paths your money lasts to age {end} and your legacy goal is left over."
+      "sentence": "Share of paths funded through age {end}.",
+      "sentenceLegacy": "Share of paths funded through age {end} that also meet the bequest goal.",
+      "previous": "Previous result."
     },
     "cards": {
       "startingValues": "Starting values in today's euros"
@@ -2515,9 +2591,10 @@
     "head": {
       "lastsTo": "Lasts to",
       "atEnd": "At the end",
-      "firstDraw": "First withdrawal",
+      "firstDraw": "First gross sale · nominal",
       "firstDrawHint": "Average portfolio withdrawal in the first year of retirement, gross. Goes to the Withdrawal section.",
-      "badCase": "in a bad run"
+      "badCase": "in a bad run",
+      "firstDrawReal": "First gross sale · today’s €"
     },
     "dock": {
       "label": "Result in view",
@@ -2596,12 +2673,14 @@
         "legalRetirementAge": "Pension from",
         "endAge": "Plan to",
         "currentAssets": "Assets",
+        "initialUnrealizedGain": "Opening unrealised gain or loss",
         "annualSavings": "Saving per year",
         "annualSavingsGrowthRate": "Savings growth",
         "withdrawalStrategy": "Withdrawal rule",
         "dsWithdrawalRate": "Withdrawal rate",
         "dsCeilingRate": "Ceiling",
         "dsFloorRate": "Floor",
+        "lifestyleFloorMonthlyReal": "Monthly lifestyle minimum",
         "spendingFloorReal": "Spending floor",
         "marketModel": "Market model",
         "averageROI": "Return",

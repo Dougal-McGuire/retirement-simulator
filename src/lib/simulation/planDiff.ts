@@ -430,6 +430,13 @@ const rowSpecs: RowSpec[] = [
   },
 
   { key: 'currentAssets', group: 'income', kind: 'currency', read: (p) => p.currentAssets },
+  {
+    key: 'initialUnrealizedGain',
+    group: 'income',
+    kind: 'currency',
+    read: (p) => p.initialUnrealizedGain ?? 0,
+    optional: true,
+  },
   { key: 'annualSavings', group: 'income', kind: 'currency', read: (p) => p.annualSavings },
   {
     key: 'annualSavingsGrowthRate',
@@ -615,6 +622,13 @@ const rowSpecs: RowSpec[] = [
     group: 'goals',
     kind: 'currency',
     read: (p) => p.legacyTargetReal,
+    optional: true,
+  },
+  {
+    key: 'lifestyleFloorMonthlyReal',
+    group: 'goals',
+    kind: 'currency',
+    read: (p) => p.lifestyleFloorMonthlyReal ?? 0,
     optional: true,
   },
 ]

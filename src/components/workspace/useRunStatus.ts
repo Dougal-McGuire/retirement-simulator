@@ -76,7 +76,12 @@ export const selectRunState = (state: SimulationStore) => ({
  * Runs typically take well under 400 ms, which made the old "Calculating …"
  * flash unreadably. `status` holds `running` for at least `MIN_RUNNING_MS`.
  */
-export function useRunStatus(): { status: RunStatus; needsRun: boolean; busy: boolean } {
+export function useRunStatus(): {
+  status: RunStatus
+  needsRun: boolean
+  busy: boolean
+  stale: boolean
+} {
   // One narrow, derived selection: a keystroke (params change), the debounce
   // handing over to the worker (pendingRun → isLoading) and a landing result
   // only re-render the caller when busy / stale / hasResults / error flip.
@@ -108,5 +113,5 @@ export function useRunStatus(): { status: RunStatus; needsRun: boolean; busy: bo
     error,
     holding,
   })
-  return { status, needsRun, busy }
+  return { status, needsRun, busy, stale }
 }

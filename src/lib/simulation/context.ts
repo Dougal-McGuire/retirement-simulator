@@ -79,6 +79,13 @@ export interface SimulationContext {
   }
 }
 
+/** Upper bound for imported as well as interactively edited Monte Carlo plans. */
+export const MAX_SIMULATION_RUNS = 20_000
+
+export function normalizeRunCount(runs: number): number {
+  return Number.isFinite(runs) ? Math.min(MAX_SIMULATION_RUNS, Math.max(1, Math.round(runs))) : 1
+}
+
 /**
  * How many paths the engine runs for these parameters. The engine calls this
  * too, so a caption can never disagree with the loop that produced the number.
@@ -86,7 +93,30 @@ export interface SimulationContext {
 export function effectiveRunCount(
   params: Pick<SimulationParams, 'marketModel' | 'simulationRuns'>
 ) {
-  return params.marketModel === 'historical' ? HISTORICAL_PATH_COUNT : params.simulationRuns
+  return params.marketModel === 'historical'
+    ? HISTORICAL_PATH_COUNT
+    : normalizeRunCount(params.simulationRuns)
+}
+
+/** Two-sided 95% Wilson score limits for a Monte Carlo success share, in percent. */
+export function samplingInterval95(successCount: number, runs: number) {
+  const z = 1.959963984540054
+  const p = successCount / runs
+  const denominator = 1 + z ** 2 / runs
+  const center = (p + z ** 2 / (2 * runs)) / denominator
+  const halfWidth = (z * Math.sqrt((p * (1 - p) + z ** 2 / (4 * runs)) / runs)) / denominator
+  return {
+    lower: successCount === 0 ? 0 : 100 * (center - halfWidth),
+    upper: successCount === runs ? 100 : 100 * (center + halfWidth),
+  }
+}
+
+/** Use the same Monte Carlo sample size for every plan in a comparison. Historical
+ * replays always use the complete set of start years and never raise this budget. */
+export function comparisonRunCount(plans: SimulationParams[], final: boolean): number {
+  const monteCarlo = plans.filter((params) => params.marketModel !== 'historical')
+  const counts = monteCarlo.map(effectiveRunCount)
+  return final ? Math.max(5000, ...counts) : Math.min(500, ...counts)
 }
 
 /** Which bar a run has to clear to count as a success. */

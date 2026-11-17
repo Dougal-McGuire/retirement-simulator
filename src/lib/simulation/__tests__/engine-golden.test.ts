@@ -194,6 +194,7 @@ const GOLDEN_PARAMS: SimulationParams = {
   legalRetirementAge: 67,
   endAge: 90,
   currentAssets: 630000,
+  initialUnrealizedGain: 0,
   annualSavings: 48000,
   annualSavingsGrowthRate: 0.02,
   monthlyPension: 5000,
@@ -326,6 +327,7 @@ const GOLDEN_PARAMS: SimulationParams = {
   // floor. It ships at 0 (off) and no other strategy reads it, which is why
   // every number above survived the change untouched.
   spendingFloorReal: 0,
+  lifestyleFloorMonthlyReal: 0,
   simulationRuns: 500,
 }
 

@@ -153,12 +153,10 @@ export function buildMethodologyCopy(content: ReportContent): MethodologyCopy {
       ? 'Renditen und Inflation werden als unabhängig gezogen; historische Autokorrelation und Sequenzrisiken im Übergangsjahr werden nicht nachgebildet.'
       : 'Returns and inflation are drawn independently; historical autocorrelation and sequence-of-returns effects around the transition year are not reproduced.'
 
-  // The engine tracks gains only from the plan's first year: whatever is in
-  // the portfolio today counts as cost basis. A long-held portfolio therefore
-  // pays more tax on its first withdrawals than the simulation books.
+  const basis = money(content.finances.initialCostBasis)
   const costBasisLimitation = isGerman
-    ? 'Für das heutige Depot werden keine unrealisierten Kursgewinne unterstellt (der eingegebene Bestand gilt als Anschaffungswert); enthält es bereits Gewinne, fällt die Steuer auf frühe Entnahmen höher aus als berechnet.'
-    : "Today's portfolio is assumed to carry no unrealised gains (the capital entered counts as cost basis); where it already holds gains, the tax on early withdrawals is higher than calculated."
+    ? `Der Anschaffungswert des Startdepots beträgt ${basis}. Das Modell verteilt ihn anteilig auf jeden Verkauf. Die tatsächliche Reihenfolge einzelner Käufe (FIFO) und Verlustverrechnungstöpfe bleiben unberücksichtigt.`
+    : `The starting portfolio has a cost basis of ${basis}. Each sale receives a proportional share of that cost. The model omits individual tax lots (FIFO) and loss carryforwards.`
 
   const limitations = isGerman
     ? [

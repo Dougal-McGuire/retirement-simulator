@@ -43,9 +43,7 @@ test.describe('one-page workspace', () => {
     page,
   }) => {
     await gotoWorkspace(page)
-    await expect(page.getByTestId('verdict')).toContainText(
-      /Your money lasts in \d+ of 100 paths to age 90\./
-    )
+    await expect(page.getByTestId('verdict')).toContainText('Share of paths funded through age 90.')
     await expect(page.getByTestId('fan-chart')).toBeInViewport()
     // No second set of sliders anywhere on the canvas.
     await expect(page.getByTestId('quick-levers')).toHaveCount(0)
@@ -341,10 +339,22 @@ test.describe('one-page workspace', () => {
     await expect(compare.getByRole('table')).toContainText('Retirement age')
     await expect(compare.getByRole('table')).toContainText('Withdrawal rule')
 
+    const counts = compare.getByTestId('simulation-precision')
+    await expect(counts).toHaveCount(2)
+    await expect(counts.first()).toContainText('of 500 Monte Carlo paths')
+    await compare.getByTestId('compare-final').click()
+    await expect(counts.filter({ hasText: 'of 5,000 Monte Carlo paths' })).toHaveCount(2, {
+      timeout: 60000,
+    })
+    await expect(counts.first()).toContainText('95% sampling interval')
+    // A comparison never writes its run budget back to either plan.
     await page.getByTestId('compare-exit').click()
     await expect(page.getByTestId('compare-view')).toHaveCount(0)
     await expect(page).not.toHaveURL(/#compare/)
     await expect(page.locator('#result')).toBeVisible()
+    await expect(page.locator('#result').getByTestId('simulation-precision')).toContainText(
+      'of 500 Monte Carlo paths'
+    )
     await expect(page.getByTestId('run-button')).toBeVisible()
   })
 
@@ -448,6 +458,9 @@ test.describe('market model and glide path', () => {
       .poll(async () => (await shown()).endAssets, { timeout: 15000 })
       .not.toBe(monteCarlo.endAssets)
     await expect(page.getByTestId('run-status')).toHaveAttribute('data-state', 'updated')
+    const precision = page.locator('#result').getByTestId('simulation-precision')
+    await expect(precision).toContainText('of 125 historical starting years')
+    await expect(precision).not.toContainText('sampling interval')
     const first = await shown()
     expect(first.rate).toMatch(/\d/)
 

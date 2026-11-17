@@ -14,6 +14,7 @@ import {
   SimulationStore,
   SavedSetup,
   DEFAULT_PARAMS,
+  openingPortfolioGain,
   MAX_PLANS,
   type Plan,
   type PlanSyncMeta,
@@ -787,6 +788,10 @@ export const useSimulationStore = create<SimulationStore>()(
 
           const newParams: SimulationParams = {
             ...merged,
+            initialUnrealizedGain: openingPortfolioGain(
+              merged.currentAssets,
+              merged.initialUnrealizedGain
+            ),
             cashFlows,
             customExpenses: projectCustomExpenses(cashFlows),
             oneTimeIncomes: projectOneTimeIncomes(cashFlows, merged.currentAge),

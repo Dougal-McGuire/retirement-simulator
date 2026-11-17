@@ -61,7 +61,7 @@ export function ResultAnnouncer() {
       if (value === null) return
       const rateText = format.number(Math.round(value * 10) / 1000, {
         style: 'percent',
-        minimumFractionDigits: 1,
+        minimumFractionDigits: 0,
         maximumFractionDigits: 1,
       })
       const text = deltaText

@@ -204,11 +204,14 @@ describe('report glossary — one definition, one wording', () => {
     expect(de).not.toMatch(/Liquidität|identisch zur Anzeige im Dashboard/)
   })
 
-  it('lists that today’s portfolio is assumed to carry no unrealised gains', () => {
-    const en = buildMethodologyCopy(contentFor({}).content).limitations
-    expect(en.some((line) => line.includes('assumed to carry no unrealised gains'))).toBe(true)
-    const de = buildMethodologyCopy(contentFor({}, 'de').content).limitations
-    expect(de.some((line) => line.includes('keine unrealisierten Kursgewinne'))).toBe(true)
+  it('prints the actual opening cost basis and the proportional-sale limitation', () => {
+    const patch = { currentAssets: 1000, initialUnrealizedGain: 500 }
+    const en = buildMethodologyCopy(contentFor(patch).content).limitations.join(' ')
+    expect(en).toMatch(/cost basis of [^0-9]*500/)
+    expect(en).toContain('FIFO')
+    const de = buildMethodologyCopy(contentFor(patch, 'de').content).limitations.join(' ')
+    expect(de).toMatch(/Anschaffungswert des Startdepots beträgt 500/)
+    expect(de).toContain('anteilig')
   })
 })
 

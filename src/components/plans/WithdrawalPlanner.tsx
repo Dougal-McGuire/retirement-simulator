@@ -24,21 +24,14 @@ import {
   summarizeStrategyOutcome,
   type StrategyOutcomeMetrics,
 } from '@/lib/simulation/spendingCorridor'
-import { comparisonFingerprint } from '@/lib/simulation/planDiff'
+import { ledgerRows } from '@/lib/insights/ledger'
+import { effectiveRunCount, simulationFingerprint } from '@/lib/simulation/context'
 import { areSimulationParamsEqual } from '@/lib/simulation/planInsights'
 import { useDisplayReal } from '@/lib/stores/displayStore'
 import { useSimulationParams, useUpdateParams } from '@/lib/stores/simulationStore'
 import { useUsableResults } from '@/components/workspace/useUsableResults'
 import { cn } from '@/lib/utils'
 
-/**
- * Run budget for the four-strategy comparison.
- *
- * Deliberately the same number the plan comparison uses: both answer "how do
- * these two things differ", both rely on the engine's fixed scenario set to
- * make that difference signal rather than sampling noise, and a user who sees
- * 1,200 in one footnote and 400 in the other has to wonder which to believe.
- */
 /**
  * The corridor chart, code-split: it is the only Recharts chart on the page's
  * first screen path (below the fold, inside a `LazyMount`), and statically
@@ -68,7 +61,9 @@ function CorridorChartSkeleton({ title }: SpendingCorridorChartProps) {
   )
 }
 
-const STRATEGY_COMPARE_RUNS = 1200
+function strategyComparisonParams(params: SimulationParams): SimulationParams {
+  return { ...params, simulationRuns: Math.min(params.simulationRuns, 1200) }
+}
 
 /**
  * The comparison shares the one simulation worker with the result bar. After
@@ -277,6 +272,20 @@ export function WithdrawalRuleGroup() {
           <p className="ws-withdrawal-muted">{t('noParams')}</p>
         )}
 
+        <LabeledNumberInput
+          id="planner-lifestyleFloorMonthlyReal"
+          label={tControls('fields.lifestyleFloorMonthlyReal.label')}
+          value={params.lifestyleFloorMonthlyReal ?? 0}
+          onChange={(value) => updateParams({ lifestyleFloorMonthlyReal: value })}
+          helpText={tControls('fields.lifestyleFloorMonthlyReal.tooltip')}
+          helpPlacement="inline"
+          unit={tSetup('units.currency')}
+          groupThousands
+          min={0}
+          rangeMessage={tControls('fields.lifestyleFloorMonthlyReal.range')}
+          invalidMessage={tSetup('validation.notANumber')}
+        />
+
         <div className="ws-withdrawal-effect" data-testid="withdrawal-rule-effect">
           <h4>{t('steps.effect')}</h4>
           <p>{ruleEffect}</p>
@@ -396,6 +405,10 @@ export function WithdrawalOutcome() {
     [t, tSpending]
   )
 
+  const ledger = results ? ledgerRows(results, displayReal ? 'real' : 'nominal') : null
+  const saleIndex = ledger?.findIndex((row) => row.portfolioWithdrawal > 0) ?? -1
+  const sale = ledger?.[saleIndex]
+
   const retirementAge = Math.max(
     results?.params.currentAge ?? 0,
     results?.params.retirementAge ?? 0
@@ -422,6 +435,19 @@ export function WithdrawalOutcome() {
             </div>
           ))}
         </dl>
+        {sale && sale.realizedGain !== undefined && results && (
+          <p className="ws-withdrawal-muted" data-testid="first-sale-tax">
+            {t('firstSale', {
+              age: results.ages[saleIndex],
+              unit: displayReal ? 'real' : 'nominal',
+              gross: formatCurrency(sale.portfolioWithdrawal),
+              gain: formatCurrency(sale.realizedGain),
+              tax: formatCurrency(sale.capitalGainsTax),
+              net: formatCurrency(sale.portfolioWithdrawal - sale.capitalGainsTax),
+            })}{' '}
+            <InfoTip label={t('saleMethodLabel')} content={t('saleMethod')} side="bottom" />
+          </p>
+        )}
 
         <section className="ws-withdrawal-card" aria-labelledby="withdrawal-corridor-title">
           <LazyMount
@@ -637,16 +663,16 @@ function StrategyCompare({
 
     try {
       const { runSimulationInClient } = await import('@/lib/simulation/workerClient')
-      let base = paramsRef.current
-      let baseFingerprint = comparisonFingerprint(base)
+      let base = strategyComparisonParams(paramsRef.current)
+      let baseFingerprint = simulationFingerprint(base)
       let next: StrategySnapshot[] = []
       let first = true
 
       while (next.length < WITHDRAWAL_STRATEGIES.length) {
         if (!(await waitForGate(runId, first))) return
         first = false
-        const latest = paramsRef.current
-        const latestFingerprint = comparisonFingerprint(latest)
+        const latest = strategyComparisonParams(paramsRef.current)
+        const latestFingerprint = simulationFingerprint(latest)
         if (latestFingerprint !== baseFingerprint) {
           base = latest
           baseFingerprint = latestFingerprint
@@ -657,7 +683,6 @@ function StrategyCompare({
         const strategyResults = await runSimulationInClient({
           ...base,
           withdrawalStrategy: strategy,
-          simulationRuns: Math.min(base.simulationRuns, STRATEGY_COMPARE_RUNS),
         })
         if (runIdRef.current !== runId) return
         next = [
@@ -669,7 +694,7 @@ function StrategyCompare({
 
       setSnapshots(next)
       setComparedFingerprint(baseFingerprint)
-      setComparedRuns(Math.min(base.simulationRuns, STRATEGY_COMPARE_RUNS))
+      setComparedRuns(effectiveRunCount(base))
       setStatus('ready')
     } catch (error) {
       console.error('Strategy comparison failed:', error)
@@ -682,7 +707,7 @@ function StrategyCompare({
   }
 
   const running = status === 'running'
-  const fingerprint = useMemo(() => comparisonFingerprint(params), [params])
+  const fingerprint = useMemo(() => simulationFingerprint(strategyComparisonParams(params)), [params])
   const isStale = comparedFingerprint !== null && comparedFingerprint !== fingerprint
   const best = useMemo(() => bestStrategyValues(snapshots), [snapshots])
   const total = WITHDRAWAL_STRATEGIES.length
@@ -868,9 +893,7 @@ function StrategyCompare({
 
           <p className="ws-withdrawal-caption">
             {t('compare.runsNote', {
-              runs: format.number(
-                comparedRuns || Math.min(params.simulationRuns, STRATEGY_COMPARE_RUNS)
-              ),
+              runs: format.number(comparedRuns),
               age: referenceAge,
             })}
           </p>

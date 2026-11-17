@@ -9,8 +9,10 @@
 
 import {
   DEFAULT_PARAMS,
+  openingPortfolioGain,
   isHouseholdType,
   isMarketModel,
+  readOneOffIncomeTiming,
   isWithdrawalStrategy,
   type CustomExpense,
   type OneTimeIncome,
@@ -29,6 +31,7 @@ type NumericParamKey = keyof Omit<
   SimulationParams,
   | 'customExpenses'
   | 'oneTimeIncomes'
+  | 'oneOffIncomeTiming'
   | 'cashFlows'
   | 'withdrawalStrategy'
   | 'marketModel'
@@ -41,6 +44,7 @@ export type PersistedParams = Partial<Record<NumericParamKey, unknown>> & {
   customExpenses?: unknown
   monthlyExpenses?: unknown
   oneTimeIncomes?: unknown
+  oneOffIncomeTiming?: unknown
   cashFlows?: unknown
   withdrawalStrategy?: unknown
   marketModel?: unknown
@@ -54,6 +58,7 @@ const numericParamKeys = [
   'legalRetirementAge',
   'endAge',
   'currentAssets',
+  'initialUnrealizedGain',
   'annualSavings',
   'annualSavingsGrowthRate',
   'monthlyPension',
@@ -75,6 +80,7 @@ const numericParamKeys = [
   'dsCeilingRate',
   'dsFloorRate',
   'spendingFloorReal',
+  'lifestyleFloorMonthlyReal',
   'simulationRuns',
 ] satisfies NumericParamKey[]
 
@@ -278,6 +284,11 @@ export const normalizePersistedParams = (persistedParams: unknown): SimulationPa
   return {
     ...DEFAULT_PARAMS,
     ...numerics,
+    oneOffIncomeTiming: readOneOffIncomeTiming(params.oneOffIncomeTiming),
+    initialUnrealizedGain: openingPortfolioGain(
+      numerics.currentAssets ?? DEFAULT_PARAMS.currentAssets,
+      numerics.initialUnrealizedGain
+    ),
     monthlyPension: statutoryPensionMonthly(cashFlows),
     withdrawalStrategy: sanitizeWithdrawalStrategy(rawWithdrawalStrategy),
     marketModel: sanitizeMarketModel(rawMarketModel),

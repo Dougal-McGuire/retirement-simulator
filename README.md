@@ -10,6 +10,14 @@ corridor looks like, and which levers move the result.
   Stellschrauben. Assumptions open in an edit panel; every edit recomputes live
   into a working copy that you save or discard. Plan comparison is a page mode
   (`#compare`). See `docs/specs/2026-09-28-one-page-workspace.md`.
+- **Retirement age comparison** in the Withdrawal section shows the earliest
+  tested age meeting a real monthly budget and target success rate, the budget
+  supported at each age and the gain from one extra working year.
+- **Risk details** below the asset chart separate unfunded expenses, missed
+  lifestyle budgets and paths that miss only their bequest goal. The result
+  includes the number of successful paths and Monte Carlo sampling uncertainty.
+- **Portfolio inputs** accept opening unrealised gains or losses. New plans
+  credit one-off income in the booking year. Existing plans keep their timing.
 - **Plans**: up to 12 named plans, stored in `localStorage` (per Google account
   when signed in).
 - **Cloud sync** (optional): with Google sign-in and an Upstash Redis store, plans

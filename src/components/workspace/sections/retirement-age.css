@@ -1,0 +1,85 @@
+.ws-age-planner {
+  display: grid;
+  gap: var(--ui-space-3);
+  min-width: 0;
+  margin-bottom: var(--ui-space-6);
+  padding: var(--ui-space-4);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+.ws-age-planner header p {
+  margin: var(--ui-space-1) 0 0;
+}
+.ws-age-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--ui-space-3);
+}
+.ws-age-form label {
+  display: grid;
+  flex: 1 1 8.5rem;
+  gap: var(--ui-space-1);
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.ws-age-form input {
+  color: var(--ui-text);
+  font-variant-numeric: tabular-nums;
+}
+.ws-age-form button {
+  flex: 0 1 auto;
+}
+.ws-age-status {
+  margin: 0;
+  font-weight: 600;
+}
+.ws-age-status:empty {
+  display: none;
+}
+.ws-age-method {
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.ws-age-method summary {
+  width: fit-content;
+  cursor: pointer;
+}
+.ws-age-method p {
+  margin: var(--ui-space-2) 0 0;
+}
+.ws-age-table {
+  max-height: 19rem;
+  overflow: auto;
+  border-block: 1px solid var(--ui-border);
+}
+.ws-age-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.ws-age-table :is(th, td) {
+  padding: var(--ui-space-2);
+  text-align: right;
+}
+.ws-age-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--ui-surface);
+  color: var(--ui-muted);
+  font-size: var(--ui-font-small);
+  font-weight: 500;
+}
+.ws-age-table tr > :first-child {
+  text-align: left;
+}
+.ws-age-table tbody tr {
+  border-top: 1px solid var(--ui-border);
+}
+.ws-age-table tbody td {
+  white-space: nowrap;
+}
+.ws-age-table tr[data-earliest] {
+  background: color-mix(in srgb, var(--ui-accent) 10%, var(--ui-surface));
+}

@@ -221,7 +221,7 @@ test('4 · the head and its chart update live while a value is changed in the co
   await expect(page.getByTestId('success-delta')).toBeVisible()
   await expect(page.getByTestId('fan-chart')).toBeInViewport()
   await expect(page.getByTestId('result-bar')).toContainText('1 change')
-  await expect(page.getByTestId('verdict')).toContainText('of 100 paths')
+  await expect(page.getByTestId('verdict')).toContainText('funded through age 90')
 })
 
 test('5 · scroll-spy marks the section being read and replaces (never pushes) the hash', async ({

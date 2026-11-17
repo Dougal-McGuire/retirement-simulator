@@ -1,0 +1,62 @@
+.ws-shortfalls {
+  min-width: 0;
+  color: var(--ui-text);
+  border-block: 1px solid var(--ui-border);
+  font-size: var(--ui-font-body);
+}
+.ws-shortfalls summary {
+  min-height: var(--ui-control-height);
+  padding: var(--ui-space-3) 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+.ws-shortfalls summary:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.ws-shortfalls-count {
+  margin-inline-start: var(--ui-space-3);
+  font-weight: 400;
+  color: var(--ui-muted);
+}
+.ws-shortfalls-body {
+  display: grid;
+  gap: var(--ui-space-4);
+  padding-bottom: var(--ui-space-4);
+}
+.ws-shortfalls-body section {
+  display: grid;
+  justify-items: start;
+  gap: var(--ui-space-2);
+}
+.ws-shortfalls h3 {
+  margin: 0;
+  font-size: var(--ui-font-lead);
+  font-weight: 600;
+}
+.ws-shortfalls p {
+  margin: 0;
+  max-width: 76ch;
+  color: var(--ui-muted);
+}
+.ws-shortfalls-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr));
+  width: 100%;
+  gap: var(--ui-space-3);
+  padding-block: var(--ui-space-2);
+  margin: 0;
+}
+.ws-shortfalls-metrics dt,
+.ws-shortfalls-method {
+  font-size: var(--ui-font-small);
+}
+.ws-shortfalls-metrics dt {
+  color: var(--ui-muted);
+}
+.ws-shortfalls-metrics dd {
+  margin: 0;
+  font-size: var(--ui-font-kpi);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

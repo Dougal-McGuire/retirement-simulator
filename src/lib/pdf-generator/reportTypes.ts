@@ -223,6 +223,7 @@ export interface ReportAssumptions {
 }
 
 export interface ReportFinances {
+  initialCostBasis: number
   currentAssets: number
   annualSavings: number
   monthlyPension: number
@@ -553,6 +554,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
     },
     finances: {
       currentAssets: data.finances.currentAssetsEUR,
+      initialCostBasis: data.finances.initialCostBasisEUR ?? data.finances.currentAssetsEUR,
       annualSavings: data.finances.annualSavingsEUR,
       monthlyPension: data.finances.expectedMonthlyPensionEUR,
     },

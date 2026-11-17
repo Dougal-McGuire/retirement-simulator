@@ -33,6 +33,7 @@ export const PersonSchema = z.object({
 
 export const FinancesSchema = z.object({
   currentAssetsEUR: amount(),
+  initialCostBasisEUR: amount().optional(),
   annualSavingsEUR: amount(),
   expectedMonthlyPensionEUR: amount(),
 })

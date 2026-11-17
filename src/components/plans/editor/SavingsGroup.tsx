@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { ArrowRight } from 'lucide-react'
+import { OpeningGainField } from '@/components/forms/fields/OpeningGainField'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { useSimulationParams, useUpdateParams } from '@/lib/stores/simulationStore'
@@ -53,10 +54,21 @@ export function SavingsGroup() {
           className="w-full"
           unit={tSetup('units.currency')}
           groupThousands
-          min={0}
-          rangeMessage={atLeast(0)}
+          min={Math.max(0, params.initialUnrealizedGain)}
+          rangeMessage={
+            params.initialUnrealizedGain > 0
+              ? tSetup('assets.fields.initialUnrealizedGain.assetRange')
+              : atLeast(0)
+          }
           invalidMessage={notANumber}
           onInvalidChange={(invalid) => markInvalid('editor-currentAssets', invalid)}
+        />
+        <OpeningGainField
+          id="editor-initialUnrealizedGain"
+          assets={params.currentAssets}
+          gain={params.initialUnrealizedGain}
+          onChange={(value) => updateParams({ initialUnrealizedGain: value })}
+          onInvalidChange={(invalid) => markInvalid('editor-initialUnrealizedGain', invalid)}
         />
         <LabeledNumberInput
           id="editor-annualSavings"

@@ -7,6 +7,7 @@ import {
   runMonteCarloSimulation,
 } from '../engine'
 import { DEFAULT_PARAMS, type SimulationParams } from '@/types'
+import { normalizePersistedParams } from '@/lib/stores/normalizeParams'
 
 /**
  * German tax realism: Sparerpauschbetrag, Teilfreistellung, Rentenbesteuerung.
@@ -220,5 +221,48 @@ describe('pension taxation', () => {
     const taxed = runMonteCarloSimulation(DEFAULT_PARAMS)
 
     expect(taxed.successRate).toBeLessThan(untaxed.successRate)
+  })
+})
+
+describe('starting portfolio gains and losses', () => {
+  const financed = (gain: number) =>
+    runMonteCarloSimulation(oneYearParams({
+      initialUnrealizedGain: gain,
+      averageROI: 0,
+      equityFundExemption: 0,
+      taxAllowanceAnnual: 0,
+    })).cashFlowMeans![0]
+
+  it('grosses up a sale for tax on gains already present before the plan starts', () => {
+    // Half of each euro sold is gain. A €100 net draw requires €100 / (1 − .5 × .25).
+    const row = financed(500)
+    expect(row.portfolioWithdrawal).toBeCloseTo(100 / 0.875)
+    expect(row.realizedGain).toBeCloseTo(row.portfolioWithdrawal / 2)
+    expect(row.capitalGainsTax).toBeCloseTo(row.portfolioWithdrawal - 100)
+  })
+
+  it('books an opening loss proportionally without creating a tax refund', () => {
+    const row = financed(-500)
+    expect(row.realizedGain).toBeCloseTo(-50)
+    expect(row.capitalGainsTax).toBe(0)
+    expect(row.closingAssets).toBeCloseTo(900)
+  })
+
+  it.each([
+    [1000, 1200, 1000],
+    [1000, -1200, -1200],
+    [1000, 'unreadable', 0],
+    [0, -2000, 0],
+  ])('sanitizes an imported portfolio of %s with gain %s to %s', (assets, gain, expected) => {
+    const plan = normalizePersistedParams({ currentAssets: assets, initialUnrealizedGain: gain })
+    expect(plan.initialUnrealizedGain).toBe(expected)
+  })
+
+  it('falls back to zero opening gain for a legacy plan', () => {
+    const legacy = oneYearParams({ averageROI: 0 })
+    Reflect.deleteProperty(legacy, 'initialUnrealizedGain')
+    const row = runMonteCarloSimulation(legacy).cashFlowMeans![0]
+    expect(row.realizedGain).toBe(0)
+    expect(row.capitalGainsTax).toBe(0)
   })
 })
