@@ -423,12 +423,8 @@ export default function SetupPage() {
                 className="w-full"
                 unit={t('units.currency')}
                 groupThousands
-                min={Math.max(0, params.initialUnrealizedGain)}
-                rangeMessage={
-                  params.initialUnrealizedGain > 0
-                    ? t('assets.fields.initialUnrealizedGain.assetRange')
-                    : t('validation.nonNegative')
-                }
+                min={0}
+                rangeMessage={t('validation.nonNegative')}
                 invalidMessage={t('validation.notANumber')}
                 onInvalidChange={(invalid) => markInvalid('currentAssets', invalid)}
                 validation={{

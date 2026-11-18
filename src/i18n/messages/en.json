@@ -337,10 +337,10 @@
           "help": "Total value of your current investments and savings"
         },
         "initialUnrealizedGain": {
-          "label": "Unrealised gain or loss today",
-          "help": "Subtract the purchase cost from today’s portfolio value. Enter a negative amount for a loss. Zero assumes the entire starting portfolio was bought at today’s price. The opening cost basis is {basis}.",
-          "range": "The gain cannot exceed the current portfolio value.",
-          "assetRange": "Portfolio value must cover the unrealised gain. Adjust the gain first if needed."
+          "label": "Unrealised gain or loss today (%)",
+          "help": "Enter the unrealised return on purchase cost from your portfolio overview. Use a minus sign for a loss. The opening cost basis is {basis}.",
+          "range": "With a positive portfolio value, the return must be greater than −100%.",
+          "zeroBasis": "The saved cost basis is zero, so the percentage return is undefined. Enter a percentage to replace this cost basis."
         },
         "annualSavings": {
           "label": "Annual Savings",

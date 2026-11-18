@@ -54,12 +54,8 @@ export function SavingsGroup() {
           className="w-full"
           unit={tSetup('units.currency')}
           groupThousands
-          min={Math.max(0, params.initialUnrealizedGain)}
-          rangeMessage={
-            params.initialUnrealizedGain > 0
-              ? tSetup('assets.fields.initialUnrealizedGain.assetRange')
-              : atLeast(0)
-          }
+          min={0}
+          rangeMessage={atLeast(0)}
           invalidMessage={notANumber}
           onInvalidChange={(invalid) => markInvalid('editor-currentAssets', invalid)}
         />

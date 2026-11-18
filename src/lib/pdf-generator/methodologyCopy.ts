@@ -154,9 +154,12 @@ export function buildMethodologyCopy(content: ReportContent): MethodologyCopy {
       : 'Returns and inflation are drawn independently; historical autocorrelation and sequence-of-returns effects around the transition year are not reproduced.'
 
   const basis = money(content.finances.initialCostBasis)
+  const cost = content.finances.initialCostBasis
+  const returnLabel =
+    cost > 0 ? fmtPercent((content.finances.currentAssets - cost) / cost, 2, intlLocale) : '—'
   const costBasisLimitation = isGerman
-    ? `Der Anschaffungswert des Startdepots beträgt ${basis}. Das Modell verteilt ihn anteilig auf jeden Verkauf. Die tatsächliche Reihenfolge einzelner Käufe (FIFO) und Verlustverrechnungstöpfe bleiben unberücksichtigt.`
-    : `The starting portfolio has a cost basis of ${basis}. Each sale receives a proportional share of that cost. The model omits individual tax lots (FIFO) and loss carryforwards.`
+    ? `Der Anschaffungswert des Startdepots beträgt ${basis} (Buchgewinn oder -verlust: ${returnLabel}). Das Modell verteilt ihn anteilig auf jeden Verkauf. Die tatsächliche Reihenfolge einzelner Käufe (FIFO) und Verlustverrechnungstöpfe bleiben unberücksichtigt.`
+    : `The starting portfolio has a cost basis of ${basis} (unrealised return: ${returnLabel}). Each sale receives a proportional share of that cost. The model omits individual tax lots (FIFO) and loss carryforwards.`
 
   const limitations = isGerman
     ? [

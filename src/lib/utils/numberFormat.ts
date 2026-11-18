@@ -116,6 +116,12 @@ export function formatGroupedValue(
   return formatGroupedDraft(normalised, locale, separators, maximumFractionDigits)
 }
 
+/** A signed percentage as typed or copied from a portfolio. No thousands grouping. */
+export function parsePercentInput(raw: string): number {
+  const token = raw.trim().replace(/\s*%$/, '').replace(/^−/, '-').replace(',', '.')
+  return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(token) ? Number(token) : NaN
+}
+
 /** Count the characters that survive `stripGrouping` — used for caret mapping. */
 export function countSignificantChars(raw: string, separators: NumberSeparators): number {
   return stripGrouping(raw, separators).replace('-', '').length

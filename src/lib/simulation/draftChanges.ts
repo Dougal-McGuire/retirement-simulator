@@ -1,3 +1,4 @@
+import { openingReturnPercent, resizeOpeningGain } from './openingReturn'
 import type { CashFlow, CashFlowFrequency, SimulationParams } from '@/types'
 import { isCashFlowEnabled, withCashFlowEnabled } from '@/lib/simulation/cashFlows'
 import {
@@ -98,7 +99,7 @@ const FIELD_SPECS: readonly FieldSpec[] = [
   { key: 'endAge', group: 'person', kind: 'age' },
 
   { key: 'currentAssets', group: 'savings', kind: 'currency' },
-  { key: 'initialUnrealizedGain', group: 'savings', kind: 'currency' },
+  { key: 'initialUnrealizedGain', group: 'savings', kind: 'percentPoints' },
   { key: 'annualSavings', group: 'savings', kind: 'currency' },
   { key: 'annualSavingsGrowthRate', group: 'savings', kind: 'rate' },
 
@@ -186,8 +187,9 @@ export function buildDraftChanges(saved: SimulationParams, draft: SimulationPara
   const changes: DraftChange[] = []
 
   for (const spec of FIELD_SPECS) {
-    const from = saved[spec.key]
-    const to = draft[spec.key]
+    const openingReturn = spec.key === 'initialUnrealizedGain'
+    const from = openingReturn ? (openingReturnPercent(saved) ?? '—') : saved[spec.key]
+    const to = openingReturn ? (openingReturnPercent(draft) ?? '—') : draft[spec.key]
     if (sameValue(from, to)) continue
     changes.push({
       type: 'field',
@@ -197,7 +199,10 @@ export function buildDraftChanges(saved: SimulationParams, draft: SimulationPara
       kind: spec.kind,
       from: display(from),
       to: display(to),
-      revert: () => ({ [spec.key]: from }) as Partial<SimulationParams>,
+      revert: (current) =>
+        openingReturn
+          ? { initialUnrealizedGain: resizeOpeningGain(saved, current.currentAssets) }
+          : ({ [spec.key]: from } as Partial<SimulationParams>),
     })
   }
 

@@ -1,3 +1,4 @@
+import { resizeOpeningGain } from '@/lib/simulation/openingReturn'
 import {
   createContext,
   createElement,
@@ -794,7 +795,7 @@ export const useSimulationStore = create<SimulationStore>()(
             ...merged,
             initialUnrealizedGain: openingPortfolioGain(
               merged.currentAssets,
-              merged.initialUnrealizedGain
+              partial.initialUnrealizedGain ?? resizeOpeningGain(currentParams, merged.currentAssets)
             ),
             cashFlows,
             customExpenses: projectCustomExpenses(cashFlows),

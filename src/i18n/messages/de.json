@@ -337,10 +337,10 @@
           "help": "Gesamter Wert deiner derzeitigen Anlagen und Ersparnisse"
         },
         "initialUnrealizedGain": {
-          "label": "Heutiger Buchgewinn oder -verlust",
-          "help": "Ziehe den Kaufpreis vom heutigen Depotwert ab. Bei einem Verlust gib einen negativen Betrag ein. Bei null entspricht der Kaufpreis dem heutigen Depotwert. Der Anschaffungswert beträgt {basis}.",
-          "range": "Der Buchgewinn kann den heutigen Depotwert nicht übersteigen.",
-          "assetRange": "Der Depotwert muss mindestens dem Buchgewinn entsprechen. Passe gegebenenfalls zuerst den Buchgewinn an."
+          "label": "Heutiger Buchgewinn oder -verlust (%)",
+          "help": "Übernimm den Buchgewinn oder -verlust in Prozent des Kaufpreises aus deiner Depotübersicht, bei Verlust mit Minuszeichen. Der Anschaffungswert beträgt {basis}.",
+          "range": "Bei positivem Depotwert muss die Rendite über −100 % liegen.",
+          "zeroBasis": "Der gespeicherte Anschaffungswert beträgt 0 €. Eine prozentuale Rendite ist dafür nicht definiert. Eine neue Prozentangabe ersetzt diesen Wert."
         },
         "annualSavings": {
           "label": "Jährliche Sparrate",

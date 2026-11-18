@@ -1,5 +1,6 @@
 import { useTranslations } from 'next-intl'
 import { useMoney } from '@/lib/hooks/useMoney'
+import { openingReturnPercent, gainFromOpeningReturn } from '@/lib/simulation/openingReturn'
 import { LabeledNumberInput } from './LabeledNumberInput'
 
 interface OpeningGainFieldProps {
@@ -10,7 +11,7 @@ interface OpeningGainFieldProps {
   onInvalidChange: (invalid: boolean) => void
 }
 
-/** The same signed euro amount and implied acquisition cost in setup and the editor. */
+/** Both entry points accept the broker’s percentage and persist the original euro-based plan format. */
 export function OpeningGainField({
   id,
   assets,
@@ -21,17 +22,23 @@ export function OpeningGainField({
   const t = useTranslations('setup')
   const money = useMoney()
 
+  const rate = openingReturnPercent({ currentAssets: assets, initialUnrealizedGain: gain })
+
   return (
     <LabeledNumberInput
       id={id}
       label={t('assets.fields.initialUnrealizedGain.label')}
-      value={gain}
-      onChange={onChange}
-      helpText={t('assets.fields.initialUnrealizedGain.help', { basis: money.full(assets - gain) })}
+      value={rate === null ? NaN : Number(rate.toFixed(12))}
+      onChange={(percent) => onChange(gainFromOpeningReturn(assets, percent))}
+      helpText={
+        rate === null
+          ? t('assets.fields.initialUnrealizedGain.zeroBasis')
+          : t('assets.fields.initialUnrealizedGain.help', { basis: money.full(assets - gain) })
+      }
       helpPlacement="inline"
-      unit={t('units.currency')}
-      groupThousands
-      max={assets}
+      unit="%"
+      decimalPercent
+      min={-99.99999999999999}
       disabled={assets === 0}
       rangeMessage={t('assets.fields.initialUnrealizedGain.range')}
       invalidMessage={t('validation.notANumber')}

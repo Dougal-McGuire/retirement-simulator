@@ -1,3 +1,4 @@
+import { openingReturnPercent } from './openingReturn'
 import type { CashFlow, SimulationParams } from '@/types'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import {
@@ -434,8 +435,8 @@ const rowSpecs: RowSpec[] = [
   {
     key: 'initialUnrealizedGain',
     group: 'income',
-    kind: 'currency',
-    read: (p) => p.initialUnrealizedGain ?? 0,
+    kind: 'percentPoints',
+    read: (p) => openingReturnPercent(p) ?? '—',
     optional: true,
   },
   { key: 'annualSavings', group: 'income', kind: 'currency', read: (p) => p.annualSavings },
