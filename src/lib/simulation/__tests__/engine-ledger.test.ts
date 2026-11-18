@@ -190,10 +190,10 @@ describe('booked annual cash flows', () => {
     const byAge = (age: number) => result.cashFlowMeans![result.ages.indexOf(age)]
     // Pension taxed at 20 % of its full amount; rent untaxed on top.
     expect(byAge(61)).toMatchObject({ pensionGross: 100, pensionTax: 20, incomeGross: 150 })
-    // The gift is credited the year after its booking age, with its own tax.
-    expect(byAge(63).oneOffIncomeGross).toBeCloseTo(1000, 7)
-    expect(byAge(63).oneOffIncomeTax).toBeCloseTo(byAge(63).incomeTax - 20, 7)
-    expect(byAge(62).oneOffIncomeGross).toBe(0)
+    // The gift and its tax appear in the entered year.
+    expect(byAge(62).oneOffIncomeGross).toBeCloseTo(1000, 7)
+    expect(byAge(62).oneOffIncomeTax).toBeCloseTo(byAge(62).incomeTax - 20, 7)
+    expect(byAge(63).oneOffIncomeGross).toBe(0)
     // Care is a scheduled expense riding on top of the baseline budget.
     expect(byAge(64).scheduledExpenses).toBe(40)
     expect(byAge(63).scheduledExpenses).toBe(0)

@@ -7,10 +7,12 @@ import { useTranslations, useFormatter } from 'next-intl'
 import { Link, useRouter } from '@/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { OpeningGainField } from '@/components/forms/fields/OpeningGainField'
 import { LabeledNumberInput } from '@/components/forms/fields/LabeledNumberInput'
 import { WizardLiveResult } from '@/components/forms/WizardLiveResult'
 import { timelineIssues } from '@/lib/validation/fieldValidation'
 import { WizardSliderField } from '@/components/forms/fields/WizardSliderField'
+import { oneOffCreditLabel } from '@/lib/plans/flowWindow'
 import { OneTimeIncomeList } from '@/components/forms/fields/OneTimeIncomeList'
 import { CashFlowList } from '@/components/forms/fields/CashFlowList'
 import {
@@ -64,6 +66,7 @@ export default function SetupPage() {
    */
   const [isNavigating, startNavigation] = useTransition()
   const t = useTranslations('setup')
+  const tFlows = useTranslations('setup.cashFlows')
   const tStatus = useTranslations('stepStatus')
   const tUi = useTranslations('ui')
   const tPlans = useTranslations('plans')
@@ -434,6 +437,13 @@ export default function SetupPage() {
                 }}
               />
 
+              <OpeningGainField
+                id="initialUnrealizedGain"
+                assets={params.currentAssets}
+                gain={params.initialUnrealizedGain}
+                onChange={(value) => updateParams({ initialUnrealizedGain: value })}
+                onInvalidChange={(invalid) => markInvalid('initialUnrealizedGain', invalid)}
+              />
               <LabeledNumberInput
                 id="annualSavings"
                 label={t('assets.fields.annualSavings.label')}
@@ -509,6 +519,14 @@ export default function SetupPage() {
                   namePlaceholder: t('assets.oneTimeIncomes.namePlaceholder'),
                   ageLabel: t('assets.oneTimeIncomes.ageLabel'),
                   agePrefix: tUi('age'),
+                  creditLabel: (age) =>
+                    oneOffCreditLabel(
+                      age,
+                      params.currentAge,
+                      params.endAge,
+                      params.oneOffIncomeTiming,
+                      tFlows
+                    ),
                   amountLabel: t('assets.oneTimeIncomes.amountLabel'),
                   addHint: t('assets.oneTimeIncomes.addHint'),
                   remove: t('assets.oneTimeIncomes.remove'),
@@ -773,6 +791,7 @@ export default function SetupPage() {
                 <div className="flex items-center gap-2">
                   <CardTitle
                     as="h2"
+                    id="setup-step-heading"
                     ref={stepHeadingRef}
                     tabIndex={-1}
                     className="text-xl font-extrabold   text-ink"
@@ -788,9 +807,14 @@ export default function SetupPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
-                <div key={activeStepKey} className="animate-step-in">
+                <fieldset
+                  key={activeStepKey}
+                  disabled={!progressLoaded}
+                  aria-labelledby="setup-step-heading"
+                  className="min-w-0 animate-step-in"
+                >
                   {renderStepContent()}
-                </div>
+                </fieldset>
               </CardContent>
             </Card>
 

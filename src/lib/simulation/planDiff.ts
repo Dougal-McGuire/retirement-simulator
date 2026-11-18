@@ -1,3 +1,4 @@
+import { openingReturnPercent } from './openingReturn'
 import type { CashFlow, SimulationParams } from '@/types'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import {
@@ -47,6 +48,7 @@ export type AssumptionKind =
   | 'householdType'
   /** A flow's switch: values are `FlowSwitchState`s. */
   | 'flowSwitch'
+  | 'oneOffIncomeTiming'
 
 export interface AssumptionRow {
   /** Translation key suffix under `plans.comparison.assumptions.rows`. */
@@ -430,6 +432,13 @@ const rowSpecs: RowSpec[] = [
   },
 
   { key: 'currentAssets', group: 'income', kind: 'currency', read: (p) => p.currentAssets },
+  {
+    key: 'initialUnrealizedGain',
+    group: 'income',
+    kind: 'percentPoints',
+    read: (p) => openingReturnPercent(p) ?? '—',
+    optional: true,
+  },
   { key: 'annualSavings', group: 'income', kind: 'currency', read: (p) => p.annualSavings },
   {
     key: 'annualSavingsGrowthRate',
@@ -455,6 +464,12 @@ const rowSpecs: RowSpec[] = [
     optional: true,
   },
 
+  {
+    key: 'oneOffIncomeTiming',
+    group: 'income',
+    kind: 'oneOffIncomeTiming',
+    read: (p) => p.oneOffIncomeTiming,
+  },
   {
     key: 'scheduledIncome',
     group: 'income',
@@ -617,6 +632,13 @@ const rowSpecs: RowSpec[] = [
     read: (p) => p.legacyTargetReal,
     optional: true,
   },
+  {
+    key: 'lifestyleFloorMonthlyReal',
+    group: 'goals',
+    kind: 'currency',
+    read: (p) => p.lifestyleFloorMonthlyReal ?? 0,
+    optional: true,
+  },
 ]
 
 /**
@@ -681,7 +703,10 @@ export function buildAssumptionRows(paramsList: SimulationParams[]): AssumptionR
       ).total > 0
   )
 
+  const hasOneOffIncome = paramsList.some((params) => params.oneTimeIncomes?.length > 0)
+
   return rowSpecs
+    .filter((spec) => spec.key !== 'oneOffIncomeTiming' || hasOneOffIncome)
     .filter((spec) => (spec.key === 'marketModel' ? usesHistory : true))
     .filter((spec) => rowIsRead(spec.key))
     .filter((spec) => (glidePathRowKeys.has(spec.key) ? usesGlidePath : true))

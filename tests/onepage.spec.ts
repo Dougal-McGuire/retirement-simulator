@@ -18,6 +18,7 @@ import {
   showColumn,
   successRate,
   test,
+  waitForLeversMeasured,
   waitForResults,
   waitForScrollSettled,
 } from './helpers/workspace'
@@ -221,7 +222,7 @@ test('4 · the head and its chart update live while a value is changed in the co
   await expect(page.getByTestId('success-delta')).toBeVisible()
   await expect(page.getByTestId('fan-chart')).toBeInViewport()
   await expect(page.getByTestId('result-bar')).toContainText('1 change')
-  await expect(page.getByTestId('verdict')).toContainText('of 100 paths')
+  await expect(page.getByTestId('verdict')).toContainText('funded through age 90')
 })
 
 test('5 · scroll-spy marks the section being read and replaces (never pushes) the hash', async ({
@@ -232,13 +233,19 @@ test('5 · scroll-spy marks the section being read and replaces (never pushes) t
   await page.goto('/en/simulation')
   await waitForResults(page)
 
+  // Mount and measure the lazy Impact section before scrolling between sections.
+  // Its changing height can move the reading line back into Withdrawal on iPad.
+  const levers = page.locator('#levers')
+  await levers.evaluate((el) => el.scrollIntoView())
+  await waitForLeversMeasured(page)
+
   await page.locator('#cashflow').evaluate((el) => el.scrollIntoView())
   await expect(page.getByTestId('section-link-cashflow')).toHaveAttribute(
     'aria-current',
     'location'
   )
   await expect(page).toHaveURL(/#cashflow$/)
-  await page.locator('#levers').evaluate((el) => el.scrollIntoView())
+  await levers.evaluate((el) => el.scrollIntoView())
   await expect(page).toHaveURL(/#levers$/)
   await expect(page.getByTestId('section-link-levers')).toHaveAttribute('aria-current', 'location')
   await expect(page.locator('[aria-current="location"]')).toHaveCount(1)
@@ -603,11 +610,9 @@ test('ledger labels open the matching group and field in the column; the canvas 
   await waitForResults(page)
 
   const tax = page.getByRole('button', { name: /^Capital gains tax – edit in/ })
-  // A reader scrolls with the wheel, which ends the landing's hold on
-  // `#cashflow` (it re-aims while sections mount, for up to five seconds);
-  // a scripted scroll alone would be undone by it on a slow machine.
-  await page.mouse.move(400, 500)
-  await page.mouse.wheel(0, 40)
+  // Interacting with the heading releases the deep link's hold on the section
+  // before we position the ledger row on screen.
+  await page.locator('#cashflow-title').click()
   await tax.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
   await expect(tax).toBeInViewport({ ratio: 1 })
   for (const round of [1, 2]) {

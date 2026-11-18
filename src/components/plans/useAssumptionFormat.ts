@@ -18,6 +18,7 @@ export function useAssumptionValueFormatter() {
   const tMarketModel = useTranslations('parameterControls.fields.marketModel.options')
   const tToggle = useTranslations('parameterControls.toggle')
   const tHousehold = useTranslations('parameterControls.fields.householdType.options')
+  const tTiming = useTranslations('plans.comparison.incomeTiming')
   const tSwitch = useTranslations('plans.comparison.flowSwitch')
   const money = useMoney()
 
@@ -28,6 +29,9 @@ export function useAssumptionValueFormatter() {
         if (kind === 'marketModel') return tMarketModel(`${value}.label`)
         if (kind === 'toggle') return tToggle(value === 'on' ? 'on' : 'off')
         if (kind === 'householdType') return tHousehold(`${value}.label`)
+        if (kind === 'oneOffIncomeTiming') {
+          return tTiming(value === 'bookingAge' ? 'bookingAge' : 'yearEnd')
+        }
         if (kind === 'flowSwitch') {
           return tSwitch(value === 'on' ? 'on' : value === 'off' ? 'off' : 'absent')
         }
@@ -55,6 +59,6 @@ export function useAssumptionValueFormatter() {
           return format.number(value)
       }
     },
-    [format, money, tStrategy, tMarketModel, tToggle, tHousehold, tSwitch]
+    [format, money, tStrategy, tMarketModel, tToggle, tHousehold, tSwitch, tTiming]
   )
 }

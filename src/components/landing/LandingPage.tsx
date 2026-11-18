@@ -244,7 +244,13 @@ export function LandingPage() {
                     {compactMoney(value)}
                   </p>
                   <p className="landing-body mt-3 text-[0.8rem] font-medium leading-relaxed text-foreground/75">
-                    {t(`spread.items.${key}.body`)}
+                    {key === 'high' && PREVIEW_TERMINAL.p10 > 0
+                      ? t('spread.items.high.ratio', {
+                          ratio: format.number(PREVIEW_TERMINAL.p90 / PREVIEW_TERMINAL.p10, {
+                            maximumFractionDigits: 0,
+                          }),
+                        })
+                      : t(`spread.items.${key}.body`)}
                   </p>
                 </div>
               </li>

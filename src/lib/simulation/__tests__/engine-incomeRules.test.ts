@@ -52,10 +52,12 @@ const BASE: SimulationParams = {
   legalRetirementAge: 67,
   endAge: 90,
   currentAssets: 1_500_000,
+  initialUnrealizedGain: 0,
   annualSavings: 48000,
   annualSavingsGrowthRate: 0.02,
   monthlyPension: 0,
   oneTimeIncomes: [],
+  oneOffIncomeTiming: 'yearEnd',
   averageROI: 0.07,
   roiVolatility: 0.15,
   averageInflation: 0.025,
@@ -80,6 +82,7 @@ const BASE: SimulationParams = {
   dsCeilingRate: 0.05,
   dsFloorRate: -0.025,
   spendingFloorReal: 0,
+  lifestyleFloorMonthlyReal: 0,
   simulationRuns: 300,
 }
 

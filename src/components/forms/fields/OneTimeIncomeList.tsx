@@ -18,6 +18,7 @@ interface OneTimeIncomeListStrings {
   nameLabel: string
   namePlaceholder: string
   ageLabel: string
+  creditLabel: (age: number) => string
   agePrefix: string
   amountLabel: string
   remove: string
@@ -208,7 +209,11 @@ export function OneTimeIncomeList({
                 }}
                 className="rounded-sm h-10 border border-border px-2 text-[0.68rem] font-semibold "
                 aria-label={getIncomeControlLabel(strings.ageLabel, income)}
+                aria-describedby={`one-off-credit-${income.id}`}
               />
+              <span id={`one-off-credit-${income.id}`} className="text-xs text-muted-foreground">
+                {editAge && strings.creditLabel(Number(editAge))}
+              </span>
             </div>
           </td>
           <td className="px-2 py-2 sm:px-3">
@@ -285,6 +290,7 @@ export function OneTimeIncomeList({
             </span>
             <span className="text-[0.62rem] font-semibold   text-muted-foreground">
               {strings.agePrefix} {income.age}
+              {on && ` · ${strings.creditLabel(income.age)}`}
             </span>
           </div>
         </td>
@@ -405,6 +411,7 @@ export function OneTimeIncomeList({
               </Label>
               <Input
                 id="one-time-income-age"
+                aria-describedby="one-time-income-credit"
                 type="number"
                 value={draftAge}
                 onChange={(event) => {
@@ -419,6 +426,9 @@ export function OneTimeIncomeList({
                 }}
                 className="rounded-sm h-11 w-full border border-border px-3 py-2 text-[0.68rem] font-semibold  "
               />
+              <span className="mt-1 text-xs text-muted-foreground" id="one-time-income-credit">
+                {draftAge && strings.creditLabel(Number(draftAge))}
+              </span>
             </div>
 
             <div className="flex flex-col">

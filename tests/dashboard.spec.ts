@@ -9,6 +9,7 @@ import {
   leverSlider,
   openPanel,
   openSection,
+  readPersistedState,
   readStoredParams,
   sectionHeading,
   test,
@@ -43,9 +44,7 @@ test.describe('one-page workspace', () => {
     page,
   }) => {
     await gotoWorkspace(page)
-    await expect(page.getByTestId('verdict')).toContainText(
-      /Your money lasts in \d+ of 100 paths to age 90\./
-    )
+    await expect(page.getByTestId('verdict')).toContainText('Share of paths funded through age 90.')
     await expect(page.getByTestId('fan-chart')).toBeInViewport()
     // No second set of sliders anywhere on the canvas.
     await expect(page.getByTestId('quick-levers')).toHaveCount(0)
@@ -80,6 +79,7 @@ test.describe('one-page workspace', () => {
       // Still current once the smooth scroll has landed and scroll-spy resumed.
       await expect(heading).toBeInViewport()
       await expect(link).toHaveAttribute('aria-current', 'location')
+      await expect(page).toHaveURL(new RegExp(`#${id}(:\\w+)?$`))
       await expect(page.locator('[aria-current="location"]')).toHaveCount(1)
     }
 
@@ -341,11 +341,64 @@ test.describe('one-page workspace', () => {
     await expect(compare.getByRole('table')).toContainText('Retirement age')
     await expect(compare.getByRole('table')).toContainText('Withdrawal rule')
 
+    const counts = compare.getByTestId('simulation-precision')
+    await expect(counts).toHaveCount(2)
+    await expect(counts.first()).toContainText('of 500 Monte Carlo paths')
+    await compare.getByTestId('compare-final').click()
+    await expect(counts.filter({ hasText: 'of 5,000 Monte Carlo paths' })).toHaveCount(2, {
+      timeout: 60000,
+    })
+    await expect(counts.first()).toContainText('95% sampling interval')
+    // A comparison never writes its run budget back to either plan.
     await page.getByTestId('compare-exit').click()
     await expect(page.getByTestId('compare-view')).toHaveCount(0)
     await expect(page).not.toHaveURL(/#compare/)
     await expect(page.locator('#result')).toBeVisible()
+    await expect(page.locator('#result').getByTestId('simulation-precision')).toContainText(
+      'of 500 Monte Carlo paths'
+    )
     await expect(page.getByTestId('run-button')).toBeVisible()
+  })
+
+  test('recovers the comparison chart after the base plan worker fails', async ({ page }) => {
+    test.setTimeout(90000)
+    await gotoWorkspace(page)
+    const compare = await enterCompare(page)
+    await compare.getByRole('button', { name: /Add plan/ }).click()
+    const counts = compare.getByTestId('simulation-precision')
+    await expect(counts).toHaveCount(2, { timeout: 30000 })
+
+    // Corrupt just the first final-comparison request. The real worker catches
+    // the engine error and returns its normal failure reply for the base plan.
+    await page.evaluate(() => {
+      const send = Worker.prototype.postMessage
+      Worker.prototype.postMessage = new Proxy(send, {
+        apply(original, worker, [message, ...rest]) {
+          if (message?.params?.simulationRuns === 5000) {
+            Worker.prototype.postMessage = send
+            message = { ...message, params: null }
+          }
+          return Reflect.apply(original, worker, [message, ...rest])
+        },
+      })
+    })
+    await compare.getByTestId('compare-final').click()
+    await expect(
+      compare.getByRole('status').filter({ hasText: 'Comparison incomplete' })
+    ).toBeVisible({
+      timeout: 30000,
+    })
+    await expect(counts).toHaveCount(1)
+    await expect(compare.getByText('Re-running…', { exact: true })).toHaveCount(0)
+    await expect(compare.locator('.compare-chart [data-variant="chart"]')).toHaveCount(0)
+    await expect(compare.getByText('The chart needs a result for the base plan.')).toBeVisible()
+
+    await compare.getByRole('button', { name: 'Retry failed plans' }).click()
+    await expect(counts.filter({ hasText: 'of 5,000 Monte Carlo paths' })).toHaveCount(2, {
+      timeout: 30000,
+    })
+    await expect(compare.getByTestId('compare-fan-chart')).toBeVisible()
+    await expect(compare.getByRole('button', { name: 'Retry failed plans' })).toHaveCount(0)
   })
 
   test('runs on demand from the Run button', async ({ page }) => {
@@ -402,19 +455,17 @@ test.describe('working copy', () => {
     const age = page.getByRole('spinbutton', { name: 'Current Age' })
     await age.fill('44')
     await age.blur()
+    await expect(page.getByTestId('wizard-plan-context')).toHaveAttribute('data-dirty', 'true')
 
     // Walk away without finishing the wizard.
     await page.goto('/en/simulation')
 
-    const state = await page.evaluate(() => {
-      const parsed = JSON.parse(window.localStorage.getItem('retirement-simulator-store') as string)
-      return {
-        planAge: parsed.state.plans[0].params.currentAge,
-        draftAge: parsed.state.draftParams?.currentAge ?? null,
-      }
-    })
-    expect(state.planAge).toBe(55)
-    expect(state.draftAge).toBe(44)
+    await expect
+      .poll(() => readPersistedState(page))
+      .toMatchObject({
+        storedPlan: { currentAge: 55 },
+        draft: { currentAge: 44 },
+      })
   })
 })
 
@@ -448,6 +499,9 @@ test.describe('market model and glide path', () => {
       .poll(async () => (await shown()).endAssets, { timeout: 15000 })
       .not.toBe(monteCarlo.endAssets)
     await expect(page.getByTestId('run-status')).toHaveAttribute('data-state', 'updated')
+    const precision = page.locator('#result').getByTestId('simulation-precision')
+    await expect(precision).toContainText('of 125 historical starting years')
+    await expect(precision).not.toContainText('sampling interval')
     const first = await shown()
     expect(first.rate).toMatch(/\d/)
 
@@ -621,6 +675,9 @@ test.describe('cash-flow ergonomics', () => {
     const year = new Date().getFullYear() + 8
     await card.locator('#cashflow-date-new').selectOption('01')
     await card.locator('#cashflow-date-year-new').selectOption(String(year))
+    await expect(card.locator('#cashflow-start-new')).toHaveAccessibleDescription(
+      'Available at the start of age 63.'
+    )
     await card.getByRole('button', { name: 'Advanced options' }).click()
     await card.locator('#cashflow-tax-new').click()
     await page.getByRole('option', { name: /One-fifth rule/ }).click()
@@ -630,6 +687,7 @@ test.describe('cash-flow ergonomics', () => {
     const list = card.getByTestId('cashflow-list')
     await expect(list).toContainText('Kapitaloption')
     await expect(list).toContainText(`Jan ${year} · age 63`)
+    await expect(list).toContainText('Available at the start of age 63.')
     await expect(list).toContainText(/tax €[\d,]+ · net €[\d,]+/)
     await expect(list).toContainText('source: company pension, gross')
   })

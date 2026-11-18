@@ -1,7 +1,8 @@
 'use client'
 
 import { memo, useCallback, useMemo } from 'react'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatSimulationRate } from '@/lib/format/simulationRate'
 import { Check, CircleAlert, LoaderCircle, RotateCw } from 'lucide-react'
 import type { SimulationResults } from '@/types'
 import { buildCompactKpis, type CompactKpis } from '@/components/simulation-compact/metrics'
@@ -68,7 +69,7 @@ export function useFigureId(surface: ResultSurface): (id: string) => string {
 export interface ResultFigureData {
   results: SimulationResults | null
   kpis: CompactKpis | null
-  /** Success rate, rounded to the one decimal shown. */
+  /** Unrounded share in percent, including rare outcomes near 0 and 100. */
   rate: number | null
   /** Median end assets in the unit the € switch selects, whole euros. */
   end: number | null
@@ -85,7 +86,7 @@ export function useResultFigures(): ResultFigureData {
   return {
     results,
     kpis,
-    rate: results ? Math.round(results.successRate * 10) / 10 : null,
+    rate: results?.successRate ?? null,
     end: kpis ? Math.round(kpis.medianEndWealth) : null,
   }
 }
@@ -104,16 +105,8 @@ export function useSavedEndAssets(): number | null {
 }
 
 export function useRateFormat(): (value: number) => string {
-  const format = useFormatter()
-  return useCallback(
-    (value: number) =>
-      format.number(value / 100, {
-        style: 'percent',
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-      }),
-    [format]
-  )
+  const locale = useLocale()
+  return useCallback((value: number) => formatSimulationRate(value, locale), [locale])
 }
 
 /** The success rate: the one large numeral of the head, the dock's first figure. */

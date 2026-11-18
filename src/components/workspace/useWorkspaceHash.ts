@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useRef, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, type RefObject } from 'react'
 import type { ColumnGroup } from '@/components/plans/planSections'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
 import type { ScrollToSectionOptions } from './WorkspaceProvider'
 import {
   groupForTarget,
   parseWorkspaceHash,
+  scrollDistanceToElement,
   type WorkspaceHash,
   type WorkspaceSectionId,
 } from './workspaceNav'
@@ -50,10 +51,15 @@ const USER_SCROLL_EVENTS = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as 
  * anchoring doesn't compensate because the jump happens before there is
  * anything to anchor to.
  */
-function holdSectionInView(scroll: () => void): () => void {
+function holdSectionInView(scroll: () => void, height: number | undefined): () => void {
   let released = false
   const observer = new ResizeObserver(() => {
-    if (!released) scroll()
+    const nextHeight = document.body.offsetHeight
+    // The initial observation also fires during a smooth jump. Leave the
+    // animation alone until a layout change actually moves its destination.
+    if (released || nextHeight === height) return
+    height = nextHeight
+    scroll()
   })
   const release = () => {
     if (released) return
@@ -82,29 +88,36 @@ type SectionHash = Extract<WorkspaceHash, { compare: false }>
  *   between compare and the sections. The two events usually arrive in a
  *   pair; the second is recognised by its unchanged hash and ignored.
  */
-export function useWorkspaceHash(api: WorkspaceHashApi): void {
+export function useWorkspaceHash(api: WorkspaceHashApi) {
   const apiRef = useRef(api)
   useEffect(() => {
     apiRef.current = api
   }, [api])
 
+  const releaseHold = useRef<(() => void) | undefined>(undefined)
+  const landOn = useCallback((section: WorkspaceSectionId, opts?: ScrollToSectionOptions) => {
+    releaseHold.current?.()
+    apiRef.current.scrollToSection(section, opts)
+    const anchorTarget = opts?.focus ? document.getElementById(section) : null
+    releaseHold.current = holdSectionInView(
+      () => {
+        // Correct an anchor displaced down the page by lazy content. Once the
+        // reader has scrolled farther into the section, leave them there.
+        if (anchorTarget && scrollDistanceToElement(anchorTarget) <= 1) return
+        apiRef.current.scrollToSection(section, { behavior: 'instant', keepColumn: true })
+      },
+      // On a hash landing, re-aim once after its column group has been applied.
+      // A focused anchor jump can keep animating until the page changes size.
+      anchorTarget ? document.body.offsetHeight : undefined
+    )
+  }, [])
+
   useEffect(() => {
     let cancelled = false
-    let releaseHold: (() => void) | undefined
-
-    /** The canvas part: scroll to the section and keep it there while the page settles. */
-    const landOn = (section: WorkspaceSectionId, behavior?: ScrollBehavior) => {
-      if (cancelled) return
-      // `keepColumn`: `applyGroup` decides the phone's mode, once.
-      apiRef.current.scrollToSection(section, { behavior, keepColumn: true })
-      releaseHold = holdSectionInView(() =>
-        apiRef.current.scrollToSection(section, { behavior: 'instant', keepColumn: true })
-      )
-    }
 
     /** Canvas first, then the column: on the phone a named group ends on "Stellen". */
     const apply = (parsed: SectionHash, behavior?: ScrollBehavior) => {
-      if (parsed.section !== 'assumptions') landOn(parsed.section, behavior)
+      if (parsed.section !== 'assumptions') landOn(parsed.section, { behavior, keepColumn: true })
       apiRef.current.applyGroup(parsed.group, groupForTarget(parsed.section))
       if (parsed.section === 'assumptions' && !parsed.group) apiRef.current.focusColumn()
     }
@@ -141,7 +154,7 @@ export function useWorkspaceHash(api: WorkspaceHashApi): void {
       // it must not cancel the hold the first one started.
       if (hash === current.lastHashRef.current) return
       // A later navigation owns the scroll position now.
-      releaseHold?.()
+      releaseHold.current?.()
       current.lastHashRef.current = hash
       const parsed = parseWorkspaceHash(hash)
       if (current.isComparing()) {
@@ -159,10 +172,12 @@ export function useWorkspaceHash(api: WorkspaceHashApi): void {
     window.addEventListener('hashchange', onNavigate)
     return () => {
       cancelled = true
-      releaseHold?.()
+      releaseHold.current?.()
       unsubscribe?.()
       window.removeEventListener('popstate', onNavigate)
       window.removeEventListener('hashchange', onNavigate)
     }
-  }, [])
+  }, [landOn])
+
+  return landOn
 }

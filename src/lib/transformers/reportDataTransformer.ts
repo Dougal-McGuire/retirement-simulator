@@ -204,6 +204,7 @@ export function transformToReportData(
     },
     finances: {
       currentAssetsEUR: params.currentAssets,
+      initialCostBasisEUR: params.currentAssets - (params.initialUnrealizedGain ?? 0),
       annualSavingsEUR: params.annualSavings,
       // Every pension paying out at the statutory age, not just the statutory
       // one — the amounts as entered (gross, in the euros each is quoted in).
@@ -301,6 +302,7 @@ export function transformToReportData(
         })),
     },
     assumptions: {
+      oneOffIncomeTiming: params.oneOffIncomeTiming,
       roiMean: params.averageROI,
       roiStdev: params.roiVolatility,
       inflationMean: params.averageInflation,

@@ -23,7 +23,8 @@ import { Skeleton } from '../Skeleton'
 import { useSavedPlanResults } from '../useSavedPlanResults'
 import { useUsableResults } from '../useUsableResults'
 import { useWorkspace } from '../WorkspaceProvider'
-import './result.css'
+import { SimulationPrecision } from '@/components/simulation-compact/SimulationPrecision'
+import { ShortfallDetails } from './ShortfallDetails'
 
 /**
  * The head's two lines of figures. Reads the store's results directly (never
@@ -41,8 +42,9 @@ const HeadNumbers = memo(function HeadNumbers() {
   const t = useTranslations('workspace')
   const tu = useTranslations('workspace.units')
   const money = useMoney()
+  const displayReal = useDisplayReal()
   const { results, kpis, rate, end } = useResultFigures()
-  const { status, needsRun } = useRunStatus()
+  const { status, needsRun, stale } = useRunStatus()
   const endAge = useSimulationStore((state) => state.params.endAge)
   const { scrollToSection } = useWorkspace()
   const context = useMemo(
@@ -56,7 +58,7 @@ const HeadNumbers = memo(function HeadNumbers() {
           context.successDefinition === 'legacyConditioned'
             ? 'verdict.sentenceLegacy'
             : 'verdict.sentence',
-          { count: Math.round(rate), end: results.params.endAge }
+          { end: results.params.endAge }
         )
       : null
   const horizon = results?.params.endAge ?? endAge
@@ -73,14 +75,20 @@ const HeadNumbers = memo(function HeadNumbers() {
           <RateDelta surface="head" />
         </span>
         <p className="ws-head-sentence">
-          {sentence ?? (
-            <span className="ws-ghost">{t('verdict.sentence', { count: 88, end: endAge })}</span>
-          )}
+          {stale
+            ? t('verdict.previous')
+            : (sentence ?? t(status === 'running' ? 'computing' : 'status.empty'))}
         </p>
         <span className="ws-head-run">
           <RunStatusFigure surface="head" status={status} needsRun={needsRun} showLabel />
         </span>
       </div>
+
+      {results && (
+        <p className="m-0 text-sm text-muted-foreground">
+          <SimulationPrecision results={results} />
+        </p>
+      )}
 
       <dl
         className="ws-head-facts"
@@ -111,7 +119,7 @@ const HeadNumbers = memo(function HeadNumbers() {
           </dd>
         </div>
         <div data-fact="draw">
-          <dt>{t('head.firstDraw')}</dt>
+          <dt>{t(displayReal ? 'head.firstDrawReal' : 'head.firstDraw')}</dt>
           <dd className="ws-head-fact">
             {kpis ? (
               <button
@@ -199,6 +207,7 @@ export const ResultHead = memo(function ResultHead() {
       <div className="ws-head-chart" data-head-chart>
         <HeadChart />
       </div>
+      <ShortfallDetails />
       <ChangeRow />
       <SectionAnchors />
     </section>

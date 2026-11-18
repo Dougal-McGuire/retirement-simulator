@@ -5,12 +5,7 @@ import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import type { Plan, SimulationParams, SimulationResults } from '@/types'
 import { MAX_COMPARISON_PLANS } from '@/types'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
-import {
-  buildFlowDiffRows,
-  comparisonFingerprint,
-  flowIndexing,
-  type FlowDiffRow,
-} from '@/lib/simulation/planDiff'
+import { buildFlowDiffRows, flowIndexing, type FlowDiffRow } from '@/lib/simulation/planDiff'
 import {
   isCashFlowEnabled,
   pensionStartAge,
@@ -18,7 +13,10 @@ import {
 } from '@/lib/simulation/cashFlows'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import { flowWindowLabel, monthFormatter } from '@/lib/plans/flowWindow'
-import { effectiveRunCount } from '@/lib/simulation/context'
+import { comparisonRunCount, simulationFingerprint } from '@/lib/simulation/context'
+import { formatSimulationRate, formatSimulationRateDelta } from '@/lib/format/simulationRate'
+import { useDisplayReal } from '@/lib/stores/displayStore'
+import { SimulationPrecision } from './SimulationPrecision'
 import { planDisplayName } from '@/lib/plans/planName'
 import {
   useActivePlanId,
@@ -57,17 +55,20 @@ function deltaBadge(text: string, tone: 'ok' | 'warn' | 'danger' | 'neutral') {
 export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
   const t = useTranslations('simulationCompact.compare')
   const tPlans = useTranslations('plans')
+  const tChart = useTranslations('simulationCompact.chart')
   const tSwitch = useTranslations('plans.comparison.flowSwitch')
   const tFlows = useTranslations('setup.cashFlows')
-  const tScenarios = useTranslations('planDashboard.scenarios')
+  const tRateChange = useTranslations('simulationCompact.compare.rateChange')
   const format = useFormatter()
   const locale = useLocale()
   const plans = usePlans()
   const activePlanId = useActivePlanId()
   const workingParams = useSimulationParams()
   const duplicatePlan = useDuplicatePlan()
+  const displayReal = useDisplayReal()
+  const [final, setFinal] = useState(false)
 
-  const paramsFor = useCallback(
+  const savedOrDraft = useCallback(
     (plan: Plan): SimulationParams => (plan.id === activePlanId ? workingParams : plan.params),
     [activePlanId, workingParams]
   )
@@ -99,7 +100,7 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
   useEffect(() => {
     setSelectedIds((current) => {
       const valid = current.filter((id) => plans.some((plan) => plan.id === id))
-      const withBase = valid.includes(activePlanId) ? valid : [activePlanId, ...valid]
+      const withBase = [activePlanId, ...valid.filter((id) => id !== activePlanId)]
       return withBase.slice(0, MAX_COMPARISON_PLANS)
     })
   }, [plans, activePlanId])
@@ -112,10 +113,26 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
     [selectedIds, plans]
   )
 
+  const selectedParams = useMemo(
+    () => selectedPlans.map(savedOrDraft),
+    [selectedPlans, savedOrDraft]
+  )
+  const runCount = comparisonRunCount(selectedParams, final)
+  const hasMonteCarlo = selectedParams.some((params) => params.marketModel !== 'historical')
+  const hasHistorical = selectedParams.some((params) => params.marketModel === 'historical')
+  const paramsFor = useCallback(
+    (plan: Plan) => {
+      const params = savedOrDraft(plan)
+      return params.marketModel === 'historical' ? params : { ...params, simulationRuns: runCount }
+    },
+    [runCount, savedOrDraft]
+  )
+
   const [runsById, setRunsById] = useState<
     Record<string, { fingerprint: string; results: SimulationResults }>
   >({})
   const [running, setRunning] = useState(false)
+  const [failedById, setFailedById] = useState<Record<string, string>>({})
 
   // One queue for the view's life: each plan runs once per fingerprint, however
   // often the effect below asks (it asks again whenever a result lands).
@@ -128,6 +145,7 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
       },
       onResult: (id, fingerprint, results) =>
         setRunsById((current) => ({ ...current, [id]: { fingerprint, results } })),
+      onError: (id, fingerprint) => setFailedById((current) => ({ ...current, [id]: fingerprint })),
       onRunningChange: setRunning,
     })
     queueRef.current = queue
@@ -141,12 +159,12 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
     () =>
       selectedPlans.flatMap((plan) => {
         const params = paramsFor(plan)
-        const fingerprint = comparisonFingerprint(params)
-        return runsById[plan.id]?.fingerprint === fingerprint
+        const fingerprint = simulationFingerprint(params)
+        return runsById[plan.id]?.fingerprint === fingerprint || failedById[plan.id] === fingerprint
           ? []
           : [{ id: plan.id, fingerprint, params }]
       }),
-    [selectedPlans, runsById, paramsFor]
+    [selectedPlans, runsById, paramsFor, failedById]
   )
 
   useEffect(() => {
@@ -159,16 +177,26 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
     () =>
       selectedPlans.flatMap((plan) => {
         const entry = runsById[plan.id]
-        if (!entry || entry.fingerprint !== comparisonFingerprint(paramsFor(plan))) return []
+        if (!entry || entry.fingerprint !== simulationFingerprint(paramsFor(plan))) return []
         const params = paramsFor(plan)
         return [
-          { plan, params, results: entry.results, kpis: buildCompactKpis(params, entry.results) },
+          {
+            plan,
+            params,
+            results: entry.results,
+            kpis: buildCompactKpis(params, entry.results, { displayReal }),
+          },
         ]
       }),
-    [selectedPlans, runsById, paramsFor]
+    [selectedPlans, runsById, paramsFor, displayReal]
   )
 
-  const base = ready.find((run) => run.plan.id === activePlanId) ?? ready[0]
+  const failedPlans = selectedPlans.filter(
+    (plan) => failedById[plan.id] === simulationFingerprint(paramsFor(plan))
+  )
+  const hasError = failedPlans.length > 0
+  const baseFailed = failedPlans.some((plan) => plan.id === activePlanId)
+  const base = ready.find((run) => run.plan.id === activePlanId)
   const alts = ready.filter((run) => run !== base)
   const firstAlt = alts[0]
 
@@ -197,13 +225,6 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
     }
   }
 
-  const runsLabel = base ? format.number(effectiveRunCount(base.params)) : null
-  const percentValue = (rate: number) =>
-    format.number(rate / 100, {
-      style: 'percent',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: rate % 1 === 0 ? 0 : 1,
-    })
   const lastsValue = (run: PlanRun) =>
     run.kpis.lastsToMedian == null
       ? `${format.number(run.params.endAge)}+`
@@ -341,21 +362,22 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
   const chartSeries = useMemo<CompareFanSeries[]>(() => {
     if (!base) return []
     return ready.map((run) => {
+      const band = (displayReal && run.results.assetPercentilesReal) || run.results.assetPercentiles
       const altIndex = alts.indexOf(run)
       return {
         id: run.plan.id,
         name: planDisplayName(run.plan, tPlans),
         ages: run.results.ages,
-        p20: run.results.assetPercentiles.p20,
-        p50: run.results.assetPercentiles.p50,
-        p80: run.results.assetPercentiles.p80,
+        p20: band.p20,
+        p50: band.p50,
+        p80: band.p80,
         retirementAge: run.params.retirementAge,
         color:
           run === base ? 'var(--viz-1)' : ALT_COLORS[Math.max(0, altIndex) % ALT_COLORS.length],
         base: run === base,
       }
     })
-  }, [ready, base, alts, tPlans])
+  }, [ready, base, alts, tPlans, displayReal])
 
   return (
     <div data-testid="compare-view">
@@ -406,10 +428,12 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
           {t('addPlan', { max: MAX_COMPARISON_PLANS })}
         </button>
         <div className="compare-header-end">
-          <span className="compare-meta">
-            {running || staleJobs.length > 0 || !runsLabel
+          <span className="compare-meta" role="status">
+            {running || staleJobs.length > 0
               ? t('running')
-              : t('meta', { count: ready.length, runs: runsLabel })}
+              : hasError
+                ? t('failed')
+                : t('meta', { count: ready.length })}
           </span>
           <button
             type="button"
@@ -422,6 +446,48 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
         </div>
       </header>
 
+      <div className="compare-precision">
+        <div className="compare-precision-controls">
+          {hasMonteCarlo && (
+            <button
+              type="button"
+              className="workspace-button"
+              data-testid="compare-final"
+              aria-pressed={final}
+              onClick={() => setFinal((current) => !current)}
+            >
+              {final
+                ? t('backToPreview')
+                : t('runFinal', {
+                    runs: format.number(comparisonRunCount(selectedParams, true)),
+                  })}
+            </button>
+          )}
+          <span>
+            {hasHistorical && hasMonteCarlo
+              ? t('mixedModels')
+              : hasMonteCarlo
+                ? t(final ? 'finalPaths' : 'previewPaths', { runs: format.number(runCount) })
+                : t('historicalPaths')}
+          </span>
+        </div>
+        {hasError && (
+          <button type="button" className="ws-link-button" onClick={() => setFailedById({})}>
+            {t('retry')}
+          </button>
+        )}
+        {ready.map((run) => (
+          <p key={run.plan.id}>
+            <strong>
+              {planDisplayName(run.plan, tPlans)} ·{' '}
+              {formatSimulationRate(run.kpis.successRate, locale)}
+            </strong>
+            {' · '}
+            <SimulationPrecision results={run.results} />
+          </p>
+        ))}
+      </div>
+
       {base && firstAlt && (
         <div className="compare-kpis">
           {(
@@ -429,17 +495,10 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
               {
                 key: 'success',
                 label: t('kpi.success'),
-                baseValue: percentValue(base.kpis.successRate),
-                altValue: percentValue(firstAlt.kpis.successRate),
+                baseValue: formatSimulationRate(base.kpis.successRate, locale),
+                altValue: formatSimulationRate(firstAlt.kpis.successRate, locale),
                 delta: firstAlt.kpis.successRate - base.kpis.successRate,
-                // The catalog's unit ("Pkt." / "pts"), as in the result bar.
-                text: (d: number) =>
-                  tScenarios('deltaPoints', {
-                    value: `${d < 0 ? '−' : '+'}${format.number(Math.abs(d), {
-                      minimumFractionDigits: Math.abs(d) >= 10 ? 0 : 1,
-                      maximumFractionDigits: Math.abs(d) >= 10 ? 0 : 1,
-                    })}`,
-                  }),
+                text: (d: number) => formatSimulationRateDelta(d, locale, tRateChange),
                 toneNegative: 'danger' as const,
               },
               {
@@ -454,7 +513,9 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
               },
               {
                 key: 'draw',
-                label: t('kpi.firstYearDraw'),
+                label: [t('kpi.firstYearDraw'), tChart(displayReal ? 'real' : 'nominal')].join(
+                  ' · '
+                ),
                 baseValue: formatThousandsEuro(base.kpis.firstYearWithdrawal, locale),
                 altValue: formatThousandsEuro(firstAlt.kpis.firstYearWithdrawal, locale),
                 delta: firstAlt.kpis.firstYearWithdrawal - base.kpis.firstYearWithdrawal,
@@ -463,7 +524,7 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
               },
               {
                 key: 'end',
-                label: t('kpi.medianEnd'),
+                label: [t('kpi.medianEnd'), tChart(displayReal ? 'real' : 'nominal')].join(' · '),
                 baseValue: formatMillionsEuro(base.kpis.medianEndWealth, locale),
                 altValue: formatMillionsEuro(firstAlt.kpis.medianEndWealth, locale),
                 delta: firstAlt.kpis.medianEndWealth - base.kpis.medianEndWealth,
@@ -496,13 +557,12 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
         <div className="compare-chart">
           {chartSeries.length > 0 ? (
             <CompareFanChart series={chartSeries} />
+          ) : baseFailed ? (
+            <p className="ws-callout">{t('baseChartFailed')}</p>
           ) : (
             <div className="ds-card ws-fan" style={{ padding: 16 }}>
               <Skeleton height={40} width="16rem" />
               <Skeleton variant="chart" height={266} style={{ marginTop: 12 }} />
-              <p className="sr-only" role="status">
-                {t('running')}
-              </p>
             </div>
           )}
         </div>

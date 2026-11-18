@@ -202,14 +202,18 @@ function paramsKey(plan: Plan): string {
   return key
 }
 
-let starterParamsKey: string | null = null
+let starterParamsKeys: Set<string> | undefined
 
 /** The starter plan exactly as every device creates it: nothing of the user's. */
 function isUntouchedStarter(plan: Plan): boolean {
   if (plan.id !== DEFAULT_PLAN_ID) return false
   if (plan.nameKey !== DEFAULT_PLAN_NAME_KEY && plan.name !== DEFAULT_PLAN_NAME) return false
-  starterParamsKey ??= stableStringify(normalizePersistedParams(DEFAULT_PARAMS))
-  return paramsKey(plan) === starterParamsKey
+  starterParamsKeys ??= new Set(
+    ['bookingAge', 'yearEnd'].map((oneOffIncomeTiming) =>
+      stableStringify(normalizePersistedParams({ ...DEFAULT_PARAMS, oneOffIncomeTiming }))
+    )
+  )
+  return starterParamsKeys.has(paramsKey(plan))
 }
 
 const newestFirst = (a: Plan, b: Plan): number =>

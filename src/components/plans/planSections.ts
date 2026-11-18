@@ -51,6 +51,7 @@ const FIELD_PANELS: Record<string, AssumptionPanel> = {
   'editor-retirementAge': 'person',
   'editor-endAge': 'person',
   'editor-currentAssets': 'savings',
+  'editor-initialUnrealizedGain': 'savings',
   'editor-annualSavings': 'savings',
   'editor-annualSavingsGrowthRate': 'savings',
   'editor-averageROI': 'market',

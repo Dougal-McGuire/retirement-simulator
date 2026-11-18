@@ -36,7 +36,7 @@ import { taxContext } from './engine'
  *   sum of its items, so the split is exact; every other withdrawal rule scales
  *   the pool as a whole, so the items are proportional shares (`estimated`).
  * - **One-off income** keeps the engine's convention: it lands in the year
- *   *after* its booked age, together with its tax.
+ *   of its credit, together with its tax.
  * - **Switched-off flows** never appear; they are listed in `disabled`.
  *
  * Nothing here moves money. `cashFlows.ts` and the engine stay the only model.
@@ -245,7 +245,7 @@ export function buildFlowTracks(params: SimulationParams): FlowTracks {
       linked = sum(series.pensionNetLinked) + sum(series.pensionTaxLinked) > 0
     } else if (category === 'oneOffIncome') {
       tax = add(series.oneTimeIncomeTaxLinked, series.oneTimeIncomeTaxFixed)
-      // Keyed by the age it is credited at — the year after its booked age.
+      // Keyed by the age at which the deposit becomes spendable.
       gross = tax.map(
         (value, offset) =>
           value +

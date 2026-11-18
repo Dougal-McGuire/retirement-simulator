@@ -37,6 +37,7 @@ const comparableNumericParamKeys = [
   'legalRetirementAge',
   'endAge',
   'currentAssets',
+  'initialUnrealizedGain',
   'annualSavings',
   'annualSavingsGrowthRate',
   'monthlyPension',
@@ -58,6 +59,7 @@ const comparableNumericParamKeys = [
   'dsCeilingRate',
   'dsFloorRate',
   'spendingFloorReal',
+  'lifestyleFloorMonthlyReal',
   'simulationRuns',
 ] as const satisfies readonly (keyof SimulationParams)[]
 
@@ -121,6 +123,7 @@ export function areSimulationParamsEqual(
   }
 
   if (
+    currentParams.oneOffIncomeTiming !== resultParams.oneOffIncomeTiming ||
     currentParams.marketModel !== resultParams.marketModel ||
     currentParams.glidePathEnabled !== resultParams.glidePathEnabled ||
     currentParams.householdType !== resultParams.householdType

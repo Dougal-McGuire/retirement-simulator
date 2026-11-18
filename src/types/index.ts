@@ -65,6 +65,19 @@ export type HouseholdType = (typeof HOUSEHOLD_TYPES)[number]
 export const isHouseholdType = (value: unknown): value is HouseholdType =>
   typeof value === 'string' && (HOUSEHOLD_TYPES as readonly string[]).includes(value)
 
+/** A zero-value portfolio cannot carry a tax basis into future contributions. */
+export function openingPortfolioGain(assets: number, gain?: number): number {
+  return assets > 0 && typeof gain === 'number' && Number.isFinite(gain)
+    ? Math.min(assets, gain)
+    : 0
+}
+
+/** Old plans deposit one-off income after their booking year has finished. */
+export type OneOffIncomeTiming = 'bookingAge' | 'yearEnd'
+
+export const readOneOffIncomeTiming = (value: unknown): OneOffIncomeTiming =>
+  value === 'bookingAge' ? 'bookingAge' : 'yearEnd'
+
 // Simulation parameter interfaces
 export interface SimulationParams {
   // Personal information
@@ -75,6 +88,8 @@ export interface SimulationParams {
 
   // Assets & Income
   currentAssets: number
+  /** Market value less acquisition cost of the starting assets, in euros. Negative for a loss. */
+  initialUnrealizedGain: number
   annualSavings: number
   annualSavingsGrowthRate: number
   /**
@@ -84,6 +99,7 @@ export interface SimulationParams {
    */
   monthlyPension: number
   oneTimeIncomes: OneTimeIncome[]
+  oneOffIncomeTiming: OneOffIncomeTiming
 
   // Market parameters
   /**
@@ -185,12 +201,34 @@ export interface SimulationParams {
    * the path's realised inflation. 0 (the default) switches it off.
    */
   spendingFloorReal: number
+  /** Independent retirement lifestyle benchmark in today’s euros per month. Zero disables it. */
+  lifestyleFloorMonthlyReal: number
 
   // Simulation settings
   simulationRuns: number
 }
 
 // Results interfaces
+export interface ShortfallSummary {
+  affectedPaths: number
+  atHorizon: number
+  /** Medians across affected paths only. Empty populations have no median. */
+  medianFirstAge: number | null
+  medianAffectedYears: number | null
+  /** Median of each path's average real monthly gap in its affected years. */
+  medianMonthlyGapReal: number | null
+}
+
+export interface ShortfallDetails {
+  paths: number
+  bequestOnlyPaths: number
+  /** Paths below the lifestyle benchmark that nevertheless funded the entire plan. */
+  fundedPathsBelowLifestyleFloor: number
+  funding: ShortfallSummary
+  /** Null when the reader has not set a lifestyle benchmark. */
+  lifestyle: ShortfallSummary | null
+}
+
 export interface PercentileData {
   p10: number[]
   p20: number[]
@@ -208,6 +246,8 @@ export interface AnnualCashFlow {
   incomeGross: number
   incomeTax: number
   capitalGainsTax: number
+  /** Gross sale proceeds less allocated acquisition cost, before exemptions or allowance. */
+  realizedGain?: number
   /** Requested spending; shortfall is the part that could not be funded. */
   expenses: number
   portfolioWithdrawal: number
@@ -244,6 +284,7 @@ export interface AnnualCashFlow {
 }
 
 export interface SimulationResults {
+  shortfallDetails?: ShortfallDetails
   ages: number[]
   assetPercentiles: PercentileData
   /**
@@ -685,10 +726,12 @@ export const DEFAULT_PARAMS: SimulationParams = {
   legalRetirementAge: DEFAULT_LEGAL_RETIREMENT_AGE,
   endAge: 90,
   currentAssets: 630000,
+  initialUnrealizedGain: 0,
   annualSavings: 48000,
   annualSavingsGrowthRate: 0.02,
   monthlyPension: 5000,
   oneTimeIncomes: [],
+  oneOffIncomeTiming: 'bookingAge',
   averageROI: 0.07,
   roiVolatility: 0.15,
   averageInflation: 0.025,
@@ -825,5 +868,6 @@ export const DEFAULT_PARAMS: SimulationParams = {
   dsFloorRate: -0.025,
   // Neutral: no floor, so adding the parameter changed no shipped scenario.
   spendingFloorReal: 0,
+  lifestyleFloorMonthlyReal: 0,
   simulationRuns: 500,
 }

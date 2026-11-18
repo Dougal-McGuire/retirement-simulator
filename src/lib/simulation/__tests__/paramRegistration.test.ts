@@ -34,6 +34,8 @@ const mutate = (key: keyof SimulationParams, params: SimulationParams): Simulati
         withdrawalStrategy:
           params.withdrawalStrategy === 'vanguardDynamic' ? 'fixedReal' : 'vanguardDynamic',
       }
+    case 'oneOffIncomeTiming':
+      return { ...params, oneOffIncomeTiming: 'yearEnd' }
     case 'marketModel':
       return {
         ...params,

@@ -19,6 +19,7 @@ export interface CompareRunJob<P> {
 export interface CompareRunQueueOptions<P, R> {
   run: (params: P) => Promise<R>
   onResult: (id: string, fingerprint: string, result: R) => void
+  onError?: (id: string, fingerprint: string) => void
   /** True when work starts, false once the queue is drained. */
   onRunningChange?: (running: boolean) => void
 }
@@ -57,8 +58,9 @@ export function createCompareRunQueue<P, R>(
         try {
           result = await options.run(job.params)
         } catch {
-          // A failed run leaves the plan without a result; the next request
-          // (a later edit) tries again.
+          if (!disposed && wanted.get(job.id) === job.fingerprint) {
+            options.onError?.(job.id, job.fingerprint)
+          }
           continue
         } finally {
           current = null

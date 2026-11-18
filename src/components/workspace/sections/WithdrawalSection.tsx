@@ -7,6 +7,7 @@ import { WithdrawalOutcome } from '@/components/plans/WithdrawalPlanner'
 import { useSimulationStore } from '@/lib/stores/simulationStore'
 import { useWorkspace } from '../WorkspaceProvider'
 import { WorkspaceSection } from './WorkspaceSection'
+import { RetirementAgePlanner } from './RetirementAgePlanner'
 import './withdrawal.css'
 
 /**
@@ -52,6 +53,7 @@ export const WithdrawalSection = memo(function WithdrawalSection() {
       description={t('sections.withdrawal.description')}
       actions={<RulePointer />}
     >
+      <RetirementAgePlanner />
       <WithdrawalOutcome />
     </WorkspaceSection>
   )

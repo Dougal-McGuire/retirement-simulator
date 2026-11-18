@@ -451,12 +451,28 @@ test.describe('Stellschrauben: uncertain items', () => {
     await expect(flowsBody(page)).toBeVisible()
   })
 
-  test('fits a phone', async ({ page }) => {
+  test('fits a phone and keeps the switches in view when later content grows', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await openDemoPlan(page)
-    await openSection(page, 'levers')
+    await page.getByTestId('section-link-levers').click()
     const list = page.locator('#levers').getByTestId('uncertain-flows')
-    await waitMeasured(list)
+    await list.evaluate(async (el) => {
+      el.scrollIntoView({ block: 'center', behavior: 'instant' })
+      // A late render below the reader changes the observed page height. Give
+      // the resize observer a paint to react before checking the switch.
+      const laterContent = document.createElement('div')
+      laterContent.style.height = '50px'
+      document.body.append(laterContent)
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      )
+    })
+    await expect(list).toBeInViewport()
+    await expect(list).toHaveAttribute('data-measure', 'ready', { timeout: 60000 })
+    const toggle = list.locator('[data-flow-id="demo-inheritance"]').getByRole('switch')
+    await expect(toggle).toBeInViewport()
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-checked', 'false')
     await expectNoHorizontalOverflow(page)
     const fits = await list.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)
     expect(fits).toBe(true)

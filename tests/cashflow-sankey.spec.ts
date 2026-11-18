@@ -8,14 +8,24 @@ import {
   test,
 } from './helpers/workspace'
 
-test('cash-flow diagram follows the selected year and speaks German', async ({ page }) => {
+for (const { layout, viewport } of [
+  { layout: 'sankey', viewport: { width: 1366, height: 900 } },
+  { layout: 'stacked', viewport: { width: 1194, height: 834 } },
+] as const) {
+  test(`cash-flow diagram follows the selected year and speaks German (${layout})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport)
+    await checkGermanCashflow(page, layout)
+  })
+}
+
+async function checkGermanCashflow(page: Page, layout: 'sankey' | 'stacked') {
   await gotoWorkspace(page, '/de/simulation#cashflow')
   const sankey = page.getByTestId('cashflow-sankey')
   await expect(sankey).toBeVisible()
 
-  // Default: the first retirement year, drawn as a sankey on desktop. One
-  // control row says which year and which euros; the sentence reading the
-  // diagram is its caption; what the amounts are is said once, under it.
+  // Both layouts open on the first retirement year with the same controls and caption.
   const select = page.getByTestId('cashflow-year-select')
   await expect(select).toHaveValue('60')
   await expect(page.getByTestId('cashflow-unit')).toHaveText('Jahresbeträge · nominale Euro')
@@ -24,13 +34,21 @@ test('cash-flow diagram follows the selected year and speaks German', async ({ p
   await expect(page.getByTestId('cashflow-sankey-note')).toContainText('nicht der Median')
   await expect(page.locator('#cashflow').getByText(/nicht der Median/)).toHaveCount(1)
   const diagram = sankey.locator('[data-layout]')
-  await expect(diagram).toHaveAttribute('data-layout', 'sankey')
+  await expect(diagram).toHaveAttribute('data-layout', layout)
   await expect(caption).toHaveText(/^Im Jahr mit 60: .*Depotentnahme/)
-  // The drawing is one labelled group of focusable nodes; the table under it
-  // is its full equivalent.
   await expect(diagram).toHaveAttribute('role', 'group')
   await expect(sankey.locator('[data-node="capitalGainsTax"]')).toContainText('Kapitalertragsteuer')
-  await expect(sankey.locator('[data-node="available"]')).toContainText('Verfügbar nach Steuern')
+  if (layout === 'sankey') {
+    await expect(diagram.locator('[data-node="available"]')).toContainText('Verfügbar nach Steuern')
+  } else {
+    // The stacked chart lists sources and uses, omitting the intermediate after-tax node.
+    const sources = diagram.getByTestId('cashflow-sankey-in')
+    const uses = diagram.getByTestId('cashflow-sankey-out')
+    await expect(sources).toContainText('Woher')
+    await expect(sources.locator('[data-node="withdrawal"]')).toContainText('Depotentnahme')
+    await expect(uses).toContainText('Wohin')
+    await expect(uses.locator('[data-node="baselineSpending"]')).toContainText('Laufende Ausgaben')
+  }
 
   // A working year: savings flow into the portfolio.
   await select.selectOption('55')
@@ -54,7 +72,7 @@ test('cash-flow diagram follows the selected year and speaks German', async ({ p
   await page.getByRole('button', { name: 'Alter 70 im Diagramm zeigen' }).click()
   await expect(select).toHaveValue('70')
   await expect(caption).toContainText('Im Jahr mit 70:')
-})
+}
 
 /** Clicks a ledger ✎ label by its accessible name ("<label> – edit in “<panel>”"). */
 async function editFromLedger(page: Page, label: string) {

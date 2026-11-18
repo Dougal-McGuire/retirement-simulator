@@ -526,6 +526,21 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
+.compare-precision {
+  padding-block: var(--ui-space-3);
+  border-bottom: 1px solid var(--ui-border);
+  color: var(--ui-muted);
+  font-size: var(--ui-font-small);
+}
+.compare-precision-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2) var(--ui-space-3);
+}
+.compare-precision p {
+  margin: var(--ui-space-2) 0 0;
+}
 .compare-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

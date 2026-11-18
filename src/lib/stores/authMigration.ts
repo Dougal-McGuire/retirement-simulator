@@ -94,6 +94,8 @@ function paramsAreDefault(params: unknown): boolean {
   }
 
   return !(Object.keys(DEFAULT_PARAMS) as Array<keyof SimulationParams>).some((key) => {
+    // Either timing convention can be an untouched starter; the flows were compared above.
+    if (key === 'oneOffIncomeTiming') return false
     if (key === 'oneTimeIncomes' || key === 'customExpenses' || key === 'cashFlows') return false
     const stored = params[key]
     if (stored === undefined) return false

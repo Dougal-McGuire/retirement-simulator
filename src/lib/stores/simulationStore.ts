@@ -1,3 +1,4 @@
+import { resizeOpeningGain } from '@/lib/simulation/openingReturn'
 import {
   createContext,
   createElement,
@@ -14,6 +15,7 @@ import {
   SimulationStore,
   SavedSetup,
   DEFAULT_PARAMS,
+  openingPortfolioGain,
   MAX_PLANS,
   type Plan,
   type PlanSyncMeta,
@@ -568,7 +570,11 @@ export const useSimulationStore = create<SimulationStore>()(
             // Built-in plans (the demo) carry a key so their name follows the
             // UI language until the user renames them.
             nameKey: options?.nameKey,
-            params: normalizePersistedParams(params ?? currentParams),
+            // A new plan adopts the current convention. Explicit snapshots (e.g.
+            // restoring a deleted plan) and separate duplicate/variant actions keep theirs.
+            params: normalizePersistedParams(
+              params ?? { ...currentParams, oneOffIncomeTiming: DEFAULT_PARAMS.oneOffIncomeTiming }
+            ),
           })
 
           commitPlans([...plans, plan])
@@ -787,6 +793,10 @@ export const useSimulationStore = create<SimulationStore>()(
 
           const newParams: SimulationParams = {
             ...merged,
+            initialUnrealizedGain: openingPortfolioGain(
+              merged.currentAssets,
+              partial.initialUnrealizedGain ?? resizeOpeningGain(currentParams, merged.currentAssets)
+            ),
             cashFlows,
             customExpenses: projectCustomExpenses(cashFlows),
             oneTimeIncomes: projectOneTimeIncomes(cashFlows, merged.currentAge),

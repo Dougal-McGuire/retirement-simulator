@@ -34,7 +34,7 @@ export function ResetToDefaults() {
     // Read at click time: subscribing to the params would re-render this
     // button on every keystroke anywhere on the page.
     const previous: SimulationParams = { ...useSimulationStore.getState().params }
-    updateParams({ ...DEFAULT_PARAMS })
+    updateParams({ ...DEFAULT_PARAMS, oneOffIncomeTiming: previous.oneOffIncomeTiming })
     setResetOpen(false)
     showActionToast({
       testId: 'plan-reset-toast',

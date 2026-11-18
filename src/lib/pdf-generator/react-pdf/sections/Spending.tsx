@@ -1,4 +1,5 @@
 import React from 'react'
+import { oneOffSpendableAge } from '@/lib/simulation/cashFlows'
 import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
 import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
@@ -56,6 +57,16 @@ export function Spending({ content, sectionNumber = '04' }: SpendingProps) {
     const from = flow.startAge
     const to = flow.frequency === 'once' ? from : flow.endAge
     if (flow.frequency === 'once') {
+      if (flow.kind === 'income') {
+        const { currentAge, horizonAge } = content.profile.person
+        const booked = from ?? currentAge
+        if (booked < currentAge || booked > horizonAge) {
+          return isGerman ? `Mit ${booked}, außerhalb des Plans` : `Age ${booked}, outside plan`
+        }
+        const age = oneOffSpendableAge(booked, content.assumptions.oneOffIncomeTiming)
+        if (age > horizonAge) return isGerman ? `Jahresende mit ${horizonAge}` : `Age ${horizonAge}, year end`
+        return isGerman ? `Verfügbar mit ${age}` : `Available at ${age}`
+      }
       return from === undefined ? '–' : `${isGerman ? 'Alter' : 'age'} ${from}`
     }
     if (from === undefined && to === undefined) return isGerman ? 'gesamter Plan' : 'whole plan'

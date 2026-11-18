@@ -7,6 +7,7 @@ import { InfoTip } from '@/components/ui/info-tip'
 import { AlertTriangle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { evaluateNumericDraft, type RangeIssue } from '@/lib/validation/fieldValidation'
+import { parsePercentInput } from '@/lib/utils/numberFormat'
 import { useGroupedNumber } from './useGroupedNumber'
 
 export interface ValidationRule {
@@ -44,6 +45,8 @@ interface LabeledNumberInputProps {
    * The value handed to `onChange` stays a plain number.
    */
   groupThousands?: boolean
+  /** Accept a signed broker percentage with a decimal comma or point and an optional % sign. */
+  decimalPercent?: boolean
   validation?: ValidationRule
   formatValue?: (value: number) => string
   /**
@@ -116,6 +119,7 @@ export function LabeledNumberInput({
   tooltipAriaLabel,
   unit,
   groupThousands = false,
+  decimalPercent = false,
   validation,
   formatValue,
   rangeMessage,
@@ -136,7 +140,13 @@ export function LabeledNumberInput({
   const grouped = useGroupedNumber(0)
 
   const bounds = useMemo(() => ({ min, max }), [min, max])
-  const restValue = groupThousands ? grouped.format(value) : String(value)
+  const restValue = decimalPercent
+    ? Number.isFinite(value)
+      ? value.toLocaleString(grouped.locale, { useGrouping: false, maximumFractionDigits: 12 })
+      : ''
+    : groupThousands
+      ? grouped.format(value)
+      : String(value)
   const displayValue = isEditing || rangeIssue !== null ? draftValue : restValue
 
   // The latest callback, for handlers and the unmount cleanup; updated after
@@ -160,7 +170,7 @@ export function LabeledNumberInput({
   // supersedes whatever was refused here, so the field stops complaining.
   const lastExternalValue = useRef(value)
   useEffect(() => {
-    if (lastExternalValue.current === value) return
+    if (Object.is(lastExternalValue.current, value)) return
     lastExternalValue.current = value
     if (isEditing) return
     if (rangeIssueRef.current === null) return
@@ -204,7 +214,11 @@ export function LabeledNumberInput({
 
   /** Commits when the text is usable, refuses (and keeps it) when it is not. */
   const evaluate = (raw: string) =>
-    evaluateNumericDraft(raw, bounds, groupThousands ? grouped.parse : undefined)
+    evaluateNumericDraft(
+      raw,
+      bounds,
+      decimalPercent ? parsePercentInput : groupThousands ? grouped.parse : undefined
+    )
 
   const handleDraft = (raw: string) => {
     const { issue, value: parsed } = evaluate(raw)
@@ -277,7 +291,7 @@ export function LabeledNumberInput({
         <Input
           id={id}
           ref={groupThousands ? grouped.inputRef : undefined}
-          type={groupThousands ? 'text' : 'number'}
+          type={groupThousands || decimalPercent ? 'text' : 'number'}
           disabled={disabled}
           inputMode={groupThousands ? 'numeric' : 'decimal'}
           autoComplete="off"

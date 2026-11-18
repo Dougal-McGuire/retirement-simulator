@@ -127,9 +127,8 @@ describe('flow breakdown of booked rows', () => {
     expect(itemIds(breakdownAt(demo, 63), 'otherIncome')).toEqual(['demo-parttime'])
     expect(breakdownAt(demo, 63).categories.pension).toBeUndefined()
     expect(itemIds(breakdownAt(demo, 68), 'pension')).toEqual(['pension-statutory'])
-    // Booked at 70, credited at 71 — with its tax, like the ledger.
-    expect(itemIds(breakdownAt(demo, 70), 'oneOffIncome')).toEqual([])
-    expect(itemIds(breakdownAt(demo, 71), 'oneOffIncome')).toEqual(['demo-inheritance'])
+    expect(itemIds(breakdownAt(demo, 71), 'oneOffIncome')).toEqual([])
+    expect(itemIds(breakdownAt(demo, 70), 'oneOffIncome')).toEqual(['demo-inheritance'])
     expect(itemIds(breakdownAt(demo, 64), 'scheduledExpenses')).toEqual(['demo-roof'])
     expect(itemIds(breakdownAt(demo, 85), 'scheduledExpenses')).toEqual(['demo-care'])
     // The eight living-cost items, largest first.
@@ -243,9 +242,9 @@ describe('exact splits on a deterministic path', () => {
     expect(items.find((item) => item.key === 'company')!.amount).toBeCloseTo(12_000, 6)
   })
 
-  it('credits a one-off the year after its booked age, with its tax', () => {
-    expect(breakdownAt(results, 64).categories.oneOffIncome).toBeUndefined()
-    const lump = breakdownAt(results, 65).categories.oneOffIncome!
+  it('credits a one-off at its booked age, with its tax', () => {
+    expect(breakdownAt(results, 65).categories.oneOffIncome).toBeUndefined()
+    const lump = breakdownAt(results, 64).categories.oneOffIncome!
     expect(lump.items.map((item) => item.key)).toEqual(['lump'])
     expect(lump.items[0].tax).toBeGreaterThan(0)
     expect(lump.items[0].taxEstimated).toBe(false)

@@ -150,6 +150,12 @@ export function stickyOverlap(target?: DOMRect): number {
   )
 }
 
+/** Signed distance from the section's top to its landing position below the pinned chrome. */
+export function scrollDistanceToElement(el: HTMLElement, extraOffset = 16): number {
+  const rect = el.getBoundingClientRect()
+  return rect.top - stickyOverlap(rect) - extraOffset
+}
+
 /**
  * Scrolls `el`'s top to just under whatever is pinned at the top of the
  * viewport. `scrollIntoView` cannot do this: it ignores sticky chrome, and
@@ -160,10 +166,8 @@ export function scrollToElement(
   opts: { behavior?: ScrollBehavior; extraOffset?: number } = {}
 ): void {
   if (typeof window === 'undefined') return
-  const { extraOffset = 16 } = opts
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   const behavior = reduce ? 'auto' : (opts.behavior ?? 'smooth')
-  const rect = el.getBoundingClientRect()
-  const top = window.scrollY + rect.top - stickyOverlap(rect) - extraOffset
+  const top = window.scrollY + scrollDistanceToElement(el, opts.extraOffset)
   window.scrollTo({ top: Math.max(0, top), behavior })
 }

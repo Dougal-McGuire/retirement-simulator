@@ -138,7 +138,7 @@ const GOLDEN_ASSET_P50_REAL = [
  * additive rather than a rewrite. Regenerated with exception 3 above (was
  * 98.4%): an untaxed pension is still a pension the rule now spends.
  */
-const NEUTRAL_TAX_SUCCESS_RATE = 82.39999999999999
+const NEUTRAL_TAX_SUCCESS_RATE = 82.4 // Exactly 412 successful paths out of 500.
 
 /** The parameter overrides that turn all three new shelters off. */
 const NEUTRAL_TAX_PARAMS: SimulationParams = {
@@ -194,10 +194,12 @@ const GOLDEN_PARAMS: SimulationParams = {
   legalRetirementAge: 67,
   endAge: 90,
   currentAssets: 630000,
+  initialUnrealizedGain: 0,
   annualSavings: 48000,
   annualSavingsGrowthRate: 0.02,
   monthlyPension: 5000,
   oneTimeIncomes: [],
+  oneOffIncomeTiming: 'bookingAge',
   averageROI: 0.07,
   roiVolatility: 0.15,
   averageInflation: 0.025,
@@ -326,6 +328,7 @@ const GOLDEN_PARAMS: SimulationParams = {
   // floor. It ships at 0 (off) and no other strategy reads it, which is why
   // every number above survived the change untouched.
   spendingFloorReal: 0,
+  lifestyleFloorMonthlyReal: 0,
   simulationRuns: 500,
 }
 
