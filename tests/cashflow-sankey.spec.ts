@@ -85,6 +85,9 @@ async function editFromLedger(page: Page, label: string) {
 test('ledger labels open the matching group and field in the control column', async ({
   page,
 }) => {
+  // Nine jumps into the column: ~2 s in Chromium, but 23–31 s on the iPad
+  // WebKit runner, past the 30 s default.
+  test.setTimeout(90000)
   await page.setViewportSize({ width: 1366, height: 900 })
   await gotoWorkspace(page, '/en/simulation#cashflow')
   const year = page.getByTestId('cashflow-year-select')
