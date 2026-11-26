@@ -26,6 +26,8 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "verify:deploy": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e",
+    "version:next-tag": "node scripts/versioning.mjs next-tag",
+    "version:tag": "node scripts/versioning.mjs tag --push",
     "improve:once": "bash scripts/improvement-loop.sh --once",
     "improve:loop": "bash scripts/improvement-loop.sh --auto-commit",
     "improve:review": "bash scripts/improvement-loop.sh --no-auto-commit",

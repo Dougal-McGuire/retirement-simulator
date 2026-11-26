@@ -114,6 +114,22 @@ function planIsPristine(plan: unknown): boolean {
 }
 
 /**
+ * Live-store check equivalent to `isPristineWorkspace`, without JSON round-trips.
+ */
+export function isPristineStoreState(state: {
+  plans: readonly unknown[]
+  params: unknown
+  isDirty: boolean
+}): boolean {
+  if (state.isDirty) return false
+  if (state.plans.length > 1) return false
+  if (state.plans.length === 1) {
+    return planIsPristine(state.plans[0]) && paramsAreDefault(state.params)
+  }
+  return paramsAreDefault(state.params)
+}
+
+/**
  * True when a namespace holds nothing a user would miss: absent, unparseable,
  * or just the untouched starter plan on default parameters.
  */

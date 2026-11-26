@@ -40,12 +40,33 @@
 .ws-age-form button {
   flex: 0 1 auto;
 }
+.ws-age-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2) var(--ui-space-3);
+}
+.ws-age-status-row:has(.ws-age-status:empty):not(:has(button)) {
+  display: none;
+}
 .ws-age-status {
   margin: 0;
   font-weight: 600;
 }
 .ws-age-status:empty {
   display: none;
+}
+.ws-age-action-cell {
+  width: 1%;
+}
+.ws-age-current {
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.ws-age-apply {
+  font-size: var(--ui-font-small);
+  color: var(--ui-accent);
 }
 .ws-age-method {
   font-size: var(--ui-font-small);

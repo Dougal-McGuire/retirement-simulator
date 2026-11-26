@@ -5,9 +5,14 @@ import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { formatSimulationRate } from '@/lib/format/simulationRate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { showActionToast } from '@/components/ui/action-toast'
 import { comparisonRunCount, formatSamplingInterval95 } from '@/lib/simulation/context'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
-import { useSimulationParams, useSimulationStore } from '@/lib/stores/simulationStore'
+import {
+  useSimulationParams,
+  useSimulationStore,
+  useUpdateParams,
+} from '@/lib/stores/simulationStore'
 import type { AgePlannerResponse } from '@/lib/simulation/retirementFrontier.worker'
 import {
   compareRetirementAges,
@@ -26,7 +31,9 @@ interface Run {
 
 function AgeComparisonForm() {
   const params = useSimulationParams()
+  const updateParams = useUpdateParams()
   const t = useTranslations('workspace.agePlanner')
+  const tp = useTranslations('plans')
   const format = useFormatter()
   const locale = useLocale()
   const [budgetOverride, setBudget] = useState<string | null>(null)
@@ -159,6 +166,22 @@ function AgeComparisonForm() {
       runOnMainThread()
     }
   }
+  const applyAge = (age: number) => {
+    const previousAge = useSimulationStore.getState().params.retirementAge
+    if (age === previousAge) return
+    updateParams({ retirementAge: age })
+    showActionToast({
+      testId: 'age-applied-toast',
+      message: t('appliedToast', { age }),
+      undo: {
+        label: tp('actions.undo'),
+        testId: 'age-applied-undo',
+        run: () => {
+          useSimulationStore.getState().updateParams({ retirementAge: previousAge })
+        },
+      },
+    })
+  }
   const headline =
     data &&
     (data.earliestAge === null
@@ -262,15 +285,28 @@ function AgeComparisonForm() {
           </Button>
         )}
       </form>
-      <p role="status" aria-live="polite" className="ws-age-status">
-        {running
-          ? visible.progress
-            ? t('progress', visible.progress)
-            : t('running')
-          : visible?.status === 'error'
-            ? t('error')
-            : headline}
-      </p>
+      <div className="ws-age-status-row">
+        <p role="status" aria-live="polite" className="ws-age-status">
+          {running
+            ? visible.progress
+              ? t('progress', visible.progress)
+              : t('running')
+            : visible?.status === 'error'
+              ? t('error')
+              : headline}
+        </p>
+        {data && data.earliestAge !== null && data.earliestAge !== params.retirementAge && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="age-planner-apply-earliest"
+            onClick={() => applyAge(data.earliestAge!)}
+          >
+            {t('applyEarliest', { age: data.earliestAge })}
+          </Button>
+        )}
+      </div>
       {data && (
         <>
           <div className="ws-age-table" tabIndex={0} role="region" aria-label={t('table')}>
@@ -282,6 +318,9 @@ function AgeComparisonForm() {
                   <th scope="col">{t('rate')}</th>
                   <th scope="col">{t('limit')}</th>
                   <th scope="col">{t('gain')}</th>
+                  <th scope="col" className="sr-only">
+                    {t('action')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -298,6 +337,21 @@ function AgeComparisonForm() {
                     </td>
                     <td>{row.monthlyLimit === null ? t('unfunded') : money(row.monthlyLimit)}</td>
                     <td>{row.extraYearGain === null ? '—' : money(row.extraYearGain, true)}</td>
+                    <td className="ws-age-action-cell">
+                      {row.age === params.retirementAge ? (
+                        <span className="ws-age-current">{t('current')}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="ws-link-button ws-age-apply"
+                          data-testid={`age-planner-apply-${row.age}`}
+                          aria-label={t('applyAria', { age: row.age })}
+                          onClick={() => applyAge(row.age)}
+                        >
+                          {t('apply')}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

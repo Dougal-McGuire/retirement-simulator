@@ -7,6 +7,7 @@ import { AppearanceSwitch } from '@/components/navigation/AppearanceSwitch'
 import { GenerateReportButton } from '@/components/GenerateReportButton'
 import { selectResultsStale } from '@/components/workspace/useRunStatus'
 import { useUsableStoreResults } from '@/components/workspace/useUsableResults'
+import { formatDeployTimestamp, getAppVersionInfo } from '@/lib/version'
 import { useSimulationLoading, useSimulationStore } from '@/lib/stores/simulationStore'
 import {
   Dialog,
@@ -52,6 +53,8 @@ function MenuReport() {
  */
 export function DashboardTools() {
   const t = useTranslations('simulationCompact.tools')
+  const versionInfo = getAppVersionInfo()
+  const deployedLabel = formatDeployTimestamp(versionInfo.deployedAt)
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -89,6 +92,70 @@ export function DashboardTools() {
         </div>
         {/* Colour scheme (System / Light / Dark); self-contained, see AppearanceSwitch. */}
         <AppearanceSwitch showLabel className="self-start" />
+        <details className="workspace-shortcuts" data-testid="keyboard-shortcuts">
+          <summary>{t('shortcuts.title')}</summary>
+          <dl className="workspace-shortcuts-list">
+            <div>
+              <dt>
+                <kbd className="workspace-kbd">Ctrl/⌘</kbd>
+                {' + '}
+                <kbd className="workspace-kbd">S</kbd>
+              </dt>
+              <dd>{t('shortcuts.save')}</dd>
+            </div>
+            <div>
+              <dt>
+                <kbd className="workspace-kbd">F2</kbd>
+              </dt>
+              <dd>{t('shortcuts.rename')}</dd>
+            </div>
+            <div>
+              <dt>
+                <kbd className="workspace-kbd">F6</kbd>
+              </dt>
+              <dd>{t('shortcuts.switchPane')}</dd>
+            </div>
+            <div>
+              <dt>
+                <kbd className="workspace-kbd">R</kbd>
+              </dt>
+              <dd>{t('shortcuts.recalculate')}</dd>
+            </div>
+            <div>
+              <dt>
+                <kbd className="workspace-kbd">Esc</kbd>
+              </dt>
+              <dd>{t('shortcuts.escape')}</dd>
+            </div>
+          </dl>
+        </details>
+        <p className="workspace-version-meta" data-testid="app-version-info">
+          <span>
+            {t('version.label')}{' '}
+            <code className="workspace-version-code">{versionInfo.version}</code>
+          </span>
+          <span aria-hidden="true">·</span>
+          <code
+            className="workspace-version-code"
+            data-testid="app-version-commit"
+            title={versionInfo.commit || undefined}
+          >
+            {versionInfo.shortCommit || t('version.unknownCommit')}
+          </code>
+          {deployedLabel && (
+            <>
+              <span aria-hidden="true">·</span>
+              <time
+                dateTime={versionInfo.deployedAt}
+                title={versionInfo.deployedAt}
+                data-testid="app-version-date"
+                suppressHydrationWarning
+              >
+                {t('version.deployed', { date: deployedLabel })}
+              </time>
+            </>
+          )}
+        </p>
       </DialogContent>
     </Dialog>
   )

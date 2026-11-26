@@ -9,16 +9,25 @@ import { useSimulationStore } from '@/lib/stores/simulationStore'
 type PlanTranslator = (key: string, values?: Record<string, string>) => string
 
 /**
- * Deletes `plan` and offers a timed undo toast. If the user already started
- * editing the plan that took over before clicking Undo, the restored plan is
- * created in the background so unsaved work is never dropped.
+ * Deletes `plan` and offers a timed undo toast. Returns `true` if the plan was
+ * actually removed, or `false` if deletion was a no-op (e.g. only one plan
+ * remains or another tab already deleted it). If the user starts editing the
+ * plan that took over before clicking Undo, the restored plan is created in the
+ * background so unsaved work is never dropped.
  */
-export function deletePlanWithUndo(plan: Plan, t: PlanTranslator): void {
-  const { deletePlan, createPlan } = useSimulationStore.getState()
+export function deletePlanWithUndo(plan: Plan, t: PlanTranslator): boolean {
+  const before = useSimulationStore.getState()
+  if (before.plans.length <= 1 || !before.plans.some((entry) => entry.id === plan.id)) {
+    return false
+  }
+
   const name = planDisplayName(plan, t)
   const params: SimulationParams = plan.params
 
-  deletePlan(plan.id)
+  before.deletePlan(plan.id)
+
+  const after = useSimulationStore.getState()
+  if (after.plans.some((entry) => entry.id === plan.id)) return false
 
   showActionToast({
     testId: 'plan-deleted-toast',
@@ -32,7 +41,7 @@ export function deletePlanWithUndo(plan: Plan, t: PlanTranslator): void {
           ? current.plans.find((entry) => entry.id === current.activePlanId)
           : undefined
 
-        const restoredId = createPlan(name, params, { activate: !editing })
+        const restoredId = current.createPlan(name, params, { activate: !editing })
         if (!restoredId) {
           toast.error(t('deleted.restoreFailed'))
         } else if (editing) {
@@ -45,4 +54,6 @@ export function deletePlanWithUndo(plan: Plan, t: PlanTranslator): void {
       },
     },
   })
+
+  return true
 }

@@ -271,6 +271,14 @@ export function PlanMenu({
           className="workspace-plan-inline-rename"
           data-testid="plan-inline-rename"
           onSubmit={handleRenameSubmit}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              event.stopPropagation()
+              event.nativeEvent.stopPropagation()
+              cancelInlineRename(true)
+            }
+          }}
         >
           <input
             ref={renameInputRef}
@@ -283,13 +291,6 @@ export function PlanMenu({
             aria-label={tp('dialogs.rename.label')}
             placeholder={tp('dialogs.rename.placeholder')}
             onChange={(event) => setRenameDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                event.preventDefault()
-                event.stopPropagation()
-                cancelInlineRename(true)
-              }
-            }}
           />
           <button
             type="submit"
@@ -325,7 +326,6 @@ export function PlanMenu({
             dirty ? t('triggerDirty', { name: activeName }) : t('trigger', { name: activeName })
           }
           onClick={() => (open ? close(false) : openMenu('active'))}
-          onDoubleClick={startInlineRename}
           onKeyDown={onTriggerKeyDown}
         >
           <span className="workspace-plan-trigger-name">{activeName}</span>
@@ -457,7 +457,12 @@ export function PlanMenu({
                   onClick={() => runAction(action, disabled)}
                 >
                   <Icon size={16} aria-hidden="true" />
-                  {label}
+                  <span>{label}</span>
+                  {action === 'rename' && (
+                    <kbd className="workspace-kbd" aria-hidden="true">
+                      F2
+                    </kbd>
+                  )}
                 </button>
               )
             })}

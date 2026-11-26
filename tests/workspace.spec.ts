@@ -666,6 +666,131 @@ test('the discard toast leaves with a plan switch', async ({ page }) => {
   await expect(toast).toHaveCount(0, { timeout: 3000 })
 })
 
+test('plans can be renamed in-place and deleted directly from the plan menu', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await gotoWorkspace(page)
+  const trigger = page.getByTestId('plan-menu-trigger')
+
+  // Single plan: delete in the plan menu is disabled.
+  await openPlanMenu(page)
+  await expect(page.getByTestId('plan-menu-delete')).toHaveAttribute('aria-disabled', 'true')
+
+  // Menu → Rename opens in-place right in the bar with no horizontal overflow on phones.
+  await page.getByTestId('plan-menu-rename').click()
+  const input = page.getByTestId('plan-inline-rename-input')
+  await expect(input).toBeFocused()
+  await expectNoHorizontalOverflow(page)
+
+  // Blank name disables Save; Escape cancels without changing the name and refocuses the trigger.
+  await input.fill('   ')
+  await expect(page.getByTestId('plan-inline-rename-save')).toBeDisabled()
+  await input.press('Escape')
+  await expect(trigger).toBeFocused()
+  await expect(trigger).toContainText('Base plan')
+
+  // F2 enters inline rename and clicking Save commits the new name.
+  await trigger.press('F2')
+  await expect(input).toBeFocused()
+  await input.fill('Retire at 60')
+  await page.getByTestId('plan-inline-rename-save').click()
+  await expect(trigger).toBeFocused()
+  await expect(trigger).toContainText('Retire at 60')
+
+  // In-place rename inside Plan Manager unwinds one Escape at a time (keeps the dialog open).
+  await openPlanMenu(page)
+  await page.getByTestId('plan-menu-manage').click()
+  const manager = page.getByTestId('plan-manager')
+  await manager.getByTestId('plan-rename').click()
+  await expect(manager.getByTestId('plan-rename')).toBeDisabled()
+  const managerInput = manager.locator('#plan-rename-name')
+  await expect(managerInput).toBeFocused()
+  await managerInput.fill('Should not save')
+  await managerInput.press('Escape')
+  await expect(manager).toBeVisible()
+  await expect(manager.getByTestId('plan-switcher-select')).toContainText('Retire at 60')
+  await expect(manager.getByTestId('plan-rename')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(manager).toHaveCount(0)
+
+  // With two plans, direct delete from the plan menu confirms and supports Undo.
+  await duplicateActivePlan(page)
+  await expect(trigger).toContainText('Retire at 60 2')
+  await openPlanMenu(page)
+  await expect(page.getByTestId('plan-menu-delete')).not.toHaveAttribute('aria-disabled', 'true')
+  await page.getByTestId('plan-menu-delete').click()
+  await page.getByTestId('plan-delete-confirm').click()
+  await expect(page.getByTestId('plan-deleted-toast')).toBeVisible()
+  await expect(trigger).toContainText('Retire at 60')
+  await page.getByTestId('plan-deleted-toast-undo').click()
+  await expect(trigger).toContainText('Retire at 60 2')
+})
+
+test('UX streamlining: pristine banner, bad-case link, cashflow filter, bar compare, multi-plan rows', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await gotoWorkspace(page)
+
+  // First-time pristine banner links to /setup and dismisses cleanly.
+  const banner = page.getByTestId('pristine-setup-banner')
+  await expect(banner).toBeVisible()
+  await expect(banner.getByTestId('pristine-setup-link')).toHaveAttribute('href', '/en/setup')
+  await banner.getByTestId('pristine-setup-dismiss').click()
+  await expect(banner).toHaveCount(0)
+
+  // Menu shows version, commit, and deploy timestamp metadata.
+  await page.getByTestId('dashboard-tools').click()
+  const versionInfo = page.getByTestId('app-version-info')
+  await expect(versionInfo).toBeVisible()
+  await expect(versionInfo).toContainText('Version')
+  await expect(page.getByTestId('app-version-commit')).toBeVisible()
+  await expect(page.getByTestId('app-version-date')).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  // Clicking "bad case" opens the shortfall details disclosure.
+  await page.getByTestId('bad-case-link').click()
+  await expect(page.getByTestId('shortfall-details')).toHaveAttribute('open', '')
+
+  // Cash flow kind filter narrows the table without losing rows.
+  await openPanel(page, 'flows')
+  const filter = page.getByTestId('cashflow-filter')
+  await expect(filter).toBeVisible()
+  await filter.getByTestId('cashflow-filter-pension').click()
+  await expect(page.getByTestId('cashflow-group-expense')).toHaveCount(0)
+  await expect(page.getByTestId('cashflow-group-income')).toBeVisible()
+  await filter.getByTestId('cashflow-filter-all').click()
+  await expect(page.getByTestId('cashflow-group-expense')).toBeVisible()
+
+  // With two plans, desktop bar offers 1-click Compare and Plan Manager lists all plans.
+  await expect(page.getByTestId('bar-compare')).toHaveCount(0)
+  await duplicateActivePlan(page)
+  await expect(page.getByTestId('bar-compare')).toBeVisible()
+
+  // Multi-plan list lets the user rename the inactive plan without switching to it.
+  await openPlanMenu(page)
+  await page.getByTestId('plan-menu-manage').click()
+  const manager = page.getByTestId('plan-manager')
+  await expect(manager.getByTestId('plan-manager-list')).toBeVisible()
+  await manager.getByTestId('plan-row-rename-default-plan').click()
+  const rowInput = manager.getByTestId('plan-row-rename-input-default-plan')
+  await expect(rowInput).toBeFocused()
+  await rowInput.fill('Baseline')
+  await rowInput.press('Enter')
+  await expect(manager.getByTestId('plan-row-default-plan')).toContainText('Baseline')
+  await page.keyboard.press('Escape')
+
+  // Direct bar Compare button enters comparison mode and lets the user switch & edit a plan.
+  await page.getByTestId('bar-compare').click()
+  const compare = page.getByTestId('compare-view')
+  await expect(compare).toBeVisible()
+  await expect(compare.getByTestId('compare-edit-plan-default-plan')).toBeVisible({
+    timeout: 45000,
+  })
+  await compare.getByTestId('compare-edit-plan-default-plan').click()
+  await expect(compare).toHaveCount(0)
+  await expect(page.getByTestId('plan-menu-trigger')).toContainText('Baseline')
+})
+
 // The old "Überblick" h1 focus on a plan-assumption row and the Varianten tab's
 // "Änderungen ausprobieren / Pläne vergleichen" switch (`enter-compare`) were
 // dropped by the spec (§1.3 #30, §1.6 #43); their replacements are the control

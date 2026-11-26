@@ -250,8 +250,9 @@
   min-width: 0;
 }
 .workspace-plan-inline-input {
-  width: 200px;
-  min-width: 110px;
+  flex: 1 1 180px;
+  width: 180px;
+  min-width: 0;
   max-width: 100%;
   min-height: var(--ui-control-height);
   padding: var(--ui-space-2) var(--ui-space-3);
@@ -415,6 +416,73 @@
 .workspace-plan-action[aria-disabled='true'] {
   opacity: 0.45;
   cursor: default;
+}
+.workspace-kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--ui-muted);
+  background: var(--ui-subtle);
+  border: 1px solid var(--ui-border);
+  border-radius: 3px;
+}
+.workspace-plan-action .workspace-kbd {
+  margin-left: auto;
+}
+@media (max-width: 760px) {
+  .workspace-plan-action .workspace-kbd {
+    display: none;
+  }
+}
+.workspace-shortcuts {
+  padding-top: var(--ui-space-2);
+  border-top: 1px solid var(--ui-border);
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.workspace-shortcuts summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+.workspace-shortcuts-list {
+  display: grid;
+  gap: var(--ui-space-2);
+  margin: var(--ui-space-3) 0 0;
+}
+.workspace-shortcuts-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+}
+.workspace-shortcuts-list dt {
+  flex: none;
+  white-space: nowrap;
+}
+.workspace-shortcuts-list dd {
+  margin: 0;
+  text-align: right;
+  color: var(--ui-muted);
+}
+.workspace-version-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-1) var(--ui-space-2);
+  margin: 0;
+  padding-top: var(--ui-space-2);
+  border-top: 1px solid var(--ui-border);
+  font-size: var(--ui-font-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-muted);
+}
+.workspace-version-code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: inherit;
+  color: var(--ui-text);
 }
 .workspace-plan-menu-separator {
   height: 1px;
@@ -670,6 +738,17 @@
 }
 .compare-table .ds-row--behind {
   background: var(--ui-tint-accent);
+}
+.compare-col-head {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.compare-edit-plan {
+  font-size: var(--ui-font-small);
+  font-weight: 500;
+  color: var(--ui-accent);
 }
 /* A flow's side of a row: the amount, and under it when it applies. The
    euro figure never breaks (its space is non-breaking), the words around it

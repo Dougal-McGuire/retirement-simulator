@@ -36,6 +36,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup pnpm (version from package.json "packageManager")
@@ -151,7 +152,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
-      contents: read
+      contents: write # tag production releases (CalVer YYYY.MM.N)
       pull-requests: write # the preview comment
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -166,6 +167,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup pnpm
@@ -197,11 +199,36 @@ jobs:
             node scripts/check-deploy-env.mjs .vercel/.env.preview.local
           fi
 
+      - name: Resolve release version metadata
+        id: version
+        run: |
+          deployed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          if [[ "$VERCEL_TARGET" == "production" ]]; then
+            existing_tag="$(git tag --points-at "$COMMIT_SHA" | grep -E '^[0-9]{4}\.[0-9]{2}\.[0-9]+$' | head -n 1 || true)"
+            if [[ -n "$existing_tag" ]]; then
+              app_version="$existing_tag"
+              should_tag="false"
+            else
+              app_version="$(node scripts/versioning.mjs next-tag)"
+              should_tag="true"
+            fi
+          else
+            app_version="preview"
+            should_tag="false"
+          fi
+          echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
+          echo "deployed_at=$deployed_at" >> "$GITHUB_OUTPUT"
+          echo "should_tag=$should_tag" >> "$GITHUB_OUTPUT"
+          echo "Release metadata: version=$app_version commit=${COMMIT_SHA:0:7} deployed_at=$deployed_at"
+
       - name: Build
         env:
           # Sent as `x-build-id` by /api/plans; VERCEL_GIT_COMMIT_SHA only
           # exists on Vercel's own builders, not in this runner.
           NEXT_PUBLIC_BUILD_ID: ${{ env.COMMIT_SHA }}
+          NEXT_PUBLIC_APP_VERSION: ${{ steps.version.outputs.app_version }}
+          NEXT_PUBLIC_GIT_COMMIT: ${{ env.COMMIT_SHA }}
+          NEXT_PUBLIC_DEPLOYED_AT: ${{ steps.version.outputs.deployed_at }}
         run: |
           if [[ "$VERCEL_TARGET" == "production" ]]; then
             vercel build --prod
@@ -242,6 +269,46 @@ jobs:
           done
           echo "::error title=Smoke test failed::$base/api/plans does not report build $COMMIT_SHA"
           exit 1
+
+      - name: Tag production release
+        if: env.VERCEL_TARGET == 'production' && steps.version.outputs.should_tag == 'true'
+        uses: actions/github-script@v9
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.app_version }}
+          DEPLOYED_AT: ${{ steps.version.outputs.deployed_at }}
+        with:
+          script: |
+            const tag = process.env.RELEASE_VERSION
+            const sha = process.env.COMMIT_SHA
+            const { owner, repo } = context.repo
+            try {
+              const tagObj = await github.rest.git.createTag({
+                owner,
+                repo,
+                tag,
+                message: `Release ${tag}`,
+                object: sha,
+                type: 'commit',
+                tagger: {
+                  name: 'github-actions[bot]',
+                  email: '41898282+github-actions[bot]@users.noreply.github.com',
+                  date: process.env.DEPLOYED_AT,
+                },
+              })
+              await github.rest.git.createRef({
+                owner,
+                repo,
+                ref: `refs/tags/${tag}`,
+                sha: tagObj.data.sha,
+              })
+              core.info(`Created release tag ${tag} -> ${sha}`)
+            } catch (error) {
+              if (error?.status === 422) {
+                core.info(`Release tag ${tag} already exists; skipping.`)
+              } else {
+                throw error
+              }
+            }
 
       - name: Comment the preview URL on the PR
         if: github.event_name == 'pull_request'

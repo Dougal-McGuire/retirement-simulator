@@ -6,6 +6,7 @@ import { ChevronDown, X } from 'lucide-react'
 import type { DraftChange } from '@/lib/simulation/draftChanges'
 import { usePlanIsDirty } from '@/lib/stores/simulationStore'
 import { Popover } from './Popover'
+import { changeEditTarget } from './changeTarget'
 import type { PanelMode } from './usePanelMode'
 import { revertDraftChange, useChangeLabel, useDraftChanges } from './useDraftChanges'
 import { useWorkspace } from './WorkspaceProvider'
@@ -17,14 +18,32 @@ import { useWorkspace } from './WorkspaceProvider'
  */
 const HEAD_CHIP_LIMIT: Record<PanelMode, number> = { docked: 3, drawer: 2, sheet: 1 }
 
-/** One change with its ✕: taking it back writes the working copy, like any edit. */
-function ChangeChip({ change, label }: { change: DraftChange; label: string }) {
+/** One change with a jump button and its ✕: taking it back writes the working copy, like any edit. */
+function ChangeChip({
+  change,
+  label,
+  onJump,
+}: {
+  change: DraftChange
+  label: string
+  onJump?: () => void
+}) {
   const t = useTranslations('workspace.changes')
+  const { openEditor } = useWorkspace()
   return (
     <li className="ws-chip" data-testid="change-chip" data-change={change.id}>
-      <span className="ws-chip-label" title={label}>
+      <button
+        type="button"
+        className="ws-chip-label ws-chip-jump"
+        data-testid="change-jump"
+        title={t('jump', { change: label })}
+        onClick={(event) => {
+          onJump?.()
+          openEditor(changeEditTarget(change), event.currentTarget)
+        }}
+      >
         {label}
-      </span>
+      </button>
       <button
         type="button"
         className="ws-chip-x"
@@ -144,10 +163,10 @@ export const ChangeMenu = memo(function ChangeMenu() {
         </button>
       )}
     >
-      {() => (
+      {(close) => (
         <ul className="ws-chips ws-chips-list">
           {changes.map((change) => (
-            <ChangeChip key={change.id} change={change} label={labelOf(change)} />
+            <ChangeChip key={change.id} change={change} label={labelOf(change)} onJump={close} />
           ))}
           {changes.length === 0 && <li className="ws-chip ws-chip-plain">{t('other')}</li>}
         </ul>

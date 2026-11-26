@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Check, ChevronDown, CopyPlus, Download, Save, Undo2 } from 'lucide-react'
+import { ArrowLeftRight, Check, ChevronDown, CopyPlus, Download, Save, Undo2 } from 'lucide-react'
 import { MAX_PLANS, type Plan } from '@/types'
 import {
   useActivePlan,
@@ -190,6 +190,7 @@ const BarDraft = memo(function BarDraft({
               className="workspace-button workspace-button-primary ws-bar-save"
               data-testid="command-save"
               aria-label={tp('dirty.ariaSave', { name: activeName })}
+              title={t('bar.saveTitle')}
               onClick={saveNow}
             >
               <Save size={16} aria-hidden="true" />
@@ -315,10 +316,11 @@ export function ResultBar() {
   const t = useTranslations('workspace')
   const tp = useTranslations('plans')
   const activePlan = useActivePlan()
+  const planCount = useSimulationStore((state) => state.plans.length)
   const dirty = usePlanIsDirty()
   const setComparisonSelection = useSetComparisonSelection()
   const { status, needsRun } = useRunStatus()
-  const { enterCompare } = useWorkspace()
+  const { mode, enterCompare } = useWorkspace()
 
   const activeName = activePlan ? planDisplayName(activePlan, tp) : ''
 
@@ -424,6 +426,17 @@ export function ResultBar() {
         <div className="ws-bar-euro">
           <MemoEuroDisplay />
         </div>
+        {planCount >= 2 && mode !== 'compare' && (
+          <button
+            type="button"
+            className="workspace-button ws-bar-compare"
+            data-testid="bar-compare"
+            onClick={(event) => compare(event.currentTarget)}
+          >
+            <ArrowLeftRight size={16} aria-hidden="true" />
+            <span>{t('bar.compare')}</span>
+          </button>
+        )}
         <BarReport />
         <MemoDashboardTools />
       </div>

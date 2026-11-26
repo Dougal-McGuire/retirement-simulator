@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Check, Copy, FolderOpen, Pencil, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
-import { MAX_PLANS } from '@/types'
+import { MAX_PLANS, type Plan } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -61,13 +61,16 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
   const successRates = usePlanSuccessRates()
 
   const [newOpen, setNewOpen] = useState(false)
-  const [duplicateOpen, setDuplicateOpen] = useState(false)
+  const [duplicateTarget, setDuplicateTarget] = useState<Plan | null>(null)
   const [renaming, setRenaming] = useState(false)
   const [renameDraft, setRenameDraft] = useState('')
-  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [editingRowId, setEditingRowId] = useState<string | null>(null)
+  const [rowRenameDraft, setRowRenameDraft] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Plan | null>(null)
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const renameButtonRef = useRef<HTMLButtonElement>(null)
+  const rowRenameInputRef = useRef<HTMLInputElement>(null)
   const refocusRenameBtn = useRef(false)
 
   useEffect(() => {
@@ -84,6 +87,15 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
       renameButtonRef.current?.focus()
     }
   }, [renaming])
+
+  useEffect(() => {
+    if (!editingRowId) return
+    const input = rowRenameInputRef.current
+    if (input) {
+      input.focus()
+      input.select()
+    }
+  }, [editingRowId])
 
   useEffect(() => {
     setRenaming(false)
@@ -105,12 +117,31 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
 
   const activeName = planDisplayName(activePlan, t)
   const atLimit = plans.length >= MAX_PLANS
+  const duplicateTargetName = duplicateTarget ? planDisplayName(duplicateTarget, t) : activeName
   // Prefilled into the duplicate dialog, so the copy is named before it exists
   // rather than inheriting a "(copy)" that later shows up in a PDF.
   const duplicateSuggestion = suggestDuplicateName(
-    activeName,
+    duplicateTargetName,
     plans.map((plan) => planDisplayName(plan, t))
   )
+
+  const startRowRename = (plan: Plan) => {
+    setRenaming(false)
+    setRowRenameDraft(planDisplayName(plan, t))
+    setEditingRowId(plan.id)
+  }
+
+  const commitRowRename = (plan: Plan, event?: FormEvent) => {
+    event?.preventDefault()
+    const trimmed = rowRenameDraft.trim()
+    if (!trimmed) return
+    if (trimmed !== planDisplayName(plan, t)) renamePlan(plan.id, trimmed)
+    setEditingRowId(null)
+  }
+
+  const cancelRowRename = () => {
+    setEditingRowId(null)
+  }
 
   const requestSwitch = (nextId: string) => {
     if (nextId === activePlan.id) return
@@ -192,6 +223,14 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
             className="flex items-center gap-1.5"
             data-testid="plan-switcher-inline-rename"
             onSubmit={commitInlineRename}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                event.stopPropagation()
+                event.nativeEvent.stopPropagation()
+                cancelInlineRename()
+              }
+            }}
           >
             <Input
               ref={renameInputRef}
@@ -201,13 +240,6 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
               aria-label={t('dialogs.rename.label')}
               placeholder={t('dialogs.rename.placeholder')}
               onChange={(event) => setRenameDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  cancelInlineRename()
-                }
-              }}
               className="rounded-sm h-10 flex-1 border border-border bg-card px-3 text-xs font-semibold"
             />
             <Button
@@ -297,6 +329,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
             variant="ghost"
             size="sm"
             className="h-10 w-full px-3 sm:w-auto"
+            disabled={renaming}
             onClick={startInlineRename}
             data-testid="plan-rename"
           >
@@ -308,7 +341,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
             size="sm"
             className="h-10 w-full px-3 sm:w-auto"
             disabled={atLimit}
-            onClick={() => setDuplicateOpen(true)}
+            onClick={() => setDuplicateTarget(activePlan)}
             data-testid="plan-duplicate"
           >
             <Copy className="h-4 w-4" aria-hidden="true" />
@@ -319,7 +352,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
             size="sm"
             className="h-10 w-full px-3 text-danger sm:w-auto"
             disabled={plans.length <= 1}
-            onClick={() => setDeleteOpen(true)}
+            onClick={() => setDeleteTarget(activePlan)}
             data-testid="plan-delete"
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -327,6 +360,152 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
           </Button>
         </div>
       </div>
+
+      {plans.length > 1 && (
+        <div className="flex flex-col gap-2 border-t border-border pt-3">
+          <span className="text-xs font-semibold text-muted-foreground">
+            {t('switcher.allPlans')}
+          </span>
+          <ul
+            data-testid="plan-manager-list"
+            className="flex flex-col divide-y divide-border rounded-sm border border-border bg-surface"
+          >
+            {plans.map((plan) => {
+              const name = planDisplayName(plan, t)
+              const isActive = plan.id === activePlan.id
+              const rate = successRates[plan.id]
+              const rateText =
+                isActive && isDirty
+                  ? t('dirty.badge')
+                  : typeof rate === 'number'
+                    ? t('switcher.successRate', { rate: formatRate(rate) })
+                    : t('switcher.notSimulated')
+              const isEditingThis = editingRowId === plan.id
+              return (
+                <li
+                  key={plan.id}
+                  data-testid={`plan-row-${plan.id}`}
+                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                >
+                  {isEditingThis ? (
+                    <form
+                      className="flex w-full items-center gap-1.5"
+                      data-testid={`plan-row-rename-form-${plan.id}`}
+                      onSubmit={(event) => commitRowRename(plan, event)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          event.nativeEvent.stopPropagation()
+                          cancelRowRename()
+                        }
+                      }}
+                    >
+                      <Input
+                        ref={rowRenameInputRef}
+                        id={`plan-row-rename-input-${plan.id}`}
+                        data-testid={`plan-row-rename-input-${plan.id}`}
+                        value={rowRenameDraft}
+                        maxLength={60}
+                        aria-label={t('dialogs.rename.label')}
+                        placeholder={t('dialogs.rename.placeholder')}
+                        onChange={(event) => setRowRenameDraft(event.target.value)}
+                        className="rounded-sm h-9 flex-1 border border-border bg-card px-2.5 text-xs font-semibold"
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        className="h-9 px-2.5"
+                        disabled={!rowRenameDraft.trim()}
+                        aria-label={t('actions.save')}
+                        data-testid={`plan-row-rename-save-${plan.id}`}
+                      >
+                        <Check className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-2.5"
+                        aria-label={t('actions.cancel')}
+                        data-testid={`plan-row-rename-cancel-${plan.id}`}
+                        onClick={cancelRowRename}
+                      >
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <div className="flex items-center gap-2">
+                          {isActive ? (
+                            <span className="truncate text-xs font-semibold text-ink">{name}</span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="truncate text-left text-xs font-semibold text-ink underline-offset-2 hover:text-accent hover:underline"
+                              data-testid={`plan-row-select-${plan.id}`}
+                              onClick={() => requestSwitch(plan.id)}
+                            >
+                              {name}
+                            </button>
+                          )}
+                          {isActive && (
+                            <span className="rounded-sm shrink-0 border border-border bg-accent/10 px-1.5 py-0.5 text-xs font-semibold text-accent">
+                              {isDirty ? t('switcher.modified') : t('switcher.active')}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">{rateText}</span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9"
+                          aria-label={`${t('actions.rename')}: ${name}`}
+                          title={t('actions.rename')}
+                          data-testid={`plan-row-rename-${plan.id}`}
+                          onClick={() => startRowRename(plan)}
+                        >
+                          <Pencil className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9"
+                          disabled={atLimit}
+                          aria-label={`${t('actions.duplicate')}: ${name}`}
+                          title={t('actions.duplicate')}
+                          data-testid={`plan-row-duplicate-${plan.id}`}
+                          onClick={() => setDuplicateTarget(plan)}
+                        >
+                          <Copy className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-danger"
+                          disabled={plans.length <= 1}
+                          aria-label={`${t('actions.delete')}: ${name}`}
+                          title={t('actions.delete')}
+                          data-testid={`plan-row-delete-${plan.id}`}
+                          onClick={() => setDeleteTarget(plan)}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
 
       {isDirty && (
         <div
@@ -378,30 +557,39 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
         onConfirm={(name) => createPlan(name)}
       />
 
-      {/* Duplicate asks for a name instead of inventing one: the copy becomes
-          the active plan immediately, and its name is what comparison legends
-          and the exported PDF will show. */}
+      {/* Duplicate asks for a name instead of inventing one: duplicating the
+          active plan makes the copy active immediately; duplicating another
+          row from the list creates it in the background without disturbing
+          any unsaved draft. */}
       <PlanNameDialog
-        open={duplicateOpen}
-        onOpenChange={setDuplicateOpen}
+        open={duplicateTarget !== null}
+        onOpenChange={(open) => !open && setDuplicateTarget(null)}
         inputId="plan-duplicate-name"
         initialName={duplicateSuggestion}
         title={t('dialogs.duplicate.title')}
-        description={t('dialogs.duplicate.description', { name: activeName })}
+        description={t('dialogs.duplicate.description', { name: duplicateTargetName })}
         label={t('dialogs.duplicate.label')}
         placeholder={t('dialogs.duplicate.placeholder')}
         confirmLabel={t('actions.confirmDuplicate')}
         onConfirm={(name) => {
-          duplicatePlan(activePlan.id, name)
-          toast.success(t('duplicated.toast', { name }))
+          if (!duplicateTarget) return
+          const created =
+            duplicateTarget.id === activePlan.id
+              ? duplicatePlan(activePlan.id, name)
+              : createPlan(name, duplicateTarget.params, { activate: false })
+          if (created) toast.success(t('duplicated.toast', { name }))
         }}
       />
 
       <PlanDeleteDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        planName={activeName}
-        onConfirm={() => deletePlanWithUndo(activePlan, t)}
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        planName={deleteTarget ? planDisplayName(deleteTarget, t) : activeName}
+        onConfirm={() => {
+          if (!deleteTarget) return
+          if (editingRowId === deleteTarget.id) setEditingRowId(null)
+          deletePlanWithUndo(deleteTarget, t)
+        }}
       />
 
       {/* Switching plans with unsaved work asks first — the working copy is the

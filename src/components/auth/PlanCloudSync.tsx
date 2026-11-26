@@ -231,6 +231,13 @@ export function startPlanCloudSync(options: PlanCloudSyncOptions = {}): () => vo
       const currentLocal = readLocal()
       const unchangedInFlight = snapshotSignature(currentLocal) === signature
       const clampedPlans = clampPushedPlanStamps(currentLocal.plans, body, kept, result.updatedAt)
+      const nextBase = baseAfterPush(
+        currentLocal.syncedPlanStamps,
+        body,
+        kept,
+        result.updatedAt
+      )
+      const baseChanged = !sameStamps(nextBase, currentLocal.syncedPlanStamps)
       if (clampedPlans) {
         if (unchangedInFlight) {
           const postClampSignature = snapshotSignature({ ...currentLocal, plans: clampedPlans })
@@ -239,13 +246,13 @@ export function startPlanCloudSync(options: PlanCloudSyncOptions = {}): () => vo
         } else {
           syncedSignature = signature
         }
-        useSimulationStore.setState({ plans: clampedPlans })
+        useSimulationStore.setState(
+          baseChanged ? { plans: clampedPlans, syncedPlanStamps: nextBase } : { plans: clampedPlans }
+        )
       } else {
         syncedSignature = signature
+        if (baseChanged) writeBase(nextBase)
       }
-      writeBase(
-        baseAfterPush(useSimulationStore.getState().syncedPlanStamps, body, kept, result.updatedAt)
-      )
       setPhase('synced', Date.now())
       return
     }

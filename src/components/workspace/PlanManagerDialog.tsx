@@ -38,6 +38,12 @@ export function PlanManagerDialog({
           event.preventDefault()
           target.focus()
         }}
+        onEscapeKeyDown={(event) => {
+          const root = event.currentTarget as HTMLElement
+          if (root.querySelector('[data-testid="plan-switcher-inline-rename"]')) {
+            event.preventDefault()
+          }
+        }}
         onCloseAutoFocus={(event) => {
           const target = returnFocusRef.current
           if (!target?.isConnected) return

@@ -126,7 +126,7 @@ export function MarketGroup() {
             ]
       }
     >
-      <div className="ws-field-group" data-testid="market-model-switch">
+      <div className="ws-field-group" id="editor-marketModel" data-testid="market-model-switch">
         <span className="ws-group-label">{tControls('fields.marketModel.label')}</span>
         <div className="ws-choices" data-columns="2" role="group">
           {MARKET_MODELS.map((model) => {
@@ -235,6 +235,7 @@ export function MarketGroup() {
           </div>
           <button
             type="button"
+            id="editor-glidePathEnabled"
             role="switch"
             aria-checked={glideOn}
             data-testid="glide-path-toggle"
@@ -355,19 +356,6 @@ export function MarketGroup() {
           minLabel={formatPercent(0.01, 0)}
           maxLabel={formatPercent(0.06, 0)}
         />
-        <WizardSliderField
-          id="editor-inflationVolatility"
-          disabled={usesHistory}
-          label={tControls('fields.inflationVolatility.label')}
-          value={params.inflationVolatility * 100}
-          onValueChange={(value) => updateParams({ inflationVolatility: value / 100 })}
-          min={0.1}
-          max={3}
-          step={0.1}
-          valueLabel={formatPercent(params.inflationVolatility, 2)}
-          minLabel={formatPercent(0.001, 1)}
-          maxLabel={formatPercent(0.03, 0)}
-        />
         <LabeledNumberInput
           id="editor-simulationRuns"
           disabled={usesHistory}
@@ -390,6 +378,29 @@ export function MarketGroup() {
           invalidMessage={notANumber}
         />
       </div>
+
+      <details className="ws-disclosure" data-testid="market-inflation-advanced">
+        <summary>
+          {tControls('fields.inflationVolatility.summary', {
+            value: formatPercent(params.inflationVolatility, 2),
+          })}
+        </summary>
+        <div className="ws-disclosure-body">
+          <WizardSliderField
+            id="editor-inflationVolatility"
+            disabled={usesHistory}
+            label={tControls('fields.inflationVolatility.label')}
+            value={params.inflationVolatility * 100}
+            onValueChange={(value) => updateParams({ inflationVolatility: value / 100 })}
+            min={0.1}
+            max={3}
+            step={0.1}
+            valueLabel={formatPercent(params.inflationVolatility, 2)}
+            minLabel={formatPercent(0.001, 1)}
+            maxLabel={formatPercent(0.03, 0)}
+          />
+        </div>
+      </details>
 
       <div className="ws-subsection" data-testid="tax-block">
         <div className="ws-subsection-title">
@@ -427,7 +438,7 @@ export function MarketGroup() {
           />
         </div>
 
-        <div className="ws-field-group" data-testid="household-type-switch">
+        <div className="ws-field-group" id="editor-householdType" data-testid="household-type-switch">
           <span className="ws-group-label">{tTax('household.label')}</span>
           <div className="ws-choices" data-columns="2" role="group">
             {HOUSEHOLD_TYPES.map((type) => {

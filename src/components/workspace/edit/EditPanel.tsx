@@ -2,10 +2,13 @@
 
 import { memo, useEffect, useMemo, useRef } from 'react'
 import { useTranslations } from 'next-intl'
-import { ArrowRight, ChevronDown, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { ArrowRight, ChevronDown, ChevronsLeft, ChevronsRight, X } from 'lucide-react'
 import { COLUMN_GROUPS, type ColumnGroup } from '@/components/plans/planSections'
 import { SectionBoundary } from '@/components/errors/SectionBoundary'
 import { changedGroups } from '@/lib/simulation/draftChanges'
+import { isPristineStoreState } from '@/lib/stores/authMigration'
+import { useDismissWelcome, useWelcomeDismissed } from '@/lib/stores/displayStore'
+import { useSimulationStore } from '@/lib/stores/simulationStore'
 import { Link } from '@/navigation'
 import { useDraftChanges } from '../useDraftChanges'
 import { useColumnOpen, useOpenGroups } from '../useWorkspaceUiStore'
@@ -113,6 +116,39 @@ function ColumnGroups() {
     </>
   )
 }
+
+/**
+ * Quiet, single-line nudge for first-time visitors still looking at the default
+ * example plan: leads straight into the guided 2-minute setup wizard and hides
+ * automatically as soon as they edit anything, add a plan, or dismiss it.
+ */
+const PristineSetupBanner = memo(function PristineSetupBanner() {
+  const t = useTranslations('workspace.column.pristine')
+  const dismissed = useWelcomeDismissed()
+  const dismiss = useDismissWelcome()
+  const pristine = useSimulationStore((state) =>
+    isPristineStoreState({ plans: state.plans, params: state.params, isDirty: state.isDirty })
+  )
+  if (!pristine || dismissed) return null
+  return (
+    <div className="ws-pristine-banner" data-testid="pristine-setup-banner">
+      <Link href="/setup" className="ws-pristine-link" data-testid="pristine-setup-link">
+        <span>{t('cta')}</span>
+        <ArrowRight size={14} aria-hidden="true" />
+      </Link>
+      <button
+        type="button"
+        className="ws-pristine-dismiss"
+        data-testid="pristine-setup-dismiss"
+        aria-label={t('dismiss')}
+        title={t('dismiss')}
+        onClick={dismiss}
+      >
+        <X size={16} aria-hidden="true" />
+      </button>
+    </div>
+  )
+})
 
 /**
  * The control column: every input of the plan exactly once, in five groups,
@@ -235,6 +271,7 @@ export function EditPanel() {
       </div>
 
       <div ref={bodyRef} id="edit-panel-body" className="ws-panel-body @container">
+        <PristineSetupBanner />
         <ColumnGroups />
         <footer className="ws-column-footer">
           <p className="ws-footnote">{tw('cards.startingValues')}</p>

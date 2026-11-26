@@ -1,6 +1,7 @@
 import {
   copyAnonymousWorkspace,
   decideMigration,
+  isPristineStoreState,
   isPristineWorkspace,
   markMigrationAnswered,
   migrationMarkerKey,
@@ -135,6 +136,49 @@ describe('isPristineWorkspace', () => {
       },
     })
     expect(isPristineWorkspace(withExpense)).toBe(false)
+  })
+})
+
+describe('isPristineStoreState', () => {
+  const defaultPlan = {
+    id: DEFAULT_PLAN_ID,
+    nameKey: DEFAULT_PLAN_NAME_KEY,
+    name: 'Base plan',
+    params: DEFAULT_PARAMS,
+  }
+
+  it('returns true only for an untouched default starter workspace', () => {
+    expect(
+      isPristineStoreState({ plans: [defaultPlan], params: DEFAULT_PARAMS, isDirty: false })
+    ).toBe(true)
+    expect(isPristineStoreState({ plans: [], params: DEFAULT_PARAMS, isDirty: false })).toBe(true)
+  })
+
+  it('returns false when dirty, multi-plan, renamed, or modified', () => {
+    expect(
+      isPristineStoreState({ plans: [defaultPlan], params: DEFAULT_PARAMS, isDirty: true })
+    ).toBe(false)
+    expect(
+      isPristineStoreState({
+        plans: [defaultPlan, { ...defaultPlan, id: 'plan-2', name: 'Copy' }],
+        params: DEFAULT_PARAMS,
+        isDirty: false,
+      })
+    ).toBe(false)
+    expect(
+      isPristineStoreState({
+        plans: [{ ...defaultPlan, nameKey: undefined, name: 'My plan' }],
+        params: DEFAULT_PARAMS,
+        isDirty: false,
+      })
+    ).toBe(false)
+    expect(
+      isPristineStoreState({
+        plans: [defaultPlan],
+        params: { ...DEFAULT_PARAMS, retirementAge: DEFAULT_PARAMS.retirementAge + 1 },
+        isDirty: false,
+      })
+    ).toBe(false)
   })
 })
 

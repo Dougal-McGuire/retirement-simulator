@@ -455,6 +455,13 @@
         "expense": "Ausgabe",
         "pension": "Rente"
       },
+      "filter": {
+        "label": "Posten nach Art filtern",
+        "all": "Alle ({count})",
+        "expense": "Ausgaben ({count})",
+        "income": "Einnahmen ({count})",
+        "pension": "Renten ({count})"
+      },
       "frequency": {
         "monthly": "Monatlich",
         "annual": "Jährlich",
@@ -660,6 +667,8 @@
       "exit": "Vergleich beenden",
       "changedRows": "Geänderte Zeilen hervorgehoben",
       "openEditor": "Annahmen bearbeiten →",
+      "editPlan": "Bearbeiten",
+      "editPlanAria": "Zu „{name}“ wechseln und bearbeiten",
       "perMonth": "{amount}/Mon.",
       "pensionFrom": "{amount}/Mon. ab {age}",
       "flow": {
@@ -717,7 +726,20 @@
     "tools": {
       "button": "Menü",
       "title": "Einstellungen",
-      "description": "Sprache, Konto und Darstellung ändern."
+      "description": "Sprache, Konto und Darstellung ändern.",
+      "shortcuts": {
+        "title": "Tastenkürzel",
+        "save": "Änderungen speichern",
+        "rename": "Aktiven Plan umbenennen (bei Fokus auf Planauswahl)",
+        "switchPane": "Zwischen Ergebnis und Annahmen wechseln",
+        "recalculate": "Simulation neu berechnen",
+        "escape": "Fokus aus den Annahmen zurück"
+      },
+      "version": {
+        "label": "Version",
+        "unknownCommit": "lokal",
+        "deployed": "Stand {date}"
+      }
     }
   },
   "parameterControls": {
@@ -946,6 +968,7 @@
       },
       "inflationVolatility": {
         "label": "Inflationsvolatilität",
+        "summary": "Inflationsschwankung ({value})",
         "tooltip": "Jährliche Schwankung der Inflation. Historisch 0,5–1,5 %. Höhere Volatilität erhöht die Unsicherheit bei den Ausgaben."
       },
       "simulationRuns": {
@@ -1228,7 +1251,8 @@
       "active": "Aktiv",
       "successRate": "{rate} Erfolg",
       "notSimulated": "Noch nicht simuliert",
-      "modified": "Geändert"
+      "modified": "Geändert",
+      "allPlans": "Alle Pläne"
     },
     "defaultNames": {
       "base": "Basisplan",
@@ -1730,7 +1754,13 @@
       "quickSample": "Schnellvergleich mit {paths, number} gemeinsamen Marktverläufen.",
       "finalSample": "Genauer Vergleich mit {paths, number} gemeinsamen Marktverläufen.",
       "historicalSample": "Vergleich über alle {paths, number} historischen Startjahre.",
-      "interval": "Für den Ruhestand mit {age} liegt das 95-%-Monte-Carlo-Intervall für den Erfolg beim Wunschbudget zwischen {low} und {high}."
+      "interval": "Für den Ruhestand mit {age} liegt das 95-%-Monte-Carlo-Intervall für den Erfolg beim Wunschbudget zwischen {low} und {high}.",
+      "applyEarliest": "Ruhestart auf {age} setzen",
+      "action": "Aktion",
+      "apply": "Übernehmen",
+      "applyAria": "Ruhestart auf {age} setzen",
+      "current": "Aktuell",
+      "appliedToast": "Ruhestart auf {age} gesetzt."
     },
     "shortfalls": {
       "title": "Ausgabenlücken im Detail",
@@ -1742,6 +1772,7 @@
       "duration": "Jahre mit einer Lücke",
       "atHorizon": "Mit {age} Jahren hatten {count, number} der {affected, number} betroffenen Verläufe weiterhin eine Lücke. Hier endet die Simulation.",
       "bequest": "In {count, number} von {total, number} Verläufen waren die Ausgaben jedes Jahr gedeckt, doch das Endvermögen lag unter dem Nachlassziel von {target} in heutigen Euro.",
+      "seeLevers": "Was am meisten bewirkt",
       "lifestyleHeading": "Alltagsausgaben im Ruhestand",
       "lifestyleFunded": "Davon hatten {count, number} Verläufe in keinem Jahr eine Deckungslücke bei den geplanten Ausgaben.",
       "lifestyleCount": "In {count, number} von {total, number} Verläufen blieb nach den gesondert geplanten Ausgaben weniger als dein Monatsminimum von {target} in heutigen Euro für den Alltag übrig.",
@@ -1812,6 +1843,8 @@
       "saveAsNew": "Als Variante speichern …",
       "saveMenu": "Speichern",
       "saveMore": "Weitere Möglichkeiten zum Speichern",
+      "saveTitle": "Änderungen speichern (Strg/⌘+S)",
+      "compare": "Vergleichen",
       "pdf": "PDF"
     },
     "verdict": {
@@ -1870,6 +1903,7 @@
       "firstDraw": "Ø Bruttoentnahme im ersten Ruhestandsjahr · nominal",
       "firstDrawHint": "Durchschnittliche Depotentnahme im ersten Ruhestandsjahr, brutto. Führt zum Abschnitt Entnahme.",
       "badCase": "schlechter Verlauf",
+      "badCaseHint": "Ausgabenlücken im Detail öffnen",
       "firstDrawReal": "Ø Bruttoentnahme im ersten Ruhestandsjahr · heutige €"
     },
     "dock": {
@@ -1925,6 +1959,10 @@
         "count": "{count, plural, =0 {Noch kein Posten} one {# Posten} other {# Posten}}",
         "allOn": "alle an",
         "off": "{count} aus"
+      },
+      "pristine": {
+        "cta": "Beispieldaten aktiv — gib deine Zahlen in 2 Minuten ein",
+        "dismiss": "Hinweis ausblenden"
       }
     },
     "changes": {
@@ -1936,6 +1974,7 @@
       "flowRemoved": "{name} entfernt",
       "flowAmount": "{name} {from} → {to}",
       "flowChanged": "{name} geändert",
+      "jump": "Zur Einstellung springen: {change}",
       "revert": "Änderung zurücknehmen: {change}",
       "more": "+{count}",
       "less": "Weniger zeigen",

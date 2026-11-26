@@ -24,11 +24,15 @@ import { formatSimulationRate, formatSimulationRateDelta } from '@/lib/format/si
 import { useDisplayReal } from '@/lib/stores/displayStore'
 import { SimulationPrecision } from './SimulationPrecision'
 import { planDisplayName } from '@/lib/plans/planName'
+import { PlanSwitchGuard } from '@/components/plans/PlanSwitchGuard'
 import {
   useActivePlanId,
   useDuplicatePlan,
+  usePlanIsDirty,
   usePlans,
+  useSetActivePlan,
   useSimulationParams,
+  useSimulationStore,
 } from '@/lib/stores/simulationStore'
 import { useComparisonStore, useSetComparisonSelection } from '@/lib/stores/comparisonStore'
 import { buildCompactKpis, type CompactKpis } from './metrics'
@@ -93,10 +97,29 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
   const locale = useLocale()
   const plans = usePlans()
   const activePlanId = useActivePlanId()
+  const setActivePlan = useSetActivePlan()
+  const isDirty = usePlanIsDirty()
   const workingParams = useSimulationParams()
   const duplicatePlan = useDuplicatePlan()
   const displayReal = useDisplayReal()
   const [final, setFinal] = useState(false)
+  const [pendingEditPlanId, setPendingEditPlanId] = useState<string | null>(null)
+
+  const activePlan = plans.find((plan) => plan.id === activePlanId) ?? plans[0]
+  const activeName = activePlan ? planDisplayName(activePlan, tPlans) : ''
+
+  const handleEditPlan = (planId: string) => {
+    if (planId === activePlanId) {
+      onOpenPlanEditor()
+      return
+    }
+    if (isDirty) {
+      setPendingEditPlanId(planId)
+      return
+    }
+    setActivePlan(planId)
+    onOpenPlanEditor()
+  }
 
   const savedOrDraft = useCallback(
     (plan: Plan): SimulationParams => (plan.id === activePlanId ? workingParams : plan.params),
@@ -340,7 +363,8 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
           key: `assumption:${row.key}`,
           label: tPlans(`comparison.assumptions.rows.${row.key}`),
           values: row.values.map((value) => formatAssumption(value, row.kind)),
-        })),
+        }))
+        .filter((row) => row.values.some((value) => value !== row.values[0])),
     ]
   }, [ready, t, tPlans, format, formatAssumption])
 
@@ -609,17 +633,33 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
             <thead>
               <tr>
                 <th>{t('rows.parameter')}</th>
-                {ready.map((run, index) => (
-                  <th
-                    key={run.plan.id}
-                    className="ds-num"
-                    style={
-                      index > 0 ? { color: ALT_COLORS[(index - 1) % ALT_COLORS.length] } : undefined
-                    }
-                  >
-                    {planDisplayName(run.plan, tPlans)}
-                  </th>
-                ))}
+                {ready.map((run, index) => {
+                  const name = planDisplayName(run.plan, tPlans)
+                  return (
+                    <th
+                      key={run.plan.id}
+                      className="ds-num"
+                      style={
+                        index > 0
+                          ? { color: ALT_COLORS[(index - 1) % ALT_COLORS.length] }
+                          : undefined
+                      }
+                    >
+                      <span className="compare-col-head">
+                        <span>{name}</span>
+                        <button
+                          type="button"
+                          className="ws-link-button compare-edit-plan"
+                          data-testid={`compare-edit-plan-${run.plan.id}`}
+                          aria-label={t('editPlanAria', { name })}
+                          onClick={() => handleEditPlan(run.plan.id)}
+                        >
+                          {t('editPlan')}
+                        </button>
+                      </span>
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
@@ -684,6 +724,17 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
           </div>
         </div>
       </div>
+      <PlanSwitchGuard
+        pendingPlanId={pendingEditPlanId}
+        activeName={activeName}
+        onDone={() => {
+          const targetId = pendingEditPlanId
+          setPendingEditPlanId(null)
+          if (targetId && useSimulationStore.getState().activePlanId === targetId) {
+            onOpenPlanEditor()
+          }
+        }}
+      />
     </div>
   )
 }

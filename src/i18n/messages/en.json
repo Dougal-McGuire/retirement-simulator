@@ -455,6 +455,13 @@
         "expense": "Expense",
         "pension": "Pension"
       },
+      "filter": {
+        "label": "Filter cash flows by type",
+        "all": "All ({count})",
+        "expense": "Expenses ({count})",
+        "income": "Income ({count})",
+        "pension": "Pensions ({count})"
+      },
       "frequency": {
         "monthly": "Monthly",
         "annual": "Annual",
@@ -660,6 +667,8 @@
       "exit": "Exit compare",
       "changedRows": "Changed rows highlighted",
       "openEditor": "Edit assumptions →",
+      "editPlan": "Edit",
+      "editPlanAria": "Switch to {name} and edit",
       "perMonth": "{amount}/mo",
       "pensionFrom": "{amount}/mo from {age}",
       "flow": {
@@ -717,7 +726,20 @@
     "tools": {
       "button": "Menu",
       "title": "Settings",
-      "description": "Change language, account or appearance."
+      "description": "Change language, account or appearance.",
+      "shortcuts": {
+        "title": "Keyboard shortcuts",
+        "save": "Save changes",
+        "rename": "Rename active plan (when plan button is focused)",
+        "switchPane": "Switch between results and assumptions",
+        "recalculate": "Recalculate simulation",
+        "escape": "Return focus from assumptions"
+      },
+      "version": {
+        "label": "Version",
+        "unknownCommit": "local",
+        "deployed": "Deployed {date}"
+      }
     }
   },
   "parameterControls": {
@@ -946,6 +968,7 @@
       },
       "inflationVolatility": {
         "label": "Inflation Volatility",
+        "summary": "Inflation volatility ({value})",
         "tooltip": "How much inflation varies year-to-year. Historical range: 0.5-1.5%. Higher volatility creates more uncertainty in retirement costs."
       },
       "simulationRuns": {
@@ -1228,7 +1251,8 @@
       "active": "Active",
       "successRate": "{rate} success",
       "notSimulated": "Not simulated yet",
-      "modified": "Modified"
+      "modified": "Modified",
+      "allPlans": "All plans"
     },
     "defaultNames": {
       "base": "Base plan",
@@ -1730,7 +1754,13 @@
       "quickSample": "Quick comparison on {paths, number} shared market paths.",
       "finalSample": "Detailed comparison on {paths, number} shared market paths.",
       "historicalSample": "Comparison across all {paths, number} historical start years.",
-      "interval": "At age {age}, the 95% Monte Carlo interval for success at the target budget is {low}–{high}."
+      "interval": "At age {age}, the 95% Monte Carlo interval for success at the target budget is {low}–{high}.",
+      "applyEarliest": "Set retirement age to {age}",
+      "action": "Action",
+      "apply": "Apply",
+      "applyAria": "Set retirement age to {age}",
+      "current": "Current",
+      "appliedToast": "Retirement age set to {age}."
     },
     "shortfalls": {
       "title": "Explore spending shortfalls",
@@ -1742,6 +1772,7 @@
       "duration": "Years with a gap",
       "atHorizon": "At age {age}, {count, number} of the {affected, number} affected paths still had a gap. The simulation ends at that age.",
       "bequest": "In {count, number} of {total, number} paths, spending was funded in every year but the final balance fell short of the {target} bequest goal in today’s euros.",
+      "seeLevers": "See what improves this",
       "lifestyleHeading": "Everyday spending in retirement",
       "lifestyleFunded": "Of these paths, {count, number} funded the planned spending in every year.",
       "lifestyleCount": "In {count, number} of {total, number} paths, funded everyday spending fell below your {target} monthly minimum in today’s euros after allowing for scheduled expenses.",
@@ -1812,6 +1843,8 @@
       "saveAsNew": "Save as a variant …",
       "saveMenu": "Save",
       "saveMore": "More ways to save",
+      "saveTitle": "Save changes (Ctrl/⌘+S)",
+      "compare": "Compare",
       "pdf": "PDF"
     },
     "verdict": {
@@ -1870,6 +1903,7 @@
       "firstDraw": "Mean gross withdrawal in retirement year one · nominal",
       "firstDrawHint": "Average portfolio withdrawal in the first year of retirement, gross. Goes to the Withdrawal section.",
       "badCase": "in a bad run",
+      "badCaseHint": "Open shortfall details",
       "firstDrawReal": "Mean gross withdrawal in retirement year one · today’s €"
     },
     "dock": {
@@ -1925,6 +1959,10 @@
         "count": "{count, plural, =0 {No items yet} one {# item} other {# items}}",
         "allOn": "all on",
         "off": "{count} off"
+      },
+      "pristine": {
+        "cta": "Using example figures — enter yours in 2 minutes",
+        "dismiss": "Dismiss setup hint"
       }
     },
     "changes": {
@@ -1936,6 +1974,7 @@
       "flowRemoved": "{name} removed",
       "flowAmount": "{name} {from} → {to}",
       "flowChanged": "{name} changed",
+      "jump": "Jump to setting: {change}",
       "revert": "Take back this change: {change}",
       "more": "+{count}",
       "less": "Show fewer",

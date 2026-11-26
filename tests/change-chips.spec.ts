@@ -119,6 +119,19 @@ test.describe('change chips', () => {
     expect((await readPersistedState(page))?.draft).toBeNull()
   })
 
+  test('clicking a change chip opens its group and focuses the changed input', async ({ page }) => {
+    await gotoWorkspace(page)
+    await setAnnualSavings(page, '25000')
+    // Close the savings group, then click the savings chip to jump back directly.
+    await page.getByTestId('edit-savings').click()
+    await expect(page.getByTestId('edit-savings')).toHaveAttribute('aria-expanded', 'false')
+
+    const chip = page.locator('[data-testid="change-chip"][data-change="field:annualSavings"]')
+    await chip.getByTestId('change-jump').click()
+    await expect(page.getByTestId('edit-savings')).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.locator('#editor-annualSavings')).toBeFocused()
+  })
+
   test('✕ on a changed expense restores the plan expense streams exactly', async ({ page }) => {
     await gotoWorkspace(page)
     await openPanel(page, 'flows')

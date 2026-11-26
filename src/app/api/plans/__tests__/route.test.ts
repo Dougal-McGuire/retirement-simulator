@@ -286,6 +286,27 @@ describe('signed-in requests', () => {
     expect(global.fetch).not.toHaveBeenCalled()
   })
 
+  it('returns 400 when reading the PUT body stream fails', async () => {
+    const { PUT } = await loadRoute()
+    const failingStream = new ReadableStream({
+      start(controller) {
+        controller.error(new Error('stream aborted'))
+      },
+    })
+    const request = {
+      headers: new Headers({
+        'Content-Type': 'application/json',
+        ...schemaHeader(PLAN_SCHEMA_VERSION),
+        [PLAN_REV_HEADER]: '0',
+      }),
+      body: failingStream,
+    } as unknown as Request
+
+    const response = await PUT(request)
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: 'invalid-json' })
+  })
+
   it('reports a failed write as 502 rather than pretending it stored', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('redis down')) as unknown as typeof fetch
 

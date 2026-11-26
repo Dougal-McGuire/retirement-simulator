@@ -137,7 +137,37 @@ const HeadNumbers = memo(function HeadNumbers() {
         </div>
         <div className="ws-head-fact-quiet" data-fact="bad">
           <dt>{t('head.badCase')}</dt>
-          <dd>{kpis ? money.compact(kpis.p10EndWealth) : '—'}</dd>
+          <dd>
+            {kpis ? (
+              results?.shortfallDetails ? (
+                <button
+                  type="button"
+                  className="ws-link-button"
+                  data-testid="bad-case-link"
+                  title={t('head.badCaseHint')}
+                  onClick={() => {
+                    const details = document.querySelector<HTMLDetailsElement>(
+                      '[data-testid="shortfall-details"]'
+                    )
+                    if (!details) return
+                    details.open = true
+                    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+                    details.scrollIntoView({
+                      block: 'nearest',
+                      behavior: reduce ? 'auto' : 'smooth',
+                    })
+                    details.querySelector<HTMLElement>('summary')?.focus({ preventScroll: true })
+                  }}
+                >
+                  {money.compact(kpis.p10EndWealth)}
+                </button>
+              ) : (
+                money.compact(kpis.p10EndWealth)
+              )
+            ) : (
+              '—'
+            )}
+          </dd>
         </div>
       </dl>
     </>

@@ -1,6 +1,34 @@
+import { execFileSync } from 'node:child_process'
 import { existsSync, writeFileSync } from 'node:fs'
 import type { NextConfig } from 'next'
 import createNextIntlPlugin from 'next-intl/plugin'
+
+const RELEASE_TAG_PATTERN = /^\d{4}\.\d{2}\.\d+$/
+
+function readGit(args: string[]): string {
+  try {
+    return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+  } catch {
+    return ''
+  }
+}
+
+function resolveReleaseTag(): string {
+  const tags = readGit(['tag', '--points-at', 'HEAD'])
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((tag) => RELEASE_TAG_PATTERN.test(tag))
+  return tags.length === 1 ? tags[0] : ''
+}
+
+const buildId =
+  process.env.NEXT_PUBLIC_BUILD_ID ||
+  process.env.VERCEL_GIT_COMMIT_SHA ||
+  process.env.GITHUB_SHA ||
+  ''
+const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || resolveReleaseTag() || 'dev'
+const gitCommit = process.env.NEXT_PUBLIC_GIT_COMMIT || buildId || readGit(['rev-parse', 'HEAD'])
+const deployedAt = process.env.NEXT_PUBLIC_DEPLOYED_AT || new Date().toISOString()
 
 const altDistDir = process.env.NEXT_DIST_DIR
 
@@ -73,11 +101,10 @@ const nextConfig: NextConfig = {
   // VERCEL_GIT_COMMIT_SHA does not exist: it sets NEXT_PUBLIC_BUILD_ID, and
   // GITHUB_SHA is the fallback for any other Actions build.
   env: {
-    NEXT_PUBLIC_BUILD_ID:
-      process.env.NEXT_PUBLIC_BUILD_ID ||
-      process.env.VERCEL_GIT_COMMIT_SHA ||
-      process.env.GITHUB_SHA ||
-      '',
+    NEXT_PUBLIC_BUILD_ID: buildId,
+    NEXT_PUBLIC_APP_VERSION: appVersion,
+    NEXT_PUBLIC_GIT_COMMIT: gitCommit,
+    NEXT_PUBLIC_DEPLOYED_AT: deployedAt,
   },
   poweredByHeader: false,
   async headers() {

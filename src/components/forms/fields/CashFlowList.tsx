@@ -275,6 +275,31 @@ export function CashFlowList({
   )
   const orderedFlows = useMemo(() => groupedFlows.flatMap((group) => group.flows), [groupedFlows])
 
+  const [kindFilter, setKindFilter] = useState<'all' | CashFlowKind>('all')
+  const kindCounts = useMemo(() => {
+    const counts = { expense: 0, income: 0, pension: 0 }
+    for (const flow of safeFlows) counts[flow.kind] += 1
+    return counts
+  }, [safeFlows])
+  const presentKinds = useMemo(
+    () =>
+      (['expense', 'income', 'pension'] as const).filter((kind) => kindCounts[kind] > 0),
+    [kindCounts]
+  )
+  const effectiveKindFilter: 'all' | CashFlowKind =
+    kindFilter !== 'all' && kindCounts[kindFilter] === 0 ? 'all' : kindFilter
+  const filteredGroups = useMemo(() => {
+    if (effectiveKindFilter === 'all') return groupedFlows
+    return groupedFlows
+      .map((group) => ({
+        ...group,
+        flows: group.flows.filter(
+          (flow) => flow.kind === effectiveKindFilter || flow.id === editingId
+        ),
+      }))
+      .filter((group) => group.flows.length > 0)
+  }, [groupedFlows, effectiveKindFilter, editingId])
+
   // A switched-off flow stays in the list but in no total.
   const switchedOffCount = useMemo(
     () => safeFlows.filter((flow) => !isCashFlowEnabled(flow)).length,
@@ -434,8 +459,10 @@ export function CashFlowList({
   }
 
   const handleAdd = () => {
+    const addedKind = draft.kind
     if (!submitDraft(draft)) return
-    setDraft(emptyDraft(draft.kind))
+    setDraft(emptyDraft(addedKind))
+    if (kindFilter !== 'all' && kindFilter !== addedKind) setKindFilter('all')
     if (!column) return
     // The form folds away and the new row answers: scrolled into view in the
     // column (never the window), flashed, its switch focused.
@@ -472,6 +499,7 @@ export function CashFlowList({
     }
 
     onChange([...previous, flow])
+    if (kindFilter !== 'all' && kindFilter !== template.kind) setKindFilter('all')
     setEditDraft(draftFromFlow(flow, editAmountField.format, flow.name, legalRetirementAge))
     setEditingId(flow.id)
 
@@ -1120,6 +1148,47 @@ export function CashFlowList({
     </div>
   )
 
+  const filterBar = safeFlows.length >= 6 && presentKinds.length >= 2 && (
+    <div
+      className="flex flex-wrap items-center gap-1.5"
+      role="group"
+      aria-label={t('filter.label')}
+      data-testid="cashflow-filter"
+    >
+      <button
+        type="button"
+        aria-pressed={effectiveKindFilter === 'all'}
+        data-testid="cashflow-filter-all"
+        onClick={() => setKindFilter('all')}
+        className={cn(
+          'rounded-sm inline-flex min-h-9 items-center gap-1 border px-2.5 py-1 text-xs font-semibold transition-colors',
+          effectiveKindFilter === 'all'
+            ? 'border-accent bg-muted text-ink'
+            : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-ink'
+        )}
+      >
+        {t('filter.all', { count: safeFlows.length })}
+      </button>
+      {presentKinds.map((kind) => (
+        <button
+          key={kind}
+          type="button"
+          aria-pressed={effectiveKindFilter === kind}
+          data-testid={`cashflow-filter-${kind}`}
+          onClick={() => setKindFilter(kind)}
+          className={cn(
+            'rounded-sm inline-flex min-h-9 items-center gap-1 border px-2.5 py-1 text-xs font-semibold transition-colors',
+            effectiveKindFilter === kind
+              ? 'border-accent bg-muted text-ink'
+              : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-ink'
+          )}
+        >
+          {t(`filter.${kind}`, { count: kindCounts[kind] })}
+        </button>
+      ))}
+    </div>
+  )
+
   // Compact rows below 36rem (the control column, phones): name and signed
   // amount on one line, period and details under it, the note on one clipped
   // line. From 36rem (the setup wizard) period and amount get their own
@@ -1150,7 +1219,7 @@ export function CashFlowList({
             </th>
           </tr>
         </thead>
-        {groupedFlows.map((group) => {
+        {filteredGroups.map((group) => {
           const groupOff = group.flows.filter((flow) => !isCashFlowEnabled(flow)).length
           return (
             <tbody key={group.key} className="divide-y divide-border border-t border-border">
@@ -1464,6 +1533,7 @@ export function CashFlowList({
             {templatePicker}
           </div>
         )}
+        {filterBar}
         {table}
         {timeline && (
           <details className="ws-disclosure">
@@ -1489,6 +1559,7 @@ export function CashFlowList({
       )}
 
       {timeline}
+      {filterBar}
       {table}
       {templatePicker}
 

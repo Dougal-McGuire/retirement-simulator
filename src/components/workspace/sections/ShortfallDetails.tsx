@@ -42,7 +42,7 @@ function TypicalShortfall({ summary, endAge }: { summary: ShortfallSummary; endA
 export function ShortfallDetails() {
   const t = useTranslations('workspace.shortfalls')
   const money = useMoney()
-  const { openEditor } = useWorkspace()
+  const { openEditor, scrollToSection } = useWorkspace()
   const results = useUsableResults()
   const details = results?.shortfallDetails
   if (!results || !details) return null
@@ -70,6 +70,16 @@ export function ShortfallDetails() {
                 target: money.full(legacyTargetReal),
               })}
             </p>
+          )}
+          {funding.affectedPaths > 0 && (
+            <button
+              type="button"
+              className="ws-text-link"
+              data-testid="shortfall-to-levers"
+              onClick={() => scrollToSection('levers', { focus: true })}
+            >
+              {t('seeLevers')} <ArrowRight size={14} aria-hidden="true" />
+            </button>
           )}
         </section>
         <section aria-labelledby="lifestyle-shortfall-heading">

@@ -237,11 +237,10 @@ export async function PUT(request: Request) {
   const conflict = checkClientVersion(request)
   if (conflict) return conflict
 
-  const rawBody = await readBoundedText(request, MAX_REQUEST_BYTES)
-  if (rawBody === null) return json({ error: 'too-large' }, 413)
-
   let body: unknown
   try {
+    const rawBody = await readBoundedText(request, MAX_REQUEST_BYTES)
+    if (rawBody === null) return json({ error: 'too-large' }, 413)
     body = JSON.parse(rawBody)
   } catch {
     return json({ error: 'invalid-json' }, 400)
