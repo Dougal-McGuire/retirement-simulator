@@ -668,7 +668,7 @@
       "changedRows": "Geänderte Zeilen hervorgehoben",
       "openEditor": "Annahmen bearbeiten →",
       "editPlan": "Bearbeiten",
-      "editPlanAria": "Zu „{name}“ wechseln und bearbeiten",
+      "editPlanAria": "Bearbeiten: {name}",
       "perMonth": "{amount}/Mon.",
       "pensionFrom": "{amount}/Mon. ab {age}",
       "flow": {

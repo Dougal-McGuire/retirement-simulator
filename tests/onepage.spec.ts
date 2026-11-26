@@ -733,7 +733,7 @@ test('deep links: the withdrawal fact, the savings pointer and the market pointe
   await expect(page.getByTestId('withdrawal-strategy-picker')).toBeVisible()
 
   // The head's fact "first withdrawal" leads to the Entnahme outcome.
-  await page.getByTestId('kpi-strip').getByRole('button').click()
+  await page.getByTestId('kpi-strip').locator('[data-fact="draw"]').getByRole('button').click()
   await expect(sectionHeading(page, 'withdrawal')).toBeFocused()
   await waitForScrollSettled(page)
   await expect(sectionHeading(page, 'withdrawal')).toBeInViewport()

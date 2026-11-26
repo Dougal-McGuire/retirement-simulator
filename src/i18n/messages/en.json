@@ -668,7 +668,7 @@
       "changedRows": "Changed rows highlighted",
       "openEditor": "Edit assumptions →",
       "editPlan": "Edit",
-      "editPlanAria": "Switch to {name} and edit",
+      "editPlanAria": "Edit: {name}",
       "perMonth": "{amount}/mo",
       "pensionFrom": "{amount}/mo from {age}",
       "flow": {

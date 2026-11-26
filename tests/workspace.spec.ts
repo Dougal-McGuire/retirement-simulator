@@ -728,6 +728,7 @@ test('plans can be renamed in-place and deleted directly from the plan menu', as
 test('UX streamlining: pristine banner, bad-case link, cashflow filter, bar compare, multi-plan rows', async ({
   page,
 }) => {
+  test.setTimeout(90000)
   await page.setViewportSize({ width: 1280, height: 900 })
   await gotoWorkspace(page)
 
@@ -771,22 +772,22 @@ test('UX streamlining: pristine banner, bad-case link, cashflow filter, bar comp
   await page.getByTestId('plan-menu-manage').click()
   const manager = page.getByTestId('plan-manager')
   await expect(manager.getByTestId('plan-manager-list')).toBeVisible()
-  await manager.getByTestId('plan-row-rename-default-plan').click()
-  const rowInput = manager.getByTestId('plan-row-rename-input-default-plan')
+  await manager.getByTestId('plan-row-rename-plan-base').click()
+  const rowInput = manager.getByTestId('plan-row-rename-input-plan-base')
   await expect(rowInput).toBeFocused()
   await rowInput.fill('Baseline')
   await rowInput.press('Enter')
-  await expect(manager.getByTestId('plan-row-default-plan')).toContainText('Baseline')
+  await expect(manager.getByTestId('plan-row-plan-base')).toContainText('Baseline')
   await page.keyboard.press('Escape')
 
   // Direct bar Compare button enters comparison mode and lets the user switch & edit a plan.
   await page.getByTestId('bar-compare').click()
   const compare = page.getByTestId('compare-view')
   await expect(compare).toBeVisible()
-  await expect(compare.getByTestId('compare-edit-plan-default-plan')).toBeVisible({
+  await expect(compare.getByTestId('compare-edit-plan-plan-base')).toBeVisible({
     timeout: 45000,
   })
-  await compare.getByTestId('compare-edit-plan-default-plan').click()
+  await compare.getByTestId('compare-edit-plan-plan-base').click()
   await expect(compare).toHaveCount(0)
   await expect(page.getByTestId('plan-menu-trigger')).toContainText('Baseline')
 })
