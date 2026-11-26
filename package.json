@@ -74,7 +74,7 @@
     "prettier": "^3.8.1",
     "tailwindcss": "^4.3.5",
     "ts-jest": "^29.4.15",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "packageManager": "pnpm@10.15.1"
 }
