@@ -1,18 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { Check, Copy, FolderOpen, Pencil, Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { Check, Copy, FolderOpen, Pencil, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
-import { MAX_PLANS, type Plan, type SimulationParams } from '@/types'
+import { MAX_PLANS } from '@/types'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -20,16 +13,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { PlanDeleteDialog } from '@/components/plans/PlanDeleteDialog'
 import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
 import { PlanSwitchGuard } from '@/components/plans/PlanSwitchGuard'
+import { deletePlanWithUndo } from '@/components/plans/planDeleteUndo'
 import { planDisplayName } from '@/lib/plans/planName'
 import { suggestDuplicateName } from '@/lib/stores/plans'
 import { toast } from '@/components/ui/toast'
-import { showActionToast } from '@/components/ui/action-toast'
 import {
   useActivePlanId,
   useCreatePlan,
-  useDeletePlan,
   useDuplicatePlan,
   usePlanIsDirty,
   usePlanSuccessRates,
@@ -38,7 +31,6 @@ import {
   useRevertPlanDraft,
   useSavePlanDraft,
   useSetActivePlan,
-  useSimulationStore,
 } from '@/lib/stores/simulationStore'
 import { cn } from '@/lib/utils'
 
@@ -63,7 +55,6 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
   const createPlan = useCreatePlan()
   const renamePlan = useRenamePlan()
   const duplicatePlan = useDuplicatePlan()
-  const deletePlan = useDeletePlan()
   const isDirty = usePlanIsDirty()
   const savePlanDraft = useSavePlanDraft()
   const revertPlanDraft = useRevertPlanDraft()
@@ -71,9 +62,32 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
 
   const [newOpen, setNewOpen] = useState(false)
   const [duplicateOpen, setDuplicateOpen] = useState(false)
-  const [renameOpen, setRenameOpen] = useState(false)
+  const [renaming, setRenaming] = useState(false)
+  const [renameDraft, setRenameDraft] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const renameButtonRef = useRef<HTMLButtonElement>(null)
+  const refocusRenameBtn = useRef(false)
+
+  useEffect(() => {
+    if (renaming) {
+      const input = renameInputRef.current
+      if (input) {
+        input.focus()
+        input.select()
+      }
+      return
+    }
+    if (refocusRenameBtn.current) {
+      refocusRenameBtn.current = false
+      renameButtonRef.current?.focus()
+    }
+  }, [renaming])
+
+  useEffect(() => {
+    setRenaming(false)
+  }, [activePlanId])
 
   const activePlan = useMemo(
     () => plans.find((plan) => plan.id === activePlanId) ?? plans[0],
@@ -117,39 +131,23 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
     toast.success(t('dirty.revertedToast', { name: activeName }))
   }
 
-  const restorePlan = (name: string, params: SimulationParams) => {
-    // The undo toast outlives the delete by seconds, and the user keeps
-    // working: by now there may be unsaved edits on the plan that took over.
-    // Activating the restored plan would drop them, so it then comes back in
-    // the background. Read from the store — this closure is as old as the toast.
-    const current = useSimulationStore.getState()
-    const editing = current.isDirty
-      ? current.plans.find((plan) => plan.id === current.activePlanId)
-      : undefined
-
-    const restoredId = createPlan(name, params, { activate: !editing })
-    if (!restoredId) toast.error(t('deleted.restoreFailed'))
-    else if (editing)
-      toast.success(
-        t('deleted.restoredInBackground', { name, active: planDisplayName(editing, t) })
-      )
-    else toast.success(t('deleted.restored', { name }))
+  const startInlineRename = () => {
+    setRenameDraft(activeName)
+    setRenaming(true)
   }
 
-  const handleDelete = (plan: Plan) => {
-    const name = planDisplayName(plan, t)
-    const params = plan.params
-    deletePlan(plan.id)
-    setDeleteOpen(false)
-    showActionToast({
-      testId: 'plan-deleted-toast',
-      message: t('deleted.toast', { name }),
-      undo: {
-        label: t('actions.undo'),
-        testId: 'plan-deleted-toast-undo',
-        run: () => restorePlan(name, params),
-      },
-    })
+  const commitInlineRename = (event?: FormEvent) => {
+    event?.preventDefault()
+    const trimmed = renameDraft.trim()
+    if (!trimmed) return
+    if (trimmed !== activeName) renamePlan(activePlan.id, trimmed)
+    refocusRenameBtn.current = true
+    setRenaming(false)
+  }
+
+  const cancelInlineRename = () => {
+    refocusRenameBtn.current = true
+    setRenaming(false)
   }
 
   return (
@@ -189,45 +187,94 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Select value={activePlan.id} onValueChange={requestSwitch}>
-          <SelectTrigger
-            size="sm"
-            aria-label={t('switcher.ariaLabel')}
-            data-testid="plan-switcher-select"
-            className="h-10 w-full min-w-0 flex-1 text-xs"
+        {renaming ? (
+          <form
+            className="flex items-center gap-1.5"
+            data-testid="plan-switcher-inline-rename"
+            onSubmit={commitInlineRename}
           >
-            <SelectValue placeholder={activeName}>{activeName}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {plans.map((plan) => {
-              const rate = successRates[plan.id]
-              const isActive = plan.id === activePlan.id
-              return (
-                <SelectItem key={plan.id} value={plan.id}>
-                  <span className="flex w-full min-w-[14rem] items-center justify-between gap-3">
-                    <span className="flex flex-col text-left">
-                      <span className="text-xs font-semibold  ">{planDisplayName(plan, t)}</span>
-                      <span className="text-xs font-semibold   text-muted-foreground">
-                        {/* A cached rate describes the *stored* plan, so it is
-                            not shown while unsaved edits are on top of it. */}
-                        {isActive && isDirty
-                          ? t('dirty.badge')
-                          : typeof rate === 'number'
-                            ? t('switcher.successRate', { rate: formatRate(rate) })
-                            : t('switcher.notSimulated')}
+            <Input
+              ref={renameInputRef}
+              id="plan-rename-name"
+              value={renameDraft}
+              maxLength={60}
+              aria-label={t('dialogs.rename.label')}
+              placeholder={t('dialogs.rename.placeholder')}
+              onChange={(event) => setRenameDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  cancelInlineRename()
+                }
+              }}
+              className="rounded-sm h-10 flex-1 border border-border bg-card px-3 text-xs font-semibold"
+            />
+            <Button
+              type="submit"
+              size="sm"
+              className="h-10 px-3"
+              disabled={!renameDraft.trim()}
+              aria-label={t('actions.save')}
+              data-testid="plan-rename-save"
+            >
+              <Check className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-10 px-3"
+              aria-label={t('actions.cancel')}
+              data-testid="plan-rename-cancel"
+              onClick={cancelInlineRename}
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </form>
+        ) : (
+          <Select value={activePlan.id} onValueChange={requestSwitch}>
+            <SelectTrigger
+              size="sm"
+              aria-label={t('switcher.ariaLabel')}
+              data-testid="plan-switcher-select"
+              className="h-10 w-full min-w-0 flex-1 text-xs"
+            >
+              <SelectValue placeholder={activeName}>{activeName}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {plans.map((plan) => {
+                const rate = successRates[plan.id]
+                const isActive = plan.id === activePlan.id
+                return (
+                  <SelectItem key={plan.id} value={plan.id}>
+                    <span className="flex w-full min-w-[14rem] items-center justify-between gap-3">
+                      <span className="flex flex-col text-left">
+                        <span className="text-xs font-semibold  ">
+                          {planDisplayName(plan, t)}
+                        </span>
+                        <span className="text-xs font-semibold   text-muted-foreground">
+                          {/* A cached rate describes the *stored* plan, so it is
+                              not shown while unsaved edits are on top of it. */}
+                          {isActive && isDirty
+                            ? t('dirty.badge')
+                            : typeof rate === 'number'
+                              ? t('switcher.successRate', { rate: formatRate(rate) })
+                              : t('switcher.notSimulated')}
+                        </span>
                       </span>
+                      {isActive && (
+                        <span className="rounded-sm border border-border bg-accent/10 px-1.5 py-0.5 text-xs font-semibold   text-accent">
+                          {isDirty ? t('switcher.modified') : t('switcher.active')}
+                        </span>
+                      )}
                     </span>
-                    {isActive && (
-                      <span className="rounded-sm border border-border bg-accent/10 px-1.5 py-0.5 text-xs font-semibold   text-accent">
-                        {isDirty ? t('switcher.modified') : t('switcher.active')}
-                      </span>
-                    )}
-                  </span>
-                </SelectItem>
-              )
-            })}
-          </SelectContent>
-        </Select>
+                  </SelectItem>
+                )
+              })}
+            </SelectContent>
+          </Select>
+        )}
 
         {/* Every action carries a visible label: four bare icons (pencil,
             copy, bin) made users guess, and a tooltip is invisible on touch.
@@ -246,10 +293,11 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
             <span className="ml-1.5">{t('actions.new')}</span>
           </Button>
           <Button
+            ref={renameButtonRef}
             variant="ghost"
             size="sm"
             className="h-10 w-full px-3 sm:w-auto"
-            onClick={() => setRenameOpen(true)}
+            onClick={startInlineRename}
             data-testid="plan-rename"
           >
             <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -349,42 +397,12 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
         }}
       />
 
-      <PlanNameDialog
-        open={renameOpen}
-        onOpenChange={setRenameOpen}
-        inputId="plan-rename-name"
-        initialName={activeName}
-        title={t('dialogs.rename.title')}
-        description={t('dialogs.rename.description')}
-        label={t('dialogs.rename.label')}
-        placeholder={t('dialogs.rename.placeholder')}
-        confirmLabel={t('actions.save')}
-        onConfirm={(name) => renamePlan(activePlan.id, name)}
+      <PlanDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        planName={activeName}
+        onConfirm={() => deletePlanWithUndo(activePlan, t)}
       />
-
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="bg-card sm:max-w-[28rem]">
-          <DialogHeader>
-            <DialogTitle>{t('dialogs.delete.title')}</DialogTitle>
-            <DialogDescription>
-              {t('dialogs.delete.description', { name: activeName })}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setDeleteOpen(false)}>
-              {t('actions.cancel')}
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              data-testid="plan-delete-confirm"
-              onClick={() => handleDelete(activePlan)}
-            >
-              {t('actions.confirmDelete')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Switching plans with unsaved work asks first — the working copy is the
           only place those edits exist. */}

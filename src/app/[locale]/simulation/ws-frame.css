@@ -132,6 +132,8 @@
   :is(
     .workspace-button,
     .workspace-plan-trigger,
+    .workspace-plan-inline-input,
+    .workspace-plan-inline-btn,
     [data-testid='dashboard-tools'],
     .ws-bar-report-button
   ) {

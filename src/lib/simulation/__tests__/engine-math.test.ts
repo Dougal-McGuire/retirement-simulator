@@ -1,6 +1,5 @@
 import {
   computeGrossWithdrawal,
-  lognormalParamsFromArithmetic,
   sampleLognormalFactorFromArithmetic,
   runMonteCarloSimulation,
 } from '../engine'

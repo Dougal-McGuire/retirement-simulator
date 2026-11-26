@@ -97,6 +97,24 @@ describe('buildDraftChanges', () => {
     expect(change.revert(toggled)).toEqual({ glidePathEnabled: saved.glidePathEnabled })
   })
 
+  it('tracks oneOffIncomeTiming changes and reverts them cleanly', () => {
+    const nextTiming: SimulationParams['oneOffIncomeTiming'] =
+      saved.oneOffIncomeTiming === 'bookingAge' ? 'yearEnd' : 'bookingAge'
+    const draft = { ...saved, oneOffIncomeTiming: nextTiming }
+    const [change, ...rest] = buildDraftChanges(saved, draft)
+    expect(rest).toEqual([])
+    expect(change).toMatchObject({
+      type: 'field',
+      id: 'field:oneOffIncomeTiming',
+      group: 'flows',
+      key: 'oneOffIncomeTiming',
+      kind: 'oneOffIncomeTiming',
+      from: saved.oneOffIncomeTiming,
+      to: nextTiming,
+    })
+    expect(buildDraftChanges(saved, takeBack(draft, change))).toEqual([])
+  })
+
   it('does not report the projections of the flow list as fields of their own', () => {
     // `customExpenses`, `oneTimeIncomes` and `monthlyPension` are rewritten
     // from `cashFlows` on every edit: a changed expense is one change, not two.

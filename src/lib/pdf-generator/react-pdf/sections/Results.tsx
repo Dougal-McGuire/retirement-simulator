@@ -1,4 +1,3 @@
-import React from 'react'
 import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
 import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
@@ -129,6 +128,17 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
       note: isGerman ? 'Sparleistung / Jahresbudget' : 'annual savings / annual budget',
     },
   ]
+
+  const fundingShortfall = projections.shortfallDetails?.funding
+  const fundingShortfallNote =
+    fundingShortfall &&
+    fundingShortfall.affectedPaths > 0 &&
+    fundingShortfall.medianFirstAge !== null &&
+    fundingShortfall.medianMonthlyGapReal !== null
+      ? isGerman
+        ? ` Median betroffener Läufe: ab Alter ${fmtNumber(fundingShortfall.medianFirstAge, { locale })}, rund ${fmtCurrency(fundingShortfall.medianMonthlyGapReal, locale)}/Mon. real.`
+        : ` Median across affected runs: from age ${fmtNumber(fundingShortfall.medianFirstAge, { locale })}, about ${fmtCurrency(fundingShortfall.medianMonthlyGapReal, locale)}/mo real.`
+      : ''
 
   return (
     <View>
@@ -321,8 +331,8 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
                   runs has reached it. Not "the P10 balance is zero". */}
               <Text style={{ fontSize: 8.5, color: tokens.colors.ink[700], lineHeight: 1.5 }}>
                 {isGerman
-                  ? `Im schwächsten Zehntel der Läufe reichen Depot und Einnahmen spätestens im Alter ${fmtNumber(projections.exhaustionAge, { locale })} erstmals nicht mehr für die Ausgaben. Die Handlungsempfehlungen in Abschnitt 05 adressieren dieses Risiko.`
-                  : `In the weakest tenth of runs, portfolio and income first fail to cover a year's spending by age ${fmtNumber(projections.exhaustionAge, { locale })}. The recommended actions in section 05 address this risk.`}
+                  ? `Im schwächsten Zehntel der Läufe reichen Depot und Einnahmen spätestens im Alter ${fmtNumber(projections.exhaustionAge, { locale })} erstmals nicht mehr für die Ausgaben.${fundingShortfallNote} Die Handlungsempfehlungen in Abschnitt 05 adressieren dieses Risiko.`
+                  : `In the weakest tenth of runs, portfolio and income first fail to cover a year's spending by age ${fmtNumber(projections.exhaustionAge, { locale })}.${fundingShortfallNote} The recommended actions in section 05 address this risk.`}
               </Text>
             </View>
           ) : (
@@ -349,7 +359,7 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
                 {isGerman
                   ? `In mehr als neun von zehn Läufen sind die Ausgaben bis Alter ${fmtNumber(person.horizonAge, { locale })} in jedem Jahr gedeckt. ${
                       simulation.depletionRisk > 0.0005
-                        ? `Das heißt nicht, dass kein Lauf scheitert: In ${fmtPercent(simulation.depletionRisk, 1, locale)} der Läufe reichen Depot und Einnahmen in mindestens einem Jahr nicht.`
+                        ? `Das heißt nicht, dass kein Lauf scheitert: In ${fmtPercent(simulation.depletionRisk, 1, locale)} der Läufe reichen Depot und Einnahmen in mindestens einem Jahr nicht.${fundingShortfallNote}`
                         : 'In keinem einzigen Lauf entsteht eine Deckungslücke.'
                     }${
                       projections.portfolioEmptyAge !== undefined
@@ -358,7 +368,7 @@ export function Results({ content, sectionNumber = '03' }: ResultsProps) {
                     }`
                   : `In more than nine runs in ten, every year's spending to age ${fmtNumber(person.horizonAge, { locale })} is funded. ${
                       simulation.depletionRisk > 0.0005
-                        ? `That is not the same as no run failing: in ${fmtPercent(simulation.depletionRisk, 1, locale)} of runs portfolio and income fall short in at least one year.`
+                        ? `That is not the same as no run failing: in ${fmtPercent(simulation.depletionRisk, 1, locale)} of runs portfolio and income fall short in at least one year.${fundingShortfallNote}`
                         : 'Not a single run has a year that goes short.'
                     }${
                       projections.portfolioEmptyAge !== undefined

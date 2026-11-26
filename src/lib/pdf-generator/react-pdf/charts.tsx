@@ -1,4 +1,3 @@
-import React from 'react'
 import { View, Svg, Path, Line, Text as SvgText, G, Rect } from '@react-pdf/renderer'
 import { tokens } from './styles'
 import { fmtCompactCurrency, fmtCurrency } from '@/lib/pdf-generator/formatters'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useFormatter, useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { buildFanGeometry, FAN_H, FAN_W } from './fanGeometry'
 import {
   clampChartRange,
@@ -32,8 +32,6 @@ export function CompareFanChart({ series }: CompareFanChartProps) {
   const tAssets = useTranslations('assetsChart')
   const tTable = useTranslations('simulationChart.assetTable')
   const tUi = useTranslations('ui')
-  const format = useFormatter()
-  const locale = useLocale()
   const base = series.find((entry) => entry.base) ?? series[0]
   const length = base?.ages.length ?? 0
   const [range, setRange] = useState<ChartIndexRange>({

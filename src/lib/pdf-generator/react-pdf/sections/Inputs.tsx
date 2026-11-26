@@ -1,4 +1,3 @@
-import React from 'react'
 import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'
 import { SectionHeader, Table, TableRow, TableCell } from '../primitives'
@@ -123,6 +122,12 @@ export function Inputs({ content, sectionNumber = '02' }: InputsProps) {
     marketRows.push({
       label: isGerman ? 'Nachlassziel (heutige Kaufkraft)' : "Legacy goal (today's euros)",
       value: fmtCurrency(assumptions.legacyTargetReal, locale),
+    })
+  }
+  if (assumptions.lifestyleFloorMonthlyReal > 0) {
+    marketRows.push({
+      label: isGerman ? 'Monatsminimum für den Alltag' : 'Monthly lifestyle minimum',
+      value: `${fmtCurrency(assumptions.lifestyleFloorMonthlyReal, locale)}${isGerman ? '/Mon.' : '/mo'}`,
     })
   }
 

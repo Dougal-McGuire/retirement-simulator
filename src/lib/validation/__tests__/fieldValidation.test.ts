@@ -2,14 +2,13 @@ import {
   checkRange,
   evaluateNumericDraft,
   hasTimelineErrors,
-  isPreviewable,
   parseNumericDraft,
   timelineIssues,
 } from '@/lib/validation/fieldValidation'
 import { DEFAULT_PARAMS } from '@/types'
 
 describe('parseNumericDraft', () => {
-  it.each(['', '   ', '-', '.', ',', '-.', '+'])('treats %p as still being typed', (raw) => {
+  it.each(['', '   ', '-', '−', '.', ',', '-.', '−.', '+'])('treats %p as still being typed', (raw) => {
     expect(parseNumericDraft(raw)).toEqual({ kind: 'incomplete' })
   })
 

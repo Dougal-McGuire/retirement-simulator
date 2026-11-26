@@ -1,4 +1,3 @@
-import React from 'react'
 import { oneOffSpendableAge } from '@/lib/simulation/cashFlows'
 import { View, Text } from '@react-pdf/renderer'
 import { styles, tokens } from '../styles'

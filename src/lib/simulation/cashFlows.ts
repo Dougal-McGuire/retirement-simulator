@@ -1120,7 +1120,9 @@ export function cashFlowSignature(flows: readonly CashFlow[]): string[] {
         flow.frequency,
         flow.startAge ?? '',
         flow.endAge ?? '',
-        flow.inflationLinked === false ? 'fixed' : 'linked',
+        (isPensionFlow(flow) ? flow.inflationLinked === true : flow.inflationLinked !== false)
+          ? 'linked'
+          : 'fixed',
         flow.growthRate ?? 0,
         flow.taxablePortion ?? '',
         flow.taxTreatment ?? '',

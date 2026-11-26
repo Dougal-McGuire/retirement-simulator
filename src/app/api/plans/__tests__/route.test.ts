@@ -276,6 +276,16 @@ describe('signed-in requests', () => {
     expect((await PUT(putRequest({ plans: [long], activePlanId: 'a' }))).status).toBe(400)
   })
 
+  it('rejects oversized PUT bodies with 413 before parsing JSON', async () => {
+    const { MAX_REQUEST_BYTES, PUT } = await loadRoute()
+    const huge = 'x'.repeat(MAX_REQUEST_BYTES + 16)
+
+    const response = await PUT(putRequest(huge))
+    expect(response.status).toBe(413)
+    await expect(response.json()).resolves.toEqual({ error: 'too-large' })
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
   it('reports a failed write as 502 rather than pretending it stored', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('redis down')) as unknown as typeof fetch
 

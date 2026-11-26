@@ -683,26 +683,68 @@ export function mergePlanSnapshots(input: MergeInput): MergeResult {
 
 /**
  * The sync base once a push has been acknowledged: the account now holds
- * exactly `sent`. Plans carried along for the account (`cloudKept`) keep the
- * base they had, and so do deleted plans for as long as their tombstone lives.
+ * exactly `sent`, with any future plan timestamps clamped by the server to
+ * `serverNow`. Plans carried along for the account (`cloudKept`) keep the base
+ * they had, and so do deleted plans for as long as their tombstone lives.
  */
 export function baseAfterPush(
   previous: PlanStamps,
   sent: CloudSnapshot,
-  cloudKept: readonly Plan[] = []
+  cloudKept: readonly Plan[] = [],
+  serverNow?: number
 ): PlanStamps {
   const kept = new Set(cloudKept.map((plan) => plan.id))
+  const hasServerNow =
+    typeof serverNow === 'number' && Number.isFinite(serverNow) && serverNow > 0
   const next: PlanStamps = {}
 
   sent.plans.forEach((plan) => {
-    if (!kept.has(plan.id)) next[plan.id] = plan.updatedAt
-    else if (previous[plan.id] !== undefined) next[plan.id] = previous[plan.id]
+    if (!kept.has(plan.id)) {
+      next[plan.id] = hasServerNow ? Math.min(plan.updatedAt, serverNow) : plan.updatedAt
+    } else if (previous[plan.id] !== undefined) {
+      next[plan.id] = previous[plan.id]
+    }
   })
   Object.keys(sent.deletedPlans).forEach((id) => {
     if (previous[id] !== undefined) next[id] = previous[id]
   })
 
   return next
+}
+
+/**
+ * Pulls any locally stored plan timestamps that the server just clamped back
+ * to `serverNow` so local plans match the account's stored stamps (and the
+ * updated sync base). Plans edited locally while the push was in flight are
+ * left untouched. Returns `null` when nothing needed clamping.
+ */
+export function clampPushedPlanStamps(
+  localPlans: readonly Plan[],
+  sent: CloudSnapshot,
+  cloudKept: readonly Plan[] = [],
+  serverNow?: number
+): Plan[] | null {
+  if (typeof serverNow !== 'number' || !Number.isFinite(serverNow) || serverNow <= 0) {
+    return null
+  }
+  const kept = new Set(cloudKept.map((plan) => plan.id))
+  const sentById = new Map<string, Plan>()
+  sent.plans.forEach((plan) => {
+    if (!kept.has(plan.id)) sentById.set(plan.id, plan)
+  })
+
+  let changed = false
+  const next = localPlans.map((plan) => {
+    const pushed = sentById.get(plan.id)
+    if (!pushed || plan.updatedAt !== pushed.updatedAt) return plan
+    const nextUpdatedAt = plan.updatedAt > serverNow ? serverNow : plan.updatedAt
+    const nextCreatedAt = plan.createdAt > serverNow ? serverNow : plan.createdAt
+    if (nextUpdatedAt === plan.updatedAt && nextCreatedAt === plan.createdAt) return plan
+    changed = true
+    return { ...plan, createdAt: nextCreatedAt, updatedAt: nextUpdatedAt }
+  })
+
+  return changed ? next : null
 }
 
 // ---------------------------------------------------------------------------

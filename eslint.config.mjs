@@ -39,7 +39,17 @@ export default [
       semi: ['error', 'never'],
       quotes: ['error', 'single', { avoidEscape: true }],
       'react/react-in-jsx-scope': 'off',
+      'react/jsx-no-target-blank': 'error',
       '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-non-null-asserted-optional-chain': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
       ...nextPlugin.configs['core-web-vitals'].rules,
     },
     settings: {

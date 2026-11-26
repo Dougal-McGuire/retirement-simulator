@@ -61,4 +61,24 @@ describe('opening return on acquisition cost', () => {
       values: [20, -20],
     })
   })
+
+  it('guards invalid percentages at or below -100% and non-positive assets', () => {
+    expect(gainFromOpeningReturn(10_000, -100)).toBe(0)
+    expect(gainFromOpeningReturn(10_000, -150)).toBe(0)
+    expect(gainFromOpeningReturn(10_000, Number.NaN)).toBe(0)
+    expect(gainFromOpeningReturn(0, 25)).toBe(0)
+  })
+
+  it('suppresses the gain chip when assets are zeroed and restores both when assets are reverted', () => {
+    const saved = { ...DEFAULT_PARAMS, currentAssets: 12_000, initialUnrealizedGain: 2_000 }
+    const zeroed = { ...saved, currentAssets: 0, initialUnrealizedGain: 0 }
+
+    const changes = buildDraftChanges(saved, zeroed)
+    expect(changes.map((change) => change.id)).toEqual(['field:currentAssets'])
+
+    const reverted = { ...zeroed, ...changes[0].revert(zeroed) }
+    expect(reverted.currentAssets).toBe(12_000)
+    expect(reverted.initialUnrealizedGain).toBe(2_000)
+    expect(buildDraftChanges(saved, reverted)).toEqual([])
+  })
 })

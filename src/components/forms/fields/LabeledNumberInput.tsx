@@ -179,6 +179,18 @@ export function LabeledNumberInput({
     notifyInvalid.current?.(false)
   }, [value, isEditing])
 
+  // Disabling a field (e.g. setting assets to 0) clears any refused entry so
+  // the parent does not keep derived controls locked out while the field is
+  // non-interactive.
+  useEffect(() => {
+    if (!disabled) return
+    setIsEditing(false)
+    if (rangeIssueRef.current === null) return
+    rangeIssueRef.current = null
+    setRangeIssue(null)
+    notifyInvalid.current?.(false)
+  }, [disabled])
+
   // Unmounting with an unresolved error would otherwise leave the parent
   // greying out chips forever (the plan editor tab remounts on every visit).
   useEffect(() => {

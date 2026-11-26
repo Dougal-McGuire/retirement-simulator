@@ -688,12 +688,6 @@ export interface CashFlow {
   note?: string
 }
 
-declare global {
-  interface Window {
-    __APPLY_TOC__?: () => void
-  }
-}
-
 /**
  * Abgeltungsteuer including the solidarity surcharge, in percentage points:
  * 25 % × 1.055 = 26.375 % — the figure the tax tooltip quotes. (Without church

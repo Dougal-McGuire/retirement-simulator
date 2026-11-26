@@ -602,7 +602,8 @@ export const useSimulationStore = create<SimulationStore>()(
 
           // Duplicating the plan you are editing copies what is on screen, so
           // "Duplicate" doubles as a save-as for unsaved work.
-          const sourceParams = id === activePlanId && isDirty ? params : source.params
+          const copyingDraft = id === activePlanId && isDirty
+          const sourceParams = copyingDraft ? params : source.params
 
           const copy = makePlan({
             id: createPlanId(plans),
@@ -612,7 +613,9 @@ export const useSimulationStore = create<SimulationStore>()(
 
           commitPlans([...plans, copy])
           adoptPlanParams(copy)
-          const sourceRate = get().planSuccessRates[source.id]
+          const sourceRate = copyingDraft
+            ? successRateFor(sourceParams)
+            : get().planSuccessRates[source.id]
           rememberSuccessRate(copy.id, typeof sourceRate === 'number' ? sourceRate : null)
           requestRun()
 

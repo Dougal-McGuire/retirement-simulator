@@ -99,7 +99,6 @@ export function generateRecommendations(
   options: RecommendationOptions = {}
 ): PlanRecommendation[] {
   const tag = localeTag(locale)
-  const de = locale === 'de'
   const pct = (value: number, digits = 0) =>
     new Intl.NumberFormat(tag, {
       style: 'percent',

@@ -10,6 +10,7 @@ import { PLAN_REV_HEADER, PLAN_SCHEMA_HEADER, PLAN_SCHEMA_VERSION } from '@/lib/
 import {
   baseAfterPush,
   buildCloudSnapshot,
+  clampPushedPlanStamps,
   cloudProbeState,
   fetchRemoteSnapshot,
   mergePlanSnapshots,
@@ -942,6 +943,43 @@ describe('buildCloudSnapshot / baseAfterPush', () => {
       mine: 300,
       gone: 42,
     })
+  })
+
+  it('clamps future stamps in the sync base and local plans to the server clock after a push', () => {
+    const DAY = 86_400_000
+    const ahead = planWith('plan-x', NOW + DAY, 100_000)
+    const inFlightEdited = planWith('plan-y', NOW + DAY + 5_000, 200_000)
+    const sent = buildCloudSnapshot(
+      {
+        plans: [ahead, planWith('plan-y', NOW + DAY, 150_000)],
+        activePlanId: 'plan-x',
+        syncedPlanStamps: {},
+      },
+      [],
+      NOW + DAY
+    )
+
+    expect(baseAfterPush({}, sent, [], NOW)).toEqual({
+      'plan-x': NOW,
+      'plan-y': NOW,
+    })
+
+    // plan-x was unchanged in flight so its stamp clamps; plan-y was edited in flight so it keeps its new stamp.
+    const clamped = clampPushedPlanStamps([ahead, inFlightEdited], sent, [], NOW)
+    expect(clamped).not.toBeNull()
+    expect(clamped?.[0].updatedAt).toBe(NOW)
+    expect(clamped?.[1].updatedAt).toBe(NOW + DAY + 5_000)
+
+    // After clamping, a subsequent local edit + reconcile against the server's clamped copy produces no conflict copy.
+    const edited = { ...clamped![0], updatedAt: NOW + DAY + 10_000, params: params({ currentAssets: 250_000 }) }
+    const merged = mergePlanSnapshots({
+      local: local([edited], 'plan-x', { syncedPlanStamps: { 'plan-x': NOW } }),
+      remote: remote([planWith('plan-x', NOW, 100_000)]),
+      localPristine: false,
+    })
+    expect(merged.conflictCopies).toEqual([])
+    expect(assets(merged.plans[0])).toBe(250_000)
+    expect(merged.shouldPush).toBe(true)
   })
 })
 

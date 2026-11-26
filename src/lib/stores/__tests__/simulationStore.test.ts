@@ -1176,5 +1176,22 @@ describe('simulationStore', () => {
 
       expect(reloaded.useSimulationStore.getState().params.cashFlows).toContainEqual(windowed)
     })
+
+    it('does not copy the saved plan success rate when duplicating a dirty active draft', () => {
+      const { useSimulationStore } = loadStore()
+      useSimulationStore.setState({ autoRunSuspended: true })
+      const baseId = useSimulationStore.getState().activePlanId
+
+      // Seed a cached rate for the saved base plan.
+      useSimulationStore.setState({ planSuccessRates: { [baseId]: 98.5 } })
+      // Edit active params so the draft differs from the saved plan.
+      useSimulationStore.getState().updateParams({ retirementAge: 56 })
+      expect(useSimulationStore.getState().isDirty).toBe(true)
+
+      const copyId = useSimulationStore.getState().duplicatePlan(baseId, 'Dirty copy')
+      expect(copyId).not.toBeNull()
+      // The copy has the unsaved draft params, so it must NOT inherit the saved plan's 98.5% rate.
+      expect(useSimulationStore.getState().planSuccessRates[copyId as string]).toBeUndefined()
+    })
   })
 })

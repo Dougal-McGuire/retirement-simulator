@@ -41,7 +41,12 @@
 import { z } from 'zod'
 import { auth } from '@/auth'
 import { isAuthConfigured } from '@/lib/auth/env'
-import { isCloudStoreConfigured, readPlanBlob, writePlanBlob } from '@/lib/server/planStore'
+import {
+  MAX_BLOB_BYTES,
+  isCloudStoreConfigured,
+  readPlanBlob,
+  writePlanBlob,
+} from '@/lib/server/planStore'
 import {
   BUILD_ID,
   BUILD_ID_HEADER,
@@ -63,6 +68,8 @@ export const dynamic = 'force-dynamic'
 /** Generous next to the 60-char input cap; leaves room for " (2)" suffixes. */
 const MAX_PLAN_NAME_LENGTH = 120
 const MAX_PLAN_ID_LENGTH = 64
+/** Raw request cap applied before JSON parsing so oversized payloads cannot exhaust memory. */
+export const MAX_REQUEST_BYTES = MAX_BLOB_BYTES * 2
 
 /**
  * `params` is intentionally opaque here: `normalizePersistedParams` on the
@@ -179,6 +186,47 @@ export async function GET(request: Request) {
   )
 }
 
+/** Reads the request body as UTF-8 text, returning `null` if it exceeds `maxBytes`. */
+async function readBoundedText(request: Request, maxBytes: number): Promise<string | null> {
+  const headerLength = request.headers.get('content-length')
+  if (headerLength !== null) {
+    const parsedLength = Number(headerLength)
+    if (Number.isFinite(parsedLength) && parsedLength > maxBytes) return null
+  }
+
+  if (request.body) {
+    const reader = request.body.getReader()
+    const chunks: Uint8Array[] = []
+    let total = 0
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        if (!value) continue
+        total += value.byteLength
+        if (total > maxBytes) {
+          await reader.cancel().catch(() => {})
+          return null
+        }
+        chunks.push(value)
+      }
+    } finally {
+      reader.releaseLock()
+    }
+    const merged = new Uint8Array(total)
+    let offset = 0
+    for (const chunk of chunks) {
+      merged.set(chunk, offset)
+      offset += chunk.byteLength
+    }
+    return new TextDecoder().decode(merged)
+  }
+
+  const text = await request.text()
+  if (new TextEncoder().encode(text).length > maxBytes) return null
+  return text
+}
+
 export async function PUT(request: Request) {
   if (!isCloudStoreConfigured()) return unconfigured()
 
@@ -189,9 +237,12 @@ export async function PUT(request: Request) {
   const conflict = checkClientVersion(request)
   if (conflict) return conflict
 
+  const rawBody = await readBoundedText(request, MAX_REQUEST_BYTES)
+  if (rawBody === null) return json({ error: 'too-large' }, 413)
+
   let body: unknown
   try {
-    body = await request.json()
+    body = JSON.parse(rawBody)
   } catch {
     return json({ error: 'invalid-json' }, 400)
   }

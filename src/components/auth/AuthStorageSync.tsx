@@ -101,7 +101,7 @@ export function AuthStorageSync() {
   const accountId = session?.user?.id ?? session?.user?.email ?? null
 
   useEffect(() => {
-    if (status === 'loading') return
+    if (status === 'loading') return undefined
 
     const signedInId = status === 'authenticated' ? accountId : null
 
@@ -167,6 +167,7 @@ export function AuthStorageSync() {
     }
 
     applyNamespace(signedInId)
+    return undefined
   }, [accountId, status])
 
   const answer = useCallback(

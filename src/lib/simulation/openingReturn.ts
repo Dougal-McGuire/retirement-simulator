@@ -12,6 +12,9 @@ export function openingReturnPercent(portfolio: OpeningPortfolio): number | null
 
 /** For a positive market value the return must be strictly above −100%. */
 export function gainFromOpeningReturn(assets: number, percent: number): number {
+  if (!Number.isFinite(assets) || assets <= 0 || !Number.isFinite(percent) || percent <= -100) {
+    return 0
+  }
   return assets * (percent / (100 + percent))
 }
 

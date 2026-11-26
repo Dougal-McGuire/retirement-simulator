@@ -203,7 +203,7 @@ describe('the floor really is a lower bound', () => {
       const real = results.spendingPercentilesReal!
 
       expect(results.depletionByAge![results.ages.length - 1]).toBe(0)
-      results.ages.forEach((age, index) => {
+      results.ages.forEach((_age, index) => {
         const floor = paths.floor[index]
         if (floor === null) return
         // A tiny tolerance: the engine compounds realised inflation path by
@@ -229,7 +229,7 @@ describe('the floor really is a lower bound', () => {
       const results = runMonteCarloSimulation(params)
       const paths = buildPlannedSpendingPaths(params, results.ages)
 
-      results.ages.forEach((age, index) => {
+      results.ages.forEach((_age, index) => {
         const floor = paths.floor[index]
         if (floor === null) return
         const requestedMonthly = results.cashFlowMeansReal![index].expenses / 12

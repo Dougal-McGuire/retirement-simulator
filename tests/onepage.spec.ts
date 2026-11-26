@@ -8,7 +8,6 @@ import {
   groupHeader,
   isPainted,
   openPanel,
-  openPlanMenu,
   openSection,
   PANELS,
   readPersistedState,

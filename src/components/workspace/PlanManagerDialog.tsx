@@ -12,9 +12,9 @@ import {
 } from '@/components/ui/dialog'
 
 /**
- * "Manage plans …": the one place for switching, creating, renaming,
- * duplicating and — only here — deleting plans. Opened from the plan menu;
- * closing it returns focus to the plan menu trigger.
+ * "Manage plans …": overview dialog for switching, creating, renaming,
+ * duplicating and deleting plans. Opened from the plan menu; closing it
+ * returns focus to the plan menu trigger.
  */
 export function PlanManagerDialog({
   open,

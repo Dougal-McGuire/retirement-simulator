@@ -8,6 +8,7 @@ import { getActiveAuthUserId } from '@/lib/stores/persistenceKey'
 import {
   baseAfterPush,
   buildCloudSnapshot,
+  clampPushedPlanStamps,
   fetchRemoteSnapshot,
   mergePlanSnapshots,
   pushSnapshot,
@@ -227,8 +228,24 @@ export function startPlanCloudSync(options: PlanCloudSyncOptions = {}): () => vo
 
     if (result.status === 'ok') {
       rev = result.rev
-      syncedSignature = signature
-      writeBase(baseAfterPush(useSimulationStore.getState().syncedPlanStamps, body, kept))
+      const currentLocal = readLocal()
+      const unchangedInFlight = snapshotSignature(currentLocal) === signature
+      const clampedPlans = clampPushedPlanStamps(currentLocal.plans, body, kept, result.updatedAt)
+      if (clampedPlans) {
+        if (unchangedInFlight) {
+          const postClampSignature = snapshotSignature({ ...currentLocal, plans: clampedPlans })
+          syncedSignature = postClampSignature
+          observedSignature = postClampSignature
+        } else {
+          syncedSignature = signature
+        }
+        useSimulationStore.setState({ plans: clampedPlans })
+      } else {
+        syncedSignature = signature
+      }
+      writeBase(
+        baseAfterPush(useSimulationStore.getState().syncedPlanStamps, body, kept, result.updatedAt)
+      )
       setPhase('synced', Date.now())
       return
     }

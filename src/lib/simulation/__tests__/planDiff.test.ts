@@ -14,6 +14,7 @@ import {
   comparisonFingerprint,
   diffFlowSwitches,
   diffParams,
+  flowIndexing,
   isPositionalFlowId,
   matchFlowsAcrossPlans,
   withSwitchesOf,
@@ -905,5 +906,37 @@ describe('budget vs scheduled classification', () => {
     expect(row(windowed, 'monthlySpending')).toBe(0)
     expect(row(windowed, 'scheduledExpenses')).toBeCloseTo(100 * 12 * 10)
     expect(row(windowed, 'scheduledItems')).toBe(1)
+  })
+
+  it('treats an unsanitized pension without inflationLinked as fixed, matching buildCashFlowSeries', () => {
+    const pension: CashFlow = {
+      id: 'company-pension',
+      kind: 'pension',
+      name: 'Betriebsrente',
+      amount: 500,
+      frequency: 'monthly',
+      startAge: 67,
+    }
+    expect(flowIndexing(pension).inflationLinked).toBe(false)
+    expect(flowIndexing({ ...pension, inflationLinked: true }).inflationLinked).toBe(true)
+  })
+
+  it('taxes scheduled ordinary income with household splitting and pension context', () => {
+    const rental: CashFlow = {
+      id: 'rent',
+      kind: 'income',
+      name: 'Miete',
+      amount: 3_000,
+      frequency: 'monthly',
+      startAge: 67,
+      endAge: 70,
+      taxTreatment: 'ordinary',
+    }
+    const single = applyCashFlows(withParams({ householdType: 'single', cashFlows: [rental] }))
+    const couple = applyCashFlows(withParams({ householdType: 'couple', cashFlows: [rental] }))
+
+    const singleScheduled = row(single, 'scheduledIncome') as number
+    const coupleScheduled = row(couple, 'scheduledIncome') as number
+    expect(coupleScheduled).toBeGreaterThan(singleScheduled)
   })
 })

@@ -157,8 +157,11 @@ function WorkspacePage() {
     // Without usable web storage the persist middleware is not installed
     // (`persist` is undefined) and the store starts in memory, hydrated.
     const persist = useSimulationStore.persist
-    if (persist?.hasHydrated() ?? true) initialize()
-    else return persist.onFinishHydration(initialize)
+    if (persist?.hasHydrated() ?? true) {
+      initialize()
+      return undefined
+    }
+    return persist.onFinishHydration(initialize)
   }, [])
 
   // `R` recalculates, except while typing or inside a dialog. F6 moves

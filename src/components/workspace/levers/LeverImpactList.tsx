@@ -196,8 +196,8 @@ const LeverImpactView = memo(function LeverImpactView({
    * run count. The new plan is created in the background — switching to it or
    * comparing is offered, never imposed — and lined up against its source.
    */
-  const saveScenarioAsPlan = (name: string) => {
-    if (!pending || !pendingScenario) return
+  const saveScenarioAsPlan = (name: string): string | undefined => {
+    if (!pending || !pendingScenario) return undefined
     const sourceId = activePlanId
     const newPlanId = createPlan(
       name,
@@ -248,6 +248,7 @@ const LeverImpactView = memo(function LeverImpactView({
         { label: tToast('dismiss'), onClick: (dismiss) => dismiss() },
       ],
     })
+    return undefined
   }
 
   // ---- Rows -----------------------------------------------------------------------

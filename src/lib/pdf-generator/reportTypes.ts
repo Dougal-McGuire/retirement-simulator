@@ -8,7 +8,13 @@ import type {
   Summary,
 } from '@/lib/pdf-generator/schema/reportData'
 
-import type { OneOffIncomeTiming, WithdrawalStrategy, IncomeTaxTreatment, PensionTaxMode } from '@/types'
+import type {
+  IncomeTaxTreatment,
+  OneOffIncomeTiming,
+  PensionTaxMode,
+  ShortfallDetails,
+  WithdrawalStrategy,
+} from '@/types'
 import { localizeCashFlowName } from '@/lib/plans/cashFlowName'
 import { NOMINAL_UNIT, type ReportEuroUnit } from '@/lib/pdf-generator/euroUnit'
 import { getPlanHealth } from '@/lib/simulation/planInsights'
@@ -210,6 +216,8 @@ export interface ReportAssumptions {
   dsFloorRate: number
   /** `percentOfPortfolio` spending floor, today's euros per year. */
   spendingFloorReal: number
+  /** Independent retirement lifestyle benchmark, today's euros per month. */
+  lifestyleFloorMonthlyReal: number
   capitalGainsTax: number
   /** Sparerpauschbetrag per year, already doubled for a couple. */
   taxAllowance: number
@@ -249,6 +257,7 @@ export interface ReportProjections {
     firstYearWithdrawalRate: number | null
     bridgeShareOfRetirementAssets: number | null
   }
+  shortfallDetails?: ShortfallDetails
 }
 
 export interface ReportExpensesCategory {
@@ -570,6 +579,7 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       dsCeilingRate: data.assumptions.dsCeilingRate,
       dsFloorRate: data.assumptions.dsFloorRate,
       spendingFloorReal: data.assumptions.spendingFloorReal,
+      lifestyleFloorMonthlyReal: data.assumptions.lifestyleFloorMonthlyReal,
       capitalGainsTax: data.assumptions.capGainsTaxRatePct,
       taxAllowance:
         data.assumptions.householdType === 'couple'
@@ -587,6 +597,9 @@ export function mapReportDataToContent(data: ReportData): ReportContent {
       ...(shortfallAge !== undefined ? { exhaustionAge: shortfallAge } : {}),
       ...(portfolioEmptyAge !== undefined ? { portfolioEmptyAge } : {}),
       ...(data.projections.ratios ? { ratios: data.projections.ratios } : {}),
+      ...(data.projections.shortfallDetails
+        ? { shortfallDetails: data.projections.shortfallDetails }
+        : {}),
     },
     simulation,
     expenses: {

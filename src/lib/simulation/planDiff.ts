@@ -1,6 +1,6 @@
 import { openingReturnPercent } from './openingReturn'
 import type { CashFlow, SimulationParams } from '@/types'
-import { calculateCombinedExpenses } from '@/lib/simulation/engine'
+import { calculateCombinedExpenses, taxContext } from '@/lib/simulation/engine'
 import {
   STATUTORY_PENSION_FLOW_ID,
   applyCashFlows,
@@ -111,12 +111,14 @@ const isScheduledFlow = (flow: CashFlow): boolean =>
  */
 function scheduledTotals(params: SimulationParams): { income: number; expense: number } {
   const series = buildCashFlowSeries(
-    (params.cashFlows ?? []).filter(isScheduledFlow),
+    (params.cashFlows ?? []).filter((flow) => isScheduledFlow(flow) || isPensionFlow(flow)),
     params.currentAge,
-    Math.max(params.currentAge, params.endAge)
+    Math.max(params.currentAge, params.endAge),
+    taxContext(params)
   )
+  const pensionNet = sum(series.pensionNetLinked) + sum(series.pensionNetFixed)
   return {
-    income: sum(series.incomeLinked) + sum(series.incomeFixed),
+    income: Math.max(0, sum(series.incomeLinked) + sum(series.incomeFixed) - pensionNet),
     expense: sum(series.expenseLinked) + sum(series.expenseFixed),
   }
 }
@@ -313,7 +315,9 @@ const flowTerms = (flow: CashFlow, params: SimulationParams) =>
  */
 export const flowIndexing = (flow: CashFlow): { growthRate: number; inflationLinked: boolean } => ({
   growthRate: Math.round((flow.growthRate ?? 0) * 1e4) / 1e4,
-  inflationLinked: flow.inflationLinked !== false,
+  inflationLinked: isPensionFlow(flow)
+    ? flow.inflationLinked === true
+    : flow.inflationLinked !== false,
 })
 
 const flowIndexingKey = (flow: CashFlow) => {

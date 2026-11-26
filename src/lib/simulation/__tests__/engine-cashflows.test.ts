@@ -718,7 +718,7 @@ describe('income tax on cash flows', () => {
     const series = buildCashFlowSeries([statutory()], 60, 62, context)
     const gross = [24_000, 24_240, 24_482.4]
     const allowance = 0.125 * gross[1]
-    const expectedNet = gross.map((g, i) => g - Math.max(0, g - allowance) * 0.25)
+    const expectedNet = gross.map((g) => g - Math.max(0, g - allowance) * 0.25)
     series.incomeFixed.forEach((value, i) => expect(value).toBeCloseTo(expectedNet[i], 6))
     // …so the increase from year 2 to 3 is taxed in full: the tax rises by
     // 25 % of the whole raise, not 87.5 % of it.

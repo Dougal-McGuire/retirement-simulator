@@ -48,6 +48,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
+        id: install
         run: pnpm install --frozen-lockfile
 
       - name: Lint
@@ -84,7 +85,7 @@ jobs:
       # React's commit inspection needs the development build; the spec skips
       # on a production server, so it gets its own `next dev` run.
       - name: E2E render-isolation check (dev server)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         env:
           PW_DEV_SERVER: '1'
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-dev
@@ -180,7 +181,7 @@ jobs:
         run: npm install --global "vercel@${VERCEL_CLI_VERSION}"
 
       - name: Pull Vercel environment (${{ env.VERCEL_TARGET }})
-        run: vercel pull --yes --environment="$VERCEL_TARGET" --token="$VERCEL_TOKEN"
+        run: vercel pull --yes --environment="$VERCEL_TARGET"
 
       # The pages are prerendered, so the sign-in / cloud-sync switches are
       # fixed by the env pulled above. Production refuses a build that would
@@ -203,18 +204,18 @@ jobs:
           NEXT_PUBLIC_BUILD_ID: ${{ env.COMMIT_SHA }}
         run: |
           if [[ "$VERCEL_TARGET" == "production" ]]; then
-            vercel build --prod --token="$VERCEL_TOKEN"
+            vercel build --prod
           else
-            vercel build --token="$VERCEL_TOKEN"
+            vercel build
           fi
 
       - name: Deploy
         id: deploy
         run: |
           if [[ "$VERCEL_TARGET" == "production" ]]; then
-            url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+            url="$(vercel deploy --prebuilt --prod)"
           else
-            url="$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")"
+            url="$(vercel deploy --prebuilt)"
           fi
           echo "deployment_url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed $COMMIT_SHA to $VERCEL_TARGET: $url" >> "$GITHUB_STEP_SUMMARY"

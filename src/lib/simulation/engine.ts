@@ -1700,33 +1700,6 @@ export function taxContext(params: SimulationParams): PensionContext {
 }
 
 /**
- * Format currency values for display
- * @param value - Numeric value
- * @returns Formatted currency string
- */
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value)
-}
-
-/**
- * Format percentage values for display
- * @param value - Numeric value (as decimal, e.g., 0.07 for 7%)
- * @returns Formatted percentage string
- */
-export function formatPercentage(value: number): string {
-  return new Intl.NumberFormat('de-DE', {
-    style: 'percent',
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(value)
-}
-
-/**
  * Calculate combined monthly and annual expense totals from custom expenses
  * @param customExpenses - Array containing custom expense items
  * @returns Object with combined totals

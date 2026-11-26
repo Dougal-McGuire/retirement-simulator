@@ -951,4 +951,28 @@ describe('existing data', () => {
     expect(assets(localPlans())).toEqual([111_111, 222_222])
     expect(calls('PUT')).toHaveLength(0)
   })
+
+  it('does not create spurious conflict copies when a fast-clock device pushes and later edits', async () => {
+    const DAY = 86_400_000
+    const serverNow = Date.now()
+    // Device clock is a day ahead of the server when it stamps its initial plan.
+    loadDevice(device([plan('plan-base', serverNow + DAY, 100_000)]))
+
+    await startSession()
+    // The server clamped the stored plan to serverNow; the client synced its local stamp and base to match.
+    const syncedStamp = cloud()?.plans[0].updatedAt ?? 0
+    expect(syncedStamp).toBeLessThanOrEqual(Date.now())
+    expect(localPlans()[0].updatedAt).toBe(syncedStamp)
+    expect(useSimulationStore.getState().syncedPlanStamps['plan-base']).toBe(syncedStamp)
+
+    // Subsequent edit on the same device + reconcile creates zero conflict copies.
+    editActivePlan(250_000)
+    await passDebounce()
+    endSession()
+
+    await visit()
+    expect(ids(localPlans())).toEqual(['plan-base'])
+    expect(assets(localPlans())).toEqual([250_000])
+    expect(usePlanSyncStore.getState().conflictCopyNames).toEqual([])
+  })
 })

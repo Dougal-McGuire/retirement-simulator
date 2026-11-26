@@ -38,7 +38,8 @@ export function OpeningGainField({
       helpPlacement="inline"
       unit="%"
       decimalPercent
-      min={-99.99999999999999}
+      min={-99.99}
+      max={100_000}
       disabled={assets === 0}
       rangeMessage={t('assets.fields.initialUnrealizedGain.range')}
       invalidMessage={t('validation.notANumber')}

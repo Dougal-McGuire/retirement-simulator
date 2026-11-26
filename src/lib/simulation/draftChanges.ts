@@ -103,6 +103,8 @@ const FIELD_SPECS: readonly FieldSpec[] = [
   { key: 'annualSavings', group: 'savings', kind: 'currency' },
   { key: 'annualSavingsGrowthRate', group: 'savings', kind: 'rate' },
 
+  { key: 'oneOffIncomeTiming', group: 'flows', kind: 'oneOffIncomeTiming' },
+
   { key: 'withdrawalStrategy', group: 'rule', kind: 'strategy' },
   { key: 'dsWithdrawalRate', group: 'rule', kind: 'rate' },
   { key: 'dsCeilingRate', group: 'rule', kind: 'rate' },
@@ -188,6 +190,9 @@ export function buildDraftChanges(saved: SimulationParams, draft: SimulationPara
 
   for (const spec of FIELD_SPECS) {
     const openingReturn = spec.key === 'initialUnrealizedGain'
+    // At zero assets, unrealized gain is forced to 0 and cannot be edited or
+    // reverted independently; reverting `currentAssets` restores both together.
+    if (openingReturn && draft.currentAssets <= 0) continue
     const from = openingReturn ? (openingReturnPercent(saved) ?? '—') : saved[spec.key]
     const to = openingReturn ? (openingReturnPercent(draft) ?? '—') : draft[spec.key]
     if (sameValue(from, to)) continue
@@ -199,10 +204,21 @@ export function buildDraftChanges(saved: SimulationParams, draft: SimulationPara
       kind: spec.kind,
       from: display(from),
       to: display(to),
-      revert: (current) =>
-        openingReturn
-          ? { initialUnrealizedGain: resizeOpeningGain(saved, current.currentAssets) }
-          : ({ [spec.key]: from } as Partial<SimulationParams>),
+      revert: (current) => {
+        if (openingReturn) {
+          return { initialUnrealizedGain: resizeOpeningGain(saved, current.currentAssets) }
+        }
+        if (spec.key === 'currentAssets') {
+          const nextGain =
+            current.currentAssets <= 0
+              ? saved.initialUnrealizedGain
+              : resizeOpeningGain(current, saved.currentAssets)
+          return nextGain === current.initialUnrealizedGain
+            ? { currentAssets: saved.currentAssets }
+            : { currentAssets: saved.currentAssets, initialUnrealizedGain: nextGain }
+        }
+        return { [spec.key]: from } as Partial<SimulationParams>
+      },
     })
   }
 

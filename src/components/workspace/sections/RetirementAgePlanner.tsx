@@ -9,7 +9,10 @@ import { comparisonRunCount, formatSamplingInterval95 } from '@/lib/simulation/c
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
 import { useSimulationParams, useSimulationStore } from '@/lib/stores/simulationStore'
 import type { AgePlannerResponse } from '@/lib/simulation/retirementFrontier.worker'
-import type { RetirementAgeComparison } from '@/lib/simulation/retirementFrontier'
+import {
+  compareRetirementAges,
+  type RetirementAgeComparison,
+} from '@/lib/simulation/retirementFrontier'
 import type { SimulationParams } from '@/types'
 import './retirement-age.css'
 
@@ -33,6 +36,8 @@ function AgeComparisonForm() {
   const [final, setFinal] = useState(false)
   const [run, setRun] = useState<Run | null>(null)
   const worker = useRef<Worker | null>(null)
+  const fallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const runToken = useRef(0)
   const budget =
     budgetOverride ??
     String(Math.round(calculateCombinedExpenses(params.customExpenses).combinedMonthly))
@@ -62,11 +67,22 @@ function AgeComparisonForm() {
     })
   const percent = (value: number) =>
     format.number(value / 100, { style: 'percent', maximumFractionDigits: 1 })
+  const cancelPending = () => {
+    runToken.current += 1
+    if (fallbackTimer.current !== null) {
+      clearTimeout(fallbackTimer.current)
+      fallbackTimer.current = null
+    }
+    if (worker.current) {
+      worker.current.terminate()
+      worker.current = null
+    }
+  }
+
   useEffect(
     () => () => {
-      if (worker.current) {
-        worker.current.terminate()
-        worker.current = null
+      if (worker.current || fallbackTimer.current !== null) {
+        cancelPending()
         setRun(null)
       }
     },
@@ -75,41 +91,72 @@ function AgeComparisonForm() {
 
   function compare(event: FormEvent) {
     event.preventDefault()
-    worker.current?.terminate()
+    cancelPending()
+    const token = runToken.current
     const state = { params, inputs }
+    const targets = {
+      monthlyBudget: Number(budget),
+      probability: Number(probability),
+      endAge: Number(end),
+      maxRetirementAge: Number(maxAge),
+      final,
+    }
     setRun({ ...state, status: 'running' })
+
+    const runOnMainThread = () => {
+      fallbackTimer.current = setTimeout(() => {
+        fallbackTimer.current = null
+        if (runToken.current !== token) return
+        try {
+          const data = compareRetirementAges(params, targets)
+          if (runToken.current !== token) return
+          setRun({ ...state, status: 'done', result: data })
+        } catch {
+          if (runToken.current !== token) return
+          setRun({ ...state, status: 'error' })
+        }
+      }, 0)
+    }
+
+    if (typeof Worker === 'undefined') {
+      runOnMainThread()
+      return
+    }
+
     try {
       const active = new Worker(
         new URL('../../../lib/simulation/retirementFrontier.worker.ts', import.meta.url),
         { type: 'module' }
       )
       worker.current = active
+      let receivedMessage = false
       const finish = (message?: RetirementAgeComparison) => {
-        if (worker.current !== active) return
+        if (worker.current !== active || runToken.current !== token) return
         active.terminate()
         worker.current = null
         setRun({ ...state, status: message ? 'done' : 'error', result: message })
       }
       active.onmessage = ({ data: reply }: MessageEvent<AgePlannerResponse>) => {
-        if (worker.current !== active) return
+        if (worker.current !== active || runToken.current !== token) return
+        receivedMessage = true
         if (reply.type === 'progress') setRun({ ...state, status: 'running', progress: reply })
         else finish(reply.type === 'result' ? reply.data : undefined)
       }
-      active.onerror = active.onmessageerror = () => finish()
-      active.postMessage({
-        params,
-        targets: {
-          monthlyBudget: Number(budget),
-          probability: Number(probability),
-          endAge: Number(end),
-          maxRetirementAge: Number(maxAge),
-          final,
-        },
-      })
+      active.onerror = active.onmessageerror = () => {
+        if (worker.current !== active || runToken.current !== token) return
+        active.terminate()
+        worker.current = null
+        if (!receivedMessage) {
+          runOnMainThread()
+          return
+        }
+        setRun({ ...state, status: 'error' })
+      }
+      active.postMessage({ params, targets })
     } catch {
       worker.current?.terminate()
       worker.current = null
-      setRun({ ...state, status: 'error' })
+      runOnMainThread()
     }
   }
   const headline =
@@ -203,8 +250,7 @@ function AgeComparisonForm() {
             variant="outline"
             onClick={(event) => {
               event.preventDefault()
-              worker.current?.terminate()
-              worker.current = null
+              cancelPending()
               setRun(null)
             }}
           >

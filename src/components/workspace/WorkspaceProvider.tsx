@@ -356,38 +356,47 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   // ---- Compare mode ------------------------------------------------------
 
-  const finishExitCompare = useCallback(() => {
-    if (exitFallbackRef.current) clearTimeout(exitFallbackRef.current)
-    exitFallbackRef.current = null
-    if (modeRef.current !== 'compare') return
-    const session = compareRef.current
-    const opts = pendingExitRef.current ?? {}
-    pendingExitRef.current = null
-    compareRef.current = null
-    modeRef.current = 'plan'
-    setMode('plan')
-    lastHashRef.current = window.location.hash
-    afterPaint(() => {
-      if (opts.column) {
+  const finishExitCompare = useCallback(
+    (onExited?: () => void) => {
+      if (exitFallbackRef.current) clearTimeout(exitFallbackRef.current)
+      exitFallbackRef.current = null
+      if (modeRef.current !== 'compare') return
+      const session = compareRef.current
+      const opts = pendingExitRef.current ?? {}
+      pendingExitRef.current = null
+      compareRef.current = null
+      modeRef.current = 'plan'
+      setMode('plan')
+      const nextHash = window.location.hash
+      lastHashRef.current = nextHash
+      const hashMovedElsewhere = session === null || nextHash !== session.prevHash
+      afterPaint(() => {
+        if (opts.column) {
+          beginProgrammaticScroll()
+          window.scrollTo({ top: 0, behavior: 'instant' })
+          setColumnOpen(true)
+          afterPaint(() =>
+            document.getElementById('edit-panel-title')?.focus({ preventScroll: true })
+          )
+          return
+        }
+        if (opts.section) {
+          scrollToSection(opts.section, { focus: opts.focus ?? true, behavior: 'instant' })
+          return
+        }
+        if (onExited && hashMovedElsewhere) {
+          onExited()
+          return
+        }
         beginProgrammaticScroll()
-        window.scrollTo({ top: 0, behavior: 'instant' })
-        setColumnOpen(true)
-        afterPaint(() =>
-          document.getElementById('edit-panel-title')?.focus({ preventScroll: true })
-        )
-        return
-      }
-      if (opts.section) {
-        scrollToSection(opts.section, { focus: opts.focus ?? true, behavior: 'instant' })
-        return
-      }
-      beginProgrammaticScroll()
-      window.scrollTo({ top: session?.scrollY ?? 0, behavior: 'instant' })
-      const invoker = session?.invoker
-      const target = invoker?.isConnected ? invoker : document.getElementById('result-title')
-      target?.focus({ preventScroll: true })
-    })
-  }, [scrollToSection, setColumnOpen])
+        window.scrollTo({ top: session?.scrollY ?? 0, behavior: 'instant' })
+        const invoker = session?.invoker
+        const target = invoker?.isConnected ? invoker : document.getElementById('result-title')
+        target?.focus({ preventScroll: true })
+      })
+    },
+    [scrollToSection, setColumnOpen]
+  )
 
   /**
    * `source`: `ui` pushes `#compare`; `landing` (the page opened on

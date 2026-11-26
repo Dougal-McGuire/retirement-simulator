@@ -1,6 +1,14 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react'
 import {
   ArrowLeftRight,
   Check,
@@ -10,11 +18,15 @@ import {
   FolderCog,
   Pencil,
   Plus,
+  Trash2,
+  X,
 } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { MAX_PLANS } from '@/types'
+import { PlanDeleteDialog } from '@/components/plans/PlanDeleteDialog'
 import { PlanNameDialog } from '@/components/plans/PlanNameDialog'
 import { PlanSwitchGuard } from '@/components/plans/PlanSwitchGuard'
+import { deletePlanWithUndo } from '@/components/plans/planDeleteUndo'
 import { toast } from '@/components/ui/toast'
 import { planDisplayName } from '@/lib/plans/planName'
 import { suggestDuplicateName } from '@/lib/stores/plans'
@@ -71,9 +83,13 @@ export function PlanMenu({
   const successRates = usePlanSuccessRates()
 
   const [open, setOpen] = useState(false)
-  const [dialog, setDialog] = useState<'new' | 'duplicate' | 'rename' | null>(null)
+  const [dialog, setDialog] = useState<'new' | 'duplicate' | 'delete' | null>(null)
+  const [renaming, setRenaming] = useState(false)
+  const [renameDraft, setRenameDraft] = useState('')
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const refocusTriggerRef = useRef(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const menuId = useId()
@@ -81,6 +97,7 @@ export function PlanMenu({
   const activePlan = plans.find((plan) => plan.id === activePlanId) ?? plans[0]
   const activeName = activePlan ? planDisplayName(activePlan, tp) : ''
   const atLimit = plans.length >= MAX_PLANS
+  const canDelete = plans.length > 1
 
   const items = () =>
     Array.from(menuRef.current?.querySelectorAll<HTMLElement>(ITEM_SELECTOR) ?? [])
@@ -89,6 +106,29 @@ export function PlanMenu({
     setOpen(false)
     if (refocus) triggerRef.current?.focus()
   }
+
+  const startInlineRename = useCallback(() => {
+    setOpen(false)
+    setRenameDraft(activeName)
+    setRenaming(true)
+  }, [activeName])
+
+  const commitInlineRename = useCallback(
+    (refocus = true) => {
+      const trimmed = renameDraft.trim()
+      if (activePlan && trimmed && trimmed !== activeName) {
+        renamePlan(activePlan.id, trimmed)
+      }
+      refocusTriggerRef.current = refocus
+      setRenaming(false)
+    },
+    [activePlan, activeName, renameDraft, renamePlan]
+  )
+
+  const cancelInlineRename = useCallback((refocus = true) => {
+    refocusTriggerRef.current = refocus
+    setRenaming(false)
+  }, [])
 
   // Opening focuses the active plan, so Enter on the trigger then Enter again
   // is a no-op rather than an accidental switch.
@@ -103,14 +143,38 @@ export function PlanMenu({
     target?.focus()
   }, [open, focusOnOpen])
 
+  // Entering inline rename focuses and selects the name; leaving returns focus
+  // to the trigger when the user finished via keyboard or button.
   useEffect(() => {
-    if (!open) return
+    if (renaming) {
+      const input = renameInputRef.current
+      if (input) {
+        input.focus()
+        input.select()
+      }
+      return
+    }
+    if (refocusTriggerRef.current) {
+      refocusTriggerRef.current = false
+      triggerRef.current?.focus()
+    }
+  }, [renaming])
+
+  // If the active plan changes (e.g. synced from another tab), close inline rename.
+  useEffect(() => {
+    setRenaming(false)
+  }, [activePlanId])
+
+  useEffect(() => {
+    if (!open && !renaming) return
     const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+      if (rootRef.current?.contains(event.target as Node)) return
+      if (open) setOpen(false)
+      if (renaming) commitInlineRename(false)
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [open])
+  }, [open, renaming, commitInlineRename])
 
   if (!activePlan) return null
 
@@ -120,6 +184,11 @@ export function PlanMenu({
   }
 
   const onTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'F2') {
+      event.preventDefault()
+      startInlineRename()
+      return
+    }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       openMenu(event.key === 'ArrowUp' ? 'last' : 'active')
@@ -159,15 +228,25 @@ export function PlanMenu({
   }
 
   const runAction = (
-    action: 'saveAsNew' | 'new' | 'duplicate' | 'rename' | 'compare' | 'manage',
+    action: 'saveAsNew' | 'new' | 'duplicate' | 'rename' | 'delete' | 'compare' | 'manage',
     disabled = false
   ) => {
     if (disabled) return
+    if (action === 'rename') {
+      startInlineRename()
+      return
+    }
     close()
     if (action === 'manage') onManage(triggerRef.current)
     else if (action === 'compare') onCompare?.(triggerRef.current)
     else if (action === 'saveAsNew') onSaveAsNew?.(triggerRef.current)
     else setDialog(action)
+  }
+
+  const handleRenameSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!renameDraft.trim()) return
+    commitInlineRename(true)
   }
 
   const rateLabel = (id: string) => {
@@ -187,24 +266,73 @@ export function PlanMenu({
 
   return (
     <div className="workspace-plan-menu-root" ref={rootRef}>
-      <button
-        ref={triggerRef}
-        type="button"
-        className="workspace-plan-trigger"
-        data-testid="plan-menu-trigger"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={open ? menuId : undefined}
-        aria-label={
-          dirty ? t('triggerDirty', { name: activeName }) : t('trigger', { name: activeName })
-        }
-        onClick={() => (open ? close(false) : openMenu('active'))}
-        onKeyDown={onTriggerKeyDown}
-      >
-        <span className="workspace-plan-trigger-name">{activeName}</span>
-        {dirty && <span className="workspace-dirty-dot" aria-hidden="true" />}
-        <ChevronDown size={16} aria-hidden="true" />
-      </button>
+      {renaming ? (
+        <form
+          className="workspace-plan-inline-rename"
+          data-testid="plan-inline-rename"
+          onSubmit={handleRenameSubmit}
+        >
+          <input
+            ref={renameInputRef}
+            id="plan-menu-rename-name"
+            data-testid="plan-inline-rename-input"
+            type="text"
+            className="workspace-plan-inline-input"
+            value={renameDraft}
+            maxLength={60}
+            aria-label={tp('dialogs.rename.label')}
+            placeholder={tp('dialogs.rename.placeholder')}
+            onChange={(event) => setRenameDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                event.stopPropagation()
+                cancelInlineRename(true)
+              }
+            }}
+          />
+          <button
+            type="submit"
+            className="workspace-plan-inline-btn workspace-plan-inline-save"
+            data-testid="plan-inline-rename-save"
+            disabled={!renameDraft.trim()}
+            aria-label={tp('actions.save')}
+            title={tp('actions.save')}
+          >
+            <Check size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="workspace-plan-inline-btn workspace-plan-inline-cancel"
+            data-testid="plan-inline-rename-cancel"
+            aria-label={tp('actions.cancel')}
+            title={tp('actions.cancel')}
+            onClick={() => cancelInlineRename(true)}
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </form>
+      ) : (
+        <button
+          ref={triggerRef}
+          type="button"
+          className="workspace-plan-trigger"
+          data-testid="plan-menu-trigger"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={open ? menuId : undefined}
+          aria-label={
+            dirty ? t('triggerDirty', { name: activeName }) : t('trigger', { name: activeName })
+          }
+          onClick={() => (open ? close(false) : openMenu('active'))}
+          onDoubleClick={startInlineRename}
+          onKeyDown={onTriggerKeyDown}
+        >
+          <span className="workspace-plan-trigger-name">{activeName}</span>
+          {dirty && <span className="workspace-dirty-dot" aria-hidden="true" />}
+          <ChevronDown size={16} aria-hidden="true" />
+        </button>
+      )}
 
       {open && (
         <div
@@ -276,8 +404,22 @@ export function PlanMenu({
                   icon: Copy,
                   label: tp('actions.duplicate'),
                   disabled: atLimit,
+                  danger: false,
                 },
-                { action: 'rename', icon: Pencil, label: tp('actions.rename'), disabled: false },
+                {
+                  action: 'rename',
+                  icon: Pencil,
+                  label: tp('actions.rename'),
+                  disabled: false,
+                  danger: false,
+                },
+                {
+                  action: 'delete',
+                  icon: Trash2,
+                  label: tp('actions.delete'),
+                  disabled: !canDelete,
+                  danger: true,
+                },
                 ...(onCompare
                   ? ([
                       {
@@ -285,26 +427,40 @@ export function PlanMenu({
                         icon: ArrowLeftRight,
                         label: t('compare'),
                         disabled: false,
+                        danger: false,
                       },
                     ] as const)
                   : []),
-                { action: 'manage', icon: FolderCog, label: t('manage'), disabled: false },
+                {
+                  action: 'manage',
+                  icon: FolderCog,
+                  label: t('manage'),
+                  disabled: false,
+                  danger: false,
+                },
               ] as const
-            ).map(({ action, icon: Icon, label, disabled }) => (
-              <button
-                key={action}
-                type="button"
-                role="menuitem"
-                tabIndex={-1}
-                aria-disabled={disabled || undefined}
-                className="workspace-plan-action"
-                data-testid={`plan-menu-${action}`}
-                onClick={() => runAction(action, disabled)}
-              >
-                <Icon size={16} aria-hidden="true" />
-                {label}
-              </button>
-            ))}
+            ).map(({ action, icon: Icon, label, disabled, ...rest }) => {
+              const danger = 'danger' in rest && rest.danger
+              return (
+                <button
+                  key={action}
+                  type="button"
+                  role="menuitem"
+                  tabIndex={-1}
+                  aria-disabled={disabled || undefined}
+                  className={
+                    danger
+                      ? 'workspace-plan-action workspace-plan-action--danger'
+                      : 'workspace-plan-action'
+                  }
+                  data-testid={`plan-menu-${action}`}
+                  onClick={() => runAction(action, disabled)}
+                >
+                  <Icon size={16} aria-hidden="true" />
+                  {label}
+                </button>
+              )
+            })}
           </div>
           {atLimit && (
             <p className="workspace-plan-menu-note">{tp('switcher.limit', { max: MAX_PLANS })}</p>
@@ -341,18 +497,12 @@ export function PlanMenu({
           if (duplicatePlan(activePlan.id, name)) toast.success(tp('duplicated.toast', { name }))
         }}
       />
-      <PlanNameDialog
-        open={dialog === 'rename'}
+      <PlanDeleteDialog
+        open={dialog === 'delete'}
         onOpenChange={(next) => !next && setDialog(null)}
-        inputId="plan-menu-rename-name"
+        planName={activeName}
         returnFocusRef={triggerRef}
-        initialName={activeName}
-        title={tp('dialogs.rename.title')}
-        description={tp('dialogs.rename.description')}
-        label={tp('dialogs.rename.label')}
-        placeholder={tp('dialogs.rename.placeholder')}
-        confirmLabel={tp('actions.save')}
-        onConfirm={(name) => renamePlan(activePlan.id, name)}
+        onConfirm={() => deletePlanWithUndo(activePlan, tp)}
       />
       <PlanSwitchGuard
         pendingPlanId={pendingPlanId}

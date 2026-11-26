@@ -32,7 +32,7 @@ export interface WorkspaceHashApi {
    */
   enterCompare: (source: 'landing' | 'history') => void
   /** Leaves compare after the URL moved off `#compare` (Back, or an edited URL). */
-  finishExitCompare: () => void
+  finishExitCompare: (onExited?: () => void) => void
 }
 
 /** How long a landing section is held in view while the page above it settles. */
@@ -158,7 +158,9 @@ export function useWorkspaceHash(api: WorkspaceHashApi) {
       current.lastHashRef.current = hash
       const parsed = parseWorkspaceHash(hash)
       if (current.isComparing()) {
-        if (!parsed?.compare) current.finishExitCompare()
+        if (!parsed?.compare) {
+          current.finishExitCompare(parsed ? () => apply(parsed, 'instant') : undefined)
+        }
         return
       }
       if (!parsed) return

@@ -132,6 +132,8 @@ export const AssumptionsSchema = z.object({
   dsFloorRate: z.number().min(-1).max(0).default(-0.025),
   /** `percentOfPortfolio` spending floor, today's euros per year. */
   spendingFloorReal: z.number().min(0).default(0),
+  /** Independent retirement lifestyle benchmark, today's euros per month. */
+  lifestyleFloorMonthlyReal: z.number().min(0).default(0),
   // Fix absurd tax rates like 2625% -> cap at 80%
   capGainsTaxRatePct: z
     .number()
@@ -201,6 +203,22 @@ export const MilestoneSchema = z.object({
   p90: z.number(),
 })
 
+const ShortfallSummarySchema = z.object({
+  affectedPaths: z.number().min(0),
+  atHorizon: z.number().min(0),
+  medianFirstAge: z.number().nullable(),
+  medianAffectedYears: z.number().nullable(),
+  medianMonthlyGapReal: z.number().nullable(),
+})
+
+export const ShortfallDetailsSchema = z.object({
+  paths: z.number().min(0),
+  bequestOnlyPaths: z.number().min(0),
+  fundedPathsBelowLifestyleFloor: z.number().min(0),
+  funding: ShortfallSummarySchema,
+  lifestyle: ShortfallSummarySchema.nullable(),
+})
+
 export const ProjectionsSchema = z.object({
   milestones: z.array(MilestoneSchema),
   successRatePct: z.number().min(0).max(100),
@@ -214,6 +232,7 @@ export const ProjectionsSchema = z.object({
    * zero is no failure while pensions and income pay the budget.
    */
   stressShortfallAge: z.number().nullable().optional(),
+  shortfallDetails: ShortfallDetailsSchema.optional(),
   /**
    * Unit-free ratios, read from the engine's ledger so the Nominal /
    * Heutige € switch can never change them. `null` where the ledger cannot

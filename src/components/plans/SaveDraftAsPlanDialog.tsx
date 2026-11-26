@@ -4,7 +4,6 @@ import { useMemo, type RefObject } from 'react'
 import { useTranslations } from 'next-intl'
 import { ScenarioPlanDialog } from '@/components/plans/ScenarioPlanDialog'
 import { showActionToast } from '@/components/ui/action-toast'
-import { toast } from '@/components/ui/toast'
 import { cashFlowDisplayName } from '@/lib/plans/cashFlowName'
 import { planDisplayName } from '@/lib/plans/planName'
 import { diffFlowSwitches, diffParams, withSwitchesOf } from '@/lib/simulation/planDiff'
@@ -111,6 +110,7 @@ export function SaveDraftAsPlanDialog({
         { label: tToast('dismiss'), onClick: (dismiss) => dismiss() },
       ],
     })
+    return undefined
   }
 
   return (

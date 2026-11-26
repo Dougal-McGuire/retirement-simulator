@@ -141,8 +141,8 @@ export function buildMethodologyCopy(content: ReportContent): MethodologyCopy {
         ? ' Die gesetzliche Rente wird in diesem Plan nicht besteuert.'
         : ' The state pension is left untaxed in this plan.'
   const taxMissing = isGerman
-    ? ' Progression, Kirchensteuer und Vorabpauschale bleiben unberücksichtigt.'
-    : ' Progressive rates, church tax and the Vorabpauschale are not modelled.'
+    ? ' Für Kapitalerträge und pauschale Rentenbesteuerung bleiben Progression, Kirchensteuer und Vorabpauschale unberücksichtigt.'
+    : ' Progressive rates on capital gains or flat-rate pensions, church tax and the Vorabpauschale are not modelled.'
   const taxLimitation = `${taxParts.join(', ')}.${pensionTax}${taxMissing}`
 
   const marketLimitation = isHistorical

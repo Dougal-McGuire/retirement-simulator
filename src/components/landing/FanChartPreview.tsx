@@ -61,7 +61,7 @@ function bandPath(upper: readonly number[], lower: readonly number[]) {
     .join(' ')
   const down = lower
     .map(
-      (value, i) =>
+      (_value, i) =>
         `L${xFor(PREVIEW_AGES[lower.length - 1 - i]).toFixed(1)},${yFor(lower[lower.length - 1 - i]).toFixed(1)}`
     )
     .join(' ')

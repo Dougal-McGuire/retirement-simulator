@@ -5,7 +5,13 @@ import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import type { Plan, SimulationParams, SimulationResults } from '@/types'
 import { MAX_COMPARISON_PLANS } from '@/types'
 import { calculateCombinedExpenses } from '@/lib/simulation/engine'
-import { buildFlowDiffRows, flowIndexing, type FlowDiffRow } from '@/lib/simulation/planDiff'
+import {
+  buildAssumptionRows,
+  buildFlowDiffRows,
+  flowIndexing,
+  type FlowDiffRow,
+} from '@/lib/simulation/planDiff'
+import { useAssumptionValueFormatter } from '@/components/plans/useAssumptionFormat'
 import {
   isCashFlowEnabled,
   pensionStartAge,
@@ -36,6 +42,29 @@ const ALT_COLORS = ['var(--viz-3)', 'var(--viz-5)'] as const
 /** Flow rows shown before "Show n more items". */
 const MAX_FLOW_ROWS = 8
 
+/**
+ * Assumption keys already covered by the 8 core comparison rows or the per-flow
+ * diff rows. Any other differing assumption from `buildAssumptionRows` is
+ * appended below the core rows so tax, market, asset, glide-path, or goal
+ * differences are never invisible in the table.
+ */
+const CORE_COVERED_ASSUMPTION_KEYS = new Set([
+  'retirementAge',
+  'bridgeYears',
+  'annualSavings',
+  'monthlySpending',
+  'annualSpending',
+  'expenseItems',
+  'averageROI',
+  'withdrawalStrategy',
+  'dsWithdrawalRate',
+  'monthlyPension',
+  'oneTimeIncomes',
+  'scheduledIncome',
+  'scheduledExpenses',
+  'scheduledItems',
+])
+
 interface CompareViewProps {
   onExit: () => void
   onOpenPlanEditor: () => void
@@ -60,6 +89,7 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
   const tFlows = useTranslations('setup.cashFlows')
   const tRateChange = useTranslations('simulationCompact.compare.rateChange')
   const format = useFormatter()
+  const formatAssumption = useAssumptionValueFormatter()
   const locale = useLocale()
   const plans = usePlans()
   const activePlanId = useActivePlanId()
@@ -304,8 +334,15 @@ export function CompareView({ onExit, onOpenPlanEditor }: CompareViewProps) {
           return t('pensionFrom', { amount, age: format.number(age) })
         }),
       },
+      ...buildAssumptionRows(ready.map((run) => run.params))
+        .filter((row) => row.differs && !CORE_COVERED_ASSUMPTION_KEYS.has(row.key))
+        .map((row) => ({
+          key: `assumption:${row.key}`,
+          label: tPlans(`comparison.assumptions.rows.${row.key}`),
+          values: row.values.map((value) => formatAssumption(value, row.kind)),
+        })),
     ]
-  }, [ready, t, format])
+  }, [ready, t, tPlans, format, formatAssumption])
 
   // Flows that set the plans apart: a switch flip ("Erbschaft: berücksichtigt
   // → ausgeschaltet"), a flow only some plans have, or one whose amount or

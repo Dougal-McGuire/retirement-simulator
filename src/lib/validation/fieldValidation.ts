@@ -28,7 +28,7 @@ export type DraftParse =
   | { kind: 'invalid' }
   | { kind: 'number'; value: number }
 
-const INCOMPLETE_DRAFTS = new Set(['', '-', '.', ',', '-.', '-,', '+'])
+const INCOMPLETE_DRAFTS = new Set(['', '-', '−', '.', ',', '-.', '-,', '−.', '−,', '+'])
 
 /**
  * Turns the text in a number input into one of the three things it can be.

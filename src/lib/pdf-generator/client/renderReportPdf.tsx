@@ -1,4 +1,3 @@
-import React from 'react'
 import { pdf } from '@react-pdf/renderer'
 import type { ReportContent } from '@/lib/pdf-generator/reportTypes'
 import type { ReportFontSources } from '@/lib/pdf-generator/react-pdf/fonts'
