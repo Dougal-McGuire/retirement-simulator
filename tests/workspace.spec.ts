@@ -96,9 +96,31 @@ async function fixedPoints(page: Page) {
         anchorsTop: Math.round((box('section-index')?.y ?? -1) + window.scrollY),
       }
     })
+  // Between two reads: the running transitions end and two frames render.
+  // A pause in milliseconds alone is not enough — headless WebKit draws a
+  // frame every ~250 ms, so two reads 120 ms apart could see the same
+  // half-way frame (the switch from drawer to pane at 1180 px) and call it
+  // settled.
+  const settle = () =>
+    page.evaluate(async () => {
+      await Promise.all(
+        document
+          .getAnimations()
+          .filter(
+            (animation) =>
+              animation.playState === 'running' &&
+              animation.effect?.getComputedTiming().iterations !== Infinity
+          )
+          .map((animation) => animation.finished.catch(() => undefined))
+      )
+      for (let frame = 0; frame < 2; frame++)
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+    })
+  await settle()
   let previous = await read()
   for (let attempt = 0; attempt < 20; attempt++) {
     await page.waitForTimeout(120)
+    await settle()
     const next = await read()
     if (JSON.stringify(next) === JSON.stringify(previous)) return next
     previous = next

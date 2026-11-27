@@ -1,5 +1,12 @@
 import { devices } from '@playwright/test'
-import { expect, gotoWorkspace, groupHeader, test, waitForResults } from './helpers/workspace'
+import {
+  chooseOption,
+  expect,
+  gotoWorkspace,
+  groupHeader,
+  test,
+  waitForResults,
+} from './helpers/workspace'
 
 /**
  * Help tips on touch, the € display radio group and the cash-flow form's
@@ -154,8 +161,7 @@ test.describe('cash-flow form keeps invalid input', () => {
     // A one-off with a month but no year is refused too (the month input used
     // to drop anything it could not parse without a word).
     await amount.fill('250')
-    await page.locator('#cashflow-frequency-new').click()
-    await page.getByRole('option', { name: 'Einmalig' }).click()
+    await chooseOption(page.locator('#cashflow-frequency-new'), 'Einmalig')
     await page.locator('#cashflow-date-new').selectOption('03')
     await page.getByTestId('cashflow-add').click()
     await expect(page.locator('#cashflow-date-new')).toHaveAttribute('aria-invalid', 'true')

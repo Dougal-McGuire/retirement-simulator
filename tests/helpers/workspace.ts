@@ -167,6 +167,21 @@ export async function isInViewport(locator: Locator): Promise<boolean> {
 }
 
 /**
+ * Picks an option of a (Radix) select and waits until focus is back on its
+ * trigger. Radix hands focus back only after the list's exit animation, a
+ * frame or more after the click resolved; on a slow frame clock (headless
+ * WebKit under load) a `fill` started in between had its text typed into the
+ * trigger, and the field stayed empty.
+ */
+export async function chooseOption(trigger: Locator, name: string | RegExp) {
+  const page = trigger.page()
+  await trigger.click()
+  await page.getByRole('option', { name }).click()
+  await expect(page.getByRole('listbox')).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+}
+
+/**
  * Whether the element (its icon, if it has one) is actually painted where it
  * sits: a hit test at its centre lands on it. False for visually hidden
  * (sr-only / clipped) content, which keeps a box but paints nothing.
@@ -205,12 +220,25 @@ export async function panelMode(page: Page): Promise<'docked' | 'drawer' | 'shee
 }
 
 /**
+ * Waits until the page has taken the panel mode of the viewport's width. The
+ * mode follows a resize a render later; until then the mode bar or drawer
+ * toggle of the previous width is what the page shows.
+ */
+export async function expectViewportPanelMode(page: Page) {
+  const width = page.viewportSize()?.width
+  if (!width) return
+  const mode = width >= 1180 ? 'docked' : width >= 761 ? 'drawer' : 'sheet'
+  await expect(page.locator('.ws-page')).toHaveAttribute('data-panel-mode', mode)
+}
+
+/**
  * Brings the whole result canvas on screen: on phones the mode "Ansehen" (the
  * column takes its place under "Stellen"); at 761–1179 it folds the drawer,
  * which lies over the canvas's right side. A no-op from 1180 px, where the
  * canvas has its own pane.
  */
 export async function showCanvas(page: Page) {
+  await expectViewportPanelMode(page)
   const view = page.getByTestId('mode-view')
   if (await view.isVisible()) {
     if ((await view.getAttribute('aria-pressed')) !== 'true') await view.click()
@@ -230,10 +258,17 @@ export async function showCanvas(page: Page) {
  * "Stellen". Returns the column.
  */
 export async function showColumn(page: Page): Promise<Locator> {
+  await expectViewportPanelMode(page)
   const column = page.getByTestId('edit-panel')
   const edit = page.getByTestId('mode-edit')
   if (await edit.isVisible()) {
-    if ((await edit.getAttribute('aria-pressed')) !== 'true') await edit.click()
+    if ((await edit.getAttribute('aria-pressed')) !== 'true') {
+      await edit.click()
+      // "Stellen" moves focus to the column's title after the next paint;
+      // let it land before the caller focuses a control, which it would
+      // otherwise take the focus from.
+      await expect(page.locator('#edit-panel-title')).toBeFocused()
+    }
     await expect(edit).toHaveAttribute('aria-pressed', 'true')
   } else {
     const toggle = page.getByTestId('edit-panel-toggle')

@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import type { Download, Locator, Page, Request } from '@playwright/test'
 import {
   SECTIONS,
+  chooseOption,
   enterCompare,
   expect,
   gotoWorkspace,
@@ -569,8 +570,7 @@ test.describe('unified cash flows', () => {
     await card.getByTestId('cashflow-kind-expense').click()
     await card.locator('#cashflow-name-new').fill('Roof renovation')
     await card.locator('#cashflow-amount-new').fill('30000')
-    await card.locator('#cashflow-frequency-new').click()
-    await page.getByRole('option', { name: 'One-off' }).click()
+    await chooseOption(card.locator('#cashflow-frequency-new'), 'One-off')
     await card.locator('#cashflow-start-new').fill('64')
     await card.getByTestId('cashflow-add').click()
 
@@ -668,8 +668,7 @@ test.describe('cash-flow ergonomics', () => {
     await card.getByTestId('cashflow-kind-income').click()
     await card.locator('#cashflow-name-new').fill('Kapitaloption')
     await card.locator('#cashflow-amount-new').fill('300000')
-    await card.locator('#cashflow-frequency-new').click()
-    await page.getByRole('option', { name: 'One-off' }).click()
+    await chooseOption(card.locator('#cashflow-frequency-new'), 'One-off')
     // A calendar month pins the payment to a plan year; age 55 today → eight
     // years out, so the row lands at 63.
     const year = new Date().getFullYear() + 8
@@ -679,8 +678,7 @@ test.describe('cash-flow ergonomics', () => {
       'Available at the start of age 63.'
     )
     await card.getByRole('button', { name: 'Advanced options' }).click()
-    await card.locator('#cashflow-tax-new').click()
-    await page.getByRole('option', { name: /One-fifth rule/ }).click()
+    await chooseOption(card.locator('#cashflow-tax-new'), /One-fifth rule/)
     await card.locator('#cashflow-note-new').fill('source: company pension, gross')
     await card.getByTestId('cashflow-add').click()
 

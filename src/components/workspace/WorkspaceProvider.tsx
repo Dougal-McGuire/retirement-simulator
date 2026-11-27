@@ -423,10 +423,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       }
       modeRef.current = 'compare'
       setMode('compare')
-      afterPaint(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+      // To the top and onto the title in one step, once the (code-split)
+      // comparison is on the page. A scroll of its own a frame or two later
+      // could land after the reader had already scrolled into the comparison
+      // — on a slow frame clock (headless WebKit: ~250 ms a frame) it did.
       whenPresent(
         () => document.getElementById('compare-title'),
-        (title) => title.focus({ preventScroll: true })
+        (title) => {
+          window.scrollTo({ top: 0, behavior: 'instant' })
+          title.focus({ preventScroll: true })
+        },
+        15000
       )
     },
     [resolveInvoker]
