@@ -56,3 +56,42 @@ test.describe('account entry points', () => {
     await expect(menu.getByTestId('auth-sync-status')).toBeVisible()
   })
 })
+
+// The proxy forwards before any HTML, so a returning visitor never sees the
+// landing page flash up while the JS and the session check load.
+test.describe('server-side forward of a returning visitor', () => {
+  test.beforeEach(async ({ context, baseURL }) => {
+    await context.addCookies([
+      { name: 'authjs.session-token', value: 'opaque', url: baseURL ?? 'http://localhost:3000' },
+    ])
+  })
+
+  test('/<locale> answers with a redirect to the dashboard, never the landing page', async ({
+    page,
+  }) => {
+    for (const locale of ['en', 'de']) {
+      const response = await page.request.get(`/${locale}`, { maxRedirects: 0 })
+      expect(response.status()).toBe(307)
+      expect(new URL(response.headers().location, 'http://x').pathname).toBe(
+        `/${locale}/simulation`
+      )
+    }
+    // `/` takes one hop, straight to the dashboard of the chosen locale.
+    const root = await page.request.get('/', {
+      maxRedirects: 0,
+      headers: { 'accept-language': 'de' },
+    })
+    expect([307, 308]).toContain(root.status())
+    expect(new URL(root.headers().location, 'http://x').pathname).toBe('/de/simulation')
+
+    await stubSignedIn(page)
+    const landed = await page.goto('/en')
+    await expect(page).toHaveURL(/\/en\/simulation$/)
+    expect(landed?.request().redirectedFrom()?.url()).toMatch(/\/en$/)
+  })
+
+  test('?stay still shows the landing page', async ({ page }) => {
+    const response = await page.request.get('/en?stay=1', { maxRedirects: 0 })
+    expect(response.status()).toBe(200)
+  })
+})

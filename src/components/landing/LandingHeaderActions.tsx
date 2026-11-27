@@ -10,17 +10,8 @@ import { useAuthEnabled } from '@/components/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
 import { HeaderControlsMenu } from '@/components/navigation/HeaderControlsMenu'
 import { LocaleSwitcher } from '@/components/navigation/LocaleSwitcher'
+import { DASHBOARD_PATH, STAY_ON_LANDING_PARAM } from '@/lib/auth/landingForward'
 import { Link, useRouter } from '@/navigation'
-
-/** Where a sign-in started on the landing page ends up. */
-const DASHBOARD_PATH = '/simulation'
-
-/**
- * Query flag that keeps a signed-in visitor on the landing page. Without it
- * an authenticated session is forwarded straight to the dashboard — the
- * marketing page has nothing new to tell someone who already has a plan.
- */
-export const STAY_ON_LANDING_PARAM = 'stay'
 
 function useStayOnLanding(): boolean {
   const searchParams = useSearchParams()
@@ -29,8 +20,11 @@ function useStayOnLanding(): boolean {
 
 /**
  * Forwards an already-signed-in visitor from the landing page to their
- * dashboard. The Auth.js session cookie outlives the tab, so for a returning
- * user this is the "auto-login": open the site, land on the plan.
+ * dashboard. The proxy (`src/proxy.ts`) already does this before any HTML when
+ * the session cookie is there; this is the fallback for whatever reaches the
+ * page anyway (e.g. a session that only appears after the page loaded). The
+ * Auth.js session cookie outlives the tab, so for a returning user this is the
+ * "auto-login": open the site, land on the plan.
  *
  * Mounted only when auth is configured (see `LandingHeaderActions`), so it
  * never calls `useSession()` without a provider.
