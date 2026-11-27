@@ -31,8 +31,6 @@
   --surface-raised: var(--ui-surface);
   --overlay: rgb(15 20 27 / 0.5);
   --shadow-dialog: 0 8px 32px #0000001a;
-  --cta-slab-bg: #0f1524;
-  --cta-slab-fg: #f6f8fb;
   --background: 240 6% 97%;
   --foreground: 214 9% 15%;
   --card: 0 0% 100%;
@@ -256,8 +254,6 @@
     --overlay: rgb(4 7 10 / 0.66);
     --shadow-lg: 0 12px 28px -8px rgb(0 0 0 / 0.55), 0 4px 10px -4px rgb(0 0 0 / 0.4);
     --shadow-dialog: 0 16px 48px rgb(0 0 0 / 0.5);
-    --cta-slab-bg: #13263a;
-    --cta-slab-fg: #eef3f8;
     --chart-brush: #566371;
     --scrollbar-thumb: rgb(227 232 238 / 0.18);
     --scrollbar-thumb-hover: rgb(227 232 238 / 0.32);
@@ -371,8 +367,6 @@
   --overlay: rgb(4 7 10 / 0.66);
   --shadow-lg: 0 12px 28px -8px rgb(0 0 0 / 0.55), 0 4px 10px -4px rgb(0 0 0 / 0.4);
   --shadow-dialog: 0 16px 48px rgb(0 0 0 / 0.5);
-  --cta-slab-bg: #13263a;
-  --cta-slab-fg: #eef3f8;
   --chart-brush: #566371;
   --scrollbar-thumb: rgb(227 232 238 / 0.18);
   --scrollbar-thumb-hover: rgb(227 232 238 / 0.32);
@@ -498,7 +492,7 @@ html :is(input, textarea, [data-slot='select-item'], [role='tab']) {
   text-transform: none;
   letter-spacing: 0;
 }
-html :is(.ds-chip, .app-chip, [data-slot='badge']) {
+html :is(.ds-chip, [data-slot='badge']) {
   border-radius: var(--ui-radius);
   box-shadow: none;
   font-size: var(--ui-font-small);

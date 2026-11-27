@@ -1,13 +1,5 @@
 import { Suspense } from 'react'
-import {
-  Activity,
-  ArrowRight,
-  FileText,
-  Languages,
-  Route,
-  ShieldCheck,
-  SlidersHorizontal,
-} from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { Link } from '@/navigation'
 import { Button } from '@/components/ui/button'
@@ -18,111 +10,36 @@ import { LandingHeaderActions } from './LandingHeaderActions'
 import {
   APP_DEFAULT_RUNS,
   PREVIEW_DEFAULT_RUNS_SUCCESS_RATE,
-  PREVIEW_HORIZON_YEARS,
-  PREVIEW_PLAN,
   PREVIEW_RUNS,
   PREVIEW_SUCCESS_RATE,
-  PREVIEW_TERMINAL,
 } from './preview-data'
-import { cn } from '@/lib/utils'
+import './landing.css'
 
-/** The app mark as a mask, painted with `--ink` by `.brand-mark` (globals.css). */
-const BRAND_MARK_STYLE = {
-  WebkitMaskImage: 'url(/piggy.svg)',
-  maskImage: 'url(/piggy.svg)',
-} as const
-
-const FEATURES = [
-  {
-    key: 'monteCarlo',
-    Icon: Activity,
-    tile: 'bg-secondary text-secondary-foreground',
-    rotate: 'rotate-3',
-  },
-  {
-    key: 'live',
-    Icon: SlidersHorizontal,
-    tile: 'bg-primary text-primary-foreground',
-    rotate: '-rotate-2',
-  },
-  { key: 'phases', Icon: Route, tile: 'bg-ok text-on-hue', rotate: 'rotate-2' },
-  { key: 'reports', Icon: FileText, tile: 'bg-viz-orange text-on-hue', rotate: '-rotate-3' },
-  {
-    key: 'privacy',
-    Icon: ShieldCheck,
-    tile: 'bg-viz-pink text-on-hue',
-    rotate: 'rotate-2',
-  },
-  { key: 'bilingual', Icon: Languages, tile: 'bg-viz-purple text-on-hue', rotate: '-rotate-2' },
-] as const
-
-const HOW_STEPS = [
-  { key: 'step1', accent: 'bg-amber' },
-  { key: 'step2', accent: 'bg-accent' },
-  { key: 'step3', accent: 'bg-ok' },
-] as const
-
-const SPREAD_ITEMS = [
-  { key: 'low', value: PREVIEW_TERMINAL.p10, accent: 'bg-viz-orange' },
-  { key: 'median', value: PREVIEW_TERMINAL.p50, accent: 'bg-chart-1' },
-  { key: 'high', value: PREVIEW_TERMINAL.p90, accent: 'bg-ok' },
-] as const
-
+/**
+ * The landing page: one screen in the workspace's own visual language — the
+ * same bar, type scale, colours and asset chart — so a stranger sees what the
+ * app is before opening it. Returning visitors with a session never get here:
+ * the proxy forwards them to the workspace (`src/proxy.ts`).
+ */
 export function LandingPage() {
   const t = useTranslations('landing')
   const format = useFormatter()
   const year = String(new Date().getFullYear())
 
-  const compactMoney = (value: number) =>
-    format.number(value, {
-      style: 'currency',
-      currency: 'EUR',
-      notation: 'compact',
-      maximumSignificantDigits: 3,
-    })
-
   const runsLabel = format.number(PREVIEW_RUNS)
-  // The preview above was run 5,000 times; a visitor's own first plan runs the
-  // shipped default. Saying only the former made the landing page promise a
-  // number the dashboard never shows.
-  const defaultRunsLabel = format.number(APP_DEFAULT_RUNS)
   const percentLabel = (rate: number) =>
     format.number(rate / 100, { style: 'percent', maximumFractionDigits: 1 })
-  const successLabel = percentLabel(PREVIEW_SUCCESS_RATE)
-  // Both baked from the same engine, so the note can name the sampling gap
-  // instead of leaving a visitor to find it on their own dashboard.
-  const defaultRunsSuccessLabel = percentLabel(PREVIEW_DEFAULT_RUNS_SUCCESS_RATE)
-
-  // Every headline number on this page is derived from the single baked run of
-  // the real engine, so the stat band can never disagree with the chart.
-  const STATS = [
-    { key: 'scenarios', value: runsLabel },
-    { key: 'percentiles', value: t('stats.percentiles.value') },
-    { key: 'years', value: format.number(PREVIEW_HORIZON_YEARS) },
-    { key: 'privacy', value: t('stats.privacy.value') },
-  ] as const
 
   return (
-    <div className="app-page landing-typeset relative min-h-screen">
-      {/* ================= Header ================= */}
-      <header id="navigation" className="relative z-20">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
-          <Link href="/" className="group flex min-w-0 items-center gap-3">
-            <span className="rounded-sm flex h-10 w-10 items-center justify-center border border-border bg-amber shadow-sm transition-colors group-hover:-translate-x-[1px] group-hover:-translate-y-[1px] group-hover:shadow-sm">
-              <span className="brand-mark h-6 w-6" style={BRAND_MARK_STYLE} aria-hidden="true" />
-            </span>
-            {/* On phones the 20-character compound broke mid-word next to
-                three buttons; the logo carries the link there, the name
-                stays for assistive technology. */}
-            <span className="landing-label hidden font-heading text-[0.72rem] font-black text-ink [overflow-wrap:anywhere] sm:inline sm:text-sm">
-              {t('nav.appName')}
-            </span>
-            <span className="sr-only sm:hidden">{t('nav.appName')}</span>
+    <div className="lp">
+      <header id="navigation" className="lp-bar">
+        <div className="lp-bar-inner">
+          <Link href="/" className="lp-name">
+            {t('nav.appName')}
           </Link>
-
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="lp-actions">
             {/* `useSearchParams` inside needs a boundary for static rendering;
-                the fallback is the header without its buttons for one tick. */}
+                the fallback is the bar without its buttons for one tick. */}
             <Suspense fallback={null}>
               <LandingHeaderActions />
             </Suspense>
@@ -130,287 +47,54 @@ export function LandingPage() {
         </div>
       </header>
 
-      <main id="main-content" className="relative z-10">
-        {/* ================= Hero: message + real product output ================= */}
-        <section className="mx-auto max-w-6xl px-4 pb-14 pt-4 sm:px-6 sm:pt-8 lg:pb-20">
-          <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12">
-            <div className="lg:col-span-5">
-              <span className="app-chip landing-label animate-fade-in text-[0.62rem]">
-                <span
-                  className="h-2 w-2 animate-pulse-soft rounded-full bg-current"
-                  aria-hidden="true"
-                />
-                {t('hero.badge')}
-              </span>
+      <main id="main-content" className="lp-main">
+        <div className="lp-hero">
+          <div className="lp-copy">
+            <p className="lp-eyebrow">{t('hero.badge')}</p>
+            <h1 className="lp-title">
+              {t('hero.titleLine1')} {t('hero.titleLine2', { runs: runsLabel })}
+            </h1>
+            <p className="lp-lede">{t('hero.lede')}</p>
+            <p className="lp-text">{t('hero.subtitle')}</p>
 
-              <h1 className="landing-display animate-fade-in mt-5 text-balance font-heading text-[1.95rem] font-black leading-[1.08] text-ink sm:text-[2.6rem] lg:text-[2.7rem]">
-                {t('hero.titleLine1')}{' '}
-                <span className="rounded-sm mt-2 inline-block border border-border bg-secondary px-3 py-0.5 text-secondary-foreground shadow-sm">
-                  {t('hero.titleLine2', { runs: runsLabel })}
-                </span>
-              </h1>
-
-              {/* The thesis of the whole product — front and centre, not buried. */}
-              <p className="landing-display animate-fade-in-delayed mt-5 max-w-xl font-heading text-lg font-bold leading-snug text-ink sm:text-xl">
-                {t('hero.lede')}
-              </p>
-
-              <p className="landing-body animate-fade-in-delayed mt-3 max-w-xl text-pretty text-sm font-medium leading-relaxed text-foreground/80">
-                {t('hero.subtitle')}
-              </p>
-
-              <div className="animate-fade-in-delayed mt-7 flex w-full flex-col flex-wrap gap-3 sm:flex-row sm:items-center">
-                <Button
-                  size="lg"
-                  asChild
-                  className="landing-label h-auto w-full whitespace-normal py-3 text-center leading-tight sm:w-auto lg:w-full lg:max-w-[21rem]"
-                >
-                  <Link href="/setup">
-                    {t('hero.ctaPrimary')}
-                    <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
-                  </Link>
-                </Button>
-                {/* A stranger should be able to poke a furnished plan before
-                    typing their own salary into anything. */}
-                <ExamplePlanButton className="w-full sm:w-auto lg:w-full lg:max-w-[21rem]" />
-              </div>
-
-              <p className="landing-body animate-fade-in-more-delayed mt-4 text-xs font-semibold leading-relaxed text-muted-foreground">
-                {t('hero.note')}
-              </p>
+            <div className="lp-ctas">
+              <Button asChild className="lp-cta">
+                <Link href="/setup">
+                  {t('hero.ctaPrimary')}
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </Button>
+              {/* A stranger can poke a furnished plan before typing their own
+                  salary into anything. */}
+              <ExamplePlanButton variant="outline" />
             </div>
 
-            <div className="animate-fade-in-delayed lg:col-span-7">
-              <FanChartPreview />
-            </div>
+            <p className="lp-note">{t('hero.note')}</p>
           </div>
 
-          {/* The note says "the chart above", so it has to live *after* the
-              chart in document order — inside the copy column it read before
-              the chart it names on any single-column (mobile) layout. */}
-          <p className="landing-body animate-fade-in-more-delayed mt-6 max-w-3xl text-xs font-medium leading-relaxed text-muted-foreground">
-            {t('hero.runsNote', {
-              previewRuns: runsLabel,
-              previewRate: successLabel,
-              defaultRuns: defaultRunsLabel,
-              defaultRate: defaultRunsSuccessLabel,
-            })}
-          </p>
-
-          {/* Stats strip */}
-          <div className="animate-fade-in-more-delayed mt-12 grid grid-cols-2 gap-4 lg:mt-16 lg:grid-cols-4">
-            {STATS.map(({ key, value }) => (
-              <div
-                key={key}
-                className="rounded-sm theme-panel-card border border-border bg-card p-5 shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
-              >
-                <p className="landing-display font-heading text-2xl font-black tabular-nums text-ink sm:text-3xl">
-                  {value}
-                </p>
-                <p className="landing-body mt-2 text-[0.68rem] font-semibold leading-snug text-muted-foreground">
-                  {t(`stats.${key}.label`)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ================= Same plan, different futures ================= */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:pb-28">
-          <div className="mx-auto mb-10 flex max-w-2xl flex-col items-center text-center">
-            <span className="rounded-sm landing-label inline-block border border-border bg-amber px-3 py-1 text-[0.66rem] font-bold text-ink shadow-sm">
-              {t('spread.eyebrow')}
-            </span>
-            <h2 className="landing-display mt-5 text-balance font-heading text-2xl font-black text-ink sm:text-4xl">
-              {t('spread.title')}
-            </h2>
-            <p className="landing-body mt-4 text-pretty text-sm font-medium leading-relaxed text-foreground/80">
-              {t('spread.body', { endAge: PREVIEW_PLAN.endAge })}
+          <div className="lp-preview">
+            <FanChartPreview />
+            {/* After the chart in document order: it explains the chart. */}
+            <p className="lp-caption">
+              {t('hero.runsNote', {
+                previewRuns: runsLabel,
+                previewRate: percentLabel(PREVIEW_SUCCESS_RATE),
+                defaultRuns: format.number(APP_DEFAULT_RUNS),
+                defaultRate: percentLabel(PREVIEW_DEFAULT_RUNS_SUCCESS_RATE),
+              })}
             </p>
           </div>
-
-          <ul className="grid list-none grid-cols-1 gap-6 p-0 md:grid-cols-3">
-            {SPREAD_ITEMS.map(({ key, value, accent }) => (
-              <li
-                key={key}
-                className="rounded-sm theme-panel-card border border-border bg-card shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
-              >
-                <span className={cn('block h-2 w-full border-b border-border', accent)} />
-                <div className="p-6">
-                  <p className="landing-label text-[0.68rem] font-bold text-muted-foreground">
-                    {t(`spread.items.${key}.label`)}
-                  </p>
-                  <p className="landing-display mt-2 font-heading text-4xl font-black tabular-nums text-ink">
-                    {compactMoney(value)}
-                  </p>
-                  <p className="landing-body mt-3 text-[0.8rem] font-medium leading-relaxed text-foreground/75">
-                    {key === 'high' && PREVIEW_TERMINAL.p10 > 0
-                      ? t('spread.items.high.ratio', {
-                          ratio: format.number(PREVIEW_TERMINAL.p90 / PREVIEW_TERMINAL.p10, {
-                            maximumFractionDigits: 0,
-                          }),
-                        })
-                      : t(`spread.items.${key}.body`)}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          <p className="landing-body mt-6 text-center text-xs font-medium text-muted-foreground">
-            {t('spread.footnote', {
-              runs: runsLabel,
-              successRate: successLabel,
-              endAge: PREVIEW_PLAN.endAge,
-            })}
-          </p>
-        </section>
-
-        {/* ================= Features ================= */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:pb-28">
-          <div className="mx-auto mb-12 flex max-w-2xl flex-col items-center text-center">
-            <span className="rounded-sm inline-block border border-border bg-secondary landing-label px-3 py-1 text-[0.66rem] font-bold text-secondary-foreground shadow-sm">
-              {t('features.eyebrow')}
-            </span>
-            <h2 className="landing-display mt-5 text-balance font-heading text-2xl font-black text-ink sm:text-4xl">
-              {t('features.title')}
-            </h2>
-            <p className="landing-body mt-4 text-pretty text-sm font-medium leading-relaxed text-foreground/80">
-              {t('features.subtitle')}
-            </p>
-          </div>
-
-          <ul className="grid list-none grid-cols-1 gap-6 p-0 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ key, Icon, tile, rotate }) => (
-              <li
-                key={key}
-                className="rounded-sm theme-panel-card group border border-border bg-card p-6 shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
-              >
-                <span
-                  className={cn(
-                    'rounded-sm flex h-12 w-12 items-center justify-center border border-border shadow-sm transition-colors group-hover:rotate-0',
-                    tile,
-                    rotate
-                  )}
-                >
-                  <Icon className="h-6 w-6" aria-hidden="true" />
-                </span>
-                <h3 className="landing-label mt-5 text-sm font-extrabold text-ink">
-                  {t(`features.items.${key}.title`)}
-                </h3>
-                <p className="landing-body mt-3 text-[0.8rem] font-medium leading-relaxed text-foreground/75">
-                  {t(`features.items.${key}.body`)}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* ================= How it works ================= */}
-        <section className="mx-auto max-w-6xl px-4 pb-24 sm:px-6 lg:pb-32">
-          <div className="mx-auto mb-12 flex max-w-2xl flex-col items-center text-center">
-            <span className="rounded-sm inline-block border border-border bg-ok landing-label px-3 py-1 text-[0.66rem] font-bold text-on-hue shadow-sm">
-              {t('how.eyebrow')}
-            </span>
-            <h2 className="landing-display mt-5 text-balance font-heading text-2xl font-black text-ink sm:text-4xl">
-              {t('how.title')}
-            </h2>
-          </div>
-
-          <ol className="grid list-none grid-cols-1 gap-6 p-0 md:grid-cols-3">
-            {HOW_STEPS.map(({ key, accent }, index) => (
-              <li
-                key={key}
-                className="rounded-sm theme-panel-card relative border border-border bg-card shadow-sm transition-colors hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-sm"
-              >
-                <span className={cn('block h-2 w-full border-b border-border', accent)} />
-                <div className="p-6">
-                  <span className="rounded-sm flex h-11 w-11 items-center justify-center border border-border bg-card font-heading text-base font-black text-ink shadow-sm">
-                    {index + 1}
-                  </span>
-                  <h3 className="landing-label mt-5 text-sm font-extrabold text-ink">
-                    {t(`how.steps.${key}.title`)}
-                  </h3>
-                  <p className="landing-body mt-3 text-[0.8rem] font-medium leading-relaxed text-foreground/75">
-                    {t(`how.steps.${key}.body`)}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* ================= Final CTA ================= */}
-        <section className="landing-cta border-y-3 border-border">
-          <div className="mx-auto flex max-w-4xl flex-col items-center px-4 py-20 text-center sm:px-6 lg:py-24">
-            <h2 className="landing-cta-title landing-display text-balance font-heading text-2xl font-black sm:text-4xl lg:text-5xl">
-              {t('cta.title')}
-            </h2>
-            <p className="landing-cta-sub landing-body mt-4 text-sm font-semibold">
-              {t('cta.subtitle')}
-            </p>
-            <Button
-              size="lg"
-              asChild
-              className="landing-label mt-10 h-auto w-full max-w-[20rem] whitespace-normal py-3 leading-tight sm:min-w-[16rem]"
-            >
-              <Link href="/setup">
-                {t('cta.button')}
-                <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
-              </Link>
-            </Button>
-            <Link
-              href="/simulation"
-              className="landing-cta-link landing-body mt-6 text-xs font-semibold underline decoration-2 underline-offset-4 transition-colors"
-            >
-              {t('cta.secondary')}
-            </Link>
-            <ExamplePlanButton
-              variant="secondary"
-              size="sm"
-              className="mt-6 w-full max-w-[20rem]"
-            />
-          </div>
-        </section>
+        </div>
       </main>
 
-      {/* ================= Footer ================= */}
-      <footer className="relative z-10 bg-card/70">
-        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="rounded-sm flex h-9 w-9 items-center justify-center border border-border bg-amber shadow-sm">
-              <span className="brand-mark h-5 w-5" style={BRAND_MARK_STYLE} aria-hidden="true" />
-            </span>
-            <div>
-              <p className="landing-label text-[0.72rem] font-black text-ink">{t('nav.appName')}</p>
-              <p className="landing-body mt-1 text-[0.68rem] font-medium text-muted-foreground">
-                {t('footer.tagline')}
-              </p>
-            </div>
-          </div>
-
-          <nav className="flex flex-wrap items-center gap-x-8 gap-y-3">
-            <Link
-              href="/setup"
-              className="landing-label text-[0.72rem] font-bold text-ink underline decoration-2 underline-offset-4 transition-colors hover:text-accent"
-            >
-              {t('footer.setup')}
-            </Link>
-            <Link
-              href="/simulation"
-              className="landing-label text-[0.72rem] font-bold text-ink underline decoration-2 underline-offset-4 transition-colors hover:text-accent"
-            >
-              {t('footer.simulation')}
-            </Link>
+      <footer className="lp-foot">
+        <div className="lp-foot-inner">
+          <p className="lp-foot-text">{t('footer.copyright', { year })}</p>
+          <nav className="lp-foot-links" aria-label={t('footer.label')}>
+            <Link href="/setup">{t('footer.setup')}</Link>
+            <Link href="/simulation">{t('footer.simulation')}</Link>
           </nav>
-        </div>
-        <div className="border-t-2 border-ink/15">
-          <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <p className="landing-body text-[0.66rem] font-medium text-muted-foreground">
-              {t('footer.copyright', { year })}
-            </p>
-            <AppearanceSwitch />
-          </div>
+          <AppearanceSwitch />
         </div>
       </footer>
     </div>

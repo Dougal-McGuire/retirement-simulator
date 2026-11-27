@@ -30,8 +30,6 @@ describe('privacy claims', () => {
   const claims = (catalog: typeof en) => [
     catalog.landing.meta.description,
     catalog.landing.hero.note,
-    catalog.landing.stats.privacy.label,
-    catalog.landing.features.items.privacy.body,
     catalog.landing.footer.copyright,
   ]
 
@@ -42,20 +40,12 @@ describe('privacy claims', () => {
     expect(de.landing.hero.note).toBe(
       'Keine Registrierung nötig. Ohne Anmeldung verlassen deine Plandaten diesen Browser nicht – gezählt werden nur Seitenaufrufe. Meldest du dich an, werden deine Pläne in deinem Konto gespeichert.'
     )
-    expect(en.landing.stats.privacy.label).toBe('Bytes of plan data sent — unless you sign in')
-    expect(de.landing.stats.privacy.label).toBe(
-      'Bytes Plandaten übertragen – solange du nicht angemeldet bist'
-    )
   })
 
   it('says what is counted, and what sign-in changes', () => {
-    for (const body of [
-      en.landing.features.items.privacy.body,
-      de.landing.features.items.privacy.body,
-    ]) {
+    for (const body of [en.landing.hero.note, de.landing.hero.note]) {
       expect(body).toMatch(/page views|Seitenaufrufe/)
       expect(body).toMatch(/stored in your account|in deinem Konto gespeichert/)
-      expect(body).toMatch(/PDF/)
     }
   })
 

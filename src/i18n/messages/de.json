@@ -52,8 +52,7 @@
       "launchShort": "Starten",
       "dashboard": "Zu meinem Dashboard",
       "dashboardShort": "Dashboard",
-      "forwarding": "Angemeldet — Dashboard wird geöffnet…",
-      "stay": "Auf dieser Seite bleiben"
+      "forwarding": "Angemeldet — Dashboard wird geöffnet…"
     },
     "hero": {
       "badge": "Monte-Carlo-Engine · läuft in deinem Browser",
@@ -61,108 +60,15 @@
       "titleLine2": "{runs}-mal simuliert.",
       "subtitle": "Die Engine spielt dein gesamtes Finanzleben durch Tausende simulierte Märkte — Schwankungen, Inflation, Rente und Ausgaben — damit du die ganze Bandbreite der Ergebnisse siehst, bevor du deinen Ruhestand auf eine einzige Annahme setzt.",
       "ctaPrimary": "Jetzt planen — kostenlos",
-      "ctaSecondary": "Dashboard erkunden",
       "note": "Keine Registrierung nötig. Ohne Anmeldung verlassen deine Plandaten diesen Browser nicht – gezählt werden nur Seitenaufrufe. Meldest du dich an, werden deine Pläne in deinem Konto gespeichert.",
       "lede": "Eine Durchschnittsrendite sagt dir nichts.",
       "runsNote": "Der Chart oben ist ein gespeicherter Lauf der Engine: {previewRuns} Pfade, davon {previewRate} am Ende noch finanziert. Derselbe Plan rechnet auf deinem eigenen Dashboard standardmäßig {defaultRuns} Pfade und meldet {defaultRate} — weniger Stichproben, gleicher Plan. Im Plan-Editor kannst du die Laufzahl jederzeit erhöhen."
     },
-    "stats": {
-      "scenarios": {
-        "label": "Marktpfade hinter dem Chart oben"
-      },
-      "percentiles": {
-        "value": "P10–P90",
-        "label": "Ergebnisbänder im Chart"
-      },
-      "privacy": {
-        "value": "0",
-        "label": "Bytes Plandaten übertragen – solange du nicht angemeldet bist"
-      },
-      "years": {
-        "label": "Jahre, Jahr für Jahr modelliert"
-      }
-    },
     "preview": {
-      "windowTitle": "Vermögensprojektion · Beispielplan",
-      "retirementMarker": "Ruhestand · {age}",
-      "ageAxisLabel": "Alter",
+      "title": "Vermögen · Beispielplan",
       "chartAlt": "Fächerdiagramm des simulierten Vermögens von Alter {startAge} bis {endAge}, aus {runs} Monte-Carlo-Läufen. Das Perzentilband weitet sich nach dem Ruhestand deutlich.",
-      "runsChip": "{runs} Läufe",
-      "pensionMarker": "Rente · {age}",
+      "endTitle": "Was mit {age} übrig bleibt",
       "outcomes": {
-        "low": "10. Perzentil",
-        "median": "Median",
-        "high": "90. Perzentil"
-      },
-      "caption": "Echte Ausgabe der eingebauten Engine: {runs} Simulationen des Standardplans der App. {successRate} davon blieben bis Alter {endAge} finanziert."
-    },
-    "features": {
-      "eyebrow": "Für Überzeugung gebaut",
-      "title": "Alles, was ein ernsthafter Plan braucht",
-      "subtitle": "Eine vollständige Planungs-Engine — ganz ohne Tabellenakrobatik.",
-      "items": {
-        "monteCarlo": {
-          "title": "Eine echte Monte-Carlo-Engine",
-          "body": "Lognormale Renditen per Box-Muller-Transformation — Tausende vollständige Marktleben, berechnet in Sekunden."
-        },
-        "live": {
-          "title": "Sofortige Was-wäre-wenn-Antworten",
-          "body": "Bewege einen Regler, und die Perzentile zeichnen sich in rund 100 Millisekunden neu. Hinterfrage jede Annahme — live."
-        },
-        "phases": {
-          "title": "Beide Hälften der Reise",
-          "body": "Aufbau- und Entnahmephase in einem Modell: Sparratenwachstum, gesetzliche Rente, Einmalzahlungen und individuelle Ausgaben."
-        },
-        "reports": {
-          "title": "Berichte zum Teilen",
-          "body": "Exportiere einen sauberen, umfassenden PDF-Bericht deines Plans — inklusive Annahmen, Charts und Empfehlungen."
-        },
-        "privacy": {
-          "title": "Privat von Grund auf",
-          "body": "Kein Konto nötig und kein Tracking deiner Finanzen: Simulation und PDF-Bericht werden in deinem Browser berechnet, deine Eingaben liegen in dessen lokalem Speicher. Gezählt werden nur Seitenaufrufe. Meldest du dich an, werden deine Pläne zusätzlich in deinem Konto gespeichert."
-        },
-        "bilingual": {
-          "title": "Zweisprachig & lokalisiert",
-          "body": "Vollständige Oberfläche auf Deutsch und Englisch — mit korrekter Währungs-, Zahlen- und Datumsformatierung."
-        }
-      }
-    },
-    "how": {
-      "eyebrow": "So funktioniert es",
-      "title": "Vom Bauchgefühl zum Plan in fünf Minuten",
-      "steps": {
-        "step1": {
-          "title": "Plan beschreiben",
-          "body": "Alter, Vermögen, Sparraten, Rente und Ausgaben — ein geführtes Setup in etwa fünf Minuten."
-        },
-        "step2": {
-          "title": "Tausende Zukünfte durchrechnen",
-          "body": "Die Engine spielt dein gesamtes Finanzleben durch simulierte Märkte — gute wie schlechte Jahrzehnte."
-        },
-        "step3": {
-          "title": "Testen und verfeinern",
-          "body": "Justiere Annahmen live, beobachte die Bänder und exportiere das PDF, sobald der Plan trägt."
-        }
-      }
-    },
-    "cta": {
-      "title": "Wissen, wo du stehst.",
-      "subtitle": "Fünf Minuten Setup. Ein Leben lang Klarheit.",
-      "button": "Jetzt Plan erstellen",
-      "secondary": "oder das Live-Dashboard erkunden"
-    },
-    "footer": {
-      "tagline": "Monte-Carlo-Ruhestandsplanung — kostenlos, offen, privat.",
-      "setup": "Geführtes Setup",
-      "simulation": "Simulations-Dashboard",
-      "copyright": "© {year} Ruhestandssimulator. Simulation und Bericht werden auf deinem Gerät berechnet."
-    },
-    "spread": {
-      "eyebrow": "Warum eine Zahl täuscht",
-      "title": "Ein Plan. Wie viel könnte übrig bleiben?",
-      "body": "So verteilen sich die simulierten Endvermögen mit {endAge}. Alle Verläufe starten mit denselben Annahmen. Rendite und Inflation variieren von Jahr zu Jahr.",
-      "footnote": "{runs} Läufe des Standardplans · {successRate} blieben bis Alter {endAge} finanziert. Ändere eine Annahme, und die gesamte Bandbreite zeichnet sich neu.",
-      "items": {
         "low": {
           "label": "10. Perzentil",
           "body": "Etwa jeder zehnte Verlauf endet bei diesem Betrag oder darunter."
@@ -177,6 +83,12 @@
           "ratio": "Etwa das {ratio}-Fache des Vermögens am 10. Perzentil."
         }
       }
+    },
+    "footer": {
+      "setup": "Geführtes Setup",
+      "simulation": "Simulations-Dashboard",
+      "copyright": "© {year} Ruhestandssimulator. Simulation und Bericht werden auf deinem Gerät berechnet.",
+      "label": "Loslegen"
     },
     "demo": {
       "cta": "Beispielplan ansehen",

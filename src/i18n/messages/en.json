@@ -52,8 +52,7 @@
       "launchShort": "Start",
       "dashboard": "Go to my dashboard",
       "dashboardShort": "Dashboard",
-      "forwarding": "Signed in — opening your dashboard…",
-      "stay": "Stay on this page"
+      "forwarding": "Signed in — opening your dashboard…"
     },
     "hero": {
       "badge": "Monte Carlo engine · runs in your browser",
@@ -61,108 +60,15 @@
       "titleLine2": "simulated {runs} times.",
       "subtitle": "The engine replays your whole financial life through thousands of simulated markets — volatility, inflation, pension, and spending — so you see the full range of outcomes before you bet your retirement on a single guess.",
       "ctaPrimary": "Start planning — it's free",
-      "ctaSecondary": "Explore the dashboard",
       "note": "No sign-up needed. Without signing in, your plan data never leaves this browser — only page views are counted. If you sign in, your plans are stored in your account.",
       "lede": "One average return tells you nothing.",
       "runsNote": "The chart above is one baked run of the engine: {previewRuns} paths, {previewRate} of them still funded at the end. The same plan on your own dashboard runs {defaultRuns} paths by default and reports {defaultRate} — fewer samples, same plan. Raise the run count in the plan editor whenever you want a tighter answer."
     },
-    "stats": {
-      "scenarios": {
-        "label": "Market paths behind the chart above"
-      },
-      "percentiles": {
-        "value": "P10–P90",
-        "label": "Outcome bands charted"
-      },
-      "privacy": {
-        "value": "0",
-        "label": "Bytes of plan data sent — unless you sign in"
-      },
-      "years": {
-        "label": "Years modelled, one year at a time"
-      }
-    },
     "preview": {
-      "windowTitle": "Asset projection · sample plan",
-      "retirementMarker": "Retire · {age}",
-      "ageAxisLabel": "Age",
+      "title": "Assets · example plan",
       "chartAlt": "Fan chart of simulated retirement assets from age {startAge} to {endAge}, built from {runs} Monte Carlo runs. The percentile band widens sharply after retirement.",
-      "runsChip": "{runs} runs",
-      "pensionMarker": "Pension · {age}",
+      "endTitle": "What is left at {age}",
       "outcomes": {
-        "low": "10th percentile",
-        "median": "Median",
-        "high": "90th percentile"
-      },
-      "caption": "Real output of the built-in engine: {runs} simulations of the app's default plan. {successRate} of them stayed funded through age {endAge}."
-    },
-    "features": {
-      "eyebrow": "Built for conviction",
-      "title": "Everything a serious plan needs",
-      "subtitle": "A complete planning engine — no spreadsheet gymnastics required.",
-      "items": {
-        "monteCarlo": {
-          "title": "A real Monte Carlo engine",
-          "body": "Lognormal returns sampled with the Box–Muller transform — thousands of complete market lifetimes, computed in seconds."
-        },
-        "live": {
-          "title": "Instant what-if answers",
-          "body": "Move any slider and the percentiles redraw in about 100 milliseconds. Interrogate every assumption, live."
-        },
-        "phases": {
-          "title": "Both halves of the journey",
-          "body": "Accumulation to drawdown in one model: savings growth, statutory pension, one-time windfalls, and custom expense streams."
-        },
-        "reports": {
-          "title": "Reports worth sharing",
-          "body": "Export a clean, comprehensive PDF of your plan — assumptions, charts, and recommendations included."
-        },
-        "privacy": {
-          "title": "Private by design",
-          "body": "No account needed and no tracking of your finances: the simulation and the PDF report are computed in your browser, and your inputs stay in its local storage. Only page views are counted. If you sign in, your plans are also stored in your account."
-        },
-        "bilingual": {
-          "title": "Bilingual & localized",
-          "body": "Full English and German interfaces with proper currency, number, and date formatting throughout."
-        }
-      }
-    },
-    "how": {
-      "eyebrow": "How it works",
-      "title": "From guess to plan in five minutes",
-      "steps": {
-        "step1": {
-          "title": "Describe your plan",
-          "body": "Ages, assets, savings, pension, and spending — a guided setup that takes about five minutes."
-        },
-        "step2": {
-          "title": "Run thousands of futures",
-          "body": "The engine replays your entire financial life through simulated markets — good decades and bad."
-        },
-        "step3": {
-          "title": "Stress-test and refine",
-          "body": "Tune assumptions live, watch the bands respond, and export the PDF once the plan holds."
-        }
-      }
-    },
-    "cta": {
-      "title": "Know where you stand.",
-      "subtitle": "Five minutes of setup. A lifetime of clarity.",
-      "button": "Build your plan now",
-      "secondary": "or explore the live dashboard"
-    },
-    "footer": {
-      "tagline": "Monte Carlo retirement planning — free, open, private.",
-      "setup": "Guided setup",
-      "simulation": "Simulation dashboard",
-      "copyright": "© {year} Retirement Simulator. Simulation and report are computed on your device."
-    },
-    "spread": {
-      "eyebrow": "Why one number lies",
-      "title": "One plan. How much could be left?",
-      "body": "These amounts show how the simulated balances at age {endAge} are distributed. All paths start with the same assumptions. Returns and inflation vary from year to year.",
-      "footnote": "{runs} runs of the default plan · {successRate} stayed funded to age {endAge}. Change any assumption and the whole spread redraws.",
-      "items": {
         "low": {
           "label": "10th percentile",
           "body": "About 1 in 10 paths ends at or below this amount."
@@ -177,6 +83,12 @@
           "ratio": "About {ratio} times the balance at the 10th percentile."
         }
       }
+    },
+    "footer": {
+      "setup": "Guided setup",
+      "simulation": "Simulation dashboard",
+      "copyright": "© {year} Retirement Simulator. Simulation and report are computed on your device.",
+      "label": "Get started"
     },
     "demo": {
       "cta": "Explore an example plan",

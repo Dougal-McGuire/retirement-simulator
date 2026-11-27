@@ -47,7 +47,7 @@ interface ExamplePlanButtonProps {
 export function ExamplePlanButton({
   className,
   variant = 'outline',
-  size = 'lg',
+  size = 'default',
 }: ExamplePlanButtonProps) {
   const t = useTranslations('landing.demo')
   const tPlans = useTranslations('plans')
@@ -118,19 +118,16 @@ export function ExamplePlanButton({
         disabled={isPending}
         aria-busy={isPending}
         data-testid="explore-example-plan"
-        className="landing-label h-auto w-full whitespace-normal py-3 text-center leading-tight"
+        className="h-auto w-full whitespace-normal text-center leading-tight"
       >
         {isPending ? (
-          <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
         ) : (
-          <Sparkles className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
+          <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
         )}
         {isPending ? t('opening') : existing ? t('resume') : t('cta')}
       </Button>
-      {/* 0.68rem/medium was under 11px and, on the dark closing CTA band, the
-          smallest text on the page. Caption-sized and semibold so it clears AA
-          on every surface it appears on. */}
-      <span className="landing-body text-xs font-semibold leading-relaxed text-muted-foreground">
+      <span className="text-xs leading-relaxed text-muted-foreground">
         {failed ? t('limit', { max: MAX_PLANS }) : t('hint')}
       </span>
       {guardMounted && (

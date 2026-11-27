@@ -64,22 +64,22 @@ function PrimaryCta({ signedIn }: { signedIn: boolean }) {
 
   if (signedIn) {
     return (
-      <Button size="sm" asChild className="landing-label shrink-0" data-testid="landing-cta-dashboard">
+      <Button size="sm" asChild className="shrink-0" data-testid="landing-cta-dashboard">
         <Link href={DASHBOARD_PATH}>
           <span className="sm:hidden">{t('dashboardShort')}</span>
           <span className="hidden sm:inline">{t('dashboard')}</span>
-          <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Link>
       </Button>
     )
   }
 
   return (
-    <Button size="sm" asChild className="landing-label shrink-0" data-testid="landing-cta-launch">
+    <Button size="sm" asChild className="shrink-0" data-testid="landing-cta-launch">
       <Link href="/setup">
         <span className="sm:hidden">{t('launchShort')}</span>
         <span className="hidden sm:inline">{t('launch')}</span>
-        <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+        <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
     </Button>
   )
@@ -97,7 +97,7 @@ function SessionAwareActions() {
         signInRedirectTo={DASHBOARD_PATH}
         hideWhenUnavailable
       />
-      <LocaleSwitcher className="hidden w-auto px-3  lg:flex" />
+      <LocaleSwitcher className="hidden w-auto px-3 lg:flex" />
       <HeaderControlsMenu className="lg:hidden" signInRedirectTo={DASHBOARD_PATH} />
       <PrimaryCta signedIn={signedIn} />
     </>
@@ -116,7 +116,7 @@ export function LandingHeaderActions() {
   if (!enabled) {
     return (
       <>
-        <LocaleSwitcher className="hidden w-auto px-3  lg:flex" />
+        <LocaleSwitcher className="hidden w-auto px-3 lg:flex" />
         <HeaderControlsMenu className="lg:hidden" />
         <PrimaryCta signedIn={false} />
       </>

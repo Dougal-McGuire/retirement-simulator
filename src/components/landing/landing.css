@@ -1,0 +1,354 @@
+/*
+ * Landing page. Built from the workspace's tokens (interface.css) so it reads
+ * as the same product: the 48 px bar, the type scale, the page and surface
+ * colours, and the asset chart's look (mirrors .ws-fan in ws-frame.css and
+ * .ws-chart-* in ws-page.css, which this page does not load).
+ */
+
+.lp {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  font-size: var(--ui-font-body);
+  line-height: 1.5;
+}
+
+/* ---- Bar --------------------------------------------------------------- */
+.lp-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-border);
+}
+.lp-bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+  max-width: 1200px;
+  min-height: var(--bar-h);
+  margin: 0 auto;
+  padding: 4px var(--ui-space-6);
+}
+.lp-name {
+  min-width: 0;
+  font-weight: 600;
+  color: var(--ui-text);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lp-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+
+/* ---- Hero -------------------------------------------------------------- */
+.lp-main {
+  flex: 1 0 auto;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--ui-space-12) var(--ui-space-6) var(--ui-space-16);
+}
+.lp-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--ui-space-12);
+  align-items: start;
+}
+.lp-eyebrow {
+  margin: 0;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.lp-title {
+  margin: var(--ui-space-2) 0 0;
+  font-size: var(--ui-font-display);
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.lp-lede {
+  margin: var(--ui-space-4) 0 0;
+  font-size: var(--ui-font-lead);
+  font-weight: 600;
+}
+.lp-text {
+  max-width: 46ch;
+  margin: var(--ui-space-2) 0 0;
+  color: var(--ui-muted);
+  text-wrap: pretty;
+}
+.lp-ctas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-3);
+  max-width: 22rem;
+  margin-top: var(--ui-space-6);
+}
+.lp-cta {
+  width: 100%;
+}
+.lp-note {
+  max-width: 46ch;
+  margin: var(--ui-space-6) 0 0;
+  padding-top: var(--ui-space-4);
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+  border-top: 1px solid var(--ui-border);
+}
+
+/* ---- Asset chart (as .ws-fan) ------------------------------------------ */
+.lp-figure {
+  margin: 0;
+}
+.lp-fan {
+  min-width: 0;
+  padding: 6px var(--ui-space-3);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+.lp-fan-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--ui-space-4);
+  min-height: 44px;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.lp-fan-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--ui-font-body);
+  font-weight: 600;
+  color: var(--ui-text);
+}
+.lp-fan-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--ui-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lp-fan-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.lp-fan-key {
+  display: inline-block;
+  flex: none;
+}
+.lp-fan-key[data-key='median'] {
+  width: 18px;
+  border-top: 3px solid var(--viz-seq-5);
+}
+.lp-fan-key[data-key='outer'] {
+  width: 14px;
+  height: 10px;
+  background: var(--viz-seq-1);
+  border: 1px solid var(--viz-seq-2);
+}
+.lp-fan-key[data-key='inner'] {
+  width: 14px;
+  height: 10px;
+  background: var(--viz-seq-2);
+}
+.lp-fan-plot {
+  position: relative;
+  height: 300px;
+  overflow: hidden;
+}
+.lp-fan-plot > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.lp-fan-ylabel {
+  position: absolute;
+  left: 4px;
+  padding: 0 3px;
+  font-size: var(--ui-font-small);
+  line-height: 1.3;
+  color: var(--ui-muted);
+  background: color-mix(in srgb, var(--ui-surface) 80%, transparent);
+  border-radius: 2px;
+  transform: translateY(-110%);
+  font-variant-numeric: tabular-nums;
+}
+.lp-fan-marker {
+  position: absolute;
+  top: 4px;
+  padding: 0 3px;
+  font-size: var(--ui-font-small);
+  line-height: 16px;
+  color: var(--ui-muted);
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--ui-surface) 82%, transparent);
+  border-radius: 2px;
+  transform: translateX(4px);
+}
+.lp-fan-marker[data-marker='retirement'] {
+  font-weight: 600;
+  color: var(--ui-accent);
+}
+.lp-fan-marker[data-marker='pension'] {
+  top: 24px;
+}
+.lp-fan-axis {
+  position: relative;
+  height: 16px;
+  margin: 4px 0 2px;
+  font-size: var(--ui-font-small);
+  line-height: 16px;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+.lp-fan-axis > span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+.lp-fan-axis > span:first-child {
+  transform: none;
+}
+.lp-fan-axis > span:last-child {
+  transform: translateX(-100%);
+}
+
+/* ---- End values -------------------------------------------------------- */
+.lp-outcomes {
+  margin-top: var(--ui-space-6);
+}
+.lp-outcomes-title {
+  margin: 0;
+  font-size: var(--ui-font-body);
+  font-weight: 600;
+}
+.lp-outcomes ul {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ui-space-4);
+  margin: var(--ui-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.lp-outcomes li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-left: var(--ui-space-3);
+  border-left: 1px solid var(--ui-border);
+}
+.lp-outcome-label {
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.lp-outcome-value {
+  font-size: var(--ui-font-kpi);
+  font-weight: 600;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.lp-outcome-body {
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.lp-caption {
+  margin: var(--ui-space-6) 0 0;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+
+/* ---- Footer ------------------------------------------------------------ */
+.lp-foot {
+  background: var(--ui-surface);
+  border-top: 1px solid var(--ui-border);
+}
+.lp-foot-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-3) var(--ui-space-6);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--ui-space-4) var(--ui-space-6);
+}
+.lp-foot-text {
+  flex: 1 1 20rem;
+  margin: 0;
+  font-size: var(--ui-font-small);
+  color: var(--ui-muted);
+}
+.lp-foot-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2) var(--ui-space-6);
+  font-size: var(--ui-font-small);
+}
+.lp-foot-links a {
+  color: var(--ui-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lp-foot-links a:hover {
+  color: var(--ui-accent);
+}
+
+/* ---- Narrow ------------------------------------------------------------ */
+@media (max-width: 1000px) {
+  .lp-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ui-space-8);
+  }
+  .lp-text,
+  .lp-note {
+    max-width: 60ch;
+  }
+}
+@media (max-width: 760px) {
+  .lp-bar-inner,
+  .lp-foot-inner {
+    padding-inline: var(--ui-space-4);
+  }
+  .lp-main {
+    padding: var(--ui-space-8) var(--ui-space-4) var(--ui-space-12);
+  }
+  .lp-title {
+    font-size: 26px;
+  }
+  .lp-ctas {
+    max-width: none;
+  }
+  .lp-fan-plot {
+    height: 240px;
+  }
+  .lp-fan-legend-inner {
+    display: none !important;
+  }
+  .lp-outcomes ul {
+    gap: var(--ui-space-2);
+  }
+  .lp-outcome-value {
+    font-size: var(--ui-font-lead);
+  }
+  .lp-outcome-body {
+    display: none;
+  }
+  /* The ratio line names the spread; keep it where the others fold away. */
+  .lp-outcomes li:last-child .lp-outcome-body {
+    display: block;
+  }
+}

@@ -47,7 +47,9 @@ export default function proxy(request: NextRequest) {
     const target = nextUrl.clone()
     target.pathname = `/${locale}${DASHBOARD_PATH}`
     const forward = NextResponse.redirect(target, 307)
-    response.headers.getSetCookie().forEach((cookie) => forward.headers.append('set-cookie', cookie))
+    response.headers
+      .getSetCookie()
+      .forEach((cookie) => forward.headers.append('set-cookie', cookie))
     return forward
   }
 

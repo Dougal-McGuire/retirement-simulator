@@ -63,43 +63,6 @@
   }
 }
 
-@layer components {
-  .app-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.35rem 0.85rem;
-    border: 1px solid var(--line);
-    background-color: hsl(var(--secondary));
-    color: hsl(var(--secondary-foreground));
-    font-size: 0.68rem;
-    text-transform: none;
-  }
-}
-/* Animation classes */
-@layer utilities {
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translate3d(0, 20px, 0);
-    }
-    to {
-      opacity: 1;
-      transform: translate3d(0, 0, 0);
-    }
-  }
-  .animate-fade-in {
-    animation: fadeInUp 0.2s ease-out forwards;
-  }
-  .animate-fade-in-delayed {
-    animation: fadeInUp 0.2s ease-out forwards 0.1s;
-    opacity: 0;
-  }
-  .animate-fade-in-more-delayed {
-    animation: fadeInUp 0.2s ease-out forwards 0.2s;
-    opacity: 0;
-  }
-}
 /* Range navigator (Recharts brush) — styled as a deliberate control rather
    than the default grey scrollbar. */
 .chart-range-navigator .recharts-brush-slide {
@@ -118,16 +81,6 @@
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
-}
-.app-page {
-  padding-bottom: clamp(3rem, 6vw, 5rem);
-}
-/* The closing call-to-action is a deep slab in both colour schemes. The
-   example-plan caption would otherwise inherit the page's muted grey (~2.6:1
-   on the slab); tie the muted ink inside it to the slab's own foreground
-   token and keep it opaque enough (90%) to clear AA at the caption's size. */
-.landing-cta .text-muted-foreground {
-  color: color-mix(in srgb, var(--landing-cta-fg) 90%, transparent);
 }
 /* Chart milestone labels ("RETIREMENT", "PENSION STARTS") are uppercased by an
    inline style on the Recharts reference line, which only !important can
@@ -168,54 +121,8 @@ html text.recharts-label {
   .animate-route-progress {
     animation-duration: 3s !important;
   }
-  .animate-step-in,
-  .animate-fade-in,
-  .animate-fade-in-delayed,
-  .animate-fade-in-more-delayed {
+  .animate-step-in {
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
   }
-}
-/* ------------------------------------------------------------------ */
-/* Landing page: the closing call-to-action is a deep slab in both     */
-/* colour schemes; its colours come from the --cta-slab-* tokens.      */
-/* ------------------------------------------------------------------ */
-/* App mark: the piggy glyph used as a mask so it is painted in the current
-   ink and follows the colour scheme (an <img> would stay #1f1f1f). The mask
-   image itself is set inline by the component (see LandingPage). */
-.brand-mark {
-  display: block;
-  background-color: var(--ink);
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-}
-.landing-cta {
-  --landing-cta-bg: var(--cta-slab-bg);
-  --landing-cta-fg: var(--cta-slab-fg);
-  background-color: var(--landing-cta-bg);
-}
-.landing-cta-title {
-  color: var(--landing-cta-fg);
-}
-.landing-cta-sub,
-.landing-cta-link {
-  color: color-mix(in srgb, var(--landing-cta-fg) 76%, transparent);
-}
-.landing-cta-link:hover {
-  color: var(--landing-cta-fg);
-}
-/* Landing typography: the display, label and body tracking (unlayered, so
-   it outranks the `tracking-*` utilities and the chip's own spacing). */
-.landing-typeset .landing-display {
-  letter-spacing: 0.005em;
-}
-.landing-typeset .landing-label {
-  letter-spacing: 0.055em;
-}
-.landing-typeset .landing-body {
-  letter-spacing: 0.005em;
 }
